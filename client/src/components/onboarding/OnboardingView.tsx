@@ -72,6 +72,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                   <option value="Healthcare">Healthcare & Clinics</option>
                   <option value="Real Estate">Real Estate & Properties</option>
                   <option value="Recruitment">Recruitment & HR Tech</option>
+                  <option value="Other">Other</option>
                 </select>
               </div>
             </div>

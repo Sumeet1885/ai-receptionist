@@ -152,6 +152,10 @@ export default function App() {
       setNewBotName('Recrui8 Tech Staffing');
       setNewBotGreeting('Hello! I am the Recrui8 Virtual HR Assistant. 💼 I can help you browse active technical openings, track candidate application status, or schedule interviews!');
       setNewBotKB(`Recrui8 Tech Staffing guide:\n1. Active Technical Openings:\n- Senior React Developer: Requires 5+ years of experience. Salary: 18-24 LPA.\n- AI Product Engineer: Requires expertise in LLMs, Gemini/OpenAI API integrations. Salary: 20-30 LPA.\n2. Candidate Application Process:\nSubmit Resume, GitHub Link, and complete a 45-minute coding challenge.`);
+    } else if (industry === 'Other') {
+      setNewBotName('');
+      setNewBotGreeting('Welcome to our business! 🤖 How can our virtual assistant help you today?');
+      setNewBotKB('Add details about your business here...');
     }
   };
 
