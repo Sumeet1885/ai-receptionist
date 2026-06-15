@@ -27,10 +27,9 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
       mediaStreamRef.current = stream;
 
       // 2. Connect to WebSocket proxy on backend
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      // In development, the proxy is usually on 4000. In production it's the same host.
-      const host = import.meta.env.DEV ? 'localhost:4000' : window.location.host;
-      const wsUrl = `${protocol}//${host}/api/chat/live?botId=${botId}&sessionId=${sessionId}`;
+      const expressUrl = import.meta.env.VITE_EXPRESS_SERVER_URL || 'http://localhost:4000';
+      const wsUrlBase = expressUrl.replace(/^http/, 'ws');
+      const wsUrl = `${wsUrlBase}/api/chat/live?botId=${botId}&sessionId=${sessionId}`;
       
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;

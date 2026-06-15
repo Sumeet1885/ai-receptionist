@@ -7,10 +7,11 @@ export const AppointmentsTab: React.FC = () => {
   const [provider, setProvider] = useState<string | null>(null);
 
   useEffect(() => {
+    const expressUrl = import.meta.env.VITE_EXPRESS_SERVER_URL || 'http://localhost:4000';
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         const token = session.access_token;
-        fetch('http://localhost:4000/api/calendar/status', {
+        fetch(`${expressUrl}/api/calendar/status`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         .then(res => res.json())
@@ -30,7 +31,8 @@ export const AppointmentsTab: React.FC = () => {
     if (!session) return;
     const token = session.access_token;
     try {
-      const res = await fetch(`http://localhost:4000/api/calendar/auth-url?provider=${targetProvider}`, {
+      const expressUrl = import.meta.env.VITE_EXPRESS_SERVER_URL || 'http://localhost:4000';
+      const res = await fetch(`${expressUrl}/api/calendar/auth-url?provider=${targetProvider}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
