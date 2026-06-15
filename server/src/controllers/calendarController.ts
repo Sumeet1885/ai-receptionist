@@ -35,10 +35,10 @@ export const handleCallback = async (req: Request, res: Response) => {
     const adapter = getAdapter(provider);
     await adapter.handleCallback(code, ownerId);
     // Redirect back to dashboard appointments tab
-    res.redirect('http://localhost:3000/dashboard?tab=appointments');
+    res.redirect(`${config.clientUrl}/dashboard?tab=appointments`);
   } catch (err: any) {
     console.error(`Callback error [${provider}]:`, err);
-    res.redirect('http://localhost:3000/dashboard?tab=appointments&error=auth_failed');
+    res.redirect(`${config.clientUrl}/dashboard?tab=appointments&error=auth_failed`);
   }
 };
 

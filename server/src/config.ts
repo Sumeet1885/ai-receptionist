@@ -11,6 +11,7 @@ function requireEnv(name: string): string {
 
 export const config = {
   port: parseInt(process.env.PORT || '4000', 10),
+  clientUrl: process.env.CLIENT_URL || 'http://localhost:3000',
   supabaseUrl: requireEnv('SUPABASE_URL'),
   supabaseServiceKey: requireEnv('SUPABASE_SERVICE_ROLE_KEY'),
   geminiApiKey: requireEnv('GEMINI_API_KEY'),
