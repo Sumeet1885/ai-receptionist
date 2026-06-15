@@ -3,6 +3,8 @@ import { Bot, Message } from '../../types';
 import { Icons } from '../common/Icons';
 
 import { useLiveVoice } from '../../hooks/useLiveVoice';
+import { VoiceInput } from '@/components/ui/voice-input';
+import { cn } from '@/lib/utils';
 
 interface PublicChatViewProps {
   activeBot: Bot;
@@ -19,6 +21,7 @@ interface PublicChatViewProps {
   setView: (view: string) => void;
   showToast: (message: string, type?: 'success' | 'error') => void;
   messageEndRef: React.RefObject<HTMLDivElement | null>;
+  isStandalone?: boolean;
 }
 
 export const PublicChatView: React.FC<PublicChatViewProps> = ({
@@ -35,54 +38,57 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
   setPreviewMode,
   setView,
   showToast,
-  messageEndRef
+  messageEndRef,
+  isStandalone = false
 }: PublicChatViewProps) => {
   const liveVoice = useLiveVoice(activeBot.id, sessionId);
 
   return (
-    <div className="flex-1 bg-brand-bg flex flex-col items-center justify-center p-4 font-sans">
+    <div className={cn("flex-1 bg-brand-bg flex flex-col font-sans", isStandalone ? "w-full h-screen" : "items-center justify-center p-4")}>
       {/* Header Address Bar simulator */}
-      <div className="w-full max-w-4xl bg-brand-card rounded-2xl border border-brand-border shadow-xl flex flex-col overflow-hidden">
+      <div className={cn("w-full bg-brand-card flex flex-col overflow-hidden", isStandalone ? "flex-1 h-screen" : "max-w-4xl rounded-2xl border border-brand-border shadow-xl")}>
         
         {/* Fake browser bar */}
-        <div className="bg-brand-bg px-4 py-3 flex items-center justify-between border-b border-brand-border">
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-brand-danger/30 border border-brand-danger"></div>
-            <div className="w-3 h-3 rounded-full bg-brand-warning/30 border border-brand-warning"></div>
-            <div className="w-3 h-3 rounded-full bg-brand-success/30 border border-brand-success"></div>
-          </div>
+        {!isStandalone && (
+          <div className="bg-brand-bg px-4 py-3 flex items-center justify-between border-b border-brand-border">
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 rounded-full bg-brand-danger/30 border border-brand-danger"></div>
+              <div className="w-3 h-3 rounded-full bg-brand-warning/30 border border-brand-warning"></div>
+              <div className="w-3 h-3 rounded-full bg-brand-success/30 border border-brand-success"></div>
+            </div>
 
-          <div className="bg-brand-card text-xs text-brand-text/75 px-4 py-1.5 rounded-lg flex items-center justify-center space-x-2 select-all font-mono tracking-wide w-1/2 mx-auto border border-brand-border">
-            <Icons.Globe />
-            <span className="truncate">receptionist.ai/chats/{activeBot.subDomain}</span>
-          </div>
+            <div className="bg-brand-card text-xs text-brand-text/75 px-4 py-1.5 rounded-lg flex items-center justify-center space-x-2 select-all font-mono tracking-wide w-1/2 mx-auto border border-brand-border">
+              <Icons.Globe />
+              <span className="truncate">receptionist.ai/chats/{activeBot.subDomain}</span>
+            </div>
 
-          <div className="flex items-center space-x-2">
-            {/* View layout Switcher */}
-            <button 
-              onClick={() => setPreviewMode(previewMode === 'desktop' ? 'mobile' : 'desktop')}
-              className="p-1.5 hover:bg-brand-bg border border-transparent hover:border-brand-border rounded text-brand-text/70 hover:text-brand-text text-xs font-semibold transition duration-200"
-            >
-              <span>Simulated: {previewMode === 'desktop' ? 'Desktop' : 'Mobile'}</span>
-            </button>
-            <button 
-              onClick={() => {
-                setView('dashboard');
-                showToast("Returned to Owner Dashboard Console");
-              }}
-              className="px-3.5 py-1 bg-brand-accent hover:bg-brand-accent-hover border border-brand-border rounded-lg text-xs font-semibold text-brand-text transition duration-200"
-            >
-              Console
-            </button>
+            <div className="flex items-center space-x-2">
+              {/* View layout Switcher */}
+              <button 
+                onClick={() => setPreviewMode(previewMode === 'desktop' ? 'mobile' : 'desktop')}
+                className="p-1.5 hover:bg-brand-bg border border-transparent hover:border-brand-border rounded text-brand-text/70 hover:text-brand-text text-xs font-semibold transition duration-200"
+              >
+                <span>Simulated: {previewMode === 'desktop' ? 'Desktop' : 'Mobile'}</span>
+              </button>
+              <button 
+                onClick={() => {
+                  setView('dashboard');
+                  showToast("Returned to Owner Dashboard Console");
+                }}
+                className="px-3.5 py-1 bg-brand-accent hover:bg-brand-accent-hover border border-brand-border rounded-lg text-xs font-semibold text-brand-text transition duration-200"
+              >
+                Console
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Chat Simulator Content Layout */}
-        <div className="flex-1 flex flex-col md:flex-row min-h-[500px] bg-brand-card">
+        <div className={cn("flex-1 flex flex-col md:flex-row bg-brand-card", isStandalone ? "h-full" : "min-h-[500px]")}>
           
           {/* Left side widget helper info (Simulating informational landing space of the academy/business) */}
-          {previewMode === 'desktop' && (
-            <div className="w-full md:w-80 bg-brand-card border-r border-brand-border p-6 flex flex-col justify-between">
+          {((previewMode === 'desktop' && !isStandalone) || isStandalone) && (
+            <div className={cn("w-full md:w-80 bg-brand-card border-r border-brand-border p-6 flex flex-col justify-between", isStandalone ? "hidden md:flex" : "flex")}>
               <div className="space-y-6">
                 <div>
                   <span className="px-2.5 py-1 bg-brand-bg border border-brand-border text-brand-accent rounded-md text-[10px] font-mono uppercase tracking-wider font-semibold">
@@ -113,7 +119,7 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
           )}
 
           {/* Simulated interactive chat viewport */}
-          <div className={`flex-1 flex flex-col bg-brand-bg h-[500px] ${previewMode === 'mobile' ? 'max-w-md mx-auto border-x border-brand-border rounded-2xl' : ''}`}>
+          <div className={cn("flex-1 flex flex-col bg-brand-bg", isStandalone ? "h-full" : "h-[500px]", !isStandalone && previewMode === 'mobile' ? 'max-w-md mx-auto border-x border-brand-border rounded-2xl' : '')}>
             
             {/* Chat interface custom banner */}
             <div className="p-4 bg-brand-card border-b border-brand-border text-brand-text flex items-center justify-between shadow-sm">
@@ -170,25 +176,20 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
             </div>
 
             {/* Simulated Dynamic CRM Leads Sync Banner (Noticeboard) */}
-            <div className="bg-brand-accent/5 border-y border-brand-border/60 p-2.5 text-center text-xs text-brand-accent font-sans font-semibold">
-              Lead details are captured dynamically in the owner console as you converse.
-            </div>
+            {!isStandalone && (
+              <div className="bg-brand-accent/5 border-y border-brand-border/60 p-2.5 text-center text-xs text-brand-accent font-sans font-semibold">
+                Lead details are captured dynamically in the owner console as you converse.
+              </div>
+            )}
 
             {/* Input form */}
             <form onSubmit={handleSendChatMessage} className="p-3.5 bg-brand-card border-t border-brand-border flex items-center space-x-2">
-              <button
-                type="button"
-                onClick={liveVoice.isVoiceActive ? liveVoice.stopVoice : liveVoice.startVoice}
-                disabled={liveVoice.isConnecting}
-                className={`p-3.5 rounded-lg border shadow-md transition flex items-center justify-center ${
-                  liveVoice.isVoiceActive 
-                    ? 'bg-brand-danger text-white border-brand-danger animate-pulse' 
-                    : 'bg-brand-bg hover:bg-brand-card border-brand-border text-brand-text'
-                } ${liveVoice.isConnecting ? 'opacity-50 cursor-wait' : ''}`}
+              <VoiceInput
+                listening={liveVoice.isVoiceActive}
+                setListening={(val) => val ? liveVoice.startVoice() : liveVoice.stopVoice()}
+                className={liveVoice.isConnecting ? 'opacity-50 pointer-events-none cursor-wait' : ''}
                 title={liveVoice.isVoiceActive ? "Stop Voice Call" : "Talk to Agent"}
-              >
-                <Icons.Mic />
-              </button>
+              />
               
               <input
                 type="text"

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from './lib/supabaseClient';
 
 // Types
 import { Toast as ToastType } from './types';
@@ -57,9 +58,67 @@ export default function App() {
         setView('dashboard');
       }
     } else if (view !== 'landing' && view !== 'public-chat') {
-      setView('landing');
+      // If we are on a standalone public chat URL, don't redirect to landing page
+      const isPublicPath = window.location.pathname.startsWith('/chats/');
+      if (!isPublicPath) {
+        setView('landing');
+      }
     }
   }, [user]);
+
+  // Handle direct standalone public chatbot URL loading (/chats/:subdomain)
+  useEffect(() => {
+    const loadStandaloneChat = async () => {
+      const path = window.location.pathname;
+      const match = path.match(/^\/chats\/([^/]+)/);
+      if (match) {
+        const subdomain = match[1];
+        try {
+          // Fetch the bot with this subdomain from Supabase
+          const { data, error } = await supabase
+            .from('bots')
+            .select('*')
+            .eq('subdomain', subdomain)
+            .single();
+
+          if (error || !data) {
+            showToast('Chatbot not found or inactive', 'error');
+            setView('landing');
+            return;
+          }
+
+          const mappedBot = {
+            id: data.id,
+            businessName: data.business_name,
+            industry: data.industry,
+            subDomain: data.subdomain,
+            greeting: data.greeting,
+            primaryColor: data.primary_color,
+            languages: data.languages,
+            knowledgeBase: data.knowledge_base,
+            createdAt: data.created_at
+          };
+
+          // Save bot to state and set active
+          setBots(prev => {
+            if (prev.some(b => b.id === mappedBot.id)) return prev;
+            return [...prev, mappedBot];
+          });
+          setActiveBotId(mappedBot.id);
+
+          // Start the chat session
+          await chat.startSession(mappedBot.id, mappedBot.greeting);
+          setView('public-chat');
+        } catch (err) {
+          console.error('Error loading public chatbot:', err);
+          showToast('Failed to load public chatbot', 'error');
+          setView('landing');
+        }
+      }
+    };
+
+    loadStandaloneChat();
+  }, []);
 
   // Poll leads when on dashboard
   useEffect(() => {
@@ -103,9 +162,7 @@ export default function App() {
   const launchPublicChat = async (botId: string) => {
     const selectedBot = bots.find(b => b.id === botId);
     if (!selectedBot) return;
-    setActiveBotId(botId);
-    await chat.startSession(botId, selectedBot.greeting);
-    setView('public-chat');
+    window.open(`${window.location.origin}/chats/${selectedBot.subDomain}`, '_blank');
   };
 
   const handleCreateBot = async (e: React.FormEvent) => {
@@ -134,18 +191,22 @@ export default function App() {
 
   const activeBot = bots.find(b => b.id === activeBotId) || (bots.length > 0 ? bots[0] : null);
 
+  const isStandaloneChat = window.location.pathname.startsWith('/chats/');
+
   return (
     <div className="min-h-screen bg-brand-bg text-brand-text font-sans antialiased flex flex-col selection:bg-brand-accent/30 selection:text-white">
       {toast && <Toast toast={toast} />}
 
-      <Header
-        view={view}
-        setView={setView}
-        hasBots={bots.length > 0}
-        activeBotId={activeBotId}
-        launchPublicChat={launchPublicChat}
-        user={user}
-      />
+      {!isStandaloneChat && (
+        <Header
+          view={view}
+          setView={setView}
+          hasBots={bots.length > 0}
+          activeBotId={activeBotId}
+          launchPublicChat={launchPublicChat}
+          user={user}
+        />
+      )}
 
       <main className="flex-1 flex flex-col">
         {view === 'landing' && (
@@ -221,11 +282,12 @@ export default function App() {
             setView={setView}
             showToast={showToast}
             messageEndRef={chat.messageEndRef}
+            isStandalone={isStandaloneChat}
           />
         )}
       </main>
 
-      {view !== 'landing' && <Footer showToast={(msg) => showToast(msg, 'success')} />}
+      {!isStandaloneChat && view !== 'landing' && <Footer showToast={(msg) => showToast(msg, 'success')} />}
     </div>
   );
 }

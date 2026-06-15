@@ -1,5 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState, useEffect } from 'react';
+import { supabase } from './lib/supabaseClient';
 // Hooks
 import { useAuth } from './hooks/useAuth';
 import { useBots } from './hooks/useBots';
@@ -47,9 +48,63 @@ export default function App() {
             }
         }
         else if (view !== 'landing' && view !== 'public-chat') {
-            setView('landing');
+            // If we are on a standalone public chat URL, don't redirect to landing page
+            const isPublicPath = window.location.pathname.startsWith('/chats/');
+            if (!isPublicPath) {
+                setView('landing');
+            }
         }
     }, [user]);
+    // Handle direct standalone public chatbot URL loading (/chats/:subdomain)
+    useEffect(() => {
+        const loadStandaloneChat = async () => {
+            const path = window.location.pathname;
+            const match = path.match(/^\/chats\/([^/]+)/);
+            if (match) {
+                const subdomain = match[1];
+                try {
+                    // Fetch the bot with this subdomain from Supabase
+                    const { data, error } = await supabase
+                        .from('bots')
+                        .select('*')
+                        .eq('subdomain', subdomain)
+                        .single();
+                    if (error || !data) {
+                        showToast('Chatbot not found or inactive', 'error');
+                        setView('landing');
+                        return;
+                    }
+                    const mappedBot = {
+                        id: data.id,
+                        businessName: data.business_name,
+                        industry: data.industry,
+                        subDomain: data.subdomain,
+                        greeting: data.greeting,
+                        primaryColor: data.primary_color,
+                        languages: data.languages,
+                        knowledgeBase: data.knowledge_base,
+                        createdAt: data.created_at
+                    };
+                    // Save bot to state and set active
+                    setBots(prev => {
+                        if (prev.some(b => b.id === mappedBot.id))
+                            return prev;
+                        return [...prev, mappedBot];
+                    });
+                    setActiveBotId(mappedBot.id);
+                    // Start the chat session
+                    await chat.startSession(mappedBot.id, mappedBot.greeting);
+                    setView('public-chat');
+                }
+                catch (err) {
+                    console.error('Error loading public chatbot:', err);
+                    showToast('Failed to load public chatbot', 'error');
+                    setView('landing');
+                }
+            }
+        };
+        loadStandaloneChat();
+    }, []);
     // Poll leads when on dashboard
     useEffect(() => {
         if (view === 'dashboard' && user) {
@@ -91,9 +146,7 @@ export default function App() {
         const selectedBot = bots.find(b => b.id === botId);
         if (!selectedBot)
             return;
-        setActiveBotId(botId);
-        await chat.startSession(botId, selectedBot.greeting);
-        setView('public-chat');
+        window.open(`${window.location.origin}/chats/${selectedBot.subDomain}`, '_blank');
     };
     const handleCreateBot = async (e) => {
         e.preventDefault();
@@ -121,5 +174,6 @@ export default function App() {
         }
     };
     const activeBot = bots.find(b => b.id === activeBotId) || (bots.length > 0 ? bots[0] : null);
-    return (_jsxs("div", { className: "min-h-screen bg-brand-bg text-brand-text font-sans antialiased flex flex-col selection:bg-brand-accent/30 selection:text-white", children: [toast && _jsx(Toast, { toast: toast }), _jsx(Header, { view: view, setView: setView, hasBots: bots.length > 0, activeBotId: activeBotId, launchPublicChat: launchPublicChat, user: user }), _jsxs("main", { className: "flex-1 flex flex-col", children: [view === 'landing' && (_jsx(LandingView, { setView: setView, setActiveBotId: setActiveBotId, applyOnboardingTemplate: applyOnboardingTemplate, launchPublicChat: launchPublicChat, user: user })), (view === 'auth-signin' || view === 'auth-signup') && (_jsx(AuthView, { setView: setView, showToast: showToast, defaultMode: view === 'auth-signin' ? 'signin' : 'signup' })), view === 'onboarding' && (_jsx(OnboardingView, { newBotName: newBotName, setNewBotName: setNewBotName, newBotIndustry: newBotIndustry, setNewBotIndustry: setNewBotIndustry, newBotGreeting: newBotGreeting, setNewBotGreeting: setNewBotGreeting, newBotKB: newBotKB, setNewBotKB: setNewBotKB, newBotColor: newBotColor, setNewBotColor: setNewBotColor, newBotLanguages: newBotLanguages, setNewBotLanguages: setNewBotLanguages, setView: setView, handleCreateBot: handleCreateBot })), view === 'dashboard' && (_jsx(DashboardView, { bots: bots, setBots: setBots, activeBotId: activeBotId, setActiveBotId: setActiveBotId, leads: leads, setLeads: setLeads, dashboardTab: dashboardTab, setDashboardTab: setDashboardTab, setView: setView, launchPublicChat: launchPublicChat, showToast: showToast, setNewBotName: setNewBotName, setNewBotGreeting: setNewBotGreeting, setNewBotKB: setNewBotKB, todos: [] })), view === 'public-chat' && activeBot && (_jsx(PublicChatView, { activeBot: activeBot, chatMessages: chat.chatMessages, chatInput: chat.chatInput, setChatInput: chat.setChatInput, isBotResponding: chat.isBotResponding, handleSendChatMessage: (e) => chat.sendMessage(e, (msg) => showToast(msg, 'error')), sessionId: chat.currentSessionId, showSpeech: chat.showSpeech, setShowSpeech: chat.setShowSpeech, previewMode: previewMode, setPreviewMode: setPreviewMode, setView: setView, showToast: showToast, messageEndRef: chat.messageEndRef }))] }), view !== 'landing' && _jsx(Footer, { showToast: (msg) => showToast(msg, 'success') })] }));
+    const isStandaloneChat = window.location.pathname.startsWith('/chats/');
+    return (_jsxs("div", { className: "min-h-screen bg-brand-bg text-brand-text font-sans antialiased flex flex-col selection:bg-brand-accent/30 selection:text-white", children: [toast && _jsx(Toast, { toast: toast }), !isStandaloneChat && (_jsx(Header, { view: view, setView: setView, hasBots: bots.length > 0, activeBotId: activeBotId, launchPublicChat: launchPublicChat, user: user })), _jsxs("main", { className: "flex-1 flex flex-col", children: [view === 'landing' && (_jsx(LandingView, { setView: setView, setActiveBotId: setActiveBotId, applyOnboardingTemplate: applyOnboardingTemplate, launchPublicChat: launchPublicChat, user: user })), (view === 'auth-signin' || view === 'auth-signup') && (_jsx(AuthView, { setView: setView, showToast: showToast, defaultMode: view === 'auth-signin' ? 'signin' : 'signup' })), view === 'onboarding' && (_jsx(OnboardingView, { newBotName: newBotName, setNewBotName: setNewBotName, newBotIndustry: newBotIndustry, setNewBotIndustry: setNewBotIndustry, newBotGreeting: newBotGreeting, setNewBotGreeting: setNewBotGreeting, newBotKB: newBotKB, setNewBotKB: setNewBotKB, newBotColor: newBotColor, setNewBotColor: setNewBotColor, newBotLanguages: newBotLanguages, setNewBotLanguages: setNewBotLanguages, setView: setView, handleCreateBot: handleCreateBot })), view === 'dashboard' && (_jsx(DashboardView, { bots: bots, setBots: setBots, activeBotId: activeBotId, setActiveBotId: setActiveBotId, leads: leads, setLeads: setLeads, dashboardTab: dashboardTab, setDashboardTab: setDashboardTab, setView: setView, launchPublicChat: launchPublicChat, showToast: showToast, setNewBotName: setNewBotName, setNewBotGreeting: setNewBotGreeting, setNewBotKB: setNewBotKB, todos: [] })), view === 'public-chat' && activeBot && (_jsx(PublicChatView, { activeBot: activeBot, chatMessages: chat.chatMessages, chatInput: chat.chatInput, setChatInput: chat.setChatInput, isBotResponding: chat.isBotResponding, handleSendChatMessage: (e) => chat.sendMessage(e, (msg) => showToast(msg, 'error')), sessionId: chat.currentSessionId, showSpeech: chat.showSpeech, setShowSpeech: chat.setShowSpeech, previewMode: previewMode, setPreviewMode: setPreviewMode, setView: setView, showToast: showToast, messageEndRef: chat.messageEndRef, isStandalone: isStandaloneChat }))] }), !isStandaloneChat && view !== 'landing' && _jsx(Footer, { showToast: (msg) => showToast(msg, 'success') })] }));
 }
