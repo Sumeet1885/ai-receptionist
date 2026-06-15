@@ -194,7 +194,7 @@ export default function App() {
   const isStandaloneChat = window.location.pathname.startsWith('/chats/');
 
   return (
-    <div className="min-h-screen bg-brand-bg text-brand-text font-sans antialiased flex flex-col selection:bg-brand-accent/30 selection:text-white">
+    <div className={`bg-brand-bg text-brand-text font-sans antialiased flex flex-col selection:bg-brand-accent/30 selection:text-white ${isStandaloneChat ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
       {toast && <Toast toast={toast} />}
 
       {!isStandaloneChat && (

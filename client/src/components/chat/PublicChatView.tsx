@@ -44,9 +44,9 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
   const liveVoice = useLiveVoice(activeBot.id, sessionId);
 
   return (
-    <div className={cn("flex-1 bg-brand-bg flex flex-col font-sans", isStandalone ? "w-full h-screen" : "items-center justify-center p-4")}>
+    <div className={cn("flex-1 bg-brand-bg flex flex-col font-sans", isStandalone ? "w-full h-screen overflow-hidden" : "items-center justify-center p-4")}>
       {/* Header Address Bar simulator */}
-      <div className={cn("w-full bg-brand-card flex flex-col overflow-hidden", isStandalone ? "flex-1 h-screen" : "max-w-4xl rounded-2xl border border-brand-border shadow-xl")}>
+      <div className={cn("w-full bg-brand-card flex flex-col overflow-hidden", isStandalone ? "flex-1 h-full" : "max-w-4xl rounded-2xl border border-brand-border shadow-xl")}>
         
         {/* Fake browser bar */}
         {!isStandalone && (
@@ -84,11 +84,11 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
         )}
 
         {/* Chat Simulator Content Layout */}
-        <div className={cn("flex-1 flex flex-col md:flex-row bg-brand-card", isStandalone ? "h-full" : "min-h-[500px]")}>
+        <div className={cn("flex-1 flex flex-col md:flex-row bg-brand-card overflow-hidden", isStandalone ? "h-full" : "min-h-[500px]")}>
           
           {/* Left side widget helper info (Simulating informational landing space of the academy/business) */}
           {((previewMode === 'desktop' && !isStandalone) || isStandalone) && (
-            <div className={cn("w-full md:w-80 bg-brand-card border-r border-brand-border p-6 flex flex-col justify-between", isStandalone ? "hidden md:flex" : "flex")}>
+            <div className={cn("w-full md:w-80 bg-brand-card border-r border-brand-border p-6 flex flex-col justify-between flex-shrink-0", isStandalone ? "hidden md:flex" : "flex")}>
               <div className="space-y-6">
                 <div>
                   <span className="px-2.5 py-1 bg-brand-bg border border-brand-border text-brand-accent rounded-md text-[10px] font-mono uppercase tracking-wider font-semibold">
@@ -113,16 +113,16 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
               </div>
 
               <div className="pt-6 border-t border-brand-border text-center font-mono">
-                <span className="text-[10px] text-brand-text/60 block uppercase tracking-widest">Powered by Receptionist.ai</span>
+                <span className="text-[10px] text-brand-text/60 block uppercase tracking-widest">Powered by Agilewaters.com</span>
               </div>
             </div>
           )}
 
           {/* Simulated interactive chat viewport */}
-          <div className={cn("flex-1 flex flex-col bg-brand-bg", isStandalone ? "h-full" : "h-[500px]", !isStandalone && previewMode === 'mobile' ? 'max-w-md mx-auto border-x border-brand-border rounded-2xl' : '')}>
+          <div className={cn("flex-1 flex flex-col bg-brand-bg overflow-hidden", isStandalone ? "h-full" : "h-[500px]", !isStandalone && previewMode === 'mobile' ? 'max-w-md mx-auto border-x border-brand-border rounded-2xl' : '')}>
             
             {/* Chat interface custom banner */}
-            <div className="p-4 bg-brand-card border-b border-brand-border text-brand-text flex items-center justify-between shadow-sm">
+            <div className="flex-shrink-0 p-4 bg-brand-card border-b border-brand-border text-brand-text flex items-center justify-between shadow-sm">
               <div className="flex items-center space-x-3">
                 <div className="w-9 h-9 bg-brand-bg border border-brand-border rounded-full flex items-center justify-center font-display text-brand-accent font-bold">
                   {activeBot.businessName.charAt(0)}
@@ -183,7 +183,7 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
             )}
 
             {/* Input form */}
-            <form onSubmit={handleSendChatMessage} className="p-3.5 bg-brand-card border-t border-brand-border flex items-center space-x-2">
+            <form onSubmit={handleSendChatMessage} className="flex-shrink-0 p-3.5 bg-brand-card border-t border-brand-border flex items-center space-x-2">
               <VoiceInput
                 listening={liveVoice.isVoiceActive}
                 setListening={(val) => val ? liveVoice.startVoice() : liveVoice.stopVoice()}
