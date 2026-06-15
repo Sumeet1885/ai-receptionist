@@ -37,10 +37,12 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
   };
 
   const handleOAuth = async (provider: 'google' | 'azure') => {
+    const redirectTo = window.location.origin;
     if (provider === 'google') {
       await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
+          redirectTo,
           scopes: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly',
           queryParams: {
             access_type: 'offline',
@@ -49,7 +51,12 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
         }
       });
     } else {
-      await supabase.auth.signInWithOAuth({ provider });
+      await supabase.auth.signInWithOAuth({ 
+        provider,
+        options: {
+          redirectTo
+        }
+      });
     }
   };
 
