@@ -21,11 +21,21 @@ export function useBots() {
   const [activeBotId, setActiveBotId] = useState<string>('');
 
   const fetchBots = useCallback(async () => {
-    const { data } = await supabase.from('bots').select('*');
-    if (data && data.length > 0) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    if (!userId) {
+      setBots([]);
+      return;
+    }
+    const { data } = await supabase.from('bots').select('*').eq('owner_id', userId);
+    if (data) {
       const mapped = data.map(mapBotFromDb);
       setBots(mapped);
-      if (!activeBotId) setActiveBotId(mapped[0].id);
+      if (mapped.length > 0 && !activeBotId) {
+        setActiveBotId(mapped[0].id);
+      }
+    } else {
+      setBots([]);
     }
   }, [activeBotId]);
 
