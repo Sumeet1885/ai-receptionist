@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "noEmit": true,
+    "checkJs": false,
+    "skipLibCheck": true,
+    "lib": ["ESNext"]
+  },
+  "include": ["types/**/*.ts"],
+  "exclude": ["supabase/**/*", "node_modules"]
+}

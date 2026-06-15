@@ -1,0 +1,15 @@
+project_id = "gatzlksagxpdqqonssfq"
+
+[api]
+
+[db]
+port = 54322
+
+[studio]
+port = 54323
+
+[functions.chat-reply]
+verify_jwt = false
+
+[functions.analyze-lead]
+verify_jwt = false

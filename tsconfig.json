@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "skipLibCheck": true
+  },
+  "exclude": [
+    "server",
+    "node_modules",
+    "dist"
+  ]
+}

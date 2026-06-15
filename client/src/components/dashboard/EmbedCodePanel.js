@@ -1,0 +1,9 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { Icons } from '../common/Icons';
+export const EmbedCodePanel = ({ activeBot, showToast, launchPublicChat }) => {
+    return (_jsxs("div", { className: "bg-brand-bg border border-brand-border p-4 rounded-xl space-y-3 shadow-inner", children: [_jsxs("div", { className: "flex items-center justify-between", children: [_jsx("h4", { className: "text-xs font-semibold text-brand-text", children: "Public Hosted URL" }), _jsx("span", { className: "text-[10px] text-brand-success border border-brand-success/30 bg-brand-success/10 px-1.5 py-0.5 rounded font-mono", children: "LIVE" })] }), _jsxs("p", { className: "text-[11px] text-brand-muted break-all font-mono", children: ["receptionist.ai/chats/", activeBot.subDomain] }), _jsxs("div", { className: "flex space-x-2 pt-1", children: [_jsxs("button", { onClick: () => {
+                            const dummyLink = `${window.location.origin}/chats/${activeBot.subDomain}`;
+                            navigator.clipboard.writeText(dummyLink);
+                            showToast("Copied chatbot link to clipboard!");
+                        }, className: "flex-1 py-1.5 bg-brand-card hover:bg-brand-border text-brand-text text-xs font-semibold rounded-lg flex items-center justify-center space-x-1.5 transition border border-brand-border", children: [_jsx(Icons.Copy, {}), _jsx("span", { children: "Copy Link" })] }), _jsxs("button", { onClick: () => launchPublicChat(activeBot.id), className: "flex-1 py-1.5 bg-brand-accent hover:bg-brand-accent-hover text-brand-text text-xs font-semibold rounded-lg flex items-center justify-center space-x-1.5 transition border border-brand-border", children: [_jsx(Icons.ExternalLink, {}), _jsx("span", { children: "Open Client" })] })] })] }));
+};
