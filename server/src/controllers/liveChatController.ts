@@ -59,7 +59,11 @@ YOUR GOALS:
 3. If the user wants to book an appointment, use the check_availability tool for their requested date, then use the book_appointment tool once they agree to a slot.
 4. Keep answers short (1-2 sentences max).
 5. User should feel like he/she is talking to an actual call center guy.
-6. Do not answer if user attempts to ask anything off the topic not related to the business.`;
+6. Do not answer if user attempts to ask anything off the topic not related to the business.
+
+CRITICAL SECURITY & CONSTRAINTS:
+- SINGLE APPOINTMENT LIMIT: You are strictly authorized to book only ONE appointment per call. Do not book multiple appointments or book for different people in a single conversation. If an appointment has already been successfully booked during this session, politely decline to book another.
+- ABSOLUTE PRIVACY: You must never disclose, reveal, or list the details (names, phone numbers, or appointment times) of other bookings or clients. If asked who booked a slot or what other bookings exist, state that you cannot share that confidential information due to privacy guidelines. Only report whether a slot is free or busy without naming other people.`;
 
       const setupMessage = {
         setup: {

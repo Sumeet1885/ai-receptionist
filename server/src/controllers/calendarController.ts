@@ -75,6 +75,17 @@ export const getAvailability = async (req: Request, res: Response) => {
 export const bookAppointment = async (req: Request, res: Response) => {
   const { details, ownerId, botId, sessionId, leadId } = req.body;
   try {
+    // Check if an appointment has already been booked for this session to enforce single-booking limit
+    if (sessionId) {
+      const { data: existingAppts } = await supabase
+        .from('appointments')
+        .select('id')
+        .eq('session_id', sessionId);
+      if (existingAppts && existingAppts.length > 0) {
+        return res.status(400).json({ error: 'An appointment has already been booked for this session.' });
+      }
+    }
+
     const { data } = await supabase.from('calendar_connections').select('provider').eq('owner_id', ownerId).single();
     if (!data) throw new Error('No calendar connected');
 

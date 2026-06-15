@@ -31,13 +31,13 @@ export function useBots() {
     if (data) {
       const mapped = data.map(mapBotFromDb);
       setBots(mapped);
-      if (mapped.length > 0 && !activeBotId) {
-        setActiveBotId(mapped[0].id);
+      if (mapped.length > 0) {
+        setActiveBotId(currentId => currentId || mapped[0].id);
       }
     } else {
       setBots([]);
     }
-  }, [activeBotId]);
+  }, []);
 
   const createBot = async (payload: {
     owner_id: string;
