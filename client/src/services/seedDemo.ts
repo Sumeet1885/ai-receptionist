@@ -20,13 +20,71 @@ export async function seedDemoDataForUser(userId: string) {
     // 2. Create a default Demo Bot
     const demoBot = {
       owner_id: userId,
-      business_name: 'Apex Horizon Estates (Demo)',
-      industry: 'Real Estate',
-      subdomain: `demo-apex-${Math.floor(Math.random() * 10000)}`,
-      greeting: 'Welcome to Apex Horizon Estates! 🏢 Interested in our premium high-rise projects, commercial spaces, or planning a direct site visit?',
+      business_name: 'PixelCraft Web Solutions',
+      industry: 'Web Development',
+      subdomain: `pixelcraft-${Math.floor(Math.random() * 10000)}`,
+      greeting: 'Welcome to PixelCraft Web Solutions! 💻 How can I help you with custom web development, e-commerce stores, UI/UX design, or SEO services today?',
       primary_color: 'indigo',
       languages: ['English'],
-      knowledge_base: 'Apex Horizon Estates portfolio details:\n1. Active Project: "Horizon Heights" located in Kharadi, Pune.\n- Configurations: premium 2 BHK (INR 85 Lakhs onwards) and 3 BHK (INR 1.25 Cr onwards) spacious apartments.\n- Amenities: Infinite swimming pool, sky garden, fully equipped modern gym, and multi-tier security.\n2. Site Visits: Open daily from 9:00 AM to 7:00 PM. High-priority buyers get a free cab pickup and drop service.'
+      knowledge_base: `Company Overview
+
+PixelCraft Web Solutions is a full-service web development company specializing in custom websites, e-commerce stores, web applications, UI/UX design, SEO, and digital marketing.
+
+Business Hours:
+Monday–Saturday: 9:00 AM – 7:00 PM IST
+
+Services:
+Business Websites, E-commerce Development, WordPress Development, Shopify Development, Custom Web Applications, Landing Pages, Website Redesign, SEO Services, Website Maintenance
+
+Project Timelines:
+Landing Page: 3–7 Days
+Business Website: 7–21 Days
+E-commerce Website: 15–45 Days
+Custom Web Application: 30–120 Days
+
+Pricing Guidelines:
+Starter Website: ₹20,000+
+Business Website: ₹35,000+
+E-commerce Website: ₹60,000+
+Custom Web Application: ₹1,50,000+
+These are just ideal prices, if user asks for discounts, tell to speak from the developer directly.
+
+Lead Collection Process:
+Ask business type
+Ask website requirements
+Ask budget range
+Collect name, email, and phone number
+Offer free consultation call
+
+Rules:
+Never guarantee Google rankings.
+Never provide final quotations without requirement analysis.
+Always collect contact information before scheduling a consultation.
+Escalate enterprise or custom software inquiries to the sales team.
+Office Hours:
+Monday–Saturday: 9:00 AM – 7:00 PM IST
+
+Consultation:
+Free Initial Consultation (30 Minutes)
+
+Support Response Time:
+Within 2 Business Hours
+
+Service Areas:
+India, UAE, UK, USA, Australia, Canada
+
+Lead Qualification Questions:
+What type of website do you need?
+What is your business industry?
+Do you already have a website?
+What is your estimated budget?
+When would you like the project completed?
+
+Priority Lead Conditions:
+Budget above ₹1,00,000
+Urgent project requirements
+Enterprise solutions
+SaaS or custom software development requests`
     };
 
     const { data: botData, error: botInsertError } = await supabase
