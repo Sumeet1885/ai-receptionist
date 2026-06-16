@@ -9,12 +9,14 @@ interface HeaderProps {
   activeBotId: string;
   launchPublicChat: (botId: string) => void;
   user: any;
+  signOut: () => Promise<void>;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   view,
   setView,
-  user
+  user,
+  signOut
 }: HeaderProps) => {
   const isLanding = view === 'landing';
 
@@ -33,7 +35,11 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await signOut();
+    } catch (err) {
+      console.error('Sign out error:', err);
+    }
   };
 
   return (

@@ -27,7 +27,7 @@ export default function App() {
   const [toast, setToast] = useState<ToastType | null>(null);
 
   // Hooks
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { bots, setBots, activeBotId, setActiveBotId, fetchBots, createBot } = useBots();
   const { leads, setLeads, fetchLeads } = useLeads();
   const chat = useChat();
@@ -209,6 +209,7 @@ export default function App() {
           activeBotId={activeBotId}
           launchPublicChat={launchPublicChat}
           user={user}
+          signOut={signOut}
         />
       )}
 
