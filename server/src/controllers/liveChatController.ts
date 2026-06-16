@@ -91,7 +91,7 @@ ${bot.knowledge_base}
 YOUR GOALS:
 1. Warmly answer the user's questions relying strictly on the business details above.
 2. Naturally and conversationally collect: Full Name, Contact Phone Number, Specific interest, and Budget.
-3. If the user wants to book an appointment, use the check_availability tool for their requested date, then use the book_appointment tool once they agree to a slot.
+3. If the user wants to book an appointment, use the check_availability tool for their requested date. You MUST list the open available slots to the user so they can choose from them, and then use the book_appointment tool once they agree to a slot. If a slot they wanted is unavailable, explicitly present other available open times for them to choose.
 4. Keep answers short (1-2 sentences max).
 5. User should feel like he/she is talking to an actual call center guy.
 6. Do not answer if user attempts to ask anything off the topic not related to the business.
@@ -152,9 +152,14 @@ CRITICAL SECURITY & CONSTRAINTS:
 
       geminiWs.send(JSON.stringify(setupMessage));
       setupSent = true;
+    });
 
-      // Trigger the agent to speak first
-      setTimeout(() => {
+    // 3. Handle messages from Gemini
+    geminiWs.on('message', async (data: Buffer) => {
+      const response = JSON.parse(data.toString());
+
+      if (response.setupComplete || response.setup_complete) {
+        console.log('Gemini Live API Setup Complete. Triggering initial greeting...');
         if (geminiWs.readyState === WebSocket.OPEN) {
           geminiWs.send(JSON.stringify({
             clientContent: {
@@ -166,12 +171,8 @@ CRITICAL SECURITY & CONSTRAINTS:
             }
           }));
         }
-      }, 500);
-    });
-
-    // 3. Handle messages from Gemini
-    geminiWs.on('message', async (data: Buffer) => {
-      const response = JSON.parse(data.toString());
+        return;
+      }
 
       if (response.serverContent) {
         // Forward audio chunks to the client

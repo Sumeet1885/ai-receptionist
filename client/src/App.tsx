@@ -28,7 +28,7 @@ export default function App() {
 
   // Hooks
   const { user, signOut } = useAuth();
-  const { bots, setBots, activeBotId, setActiveBotId, fetchBots, createBot } = useBots();
+  const { bots, setBots, activeBotId, setActiveBotId, fetchBots, createBot, updateBot } = useBots();
   const { leads, setLeads, fetchLeads } = useLeads();
   const chat = useChat();
 
@@ -124,7 +124,6 @@ export default function App() {
   useEffect(() => {
     if (view === 'dashboard' && user) {
       const interval = setInterval(() => {
-        fetchBots();
         fetchLeads();
       }, 15000);
       return () => clearInterval(interval);
@@ -269,6 +268,7 @@ export default function App() {
             setNewBotGreeting={setNewBotGreeting}
             setNewBotKB={setNewBotKB}
             todos={[]}
+            updateBot={updateBot}
           />
         )}
 

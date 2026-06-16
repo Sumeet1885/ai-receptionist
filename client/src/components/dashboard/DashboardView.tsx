@@ -25,6 +25,14 @@ interface DashboardViewProps {
   setNewBotGreeting: (greeting: string) => void;
   setNewBotKB: (kb: string) => void;
   todos?: any[];
+  updateBot: (id: string, updates: Partial<{
+    businessName: string;
+    industry: string;
+    greeting: string;
+    primaryColor: string;
+    languages: string[];
+    knowledgeBase: string;
+  }>) => Promise<void>;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -42,7 +50,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   setNewBotName,
   setNewBotGreeting,
   setNewBotKB,
-  todos = []
+  todos = [],
+  updateBot
 }: DashboardViewProps) => {
   const activeBot = bots.find(b => b.id === activeBotId) || bots[0];
 
@@ -195,6 +204,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             setBots={setBots} 
             activeBot={activeBot} 
             showToast={showToast} 
+            updateBot={updateBot}
           />
         )}
       </section>

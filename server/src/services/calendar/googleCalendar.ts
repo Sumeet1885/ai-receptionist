@@ -148,7 +148,15 @@ export class GoogleCalendarAdapter implements CalendarAdapter {
     });
     
     const busy = checkRes.data.calendars?.['primary']?.busy || [];
-    if (busy.length > 0) {
+    const reqStart = new Date(details.startTime).getTime();
+    const reqEnd = new Date(details.endTime).getTime();
+    const hasOverlap = busy.some(b => {
+      const bStart = new Date(b.start!).getTime();
+      const bEnd = new Date(b.end!).getTime();
+      return (reqStart < bEnd && reqEnd > bStart);
+    });
+
+    if (hasOverlap) {
       throw new Error('The requested slot is already booked.');
     }
     

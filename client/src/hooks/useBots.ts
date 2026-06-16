@@ -61,6 +61,32 @@ export function useBots() {
     setActiveBotId(data.id);
     return data.id;
   };
+  
+  const updateBot = async (id: string, updates: Partial<{
+    businessName: string;
+    industry: string;
+    greeting: string;
+    primaryColor: string;
+    languages: string[];
+    knowledgeBase: string;
+  }>) => {
+    const dbUpdates: any = {};
+    if (updates.businessName !== undefined) dbUpdates.business_name = updates.businessName;
+    if (updates.industry !== undefined) dbUpdates.industry = updates.industry;
+    if (updates.greeting !== undefined) dbUpdates.greeting = updates.greeting;
+    if (updates.primaryColor !== undefined) dbUpdates.primary_color = updates.primaryColor;
+    if (updates.languages !== undefined) dbUpdates.languages = updates.languages;
+    if (updates.knowledgeBase !== undefined) dbUpdates.knowledge_base = updates.knowledgeBase;
 
-  return { bots, setBots, activeBotId, setActiveBotId, fetchBots, createBot };
+    const { error } = await supabase
+      .from('bots')
+      .update(dbUpdates)
+      .eq('id', id);
+
+    if (error) throw error;
+
+    setBots(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
+  };
+
+  return { bots, setBots, activeBotId, setActiveBotId, fetchBots, createBot, updateBot };
 }

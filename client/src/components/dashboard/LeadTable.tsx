@@ -20,10 +20,6 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, activeBot
           <Icons.Users />
           <span className="ml-2">Live CRM Prospect Sheet</span>
         </h3>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="px-2.5 py-1 bg-brand-bg border border-brand-border text-brand-accent text-xs rounded-md font-mono">HubSpot Simulated Integration</span>
-          <span className="px-2.5 py-1 bg-brand-bg border border-brand-border text-brand-accent text-xs rounded-md font-mono">Zapier Webhook Enabled</span>
-        </div>
       </div>
 
       <div className="divide-y divide-brand-border">

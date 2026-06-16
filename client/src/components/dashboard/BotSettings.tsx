@@ -7,9 +7,17 @@ interface BotSettingsProps {
   setBots: React.Dispatch<React.SetStateAction<Bot[]>>;
   activeBot: Bot;
   showToast: (message: string, type?: 'success' | 'error') => void;
+  updateBot: (id: string, updates: Partial<{
+    businessName: string;
+    industry: string;
+    greeting: string;
+    primaryColor: string;
+    languages: string[];
+    knowledgeBase: string;
+  }>) => Promise<void>;
 }
 
-export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeBot, showToast }) => {
+export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeBot, showToast, updateBot }) => {
   return (
     <div className="bg-brand-card p-4 sm:p-8 rounded-xl border border-brand-border space-y-6 shadow-sm">
       <h3 className="text-xl font-display font-bold text-brand-text border-b border-brand-border pb-3 flex items-center">
@@ -45,8 +53,17 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
 
       <div className="pt-4 border-t border-brand-border flex justify-end">
         <button
-          onClick={() => {
-            showToast("Knowledge Base changes processed successfully!");
+          onClick={async () => {
+            try {
+              await updateBot(activeBot.id, {
+                greeting: activeBot.greeting,
+                knowledgeBase: activeBot.knowledgeBase
+              });
+              showToast("Knowledge Base changes processed successfully!");
+            } catch (err: any) {
+              console.error("Failed to save knowledge base:", err);
+              showToast("Failed to save changes: " + (err.message || err), "error");
+            }
           }}
           className="px-6 py-2.5 bg-brand-accent hover:bg-brand-accent-hover border border-brand-border text-brand-text font-sans font-bold rounded-lg transition duration-200"
         >
