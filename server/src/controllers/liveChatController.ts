@@ -20,6 +20,8 @@ export function setupWebSocketServer(server: Server) {
     const botId = url.searchParams.get('botId');
     const sessionId = url.searchParams.get('sessionId');
 
+    const timezone = url.searchParams.get('timezone') || 'IST';
+
     if (!botId || !sessionId) {
       ws.close(1008, 'Missing botId or sessionId');
       return;
@@ -37,6 +39,25 @@ export function setupWebSocketServer(server: Server) {
       return;
     }
 
+    // Helper to compute client timezone offset string, e.g. "+05:30" or "-08:00"
+    const getTzOffsetStr = (tz: string) => {
+      try {
+        const d = new Date();
+        const tzString = d.toLocaleString('en-US', { timeZone: tz });
+        const tzDate = new Date(tzString);
+        // Calculate difference in minutes
+        const diffMin = Math.round((tzDate.getTime() - d.getTime()) / 60000);
+        const sign = diffMin >= 0 ? '+' : '-';
+        const absMin = Math.abs(diffMin);
+        const hours = String(Math.floor(absMin / 60)).padStart(2, '0');
+        const mins = String(absMin % 60).padStart(2, '0');
+        return `${sign}${hours}:${mins}`;
+      } catch {
+        return '+00:00';
+      }
+    };
+    const tzOffset = getTzOffsetStr(timezone);
+
     // 2. Connect to Gemini Live API
     const geminiWs = new WebSocket(LIVE_API_URL);
     let setupSent = false;
@@ -44,11 +65,12 @@ export function setupWebSocketServer(server: Server) {
     geminiWs.on('open', () => {
       console.log('Connected to Gemini Live API');
       
-      // Send the initial setup message
+      const userLocaleTime = new Date().toLocaleString('en-US', { timeZone: timezone });
       const systemInstruction = `You are the Virtual AI Receptionist representing "${bot.business_name}" (${bot.industry} sector).
 
-CURRENT DATE AND TIME: ${new Date().toLocaleString()}
-(Use this to resolve relative dates like "tomorrow" or "next Tuesday")
+CURRENT TIMEZONE: ${timezone}
+CURRENT DATE AND TIME: ${userLocaleTime} (in ${timezone})
+(Use this to resolve relative dates like "tomorrow" or "next Tuesday". Crucially, all dates and times you discuss with the user are in the user's timezone: ${timezone})
 
 BUSINESS CONTEXT & KNOWLEDGE BASE:
 ${bot.knowledge_base}
@@ -63,7 +85,8 @@ YOUR GOALS:
 
 CRITICAL SECURITY & CONSTRAINTS:
 - SINGLE APPOINTMENT LIMIT: You are strictly authorized to book only ONE appointment per call. Do not book multiple appointments or book for different people in a single conversation. If an appointment has already been successfully booked during this session, politely decline to book another.
-- ABSOLUTE PRIVACY: You must never disclose, reveal, or list the details (names, phone numbers, or appointment times) of other bookings or clients. If asked who booked a slot or what other bookings exist, state that you cannot share that confidential information due to privacy guidelines. Only report whether a slot is free or busy without naming other people.`;
+- ABSOLUTE PRIVACY: You must never disclose, reveal, or list the details (names, phone numbers, or appointment times) of other bookings or clients. If asked who booked a slot or what other bookings exist, state that you cannot share that confidential information due to privacy guidelines. Only report whether a slot is free or busy without naming other people.
+- TOOL TIMEZONE: When calling check_availability, pass the local date format 'YYYY-MM-DD'. When calling book_appointment, construct the startTime and endTime in ISO 8601 format using the user's local offset ${tzOffset} (e.g. if the user selects 8:30 AM on 2026-06-17, startTime must be '2026-06-17T08:30:00${tzOffset}').`;
 
       const setupMessage = {
         setup: {
@@ -116,6 +139,21 @@ CRITICAL SECURITY & CONSTRAINTS:
 
       geminiWs.send(JSON.stringify(setupMessage));
       setupSent = true;
+
+      // Trigger the agent to speak first
+      setTimeout(() => {
+        if (geminiWs.readyState === WebSocket.OPEN) {
+          geminiWs.send(JSON.stringify({
+            clientContent: {
+              turns: [{
+                role: 'user',
+                parts: [{ text: "Hello! I am on the line. Please greet me and welcome me to the business." }]
+              }],
+              turnComplete: true
+            }
+          }));
+        }
+      }, 500);
     });
 
     // 3. Handle messages from Gemini
@@ -179,6 +217,12 @@ CRITICAL SECURITY & CONSTRAINTS:
                 })
               });
               functionResponse = await res.json();
+              if (functionResponse.success) {
+                ws.send(JSON.stringify({
+                  type: 'appointment_booked',
+                  details: args
+                }));
+              }
             }
           } catch (err: any) {
             console.error(`Error executing ${name}:`, err);

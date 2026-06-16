@@ -4,6 +4,7 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState<string>('');
+  const [bookingDetails, setBookingDetails] = useState<any>(null);
   
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -31,7 +32,8 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
       // 2. Connect to WebSocket proxy on backend
       const expressUrl = import.meta.env.VITE_EXPRESS_SERVER_URL || 'http://localhost:4000';
       const wsUrlBase = expressUrl.replace(/^http/, 'ws');
-      const wsUrl = `${wsUrlBase}/api/chat/live?botId=${botId}&sessionId=${sessionId}`;
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const wsUrl = `${wsUrlBase}/api/chat/live?botId=${botId}&sessionId=${sessionId}&timezone=${encodeURIComponent(timezone)}`;
       
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
@@ -97,6 +99,10 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
           setLiveTranscript(prev => prev + msg.text);
         }
 
+        if (msg.type === 'appointment_booked' && msg.details) {
+          setBookingDetails(msg.details);
+        }
+
         if (msg.type === 'audio' && msg.data) {
           // Base64 to ArrayBuffer
           const binaryString = atob(msg.data);
@@ -148,6 +154,7 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
   const stopVoice = useCallback(() => {
     setIsVoiceActive(false);
     setIsConnecting(false);
+    setBookingDetails(null);
     
     if (wsRef.current) {
       wsRef.current.close();
@@ -186,6 +193,7 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
     isConnecting,
     liveTranscript,
     setLiveTranscript,
+    bookingDetails,
     startVoice,
     stopVoice
   };

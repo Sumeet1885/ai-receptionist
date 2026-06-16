@@ -80,9 +80,21 @@ export class GoogleCalendarAdapter implements CalendarAdapter {
   async checkAvailability(date: string, ownerId: string): Promise<TimeSlot[]> {
     const calendar = await this.getAuthenticatedClient(ownerId);
     
-    // Parse date (assume YYYY-MM-DD local, map to start/end of day UTC)
-    const timeMin = new Date(`${date}T09:00:00Z`); // Assume 9am to 5pm work day
-    const timeMax = new Date(`${date}T17:00:00Z`);
+    // Fetch primary calendar's time zone settings
+    const cal = await calendar.calendars.get({ calendarId: 'primary' });
+    const timeZone = cal.data.timeZone || 'UTC';
+
+    // Helper to construct a Date object representing local time in the target timezone
+    const getUtcDate = (dateStr: string, timeStr: string, tz: string): Date => {
+      const localDate = new Date(`${dateStr}T${timeStr}`);
+      const invDate = new Date(localDate.toLocaleString('en-US', { timeZone: tz }));
+      const diff = localDate.getTime() - invDate.getTime();
+      return new Date(localDate.getTime() + diff);
+    };
+
+    // Calculate start (9 AM) and end (5 PM) of workday in calendar's time zone
+    const timeMin = getUtcDate(date, '09:00:00', timeZone);
+    const timeMax = getUtcDate(date, '17:00:00', timeZone);
     
     const res = await calendar.freebusy.query({
       requestBody: {
@@ -126,16 +138,28 @@ export class GoogleCalendarAdapter implements CalendarAdapter {
   async bookAppointment(details: BookingDetails, ownerId: string): Promise<{ eventId: string }> {
     const calendar = await this.getAuthenticatedClient(ownerId);
     
+    // Check if the requested slot is free
+    const checkRes = await calendar.freebusy.query({
+      requestBody: {
+        timeMin: new Date(details.startTime).toISOString(),
+        timeMax: new Date(details.endTime).toISOString(),
+        items: [{ id: 'primary' }]
+      }
+    });
+    
+    const busy = checkRes.data.calendars?.['primary']?.busy || [];
+    if (busy.length > 0) {
+      throw new Error('The requested slot is already booked.');
+    }
+    
     const event = {
       summary: details.title,
       description: `Appointment booked via AI Receptionist.\nName: ${details.visitorName}\nPhone: ${details.visitorPhone}`,
       start: {
         dateTime: details.startTime,
-        timeZone: 'UTC', // Best to keep UTC and let Google convert
       },
       end: {
         dateTime: details.endTime,
-        timeZone: 'UTC',
       },
     };
 

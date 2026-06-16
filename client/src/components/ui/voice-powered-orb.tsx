@@ -170,7 +170,7 @@ export const VoicePoweredOrb: FC<VoicePoweredOrbProps> = ({
     vec4 mainImage(vec2 fragCoord) {
       vec2 center = iResolution.xy * 0.5;
       float size = min(iResolution.x, iResolution.y);
-      vec2 uv = (fragCoord - center) / size * 2.0;
+      vec2 uv = (fragCoord - center) / size * 2.5;
 
       float angle = rot;
       float s = sin(angle);
@@ -255,6 +255,12 @@ export const VoicePoweredOrb: FC<VoicePoweredOrbProps> = ({
           sampleRate: 44100,
         },
       });
+
+      // Prevent leak if unmounted while waiting for permission
+      if (!ctnDom.current) {
+        stream.getTracks().forEach(track => track.stop());
+        return false;
+      }
 
       mediaStreamRef.current = stream;
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -460,23 +466,7 @@ export const VoicePoweredOrb: FC<VoicePoweredOrbProps> = ({
     frag
   ]);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const handleMicrophoneState = async () => {
-      if (enableVoiceControl && voiceLevelOverride === 0) {
-        await initMicrophone();
-      } else {
-        stopMicrophone();
-      }
-    };
-
-    handleMicrophoneState();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [enableVoiceControl, voiceLevelOverride]);
+  // Removed redundant useEffect to prevent duplicate microphone initializations and leaks
 
   return (
     <div
