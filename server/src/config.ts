@@ -15,6 +15,7 @@ export const config = {
   supabaseUrl: requireEnv('SUPABASE_URL'),
   supabaseServiceKey: requireEnv('SUPABASE_SERVICE_ROLE_KEY'),
   geminiApiKey: requireEnv('GEMINI_API_KEY'),
+  groqApiKey: process.env.GROQ_API_KEY || '',
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID || '',
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',

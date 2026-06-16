@@ -1,12 +1,13 @@
 // @ts-nocheck
 import { config } from '../config';
-const GEMINI_API_KEY = config.geminiApiKey ?? '';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
+
+const GROQ_API_KEY = config.groqApiKey || '';
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 export interface LeadInput {
   sessionId: string;
   botId: string;
-  transcript: string; // pre-formatted dialogue string
+  transcript: string;
 }
 
 export interface LeadData {
@@ -20,24 +21,20 @@ export interface LeadData {
   appointmentStatus: string;
 }
 
-const RESPONSE_SCHEMA = {
-  type: 'OBJECT',
-  properties: {
-    name:              { type: 'STRING', description: 'First and last name if mentioned, otherwise empty.' },
-    phone:             { type: 'STRING', description: 'Mobile or contact number if mentioned, otherwise empty.' },
-    requirement:       { type: 'STRING', description: 'Specific course, property, treatment, or role they are looking for.' },
-    budget:            { type: 'STRING', description: 'Financial capability or investment budget if mentioned.' },
-    leadScore:         { type: 'STRING', enum: ['HOT', 'WARM', 'COLD'] },
-    sentiment:         { type: 'STRING', enum: ['Positive', 'Neutral', 'Urgent/Demanding', 'Angry'] },
-    summary:           { type: 'STRING', description: 'Brief 1-sentence recap of user goals and query status.' },
-    appointmentStatus: { type: 'STRING', description: 'Any booked slot, callback request, or "None".' }
-  },
-  required: ['name', 'phone', 'requirement', 'budget', 'leadScore', 'sentiment', 'summary', 'appointmentStatus']
-};
+const SYSTEM_PROMPT = `You are an advanced business backend analyst. Analyze the conversation between a website visitor and an AI receptionist. Extract lead and requirement information and return valid JSON with these exact fields:
+- name: First and last name if mentioned, otherwise empty string
+- phone: Mobile or contact number if mentioned, otherwise empty string
+- requirement: Specific course, property, treatment, or role they are looking for
+- budget: Financial capability or investment budget if mentioned
+- leadScore: One of "HOT", "WARM", or "COLD"
+- sentiment: One of "Positive", "Neutral", "Urgent/Demanding", or "Angry"
+- summary: Brief 1-sentence recap of user goals and query status
+- appointmentStatus: Any booked slot, callback request, or "None"`;
 
 /**
- * Sends the conversation transcript to Gemini with a strict JSON schema.
+ * Sends the conversation transcript to Groq (llama-3.1-8b-instant) with JSON mode.
  * Receives structured lead data and upserts it into the leads table.
+ * Falls back silently if Groq is not configured or the call fails.
  */
 export async function analyzeLead(
   input: LeadInput,
@@ -45,29 +42,37 @@ export async function analyzeLead(
 ): Promise<void> {
   const { sessionId, botId, transcript } = input;
 
-  // 1. Call Gemini with structured output schema
+  if (!GROQ_API_KEY) return;
+
   const analysisPrompt = `Analyze the conversation between a website visitor and an AI receptionist. Extract lead and requirement information.\n\nCONVERSATION TRANSCRIPT:\n${transcript}`;
 
-  const geminiResponse = await fetch(GEMINI_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: analysisPrompt }] }],
-      systemInstruction: {
-        parts: [{ text: 'You are an advanced business backend analyst. Evaluate the conversation and return valid JSON conforming strictly to the requested schema.' }]
+  let rawText: string | undefined;
+
+  try {
+    const response = await fetch(GROQ_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GROQ_API_KEY}`
       },
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: RESPONSE_SCHEMA
-      }
-    })
-  });
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: analysisPrompt }
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.1
+      })
+    });
 
-  if (!geminiResponse.ok) return; // fail silently — analysis is non-blocking
+    if (!response.ok) return;
 
-  const geminiData = await geminiResponse.json();
-  const rawText: string | undefined =
-    geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+    const data = await response.json();
+    rawText = data.choices?.[0]?.message?.content;
+  } catch {
+    return;
+  }
 
   if (!rawText) return;
 
@@ -75,10 +80,9 @@ export async function analyzeLead(
   try {
     lead = JSON.parse(rawText);
   } catch {
-    return; // invalid JSON, skip
+    return;
   }
 
-  // 2. Upsert into leads table (keyed on session_id)
   await supabase.from('leads').upsert({
     bot_id:             botId,
     session_id:         sessionId,
