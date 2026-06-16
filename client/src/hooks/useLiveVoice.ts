@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 export function useLiveVoice(botId: string | undefined, sessionId: string | undefined) {
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState<string>('');
   
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -16,6 +17,7 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
   const startVoice = useCallback(async () => {
     if (!botId || !sessionId) return;
     
+    setLiveTranscript('');
     setIsConnecting(true);
     try {
       // 1. Request microphone permissions
@@ -89,6 +91,10 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
              nextPlayTimeRef.current = playbackContextRef.current.currentTime;
            }
            return;
+        }
+
+        if (msg.type === 'transcript' && msg.text) {
+          setLiveTranscript(prev => prev + msg.text);
         }
 
         if (msg.type === 'audio' && msg.data) {
@@ -178,6 +184,8 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
   return {
     isVoiceActive,
     isConnecting,
+    liveTranscript,
+    setLiveTranscript,
     startVoice,
     stopVoice
   };

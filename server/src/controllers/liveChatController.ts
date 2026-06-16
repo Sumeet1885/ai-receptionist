@@ -140,6 +140,14 @@ CRITICAL SECURITY & CONSTRAINTS:
                 data: part.inlineData.data
               }));
             }
+            if (part.text) {
+              // Send the text transcript of the bot's reply
+              ws.send(JSON.stringify({
+                type: 'transcript',
+                sender: 'bot',
+                text: part.text
+              }));
+            }
           }
         }
       }

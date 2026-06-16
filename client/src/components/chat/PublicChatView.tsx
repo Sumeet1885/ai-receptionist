@@ -5,6 +5,7 @@ import { Icons } from '../common/Icons';
 import { useLiveVoice } from '../../hooks/useLiveVoice';
 import { VoiceInput } from '@/components/ui/voice-input';
 import { cn } from '@/lib/utils';
+import { VoiceCallView } from './VoiceCallView';
 
 interface PublicChatViewProps {
   activeBot: Bot;
@@ -42,6 +43,17 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
   isStandalone = false
 }: PublicChatViewProps) => {
   const liveVoice = useLiveVoice(activeBot.id, sessionId);
+
+  // If a voice call is active or connecting, redirect to the VoiceCallView
+  if (liveVoice.isVoiceActive || liveVoice.isConnecting) {
+    return (
+      <VoiceCallView
+        activeBot={activeBot}
+        liveVoice={liveVoice}
+        onBack={liveVoice.stopVoice}
+      />
+    );
+  }
 
   return (
     <div className={cn("flex-1 bg-brand-bg flex flex-col font-sans", isStandalone ? "w-full h-screen overflow-hidden" : "items-center justify-center p-4")}>
