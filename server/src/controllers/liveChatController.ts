@@ -2,6 +2,8 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { Server } from 'http';
 import { createClient } from '@supabase/supabase-js';
 import { config } from '../config';
+import { analyzeLead } from './leadController';
+import { geminiGuard } from '../services/geminiGuard';
 
 const supabase = createClient(config.supabaseUrl, config.supabaseServiceKey);
 const GEMINI_API_KEY = config.geminiApiKey ?? '';
@@ -24,6 +26,16 @@ export function setupWebSocketServer(server: Server) {
 
     if (!botId || !sessionId) {
       ws.close(1008, 'Missing botId or sessionId');
+      return;
+    }
+
+    // ── GeminiGuard: acquire a concurrent session slot ────────────────────────
+    // Blocks (queues) if all 3 slots are occupied; rejects after 30 s.
+    try {
+      await geminiGuard.acquireSession(sessionId);
+    } catch (reason) {
+      console.warn(`[GeminiGuard] Session rejected (${sessionId}): ${reason}`);
+      ws.close(1013, 'All AI receptionist lines are busy. Please try again shortly.');
       return;
     }
 
@@ -61,6 +73,7 @@ export function setupWebSocketServer(server: Server) {
     // 2. Connect to Gemini Live API
     const geminiWs = new WebSocket(LIVE_API_URL);
     let setupSent = false;
+    let accumulatedBotText = '';
 
     geminiWs.on('open', () => {
       console.log('Connected to Gemini Live API');
@@ -179,6 +192,7 @@ CRITICAL SECURITY & CONSTRAINTS:
               }));
             }
             if (part.text) {
+              accumulatedBotText += part.text;
               // Send the text transcript of the bot's reply
               ws.send(JSON.stringify({
                 type: 'transcript',
@@ -187,6 +201,19 @@ CRITICAL SECURITY & CONSTRAINTS:
               }));
             }
           }
+        }
+
+        if (response.serverContent.turnComplete && accumulatedBotText.trim()) {
+          try {
+            await supabase.from('messages').insert({
+              session_id: sessionId,
+              sender: 'bot',
+              content: accumulatedBotText.trim()
+            });
+          } catch (err) {
+            console.error('Error saving bot message:', err);
+          }
+          accumulatedBotText = '';
         }
       }
 
@@ -205,6 +232,17 @@ CRITICAL SECURITY & CONSTRAINTS:
             if (name === 'check_availability') {
               const res = await fetch(`${EXPRESS_SERVER_URL}/api/calendar/availability?date=${args.date}&ownerId=${bot.owner_id}`);
               functionResponse = await res.json();
+              
+              if (functionResponse.slots) {
+                const slotsStr = functionResponse.slots
+                  .map((s: any) => new Date(s.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+                  .join(', ');
+
+                await supabase.from('messages').insert([
+                  { session_id: sessionId, sender: 'user', content: `Please check availability for ${args.date}.` },
+                  { session_id: sessionId, sender: 'bot', content: `Checking availability... The available slots for ${args.date} are: ${slotsStr || 'None'}.` }
+                ]);
+              }
             } else if (name === 'book_appointment') {
               const res = await fetch(`${EXPRESS_SERVER_URL}/api/calendar/book`, {
                 method: 'POST',
@@ -218,6 +256,11 @@ CRITICAL SECURITY & CONSTRAINTS:
               });
               functionResponse = await res.json();
               if (functionResponse.success) {
+                await supabase.from('messages').insert([
+                  { session_id: sessionId, sender: 'user', content: `I'd like to book an appointment: "${args.title}" for ${args.visitorName} (Phone: ${args.visitorPhone}) starting at ${args.startTime}.` },
+                  { session_id: sessionId, sender: 'bot', content: `Appointment Confirmed. Booked for ${new Date(args.startTime).toLocaleDateString()} at ${new Date(args.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.` }
+                ]);
+
                 ws.send(JSON.stringify({
                   type: 'appointment_booked',
                   details: args
@@ -289,10 +332,52 @@ CRITICAL SECURITY & CONSTRAINTS:
       }
     });
 
-    ws.on('close', () => {
+    // ── GeminiGuard: hard session timeout (9 min) ────────────────────────────
+    geminiGuard.registerSessionTimeout(sessionId, () => {
+      console.warn(`[GeminiGuard] Force-closing session ${sessionId} after max duration.`);
+      ws.close(1001, 'Session duration limit reached.');
+    });
+
+    ws.on('close', async () => {
       console.log('Client disconnected from Live API proxy');
+      // ── GeminiGuard: release slot → wakes next queued caller ─────────────
+      geminiGuard.releaseSession(sessionId);
+
       if (geminiWs.readyState === WebSocket.OPEN) {
         geminiWs.close();
+      }
+
+      // Save any pending bot transcripts
+      if (accumulatedBotText.trim()) {
+        try {
+          await supabase.from('messages').insert({
+            session_id: sessionId,
+            sender: 'bot',
+            content: accumulatedBotText.trim()
+          });
+        } catch (err) {
+          console.error('Error saving final bot message:', err);
+        }
+      }
+
+      // Run lead analysis asynchronously when the call finishes
+      try {
+        const { data: dbMessages } = await supabase
+          .from('messages')
+          .select('sender, content')
+          .eq('session_id', sessionId)
+          .order('created_at', { ascending: true });
+
+        if (dbMessages && dbMessages.length > 0) {
+          const transcript = dbMessages
+            .map((m: any) => `${m.sender === 'user' ? 'Visitor' : 'Receptionist'}: ${m.content}`)
+            .join('\n');
+
+          await analyzeLead({ sessionId, botId: bot.id, transcript }, supabase);
+          console.log(`Lead analysis completed successfully for session ${sessionId}`);
+        }
+      } catch (err) {
+        console.error('Error running lead analysis at session close:', err);
       }
     });
   });

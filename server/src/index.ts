@@ -4,6 +4,7 @@ import { config } from './config';
 import { errorHandler } from './middleware/errorHandler';
 import calendarRoutes from './routes/calendar.routes';
 import chatRoutes from './routes/chat.routes';
+import { geminiGuard } from './services/geminiGuard';
 
 const app = express();
 
@@ -15,7 +16,10 @@ app.use('/api/calendar', calendarRoutes);
 app.use('/api/chat', chatRoutes);
 
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
+  res.json({
+    status: 'ok',
+    geminiGuard: geminiGuard.getStatus()
+  });
 });
 
 // Global Error Handler

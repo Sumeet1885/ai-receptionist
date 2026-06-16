@@ -174,7 +174,8 @@ export default function App() {
     if (!newBotName.trim()) return showToast('Please enter a business name', 'error');
     if (!user) return showToast('Please sign in first to create a bot', 'error');
 
-    const subDomain = newBotName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').trim();
+    const baseSubDomain = newBotName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '').trim();
+    const subDomain = `${baseSubDomain || 'bot'}-${Math.floor(1000 + Math.random() * 9000)}`;
     try {
       await createBot({
         owner_id: user.id,

@@ -121,7 +121,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Sidebar bottom indicator */}
         <div className="pt-6 border-t border-brand-border text-xs text-brand-muted space-y-2 font-mono">
           <p>System Region: Pune, IN</p>
-          <p>Cloud Storage: Enabled (Supabase)</p>
+          
         </div>
       </aside>
 

@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { Bot, Message } from '../types/index.ts';
 import { config } from '../config';
+import { geminiGuard, RateLimitError } from '../services/geminiGuard';
 
 const GEMINI_API_KEY = config.geminiApiKey ?? '';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
@@ -98,6 +99,20 @@ CRITICAL SECURITY & CONSTRAINTS:
       systemInstruction: { parts: [{ text: systemInstruction }] },
       tools
     };
+
+    // ── GeminiGuard: RPM + TPM check before every HTTP call ──────────────
+    try {
+      const promptText = JSON.stringify(reqBody);
+      geminiGuard.estimateAndCheckTPM(promptText);
+      geminiGuard.checkRPM();
+    } catch (err) {
+      if (err instanceof RateLimitError && err.retryAfterMs > 0) {
+        console.warn(`[GeminiGuard/Chat] ${err.message} Waiting before retry...`);
+        await geminiGuard.waitForRPMSlot();
+      } else {
+        throw err; // propagate non-rate-limit errors
+      }
+    }
 
     const geminiResponse = await fetch(GEMINI_URL, {
       method: 'POST',
