@@ -59,7 +59,7 @@ export const AppointmentsTab: React.FC = () => {
         )}
       </div>
 
-      <div className="p-16 text-center space-y-6 flex-1">
+      <div className="p-8 sm:p-16 text-center space-y-6 flex-1">
         {calendarConnected ? (
           <div className="space-y-4 max-w-sm mx-auto">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-brand-success/10 border border-brand-success/30 text-brand-success mb-2">

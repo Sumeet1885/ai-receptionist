@@ -61,12 +61,12 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
   };
 
   return (
-    <div className="flex-1 flex items-center justify-center p-6 relative overflow-hidden bg-black min-h-[calc(100vh-80px)]">
+    <div className="flex-1 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden bg-black min-h-[calc(100vh-80px)]">
       {/* Background decoration matching landing page */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-emerald-500/10 blur-[120px] rounded-[100%] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] sm:w-[800px] h-[300px] sm:h-[600px] bg-emerald-500/10 blur-[120px] rounded-[100%] pointer-events-none" />
       
       <div className="w-full max-w-md relative z-10">
-        <div className="bg-brand-card/80 backdrop-blur-xl border border-brand-border p-8 rounded-2xl shadow-2xl">
+        <div className="bg-brand-card/80 backdrop-blur-xl border border-brand-border p-6 sm:p-8 rounded-2xl shadow-2xl">
           <div className="text-center mb-8">
             <h2 className="text-3xl font-display font-bold text-brand-text mb-2">
               {mode === 'signin' ? 'Welcome back' : 'Create an account'}

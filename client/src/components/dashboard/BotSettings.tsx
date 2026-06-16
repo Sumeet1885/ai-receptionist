@@ -11,7 +11,7 @@ interface BotSettingsProps {
 
 export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeBot, showToast }) => {
   return (
-    <div className="bg-brand-card p-8 rounded-xl border border-brand-border space-y-6 shadow-sm">
+    <div className="bg-brand-card p-4 sm:p-8 rounded-xl border border-brand-border space-y-6 shadow-sm">
       <h3 className="text-xl font-display font-bold text-brand-text border-b border-brand-border pb-3 flex items-center">
         <Icons.Settings />
         <span className="ml-2">Live Refinement & FAQ Expansion</span>

@@ -137,30 +137,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           
           {/* Mode Selector Tabs */}
-          <div className="flex space-x-1 bg-brand-card border border-brand-border p-1 rounded-lg">
+          <div className="flex flex-wrap gap-1 bg-brand-card border border-brand-border p-1 rounded-lg">
             <button
               onClick={() => setDashboardTab('leads')}
-              className={`px-4 py-2 rounded-md text-xs font-sans font-semibold transition duration-200 ${dashboardTab === 'leads' ? 'bg-brand-accent border border-brand-border text-brand-text' : 'text-brand-muted hover:text-brand-text'}`}
+              className={`px-3 py-2.5 rounded-md text-xs font-sans font-semibold transition duration-200 ${dashboardTab === 'leads' ? 'bg-brand-accent border border-brand-border text-brand-text' : 'text-brand-muted hover:text-brand-text'}`}
             >
-              Inbox & CRM Leads
+              Leads
             </button>
             <button
               onClick={() => setDashboardTab('conversations')}
-              className={`px-4 py-2 rounded-md text-xs font-sans font-semibold transition duration-200 ${dashboardTab === 'conversations' ? 'bg-brand-accent border border-brand-border text-brand-text' : 'text-brand-muted hover:text-brand-text'}`}
+              className={`px-3 py-2.5 rounded-md text-xs font-sans font-semibold transition duration-200 ${dashboardTab === 'conversations' ? 'bg-brand-accent border border-brand-border text-brand-text' : 'text-brand-muted hover:text-brand-text'}`}
             >
               Conversations
             </button>
             <button
               onClick={() => setDashboardTab('appointments')}
-              className={`px-4 py-2 rounded-md text-xs font-sans font-semibold transition duration-200 ${dashboardTab === 'appointments' ? 'bg-brand-accent border border-brand-border text-brand-text' : 'text-brand-muted hover:text-brand-text'}`}
+              className={`px-3 py-2.5 rounded-md text-xs font-sans font-semibold transition duration-200 ${dashboardTab === 'appointments' ? 'bg-brand-accent border border-brand-border text-brand-text' : 'text-brand-muted hover:text-brand-text'}`}
             >
               Appointments
             </button>
             <button
               onClick={() => setDashboardTab('settings')}
-              className={`px-4 py-2 rounded-md text-xs font-sans font-semibold transition duration-200 ${dashboardTab === 'settings' ? 'bg-brand-accent border border-brand-border text-brand-text' : 'text-brand-muted hover:text-brand-text'}`}
+              className={`px-3 py-2.5 rounded-md text-xs font-sans font-semibold transition duration-200 ${dashboardTab === 'settings' ? 'bg-brand-accent border border-brand-border text-brand-text' : 'text-brand-muted hover:text-brand-text'}`}
             >
-              Bot Training
+              Settings
             </button>
           </div>
         </div>

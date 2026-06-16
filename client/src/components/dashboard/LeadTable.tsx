@@ -105,7 +105,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, activeBot
                     setLeads(leads.filter(l => l.id !== lead.id));
                     showToast("Lead deleted from active CRM sheet");
                   }}
-                  className="text-brand-muted hover:text-brand-danger p-1.5 rounded-md hover:bg-brand-bg transition border border-transparent hover:border-brand-border"
+                  className="text-brand-muted hover:text-brand-danger p-2 rounded-md hover:bg-brand-bg transition border border-transparent hover:border-brand-border"
                   title="Delete Lead"
                 >
                   <Icons.Trash />

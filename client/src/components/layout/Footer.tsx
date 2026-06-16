@@ -6,13 +6,13 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({ showToast }: FooterProps) => {
   return (
-    <footer className="bg-black border-t border-brand-border px-6 py-6 text-center text-xs text-brand-muted flex flex-col md:flex-row items-center justify-between gap-4 font-sans">
-      <p>© 2026 Receptionist.ai - Built for Scale. Supporting Next.js integration.</p>
-      <div className="flex items-center space-x-4">
-        <span className="hover:text-brand-text cursor-pointer transition duration-200">Terms of Service</span>
-        <span>•</span>
-        <span className="hover:text-brand-text cursor-pointer transition duration-200">Privacy Policy</span>
-        <span>•</span>
+    <footer className="bg-black border-t border-brand-border px-4 sm:px-6 py-6 text-center text-xs text-brand-muted flex flex-col md:flex-row items-center justify-between gap-4 font-sans">
+      <p className="text-center md:text-left">© 2026 Receptionist.ai - Built for Scale.</p>
+      <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4">
+        <span className="hover:text-brand-text cursor-pointer transition duration-200">Terms</span>
+        <span className="hidden sm:inline">•</span>
+        <span className="hover:text-brand-text cursor-pointer transition duration-200">Privacy</span>
+        <span className="hidden sm:inline">•</span>
         <span className="hover:text-brand-text cursor-pointer transition duration-200" onClick={() => showToast("Webhook simulated successfully")}>API Status</span>
       </div>
     </footer>

@@ -102,7 +102,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                       key={c}
                       type="button"
                       onClick={() => setNewBotColor(c)}
-                      className={`w-8 h-8 rounded-full border-2 transition duration-200 ${newBotColor === c ? 'border-brand-text scale-110 shadow-md' : 'border-transparent'} ${c === 'indigo' ? 'bg-indigo-600' : c === 'emerald' ? 'bg-brand-success' : c === 'rose' ? 'bg-brand-danger' : 'bg-brand-warning'}`}
+                      className={`w-10 h-10 rounded-full border-2 transition duration-200 ${newBotColor === c ? 'border-brand-text scale-110 shadow-md' : 'border-transparent'} ${c === 'indigo' ? 'bg-indigo-600' : c === 'emerald' ? 'bg-brand-success' : c === 'rose' ? 'bg-brand-danger' : 'bg-brand-warning'}`}
                     />
                   ))}
                 </div>
@@ -126,7 +126,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                             setNewBotLanguages([...newBotLanguages, lang]);
                           }
                         }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-sans font-semibold border transition duration-200 ${hasLang ? 'bg-brand-accent border-brand-accent text-brand-text' : 'bg-brand-bg border-brand-border text-brand-muted hover:bg-brand-card'}`}
+                        className={`px-3 py-2 rounded-lg text-xs font-sans font-semibold border transition duration-200 ${hasLang ? 'bg-brand-accent border-brand-accent text-brand-text' : 'bg-brand-bg border-brand-border text-brand-muted hover:bg-brand-card'}`}
                       >
                         {lang}
                       </button>

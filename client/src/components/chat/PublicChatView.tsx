@@ -78,7 +78,7 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
               {/* View layout Switcher */}
               <button 
                 onClick={() => setPreviewMode(previewMode === 'desktop' ? 'mobile' : 'desktop')}
-                className="p-1.5 hover:bg-brand-bg border border-transparent hover:border-brand-border rounded text-brand-text/70 hover:text-brand-text text-xs font-semibold transition duration-200"
+                className="p-2 hover:bg-brand-bg border border-transparent hover:border-brand-border rounded text-brand-text/70 hover:text-brand-text text-xs font-semibold transition duration-200"
               >
                 <span>Simulated: {previewMode === 'desktop' ? 'Desktop' : 'Mobile'}</span>
               </button>
@@ -151,7 +151,7 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setShowSpeech(!showSpeech)}
-                  className={`p-1.5 border border-brand-border bg-brand-bg hover:bg-brand-card rounded-md text-brand-text transition duration-200 ${showSpeech ? 'bg-brand-accent/20 border-brand-accent text-brand-accent' : 'text-brand-muted hover:text-brand-text'}`}
+                  className={`p-2.5 border border-brand-border bg-brand-bg hover:bg-brand-card rounded-md text-brand-text transition duration-200 ${showSpeech ? 'bg-brand-accent/20 border-brand-accent text-brand-accent' : 'text-brand-muted hover:text-brand-text'}`}
                   title="Voice Read Out Loud toggler"
                 >
                   <Icons.Volume />

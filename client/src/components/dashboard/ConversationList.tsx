@@ -62,11 +62,11 @@ export const ConversationList: React.FC<ConversationListProps> = ({ activeBotId 
               className="p-6 hover:bg-brand-bg/20 transition cursor-pointer flex flex-col md:flex-row justify-between gap-4"
             >
               <div className="space-y-2 flex-1">
-                <div className="flex items-center gap-3">
-                  <h4 className="text-md font-display font-bold text-brand-text truncate max-w-xs">{session.visitorId}</h4>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h4 className="text-sm font-display font-bold text-brand-text truncate max-w-[140px] sm:max-w-xs">{session.visitorId}</h4>
                   <span className="text-xs text-brand-muted font-mono">{session.startedAt}</span>
-                  <span className="px-2 py-0.5 bg-brand-bg border border-brand-border text-brand-muted text-[10px] font-bold rounded font-mono">
-                    {session.messageCount} messages
+                  <span className="px-2 py-1 bg-brand-bg border border-brand-border text-brand-muted text-[10px] font-bold rounded font-mono">
+                    {session.messageCount} msgs
                   </span>
                 </div>
                 <p className="text-sm text-brand-muted font-sans truncate pr-4">

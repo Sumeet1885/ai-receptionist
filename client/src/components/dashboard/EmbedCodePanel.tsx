@@ -25,14 +25,14 @@ export const EmbedCodePanel: React.FC<EmbedCodePanelProps> = ({ activeBot, showT
             navigator.clipboard.writeText(dummyLink);
             showToast("Copied chatbot link to clipboard!");
           }}
-          className="flex-1 py-1.5 bg-brand-card hover:bg-brand-border text-brand-text text-xs font-semibold rounded-lg flex items-center justify-center space-x-1.5 transition border border-brand-border"
+          className="flex-1 py-2.5 bg-brand-card hover:bg-brand-border text-brand-text text-xs font-semibold rounded-lg flex items-center justify-center space-x-1.5 transition border border-brand-border"
         >
           <Icons.Copy />
           <span>Copy Link</span>
         </button>
         <button
           onClick={() => launchPublicChat(activeBot.id)}
-          className="flex-1 py-1.5 bg-brand-accent hover:bg-brand-accent-hover text-brand-text text-xs font-semibold rounded-lg flex items-center justify-center space-x-1.5 transition border border-brand-border"
+          className="flex-1 py-2.5 bg-brand-accent hover:bg-brand-accent-hover text-brand-text text-xs font-semibold rounded-lg flex items-center justify-center space-x-1.5 transition border border-brand-border"
         >
           <Icons.ExternalLink />
           <span>Open Client</span>

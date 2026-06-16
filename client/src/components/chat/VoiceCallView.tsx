@@ -46,7 +46,7 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
   const hue = getColorHue(activeBot.primaryColor);
 
   return (
-    <div className="flex-1 bg-black text-white flex flex-col items-center justify-between p-6 relative overflow-y-auto h-screen w-full font-sans select-none">
+    <div className="flex-1 bg-black text-white flex flex-col items-center justify-between p-6 relative overflow-hidden h-screen w-full font-sans select-none">
       {/* Background radial glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-brand-accent/5 blur-[120px] rounded-full pointer-events-none" />
 
@@ -132,16 +132,19 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
       )}
 
       {/* Bottom control buttons */}
-      <div className="w-full max-w-lg z-10 flex items-center justify-center pb-4 gap-4">
-        {/* End Call Button */}
-        <Button
+      <div className="w-full max-w-lg z-10 flex items-center justify-center pb-6 gap-4">
+        <button
           onClick={onBack}
-          variant="destructive"
-          className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg hover:shadow-brand-danger/30 hover:scale-105 active:scale-95 transition-all duration-200 border border-brand-danger/30 p-0"
+          className="flex flex-col items-center gap-2 group"
           title="End voice session"
         >
-          <Icons.PhoneOff className="w-6 h-6 text-white" />
-        </Button>
+          <span className="w-[72px] h-[72px] md:w-20 md:h-20 rounded-full bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/30 group-hover:shadow-red-500/50 group-hover:scale-105 active:scale-95 transition-all duration-200">
+            <svg className="w-9 h-9 text-white -rotate-[135deg]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z" />
+            </svg>
+          </span>
+          <span className="text-sm font-semibold text-white/70 group-hover:text-white transition-colors">End</span>
+        </button>
       </div>
     </div>
   );
