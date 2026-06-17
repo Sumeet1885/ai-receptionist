@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Icons } from '../common/Icons';
+import { getWidgetBaseUrl, getWidgetScriptTag, isLocalWidgetBaseUrl } from '../../lib/widgetInstall';
 
 interface DeploymentSuccessModalProps {
   botId: string;
@@ -21,7 +22,9 @@ export const DeploymentSuccessModal: React.FC<DeploymentSuccessModalProps> = ({
   const [copiedLink, setCopiedLink] = useState(false);
 
   const baseUrl = window.location.origin;
-  const scriptTag = `<script src="${baseUrl}/widget/loader.js" data-bot-id="${botId}"></script>`;
+  const widgetBaseUrl = getWidgetBaseUrl();
+  const scriptTag = getWidgetScriptTag(botId);
+  const isLocalInstallScript = isLocalWidgetBaseUrl(widgetBaseUrl);
   const publicLink = `${baseUrl}/chats/${subDomain}`;
 
   const aiPrompt = `I want to embed my AI Receptionist chat widget on my website.
@@ -34,14 +37,14 @@ ${scriptTag}
 Critical Implementation Steps:
 1. Ensure the script is loaded exactly as provided.
 2. The widget will automatically load a floating chat bubble in the bottom right corner of the screen.
-3. Once implemented, please give me my website's domain or localhost url to add to the allowed domains (CORS) list in the AI Receptionist dashboard.
+3. Once implemented, please give me my website's domain to add to the allowed domains list in the AI Receptionist dashboard.
 
 Please implement this now.`;
 
   const handleCopyScript = () => {
     navigator.clipboard.writeText(scriptTag);
     setCopiedScript(true);
-    showToast('Script tag copied!', 'success');
+    showToast(isLocalInstallScript ? 'Copied local-only script. Do not use it on public websites.' : 'Script tag copied!', isLocalInstallScript ? 'error' : 'success');
     setTimeout(() => setCopiedScript(false), 2000);
   };
 
@@ -112,6 +115,14 @@ Please implement this now.`;
 
             <div className="pt-2">
               <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider mb-2 font-mono">Embed Script Tag</label>
+              {isLocalInstallScript && (
+                <div className="mb-3 bg-brand-danger/10 border border-brand-danger/30 rounded-lg p-3 text-sm text-brand-text">
+                  <p className="font-bold text-brand-danger">This script is local-only.</p>
+                  <p className="text-xs text-brand-muted mt-1">
+                    It points to {widgetBaseUrl}. It will only work on this computer while the backend server is running. For GitHub Pages or any public website, use a deployed HTTPS API URL in VITE_WIDGET_BASE_URL.
+                  </p>
+                </div>
+              )}
               <div className="bg-brand-bg border border-brand-border rounded-lg p-4 relative group">
                 <pre className="text-xs sm:text-sm text-brand-text font-mono whitespace-pre-wrap break-all leading-relaxed pr-16">{scriptTag}</pre>
                 <button 

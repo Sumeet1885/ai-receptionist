@@ -1,11 +1,14 @@
-import { WebSocketServer, WebSocket } from 'ws';
+import { WebSocketServer } from 'ws';
 import { Server } from 'http';
 import { createClient } from '@supabase/supabase-js';
 import { config } from '../config';
 import { analyzeLead } from './leadController';
 import { geminiGuard } from '../services/geminiGuard';
+import WebSocket from 'ws';
 
-const supabase = createClient(config.supabaseUrl, config.supabaseServiceKey);
+const supabase = createClient(config.supabaseUrl, config.supabaseServiceKey, {
+  realtime: { transport: WebSocket },
+});
 const GEMINI_API_KEY = config.geminiApiKey ?? '';
 
 // We use the Gemini Live API model which supports bidirectional WebSockets

@@ -32,6 +32,7 @@ interface DashboardViewProps {
     primaryColor: string;
     languages: string[];
     knowledgeBase: string;
+    allowedDomains: string[];
   }>) => Promise<void>;
 }
 
@@ -124,6 +125,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             activeBot={activeBot} 
             showToast={showToast} 
             launchPublicChat={launchPublicChat} 
+            updateBot={updateBot}
           />
         </div>
 

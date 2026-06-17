@@ -104,11 +104,12 @@ export const AgentDetailPage: React.FC<AgentDetailPageProps> = ({
       )}
 
       {tab === 'install' && (
-        <div className="max-w-xl">
+        <div>
           <EmbedCodePanel
             activeBot={activeBot}
             showToast={showToast}
             launchPublicChat={launchPublicChat}
+            updateBot={updateBot}
           />
         </div>
       )}

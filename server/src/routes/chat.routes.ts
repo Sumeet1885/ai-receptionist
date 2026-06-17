@@ -6,6 +6,12 @@ import { supabase } from '../services/db';
 const router = Router();
 
 // Helper to check CORS dynamically
+function getHostname(value: string): string {
+  const trimmed = value.trim();
+  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  return new URL(withScheme).hostname.toLowerCase();
+}
+
 function checkCors(req: Request, res: Response, allowedDomains: string[] | undefined): boolean {
   if (!allowedDomains || allowedDomains.length === 0) {
     res.status(403).json({ error: 'Widget is disabled. No allowed domains configured.' });
@@ -18,13 +24,14 @@ function checkCors(req: Request, res: Response, allowedDomains: string[] | undef
     return false;
   }
   
-  const originUrl = new URL(origin).origin;
+  const originUrl = new URL(origin);
+  const originHostname = originUrl.hostname.toLowerCase();
   const isAllowed = allowedDomains.some((domain) => {
-    try { return new URL(domain).origin === originUrl; } catch { return false; }
+    try { return getHostname(domain) === originHostname; } catch { return false; }
   });
   
   if (!isAllowed) {
-    res.status(403).json({ error: `Access Denied. Origin ${originUrl} is not authorized.` });
+    res.status(403).json({ error: `Access Denied. Origin ${originUrl.origin} is not authorized.` });
     return false;
   }
   return true;

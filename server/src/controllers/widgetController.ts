@@ -1,19 +1,54 @@
 import { Request, Response } from 'express';
 import { supabase } from '../services/db';
 
-const BASE_URL = process.env.WIDGET_BASE_URL || process.env.EXPRESS_SERVER_URL || `http://localhost:${process.env.PORT || 4000}`;
+const CONFIGURED_BASE_URL = process.env.WIDGET_BASE_URL || process.env.EXPRESS_SERVER_URL || '';
+
+function trimTrailingSlash(value: string): string {
+  return value.replace(/\/+$/, '');
+}
+
+function getRequestBaseUrl(req: Request): string {
+  const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+  const forwardedHost = String(req.headers['x-forwarded-host'] || '').split(',')[0].trim();
+  const protocol = forwardedProto || req.protocol || 'http';
+  const host = forwardedHost || req.get('host');
+
+  if (!host) {
+    return `http://localhost:${process.env.PORT || 4000}`;
+  }
+
+  return `${protocol}://${host}`;
+}
+
+function getWidgetRuntimeBaseUrl(req: Request): string {
+  return trimTrailingSlash(CONFIGURED_BASE_URL || getRequestBaseUrl(req));
+}
+
+function getHostname(value: string): string {
+  const trimmed = value.trim();
+  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  return new URL(withScheme).hostname.toLowerCase();
+}
+
+function getOriginForCsp(value: string): string {
+  const trimmed = value.trim();
+  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  return new URL(withScheme).origin;
+}
 
 /**
  * GET /widget/loader.js
  * Serves the universal embed loader script.
  * The customer pastes: <script src="https://domain/widget/loader.js" data-bot-id="UUID"></script>
  */
-export const serveLoader = (_req: Request, res: Response) => {
+export const serveLoader = (req: Request, res: Response) => {
+  const baseUrl = getWidgetRuntimeBaseUrl(req);
+
   res.setHeader('Content-Type', 'application/javascript');
-  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.setHeader('Cache-Control', 'no-cache');
 
   // Minified loader script
-  const js = `!function(){if(!window.__aiReceptionistLoaded){window.__aiReceptionistLoaded=!0;var e=document.currentScript||function(){for(var e=document.getElementsByTagName("script"),t=e.length-1;t>=0;t--)if(e[t].src&&-1!==e[t].src.indexOf("/widget/loader.js"))return e[t];return null}();var t=e?e.getAttribute("data-bot-id"):null;if(t){var n="${BASE_URL}",i=!1,o=document.createElement("style");o.textContent="#air-widget-bubble{position:fixed;bottom:24px;right:24px;z-index:2147483647;width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;cursor:pointer;box-shadow:0 4px 24px rgba(99,102,241,.4);display:flex;align-items:center;justify-content:center;transition:transform .2s ease,box-shadow .2s ease}#air-widget-bubble:hover{transform:scale(1.1);box-shadow:0 6px 32px rgba(99,102,241,.55)}#air-widget-bubble svg{width:28px;height:28px;fill:#fff}#air-widget-container{position:fixed;bottom:96px;right:24px;z-index:2147483647;width:400px;height:560px;max-width:calc(100vw - 32px);max-height:calc(100vh - 120px);border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.25);transition:opacity .25s ease,transform .25s ease;opacity:0;transform:translateY(16px) scale(.95);pointer-events:none}#air-widget-container.air-open{opacity:1;transform:translateY(0) scale(1);pointer-events:all}#air-widget-container iframe{width:100%;height:100%;border:none;border-radius:16px}@media(max-width:480px){#air-widget-container{width:calc(100vw - 16px);height:calc(100vh - 80px);bottom:8px;right:8px;border-radius:12px}#air-widget-bubble{bottom:16px;right:16px;width:52px;height:52px}}",document.head.appendChild(o);var r=document.createElement("button");r.id="air-widget-bubble",r.setAttribute("aria-label","Open chat"),r.innerHTML='<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/><path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>',document.body.appendChild(r);var d,a=document.createElement("div");a.id="air-widget-container",document.body.appendChild(a),r.addEventListener("click",(function(){(i=!i)?(d||((d=document.createElement("iframe")).src=n+"/widget/"+t,d.setAttribute("allow","microphone"),d.setAttribute("title","AI Receptionist Chat"),a.appendChild(d)),a.classList.add("air-open"),r.innerHTML='<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>'):(a.classList.remove("air-open"),r.innerHTML='<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/><path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>')})),window.addEventListener("message",(function(e){e.data&&"air-widget-close"===e.data.type&&(i=!1,a.classList.remove("air-open"),r.innerHTML='<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/><path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>')}))}else console.error("[AI Receptionist] Missing data-bot-id on script tag.")}}();`;
+  const js = `!function(){if(!window.__aiReceptionistLoaded){window.__aiReceptionistLoaded=!0;var e=document.currentScript||function(){for(var e=document.getElementsByTagName("script"),t=e.length-1;t>=0;t--)if(e[t].src&&-1!==e[t].src.indexOf("/widget/loader.js"))return e[t];return null}();var t=e?e.getAttribute("data-bot-id"):null;if(t){var n="${baseUrl}",i=!1,o=document.createElement("style");o.textContent="#air-widget-bubble{position:fixed;bottom:24px;right:24px;z-index:2147483647;width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;cursor:pointer;box-shadow:0 4px 24px rgba(99,102,241,.4);display:flex;align-items:center;justify-content:center;transition:transform .2s ease,box-shadow .2s ease}#air-widget-bubble:hover{transform:scale(1.1);box-shadow:0 6px 32px rgba(99,102,241,.55)}#air-widget-bubble svg{width:28px;height:28px;fill:#fff}#air-widget-container{position:fixed;bottom:96px;right:24px;z-index:2147483647;width:400px;height:560px;max-width:calc(100vw - 32px);max-height:calc(100vh - 120px);border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.25);transition:opacity .25s ease,transform .25s ease;opacity:0;transform:translateY(16px) scale(.95);pointer-events:none}#air-widget-container.air-open{opacity:1;transform:translateY(0) scale(1);pointer-events:all}#air-widget-container iframe{width:100%;height:100%;border:none;border-radius:16px}@media(max-width:480px){#air-widget-container{width:calc(100vw - 16px);height:calc(100vh - 80px);bottom:8px;right:8px;border-radius:12px}#air-widget-bubble{bottom:16px;right:16px;width:52px;height:52px}}",document.head.appendChild(o);var r=document.createElement("button");r.id="air-widget-bubble",r.setAttribute("aria-label","Open chat"),r.innerHTML='<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/><path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>',document.body.appendChild(r);var d,a=document.createElement("div");a.id="air-widget-container",document.body.appendChild(a),r.addEventListener("click",(function(){(i=!i)?(d||((d=document.createElement("iframe")).src=n+"/widget/"+t,d.setAttribute("allow","microphone"),d.setAttribute("title","AI Receptionist Chat"),a.appendChild(d)),a.classList.add("air-open"),r.innerHTML='<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>'):(a.classList.remove("air-open"),r.innerHTML='<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/><path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>')})),window.addEventListener("message",(function(e){e.data&&"air-widget-close"===e.data.type&&(i=!1,a.classList.remove("air-open"),r.innerHTML='<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/><path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>')}))}else console.error("[AI Receptionist] Missing data-bot-id on script tag.")}}();`;
 
   res.send(js);
 };
@@ -53,17 +88,18 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
     return;
   }
 
-  const originUrl = new URL(origin).origin;
+  const originUrl = new URL(origin);
+  const originHostname = originUrl.hostname.toLowerCase();
   const isAllowed = bot.allowed_domains.some((domain: string) => {
-    try { return new URL(domain).origin === originUrl; } catch { return false; }
+    try { return getHostname(domain) === originHostname; } catch { return false; }
   });
   
   if (!isAllowed) {
-    res.status(403).send(`<html><body><p>Access Denied. Origin ${originUrl} is not authorized for this widget.</p></body></html>`);
+    res.status(403).send(`<html><body><p>Access Denied. Origin ${originUrl.origin} is not authorized for this widget.</p></body></html>`);
     return;
   }
 
-  const apiBase = BASE_URL;
+  const apiBase = getWidgetRuntimeBaseUrl(req);
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -500,7 +536,7 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
   
   if (bot.allowed_domains && bot.allowed_domains.length > 0) {
     const ancestors = bot.allowed_domains.map((d:string) => {
-      try { return new URL(d).origin; } catch { return ''; }
+      try { return getOriginForCsp(d); } catch { return ''; }
     }).filter(Boolean).join(' ');
     res.setHeader('Content-Security-Policy', `frame-ancestors ${ancestors}`);
   } else {
