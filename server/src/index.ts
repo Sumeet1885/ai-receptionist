@@ -11,9 +11,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+import widgetRoutes from './routes/widget.routes';
+
 // Routes
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/widget', widgetRoutes);
 
 app.get('/health', (req, res) => {
   res.json({

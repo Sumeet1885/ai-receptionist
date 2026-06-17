@@ -356,7 +356,7 @@ This means the chat controller's function-calling tools (`check_availability`, `
 The `widget/` workspace produces a single `receptionist-widget.min.js` file via Vite's library mode (IIFE format). A business owner pastes:
 
 ```html
-<script src="https://cdn.receptionist.ai/widget.js" data-bot-id="UUID"></script>
+<script src="https://cdn.AI Receptionist/widget.js" data-bot-id="UUID"></script>
 ```
 
 The script reads `data-bot-id`, creates a floating chat bubble in the bottom-right corner, and communicates directly with the `chat-reply` Edge Function. It is completely independent of the `client/` React app.

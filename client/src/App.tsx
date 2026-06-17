@@ -18,6 +18,7 @@ import { Footer } from './components/layout/Footer';
 // Views
 import { LandingView } from './components/landing/LandingView';
 import { OnboardingView } from './components/onboarding/OnboardingView';
+import { DeploymentSuccessModal } from './components/onboarding/DeploymentSuccessModal';
 import { DashboardView } from './components/dashboard/DashboardView';
 import { PublicChatView } from './components/chat/PublicChatView';
 import { AuthView } from './components/auth/AuthView';
@@ -43,6 +44,7 @@ export default function App() {
   // Dashboard state
   const [dashboardTab, setDashboardTab] = useState('leads');
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
+  const [newlyCreatedBotId, setNewlyCreatedBotId] = useState<string | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -176,7 +178,7 @@ export default function App() {
     const baseSubDomain = newBotName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '').trim();
     const subDomain = `${baseSubDomain || 'bot'}-${Math.floor(1000 + Math.random() * 9000)}`;
     try {
-      await createBot({
+      const newBotId = await createBot({
         owner_id: user.id,
         business_name: newBotName,
         industry: newBotIndustry,
@@ -186,6 +188,7 @@ export default function App() {
         languages: newBotLanguages,
         knowledge_base: newBotKB || 'A general premium service business. Feel free to enquire about prices, hours and services.'
       });
+      setNewlyCreatedBotId(newBotId);
       showToast('Chatbot generated! Your unique link is live.', 'success');
       setView('dashboard');
     } catch (err: any) {
@@ -294,6 +297,16 @@ export default function App() {
       </main>
 
       {!isStandaloneChat && view !== 'landing' && <Footer showToast={(msg) => showToast(msg, 'success')} />}
+
+      {newlyCreatedBotId && (
+        <DeploymentSuccessModal
+          botId={newlyCreatedBotId}
+          subDomain={bots.find(b => b.id === newlyCreatedBotId)?.subDomain || ''}
+          botName={bots.find(b => b.id === newlyCreatedBotId)?.businessName || ''}
+          onClose={() => setNewlyCreatedBotId(null)}
+          showToast={showToast}
+        />
+      )}
     </div>
   );
 }

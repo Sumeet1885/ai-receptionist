@@ -75,6 +75,12 @@ export const getAvailability = async (req: Request, res: Response) => {
 export const bookAppointment = async (req: Request, res: Response) => {
   const { details, ownerId, botId, sessionId, leadId } = req.body;
   try {
+    const requestedStart = new Date(details?.startTime);
+    const requestedEnd = new Date(details?.endTime);
+    if (!details?.startTime || !details?.endTime || Number.isNaN(requestedStart.getTime()) || Number.isNaN(requestedEnd.getTime())) {
+      return res.status(400).json({ error: 'A valid startTime and endTime are required before booking.' });
+    }
+
     // Check if an appointment has already been booked for this session to enforce single-booking limit
     if (sessionId) {
       const { data: existingAppts } = await supabase
@@ -90,6 +96,22 @@ export const bookAppointment = async (req: Request, res: Response) => {
     if (!data) throw new Error('No calendar connected');
 
     const adapter = getAdapter(data.provider);
+    const requestedLocalDate = details.startTime.slice(0, 10);
+    const availableSlots = await adapter.checkAvailability(requestedLocalDate, ownerId);
+    const requestedStartMs = requestedStart.getTime();
+    const requestedEndMs = requestedEnd.getTime();
+    const exactAvailableSlot = availableSlots.some(slot =>
+      new Date(slot.start).getTime() === requestedStartMs &&
+      new Date(slot.end).getTime() === requestedEndMs
+    );
+
+    if (!exactAvailableSlot) {
+      return res.status(400).json({
+        error: 'The requested slot is not available during office hours.',
+        slots: availableSlots
+      });
+    }
+
     const { eventId } = await adapter.bookAppointment(details, ownerId);
 
     // Save in our DB

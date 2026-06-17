@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Customer Site Widget Demo</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div>
+        <p class="eyebrow">Customer Website Demo</p>
+        <h1>Northstar Dental Studio</h1>
+      </div>
+      <span class="status">Local test site</span>
+    </header>
+
+    <main class="layout">
+      <section class="hero">
+        <p class="kicker">Cosmetic and family dentistry</p>
+        <h2>Book appointments, ask treatment questions, and check availability without waiting on hold.</h2>
+        <p>
+          This page represents a normal business website. The AI Receptionist widget should appear as a floating
+          button in the bottom-right corner after you inject the script.
+        </p>
+        <div class="actions">
+          <a href="#services">View services</a>
+          <a href="#contact" class="secondary">Contact clinic</a>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <h3>Inject Widget</h3>
+        <p class="hint">
+          Start your AI Receptionist backend on port 4000, paste a real bot UUID, then click inject.
+        </p>
+
+        <label for="botId">Bot ID</label>
+        <input id="botId" placeholder="Paste bot UUID from your dashboard" />
+
+        <label for="widgetHost">Widget host</label>
+        <input id="widgetHost" value="http://localhost:4000" />
+
+        <pre id="snippet"></pre>
+
+        <div class="button-row">
+          <button id="injectButton">Inject Widget</button>
+          <button id="removeButton" class="ghost" disabled>Remove</button>
+        </div>
+
+        <div id="message" class="message"></div>
+      </aside>
+    </main>
+
+    <section id="services" class="services">
+      <article>
+        <h4>Dental implants</h4>
+        <p>Consultations, treatment planning, and follow-up scheduling.</p>
+      </article>
+      <article>
+        <h4>Smile design</h4>
+        <p>Cosmetic treatment discovery with pricing and eligibility questions.</p>
+      </article>
+      <article>
+        <h4>Routine care</h4>
+        <p>Cleaning, checkups, and calendar-based appointment booking.</p>
+      </article>
+    </section>
+
+    <footer id="contact">
+      <span>Northstar Dental Studio</span>
+      <span>Open Monday to Saturday, 9 AM to 6 PM</span>
+    </footer>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

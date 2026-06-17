@@ -12,6 +12,7 @@ function mapBotFromDb(b: any): Bot {
     primaryColor: b.primary_color,
     languages: b.languages,
     knowledgeBase: b.knowledge_base,
+    allowedDomains: b.allowed_domains || [],
     createdAt: b.created_at
   };
 }
@@ -69,6 +70,7 @@ export function useBots() {
     primaryColor: string;
     languages: string[];
     knowledgeBase: string;
+    allowedDomains: string[];
   }>) => {
     const dbUpdates: any = {};
     if (updates.businessName !== undefined) dbUpdates.business_name = updates.businessName;
@@ -77,6 +79,7 @@ export function useBots() {
     if (updates.primaryColor !== undefined) dbUpdates.primary_color = updates.primaryColor;
     if (updates.languages !== undefined) dbUpdates.languages = updates.languages;
     if (updates.knowledgeBase !== undefined) dbUpdates.knowledge_base = updates.knowledgeBase;
+    if (updates.allowedDomains !== undefined) dbUpdates.allowed_domains = updates.allowedDomains;
 
     const { error } = await supabase
       .from('bots')

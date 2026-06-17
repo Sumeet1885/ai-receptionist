@@ -71,7 +71,7 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
 
             <div className="bg-brand-card text-xs text-brand-text/75 px-4 py-1.5 rounded-lg flex items-center justify-center space-x-2 select-all font-mono tracking-wide w-1/2 mx-auto border border-brand-border">
               <Icons.Globe />
-              <span className="truncate">receptionist.ai/chats/{activeBot.subDomain}</span>
+              <span className="truncate">AI Receptionist/chats/{activeBot.subDomain}</span>
             </div>
 
             <div className="flex items-center space-x-2">

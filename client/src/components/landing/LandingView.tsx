@@ -312,7 +312,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
     </div>
     <footer className="landing-site-footer">
       <div>
-        <span>Receptionist.ai</span>
+        <span>AI Receptionist</span>
         <p>One 24x7 AI receptionist for calls, WhatsApp, website chat, bookings, summaries, and CRM handoff.</p>
       </div>
       <nav aria-label="Footer">

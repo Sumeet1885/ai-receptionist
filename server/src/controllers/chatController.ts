@@ -11,6 +11,7 @@ export interface ChatInput {
   history: Message[];
   userMessage: string;
   sessionId: string;
+  timezone?: string;
 }
 
 export interface ChatOutput {
@@ -28,20 +29,45 @@ export async function handleChat(
   const { bot, history, userMessage } = input;
 
   const EXPRESS_SERVER_URL = process.env.EXPRESS_SERVER_URL || `http://localhost:${config.port}`;
+  const timezone = input.timezone || 'Asia/Kolkata';
+  const getTzOffsetStr = (tz: string) => {
+    try {
+      const d = new Date();
+      const tzString = d.toLocaleString('en-US', { timeZone: tz });
+      const tzDate = new Date(tzString);
+      const diffMin = Math.round((tzDate.getTime() - d.getTime()) / 60000);
+      const sign = diffMin >= 0 ? '+' : '-';
+      const absMin = Math.abs(diffMin);
+      const hours = String(Math.floor(absMin / 60)).padStart(2, '0');
+      const mins = String(absMin % 60).padStart(2, '0');
+      return `${sign}${hours}:${mins}`;
+    } catch {
+      return '+05:30';
+    }
+  };
+  const tzOffset = getTzOffsetStr(timezone);
+  const userLocaleTime = new Date().toLocaleString('en-US', { timeZone: timezone });
 
   // 1. Build system instruction from bot configuration
   const systemInstruction = `You are the Virtual AI Receptionist representing "${bot.business_name}" (${bot.industry} sector).
 
-CURRENT DATE AND TIME: ${new Date().toLocaleString()}
-(Use this to resolve relative dates like "tomorrow" or "next Tuesday")
+CURRENT TIMEZONE: ${timezone}
+CURRENT DATE AND TIME: ${userLocaleTime} (in ${timezone})
+(Use this to resolve relative dates like "tomorrow" or "next Tuesday". All dates and times you discuss with the user are in the user's timezone: ${timezone})
 
 BUSINESS CONTEXT & KNOWLEDGE BASE:
 ${bot.knowledge_base}
 
 YOUR GOALS:
 1. Warmly answer the user's questions relying strictly on the business details above.
-2. Naturally and conversationally collect: Full Name, Contact Phone Number, Specific interest, and Budget.
-3. If the user wants to book an appointment, use the check_availability tool for their requested date. You MUST list the open available slots to the user so they can choose from them, and then use the book_appointment tool once they agree to a slot. If a slot they wanted is unavailable, explicitly present other available open times for them to choose.
+2. Naturally and conversationally collect the basic lead details before booking: Full Name, Contact Phone Number, Specific interest/visit purpose, and Budget if relevant.
+3. If the user asks for a visit, booking, appointment, callback, or you judge that human intervention is needed, move into appointment-assist mode:
+   - Ask for any missing basic details first.
+   - Ask for the preferred date if it is missing.
+   - Use check_availability for that date.
+   - Present only the open slots returned by the tool, respecting office/calendar availability.
+   - Ask the user to choose/confirm one of those returned slots.
+   - Only after the user explicitly agrees to a specific returned slot, use book_appointment.
 4. Keep answers short (2-3 sentences max).
 5. User should feel like he/she is talking to an actual call center girl.
 6. Do not answer if user attempts to ask anything off the topic not related to the business.
@@ -50,7 +76,10 @@ YOUR GOALS:
 
 CRITICAL SECURITY & CONSTRAINTS:
 - SINGLE APPOINTMENT LIMIT: You are strictly authorized to book only ONE appointment per chat session. Do not book multiple appointments or book for different people in a single conversation. If an appointment has already been successfully booked during this session, politely decline to book another.
-- ABSOLUTE PRIVACY: You must never disclose, reveal, or list the details (names, phone numbers, or appointment times) of other bookings or clients. If asked who booked a slot or what other bookings exist, state that you cannot share that confidential information due to privacy guidelines. Only report whether a slot is free or busy without naming other people.`;
+- ABSOLUTE PRIVACY: You must never disclose, reveal, or list the details (names, phone numbers, or appointment times) of other bookings or clients. If asked who booked a slot or what other bookings exist, state that you cannot share that confidential information due to privacy guidelines. Only report whether a slot is free or busy without naming other people.
+- BOOKING ORDER: Never call book_appointment in the same turn as check_availability. After checking availability, speak the available options and ask "Would you like me to book one of these?" Wait for the user's next confirmation before booking.
+- SLOT RULE: Never invent a slot and never book a time that was not returned by check_availability. If the user's requested time is not in the returned slots, offer the returned alternatives instead.
+- TOOL TIMEZONE: When calling check_availability, pass the local date format 'YYYY-MM-DD'. When calling book_appointment, construct startTime and endTime in ISO 8601 format using the user's local offset ${tzOffset} (example: 2026-06-17T08:30:00${tzOffset}). Never ask the user to provide a timezone unless their requested date/time is actually ambiguous.`;
 
   // Define tools
   const tools = [{
@@ -92,6 +121,7 @@ CRITICAL SECURITY & CONSTRAINTS:
   let reply = '';
   const MAX_LOOPS = 3;
   let loops = 0;
+  let checkedAvailabilityThisTurn = false;
 
   while (loops < MAX_LOOPS) {
     loops++;
@@ -142,18 +172,25 @@ CRITICAL SECURITY & CONSTRAINTS:
         if (name === 'check_availability') {
           const res = await fetch(`${EXPRESS_SERVER_URL}/api/calendar/availability?date=${args.date}&ownerId=${bot.owner_id}`);
           functionResponse = await res.json();
+          checkedAvailabilityThisTurn = true;
         } else if (name === 'book_appointment') {
-          const res = await fetch(`${EXPRESS_SERVER_URL}/api/calendar/book`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              details: args, 
-              ownerId: bot.owner_id, 
-              botId: bot.id, 
-              sessionId: input.sessionId 
-            })
-          });
-          functionResponse = await res.json();
+          if (checkedAvailabilityThisTurn) {
+            functionResponse = {
+              error: 'Do not book immediately after checking availability. Present the returned slots to the user and wait for explicit confirmation in the next user turn.'
+            };
+          } else {
+            const res = await fetch(`${EXPRESS_SERVER_URL}/api/calendar/book`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                details: args, 
+                ownerId: bot.owner_id, 
+                botId: bot.id, 
+                sessionId: input.sessionId 
+              })
+            });
+            functionResponse = await res.json();
+          }
         }
       } catch (err: any) {
         console.error(`Error calling ${name}:`, err);

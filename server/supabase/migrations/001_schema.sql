@@ -37,6 +37,7 @@ CREATE TABLE bots (
   knowledge_base TEXT NOT NULL,
   primary_color  TEXT DEFAULT 'indigo',
   languages      TEXT[] DEFAULT ARRAY['English'],
+  allowed_domains TEXT[] DEFAULT '{}',
   is_active      BOOLEAN DEFAULT TRUE,
   created_at     TIMESTAMPTZ DEFAULT NOW()
 );

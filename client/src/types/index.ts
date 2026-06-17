@@ -7,6 +7,7 @@ export interface Bot {
   primaryColor: string;
   languages: string[];
   knowledgeBase: string;
+  allowedDomains?: string[];
   createdAt: string;
 }
 

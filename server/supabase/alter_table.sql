@@ -1,0 +1,1 @@
+ALTER TABLE bots ADD COLUMN IF NOT EXISTS allowed_domains TEXT[] DEFAULT '{}';

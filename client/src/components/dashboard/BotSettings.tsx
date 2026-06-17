@@ -14,6 +14,7 @@ interface BotSettingsProps {
     primaryColor: string;
     languages: string[];
     knowledgeBase: string;
+    allowedDomains: string[];
   }>) => Promise<void>;
 }
 
@@ -51,13 +52,33 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
         />
       </div>
 
+      <div>
+        <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider mb-2 font-mono">Allowed Widget Domains (CORS)</label>
+        <p className="text-[10px] text-brand-muted mb-2 font-sans">
+          Enter comma-separated domains (e.g. <code>https://example.com, http://localhost:3000</code>). If empty, all domains are allowed.
+        </p>
+        <input
+          type="text"
+          value={activeBot.allowedDomains?.join(', ') || ''}
+          onChange={(e) => {
+            const val = e.target.value;
+            const arr = val ? val.split(',').map(s => s.trim()).filter(s => s.length > 0) : [];
+            const updated = bots.map(b => b.id === activeBot.id ? { ...b, allowedDomains: arr } : b);
+            setBots(updated);
+          }}
+          placeholder="https://example.com"
+          className="w-full bg-brand-bg border border-brand-border rounded-md px-4 py-3 text-brand-text focus:outline-none focus:border-brand-accent transition font-sans text-sm"
+        />
+      </div>
+
       <div className="pt-4 border-t border-brand-border flex justify-end">
         <button
           onClick={async () => {
             try {
               await updateBot(activeBot.id, {
                 greeting: activeBot.greeting,
-                knowledgeBase: activeBot.knowledgeBase
+                knowledgeBase: activeBot.knowledgeBase,
+                allowedDomains: activeBot.allowedDomains
               });
               showToast("Knowledge Base changes processed successfully!");
             } catch (err: any) {
