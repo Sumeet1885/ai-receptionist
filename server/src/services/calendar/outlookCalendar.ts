@@ -3,10 +3,10 @@ import { config } from '../../config';
 import { createClient } from '@supabase/supabase-js';
 import { Client } from '@microsoft/microsoft-graph-client';
 import 'isomorphic-fetch';
-import WebSocket from 'ws';
+import { wsTransport } from '../../utils/wsTransport';
 
 const supabase = createClient(config.supabaseUrl, config.supabaseServiceKey, {
-  realtime: { transport: WebSocket },
+  realtime: { transport: wsTransport },
 });
 
 export class OutlookCalendarAdapter implements CalendarAdapter {

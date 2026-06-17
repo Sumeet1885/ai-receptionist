@@ -122,6 +122,16 @@ CRITICAL SECURITY & CONSTRAINTS:
   const MAX_LOOPS = 3;
   let loops = 0;
   let checkedAvailabilityThisTurn = false;
+  let lastFunctionName = '';
+  let lastFunctionResponse: any = null;
+
+  const formatSlots = (slots: any[]) => {
+    return (slots || [])
+      .map((slot: any) =>
+        new Date(slot.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      )
+      .join(', ');
+  };
 
   while (loops < MAX_LOOPS) {
     loops++;
@@ -173,6 +183,8 @@ CRITICAL SECURITY & CONSTRAINTS:
           const res = await fetch(`${EXPRESS_SERVER_URL}/api/calendar/availability?date=${args.date}&ownerId=${bot.owner_id}`);
           functionResponse = await res.json();
           checkedAvailabilityThisTurn = true;
+          lastFunctionName = name;
+          lastFunctionResponse = functionResponse;
         } else if (name === 'book_appointment') {
           if (checkedAvailabilityThisTurn) {
             functionResponse = {
@@ -191,6 +203,8 @@ CRITICAL SECURITY & CONSTRAINTS:
             });
             functionResponse = await res.json();
           }
+          lastFunctionName = name;
+          lastFunctionResponse = functionResponse;
         }
       } catch (err: any) {
         console.error(`Error calling ${name}:`, err);
@@ -223,6 +237,29 @@ CRITICAL SECURITY & CONSTRAINTS:
       reply = parts[0]?.text || 'Thank you for your message. A specialist will contact you shortly.';
       break;
     }
+  }
+
+  if (!reply) {
+    if (lastFunctionName === 'check_availability') {
+      if (lastFunctionResponse?.slots?.length) {
+        const slots = formatSlots(lastFunctionResponse.slots);
+        reply = `I checked the schedule. The available slots are ${slots}. Would you like me to book one of these?`;
+      } else if (lastFunctionResponse?.error) {
+        reply = `I couldn't check the schedule just now. ${lastFunctionResponse.error}`;
+      } else {
+        reply = 'I checked the schedule, but I could not find an open slot yet. Please try another date.';
+      }
+    } else if (lastFunctionName === 'book_appointment') {
+      if (lastFunctionResponse?.success) {
+        reply = 'Your appointment is confirmed.';
+      } else if (lastFunctionResponse?.error) {
+        reply = `I couldn't complete the booking. ${lastFunctionResponse.error}`;
+      }
+    }
+  }
+
+  if (!reply) {
+    reply = 'I need a moment to confirm that. Please tell me your preferred date and time again.';
   }
 
   return { reply };

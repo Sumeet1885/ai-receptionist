@@ -2,10 +2,10 @@ import { google } from 'googleapis';
 import { CalendarAdapter, TimeSlot, BookingDetails } from './calendarInterface';
 import { config } from '../../config';
 import { createClient } from '@supabase/supabase-js';
-import WebSocket from 'ws';
+import { wsTransport } from '../../utils/wsTransport';
 
 const supabase = createClient(config.supabaseUrl, config.supabaseServiceKey, {
-  realtime: { transport: WebSocket },
+  realtime: { transport: wsTransport },
 });
 
 export class GoogleCalendarAdapter implements CalendarAdapter {

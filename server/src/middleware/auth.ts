@@ -1,10 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { config } from '../config';
-import WebSocket from 'ws';
+import { wsTransport } from '../utils/wsTransport';
 
 const supabase = createClient(config.supabaseUrl, config.supabaseServiceKey, {
-  realtime: { transport: WebSocket },
+  realtime: { transport: wsTransport },
 });
 
 export interface AuthRequest extends Request {

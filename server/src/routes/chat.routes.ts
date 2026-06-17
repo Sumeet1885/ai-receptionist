@@ -106,8 +106,28 @@ router.post('/reply', async (req: Request, res: Response): Promise<void> => {
     res.json({ reply });
 
   } catch (err: any) {
-    console.error('Express chat-reply error:', err);
-    res.status(500).json({ error: 'Internal server error', details: err.message });
+    const requestId = req.headers['x-railway-request-id'] || req.headers['x-request-id'] || 'unknown';
+    console.error('Express chat-reply error:', {
+      requestId,
+      sessionId,
+      timezone,
+      userMessage,
+      message: err?.message,
+      stack: err?.stack
+    });
+
+    const safeReply =
+      err?.message?.includes('No calendar connected')
+        ? 'I can help with that, but the business calendar is not connected right now.'
+        : err?.message?.includes('Gemini API error')
+          ? 'I am having trouble reaching the assistant service right now. Please try again in a moment.'
+          : 'I ran into a temporary issue while processing that request. Please try again.';
+
+    res.status(200).json({
+      reply: safeReply,
+      error: err?.message || 'Internal server error',
+      requestId
+    });
   }
 });
 

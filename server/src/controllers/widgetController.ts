@@ -858,7 +858,13 @@ ${poweredByHtml}
       });
       var data = await res.json();
       hideTyping();
-      addMessage(data.reply || 'Thank you for your message.', 'bot');
+      if (data && typeof data.reply === 'string' && data.reply.trim()) {
+        addMessage(data.reply, 'bot');
+      } else if (!res.ok) {
+        addMessage(data.error || 'Sorry, I could not process that request right now.', 'bot');
+      } else {
+        addMessage('I need a moment to confirm that. Please tell me your preferred date and time again.', 'bot');
+      }
     } catch (err) {
       hideTyping();
       addMessage('Sorry, I\\'m having trouble connecting right now.', 'bot');

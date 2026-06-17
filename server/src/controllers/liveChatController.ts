@@ -7,9 +7,10 @@ import { geminiGuard } from '../services/geminiGuard';
 import WebSocket from 'ws';
 import { checkAllowedOrigin } from '../utils/security';
 import { checkWebSocketRateLimit } from '../middleware/rateLimit';
+import { wsTransport } from '../utils/wsTransport';
 
 const supabase = createClient(config.supabaseUrl, config.supabaseServiceKey, {
-  realtime: { transport: WebSocket },
+  realtime: { transport: wsTransport },
 });
 const GEMINI_API_KEY = config.geminiApiKey ?? '';
 
