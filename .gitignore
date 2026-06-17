@@ -7,5 +7,4 @@ dist/
 Thumbs.db
 PRD.md
 target.md
-docs/superpowers/
-.agents/workflows/
+.agents

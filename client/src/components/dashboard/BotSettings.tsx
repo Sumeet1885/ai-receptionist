@@ -1,6 +1,7 @@
-import React from 'react';
-import { Bot } from '../../types';
-import { Icons } from '../common/Icons';
+import React, { useState } from 'react';
+import { Bot, LeadField, WidgetConfig, WidgetLauncherPosition, WidgetLauncherStyle, WidgetRadius, WidgetSize, WidgetTheme } from '../../types';
+import { AllowedDomainsEditor } from './AllowedDomainsEditor';
+import { normalizeDomains } from '../../lib/domain';
 
 interface BotSettingsProps {
   bots: Bot[];
@@ -12,85 +13,371 @@ interface BotSettingsProps {
     industry: string;
     greeting: string;
     primaryColor: string;
-    languages: string[];
     knowledgeBase: string;
     allowedDomains: string[];
+    widgetConfig: WidgetConfig;
   }>) => Promise<void>;
 }
 
-export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeBot, showToast, updateBot }) => {
+type SettingsSection = 'profile' | 'widget' | 'behavior' | 'knowledge' | 'security';
+
+const sections: Array<{ id: SettingsSection; label: string; description: string }> = [
+  { id: 'profile', label: 'Profile', description: 'Name, industry, greeting' },
+  { id: 'widget', label: 'Widget UI', description: 'Colors, launcher, layout' },
+  { id: 'behavior', label: 'Behavior', description: 'Voice, calendar, lead fields' },
+  { id: 'knowledge', label: 'Knowledge', description: 'Facts and FAQs' },
+  { id: 'security', label: 'Security', description: 'Allowed domains' }
+];
+
+const colorPresets = [
+  { label: 'Mint', value: '#22e6a8' },
+  { label: 'Sky', value: '#38bdf8' },
+  { label: 'Coral', value: '#fb7185' },
+  { label: 'Amber', value: '#f59e0b' },
+  { label: 'Violet', value: '#8b5cf6' },
+  { label: 'Slate', value: '#64748b' }
+];
+
+const leadFields: Array<{ id: LeadField; label: string }> = [
+  { id: 'name', label: 'Name' },
+  { id: 'phone', label: 'Phone' },
+  { id: 'email', label: 'Email' },
+  { id: 'requirement', label: 'Requirement' }
+];
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return <label className="block text-[11px] font-mono font-bold uppercase tracking-wider text-brand-muted mb-1.5">{children}</label>;
+}
+
+function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
-    <div className="bg-brand-card p-4 sm:p-8 rounded-xl border border-brand-border space-y-6 shadow-sm">
-      <h3 className="text-xl font-display font-bold text-brand-text border-b border-brand-border pb-3 flex items-center">
-        <Icons.Settings />
-        <span className="ml-2">Live Refinement & FAQ Expansion</span>
-      </h3>
+    <input
+      {...props}
+      className={`w-full h-10 bg-brand-bg border border-brand-border rounded-md px-3 text-sm text-brand-text placeholder:text-brand-muted/60 focus:outline-none focus:border-brand-accent transition ${props.className || ''}`}
+    />
+  );
+}
 
-      <div>
-        <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider mb-2 font-mono">Configure Web Greeting</label>
-        <input
-          type="text"
-          value={activeBot.greeting}
-          onChange={(e) => {
-            const updated = bots.map(b => b.id === activeBot.id ? { ...b, greeting: e.target.value } : b);
-            setBots(updated);
-          }}
-          className="w-full bg-brand-bg border border-brand-border rounded-md px-4 py-3 text-brand-text focus:outline-none focus:border-brand-accent transition font-sans text-sm"
-        />
-      </div>
+function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      {...props}
+      className={`w-full bg-brand-bg border border-brand-border rounded-md px-3 py-2.5 text-sm text-brand-text placeholder:text-brand-muted/60 focus:outline-none focus:border-brand-accent transition ${props.className || ''}`}
+    />
+  );
+}
 
-      <div>
-        <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider mb-2 font-mono">Modify Active Knowledge Base</label>
-        <textarea
-          rows={8}
-          value={activeBot.knowledgeBase}
-          onChange={(e) => {
-            const updated = bots.map(b => b.id === activeBot.id ? { ...b, knowledgeBase: e.target.value } : b);
-            setBots(updated);
-          }}
-          className="w-full bg-brand-bg border border-brand-border rounded-md px-4 py-3 text-brand-text text-sm font-sans leading-relaxed focus:outline-none focus:border-brand-accent transition"
-        />
-      </div>
-
-      <div>
-        <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider mb-2 font-mono">Allowed Widget Domains (CORS)</label>
-        <p className="text-[10px] text-brand-muted mb-2 font-sans">
-          Enter comma-separated domains (e.g. <code>https://example.com, http://localhost:3000</code>). If empty, all domains are allowed.
-        </p>
-        <input
-          type="text"
-          value={activeBot.allowedDomains?.join(', ') || ''}
-          onChange={(e) => {
-            const val = e.target.value;
-            const arr = val ? val.split(',').map(s => s.trim()).filter(s => s.length > 0) : [];
-            const updated = bots.map(b => b.id === activeBot.id ? { ...b, allowedDomains: arr } : b);
-            setBots(updated);
-          }}
-          placeholder="https://example.com"
-          className="w-full bg-brand-bg border border-brand-border rounded-md px-4 py-3 text-brand-text focus:outline-none focus:border-brand-accent transition font-sans text-sm"
-        />
-      </div>
-
-      <div className="pt-4 border-t border-brand-border flex justify-end">
+function SelectControl<T extends string>({
+  value,
+  options,
+  onChange
+}: {
+  value: T;
+  options: Array<{ value: T; label: string }>;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {options.map(option => (
         <button
-          onClick={async () => {
-            try {
-              await updateBot(activeBot.id, {
-                greeting: activeBot.greeting,
-                knowledgeBase: activeBot.knowledgeBase,
-                allowedDomains: activeBot.allowedDomains
-              });
-              showToast("Knowledge Base changes processed successfully!");
-            } catch (err: any) {
-              console.error("Failed to save knowledge base:", err);
-              showToast("Failed to save changes: " + (err.message || err), "error");
-            }
-          }}
-          className="px-6 py-2.5 bg-brand-accent hover:bg-brand-accent-hover border border-brand-border text-brand-text font-sans font-bold rounded-lg transition duration-200"
+          key={option.value}
+          type="button"
+          onClick={() => onChange(option.value)}
+          className={`h-9 px-3 rounded-md border text-xs font-semibold transition ${
+            value === option.value
+              ? 'bg-brand-accent text-brand-bg border-brand-accent'
+              : 'bg-brand-bg text-brand-muted border-brand-border hover:text-brand-text'
+          }`}
         >
-          Save Knowledge Base
+          {option.label}
         </button>
-      </div>
+      ))}
+    </div>
+  );
+}
+
+function Toggle({
+  checked,
+  label,
+  onChange
+}: {
+  checked: boolean;
+  label: string;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className="flex items-center justify-between gap-3 h-10 px-3 rounded-md border border-brand-border bg-brand-bg hover:bg-brand-card text-sm text-brand-text transition"
+    >
+      <span>{label}</span>
+      <span className={`w-9 h-5 rounded-full p-0.5 transition ${checked ? 'bg-brand-accent' : 'bg-brand-border'}`}>
+        <span className={`block w-4 h-4 rounded-full bg-brand-text transition ${checked ? 'translate-x-4' : 'translate-x-0'}`} />
+      </span>
+    </button>
+  );
+}
+
+export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeBot, showToast, updateBot }) => {
+  const [section, setSection] = useState<SettingsSection>('profile');
+
+  const patchActiveBot = (patch: Partial<Bot>) => {
+    setBots(bots.map(b => b.id === activeBot.id ? { ...b, ...patch } : b));
+  };
+
+  const patchConfig = (patch: Partial<WidgetConfig>) => {
+    patchActiveBot({ widgetConfig: { ...activeBot.widgetConfig, ...patch } });
+  };
+
+  const toggleLeadField = (field: LeadField) => {
+    const current = activeBot.widgetConfig.requiredLeadFields;
+    patchConfig({
+      requiredLeadFields: current.includes(field)
+        ? current.filter(item => item !== field)
+        : [...current, field]
+    });
+  };
+
+  const updatePrompt = (index: number, value: string) => {
+    const prompts = [...activeBot.widgetConfig.suggestedPrompts];
+    prompts[index] = value;
+    patchConfig({ suggestedPrompts: prompts });
+  };
+
+  const addPrompt = () => {
+    if (activeBot.widgetConfig.suggestedPrompts.length >= 4) return;
+    patchConfig({ suggestedPrompts: [...activeBot.widgetConfig.suggestedPrompts, ''] });
+  };
+
+  const removePrompt = (index: number) => {
+    patchConfig({ suggestedPrompts: activeBot.widgetConfig.suggestedPrompts.filter((_, i) => i !== index) });
+  };
+
+  const saveChanges = async () => {
+    try {
+      const cleanConfig = {
+        ...activeBot.widgetConfig,
+        assistantName: activeBot.widgetConfig.assistantName.trim(),
+        avatarText: activeBot.widgetConfig.avatarText.trim().slice(0, 3).toUpperCase(),
+        suggestedPrompts: activeBot.widgetConfig.suggestedPrompts.map(prompt => prompt.trim()).filter(Boolean),
+        launcherText: activeBot.widgetConfig.launcherText.trim() || 'Chat',
+        inputPlaceholder: activeBot.widgetConfig.inputPlaceholder.trim() || 'Type a message...'
+      };
+
+      await updateBot(activeBot.id, {
+        businessName: activeBot.businessName.trim(),
+        industry: activeBot.industry.trim(),
+        greeting: activeBot.greeting,
+        primaryColor: activeBot.primaryColor,
+        knowledgeBase: activeBot.knowledgeBase,
+        allowedDomains: normalizeDomains(activeBot.allowedDomains || []),
+        widgetConfig: cleanConfig
+      });
+      showToast('Agent settings saved');
+    } catch (err: any) {
+      console.error('Failed to save agent settings:', err);
+      showToast('Failed to save changes: ' + (err.message || err), 'error');
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-[230px_1fr] gap-4">
+      <nav className="bg-brand-card border border-brand-border rounded-lg p-2 h-fit">
+        {sections.map(item => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setSection(item.id)}
+            className={`w-full text-left px-3 py-2.5 rounded-md transition ${section === item.id ? 'bg-brand-accent text-brand-bg' : 'text-brand-muted hover:text-brand-text hover:bg-brand-bg'}`}
+          >
+            <span className="block text-sm font-bold">{item.label}</span>
+            <span className="block text-[11px] opacity-75 mt-0.5">{item.description}</span>
+          </button>
+        ))}
+      </nav>
+
+      <section className="bg-brand-card border border-brand-border rounded-lg p-4 sm:p-5 min-h-[480px]">
+        {section === 'profile' && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <FieldLabel>Business Name</FieldLabel>
+                <TextInput value={activeBot.businessName} onChange={(e) => patchActiveBot({ businessName: e.target.value })} />
+              </div>
+              <div>
+                <FieldLabel>Industry</FieldLabel>
+                <TextInput value={activeBot.industry} onChange={(e) => patchActiveBot({ industry: e.target.value })} />
+              </div>
+            </div>
+            <div>
+              <FieldLabel>Greeting</FieldLabel>
+              <TextArea rows={3} value={activeBot.greeting} onChange={(e) => patchActiveBot({ greeting: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <FieldLabel>Assistant Display Name</FieldLabel>
+                <TextInput placeholder={activeBot.businessName} value={activeBot.widgetConfig.assistantName} onChange={(e) => patchConfig({ assistantName: e.target.value })} />
+              </div>
+              <div>
+                <FieldLabel>Avatar Text</FieldLabel>
+                <TextInput maxLength={3} placeholder={activeBot.businessName.slice(0, 2).toUpperCase()} value={activeBot.widgetConfig.avatarText} onChange={(e) => patchConfig({ avatarText: e.target.value.toUpperCase() })} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {section === 'widget' && (
+          <div className="space-y-5">
+            <div>
+              <FieldLabel>Color Preset</FieldLabel>
+              <div className="flex flex-wrap gap-2">
+                {colorPresets.map(color => (
+                  <button
+                    key={color.value}
+                    type="button"
+                    onClick={() => patchConfig({ primaryColor: color.value })}
+                    className={`h-9 px-3 rounded-md border text-xs font-bold flex items-center gap-2 ${activeBot.widgetConfig.primaryColor === color.value ? 'border-brand-text text-brand-text' : 'border-brand-border text-brand-muted'}`}
+                  >
+                    <span className="w-4 h-4 rounded-full border border-white/20" style={{ background: color.value }} />
+                    {color.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <FieldLabel>Primary</FieldLabel>
+                <TextInput type="color" value={activeBot.widgetConfig.primaryColor} onChange={(e) => patchConfig({ primaryColor: e.target.value })} className="p-1" />
+              </div>
+              <div>
+                <FieldLabel>Background</FieldLabel>
+                <TextInput type="color" value={activeBot.widgetConfig.backgroundColor} onChange={(e) => patchConfig({ backgroundColor: e.target.value })} className="p-1" />
+              </div>
+              <div>
+                <FieldLabel>Surface</FieldLabel>
+                <TextInput type="color" value={activeBot.widgetConfig.surfaceColor} onChange={(e) => patchConfig({ surfaceColor: e.target.value })} className="p-1" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <FieldLabel>Theme</FieldLabel>
+                <SelectControl<WidgetTheme>
+                  value={activeBot.widgetConfig.theme}
+                  onChange={(theme) => patchConfig({ theme })}
+                  options={[{ value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }, { value: 'brand', label: 'Brand' }]}
+                />
+              </div>
+              <div>
+                <FieldLabel>Size</FieldLabel>
+                <SelectControl<WidgetSize>
+                  value={activeBot.widgetConfig.widgetSize}
+                  onChange={(widgetSize) => patchConfig({ widgetSize })}
+                  options={[{ value: 'compact', label: 'Compact' }, { value: 'standard', label: 'Standard' }, { value: 'large', label: 'Large' }]}
+                />
+              </div>
+              <div>
+                <FieldLabel>Launcher Position</FieldLabel>
+                <SelectControl<WidgetLauncherPosition>
+                  value={activeBot.widgetConfig.launcherPosition}
+                  onChange={(launcherPosition) => patchConfig({ launcherPosition })}
+                  options={[{ value: 'bottom-right', label: 'Right' }, { value: 'bottom-left', label: 'Left' }]}
+                />
+              </div>
+              <div>
+                <FieldLabel>Corners</FieldLabel>
+                <SelectControl<WidgetRadius>
+                  value={activeBot.widgetConfig.radius}
+                  onChange={(radius) => patchConfig({ radius })}
+                  options={[{ value: 'sharp', label: 'Sharp' }, { value: 'soft', label: 'Soft' }, { value: 'rounded', label: 'Rounded' }]}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_180px] gap-3">
+              <div>
+                <FieldLabel>Launcher Text</FieldLabel>
+                <TextInput value={activeBot.widgetConfig.launcherText} onChange={(e) => patchConfig({ launcherText: e.target.value })} />
+              </div>
+              <div>
+                <FieldLabel>Launcher Style</FieldLabel>
+                <SelectControl<WidgetLauncherStyle>
+                  value={activeBot.widgetConfig.launcherStyle}
+                  onChange={(launcherStyle) => patchConfig({ launcherStyle })}
+                  options={[{ value: 'icon', label: 'Icon' }, { value: 'text', label: 'Text' }]}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {section === 'behavior' && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <Toggle checked={activeBot.widgetConfig.enableVoice} label="Voice button" onChange={(enableVoice) => patchConfig({ enableVoice })} />
+              <Toggle checked={activeBot.widgetConfig.enableCalendar} label="Calendar booking" onChange={(enableCalendar) => patchConfig({ enableCalendar })} />
+              <Toggle checked={activeBot.widgetConfig.showPoweredBy} label="Powered by label" onChange={(showPoweredBy) => patchConfig({ showPoweredBy })} />
+            </div>
+            <div>
+              <FieldLabel>Input Placeholder</FieldLabel>
+              <TextInput value={activeBot.widgetConfig.inputPlaceholder} onChange={(e) => patchConfig({ inputPlaceholder: e.target.value })} />
+            </div>
+            <div>
+              <FieldLabel>Suggested Prompts</FieldLabel>
+              <div className="space-y-2">
+                {activeBot.widgetConfig.suggestedPrompts.map((prompt, index) => (
+                  <div key={index} className="flex gap-2">
+                    <TextInput value={prompt} onChange={(e) => updatePrompt(index, e.target.value)} placeholder="What are your fees?" />
+                    <button type="button" onClick={() => removePrompt(index)} className="h-10 px-3 rounded-md border border-brand-border text-brand-danger hover:border-brand-danger/50 transition">Delete</button>
+                  </div>
+                ))}
+                <button type="button" onClick={addPrompt} className="h-9 px-3 rounded-md border border-brand-border bg-brand-bg hover:bg-brand-card text-sm text-brand-text transition">
+                  + Add prompt
+                </button>
+              </div>
+            </div>
+            <div>
+              <FieldLabel>Required Lead Fields</FieldLabel>
+              <div className="flex flex-wrap gap-2">
+                {leadFields.map(field => (
+                  <button
+                    key={field.id}
+                    type="button"
+                    onClick={() => toggleLeadField(field.id)}
+                    className={`h-9 px-3 rounded-md border text-xs font-bold transition ${activeBot.widgetConfig.requiredLeadFields.includes(field.id) ? 'bg-brand-accent text-brand-bg border-brand-accent' : 'bg-brand-bg text-brand-muted border-brand-border'}`}
+                  >
+                    {field.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <FieldLabel>Human Handoff Text</FieldLabel>
+              <TextArea rows={2} value={activeBot.widgetConfig.handoffText} onChange={(e) => patchConfig({ handoffText: e.target.value })} />
+            </div>
+          </div>
+        )}
+
+        {section === 'knowledge' && (
+          <div>
+            <FieldLabel>Knowledge Base</FieldLabel>
+            <TextArea rows={16} value={activeBot.knowledgeBase} onChange={(e) => patchActiveBot({ knowledgeBase: e.target.value })} />
+          </div>
+        )}
+
+        {section === 'security' && (
+          <AllowedDomainsEditor
+            domains={activeBot.allowedDomains || []}
+            onChange={(domains) => patchActiveBot({ allowedDomains: domains })}
+            description="Each customer website must be listed here before it can load this agent."
+          />
+        )}
+
+        <div className="mt-5 pt-4 border-t border-brand-border flex justify-end">
+          <button onClick={saveChanges} className="h-10 px-5 bg-brand-accent hover:bg-brand-accent-hover text-brand-bg font-bold rounded-md transition">
+            Save Changes
+          </button>
+        </div>
+      </section>
     </div>
   );
 };

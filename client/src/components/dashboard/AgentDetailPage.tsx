@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bot } from '../../types';
+import { Bot, WidgetConfig } from '../../types';
 import { BotSettings } from './BotSettings';
 import { EmbedCodePanel } from './EmbedCodePanel';
 import { Icons } from '../common/Icons';
@@ -17,9 +17,9 @@ interface AgentDetailPageProps {
     industry: string;
     greeting: string;
     primaryColor: string;
-    languages: string[];
     knowledgeBase: string;
     allowedDomains: string[];
+    widgetConfig: WidgetConfig;
   }>) => Promise<void>;
 }
 
@@ -35,7 +35,7 @@ export const AgentDetailPage: React.FC<AgentDetailPageProps> = ({
 }) => {
   const tabs: Array<{ id: AgentDetailPageProps['tab']; label: string }> = [
     { id: 'overview', label: 'Overview' },
-    { id: 'knowledge', label: 'Knowledge' },
+    { id: 'knowledge', label: 'Customize' },
     { id: 'install', label: 'Install' },
     { id: 'preview', label: 'Preview' }
   ];
@@ -68,8 +68,11 @@ export const AgentDetailPage: React.FC<AgentDetailPageProps> = ({
                 <p className="text-sm font-semibold text-brand-text mt-2">{activeBot.industry}</p>
               </div>
               <div className="bg-brand-bg border border-brand-border rounded-md p-4">
-                <p className="text-[10px] font-mono uppercase tracking-wider text-brand-muted">Languages</p>
-                <p className="text-sm font-semibold text-brand-text mt-2">{activeBot.languages.join(', ')}</p>
+                <p className="text-[10px] font-mono uppercase tracking-wider text-brand-muted">Widget Color</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="w-4 h-4 rounded-full border border-brand-border" style={{ background: activeBot.widgetConfig.primaryColor }} />
+                  <p className="text-sm font-semibold text-brand-text">{activeBot.widgetConfig.primaryColor}</p>
+                </div>
               </div>
               <div className="bg-brand-bg border border-brand-border rounded-md p-4">
                 <p className="text-[10px] font-mono uppercase tracking-wider text-brand-muted">Widget Domains</p>

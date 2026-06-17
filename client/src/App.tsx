@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './lib/supabaseClient';
 
 import { Toast as ToastType } from './types';
+import { defaultWidgetConfig, mergeWidgetConfig } from './lib/widgetConfig';
 import { useAuth } from './hooks/useAuth';
 import { useBots } from './hooks/useBots';
 import { useLeads } from './hooks/useLeads';
@@ -85,7 +86,6 @@ export default function App() {
   const [newBotGreeting, setNewBotGreeting] = useState('');
   const [newBotKB, setNewBotKB] = useState('');
   const [newBotColor, setNewBotColor] = useState('indigo');
-  const [newBotLanguages, setNewBotLanguages] = useState<string[]>(['English']);
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
   const [newlyCreatedBotId, setNewlyCreatedBotId] = useState<string | null>(null);
   const [leadAgentFilter, setLeadAgentFilter] = useState<string | 'all'>('all');
@@ -173,9 +173,10 @@ export default function App() {
           subDomain: data.subdomain,
           greeting: data.greeting,
           primaryColor: data.primary_color,
-          languages: data.languages,
+          languages: data.languages || ['English'],
           knowledgeBase: data.knowledge_base,
           allowedDomains: data.allowed_domains || [],
+          widgetConfig: mergeWidgetConfig(data.widget_config),
           createdAt: data.created_at
         };
 
@@ -246,8 +247,12 @@ export default function App() {
         subdomain: subDomain,
         greeting: newBotGreeting || `Welcome to ${newBotName}. How can our virtual assistant help you today?`,
         primary_color: newBotColor,
-        languages: newBotLanguages,
-        knowledge_base: newBotKB || 'A general premium service business. Feel free to enquire about prices, hours and services.'
+        knowledge_base: newBotKB || 'A general premium service business. Feel free to enquire about prices, hours and services.',
+        widget_config: {
+          ...defaultWidgetConfig,
+          assistantName: newBotName || 'AI Receptionist',
+          avatarText: (newBotName || 'AI').slice(0, 2).toUpperCase()
+        }
       });
       setNewlyCreatedBotId(newBotId);
       showToast('Receptionist created. Your link is live.', 'success');
@@ -317,8 +322,6 @@ export default function App() {
             setNewBotKB={setNewBotKB}
             newBotColor={newBotColor}
             setNewBotColor={setNewBotColor}
-            newBotLanguages={newBotLanguages}
-            setNewBotLanguages={setNewBotLanguages}
             setView={legacySetView}
             handleCreateBot={handleCreateBot}
           />

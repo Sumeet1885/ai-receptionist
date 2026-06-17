@@ -2,38 +2,28 @@ import { Router, Request, Response } from 'express';
 import { handleChat } from '../controllers/chatController';
 import { analyzeLead } from '../controllers/leadController';
 import { supabase } from '../services/db';
+import { config } from '../config';
+import { chatRateLimit } from '../middleware/rateLimit';
+import { checkAllowedOrigin } from '../utils/security';
+import { mergeWidgetConfig } from '../utils/widgetConfig';
 
 const router = Router();
 
-// Helper to check CORS dynamically
-function getHostname(value: string): string {
-  const trimmed = value.trim();
-  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-  return new URL(withScheme).hostname.toLowerCase();
-}
+router.use(chatRateLimit);
 
 function checkCors(req: Request, res: Response, allowedDomains: string[] | undefined): boolean {
-  if (!allowedDomains || allowedDomains.length === 0) {
-    res.status(403).json({ error: 'Widget is disabled. No allowed domains configured.' });
-    return false;
-  }
-  
-  const origin = req.get('Referer') || req.get('Origin');
-  if (!origin) {
-    res.status(403).json({ error: 'Access Denied (Missing Origin)' });
-    return false;
-  }
-  
-  const originUrl = new URL(origin);
-  const originHostname = originUrl.hostname.toLowerCase();
-  const isAllowed = allowedDomains.some((domain) => {
-    try { return getHostname(domain) === originHostname; } catch { return false; }
+  const originCheck = checkAllowedOrigin(req, {
+    allowedDomains: allowedDomains || [],
+    extraAllowedOrigins: [config.clientUrl],
+    allowRuntimeOrigin: true,
+    requireSource: true,
   });
-  
-  if (!isAllowed) {
-    res.status(403).json({ error: `Access Denied. Origin ${originUrl.origin} is not authorized.` });
+
+  if (!originCheck.allowed) {
+    res.status(403).json({ error: originCheck.reason || 'Access Denied. Origin is not authorized.' });
     return false;
   }
+
   return true;
 }
 
@@ -127,7 +117,7 @@ router.get('/bot/:botId', async (req: Request, res: Response): Promise<void> => 
   try {
     const { data: bot, error } = await supabase
       .from('bots')
-      .select('id, business_name, greeting, primary_color, languages, industry, allowed_domains')
+      .select('*')
       .eq('id', botId)
       .eq('is_active', true)
       .single();
@@ -140,7 +130,15 @@ router.get('/bot/:botId', async (req: Request, res: Response): Promise<void> => 
     // CORS Check
     if (!checkCors(req, res, bot.allowed_domains)) return;
 
-    res.json(bot);
+    res.json({
+      id: bot.id,
+      business_name: bot.business_name,
+      greeting: bot.greeting,
+      primary_color: bot.primary_color,
+      industry: bot.industry,
+      allowed_domains: bot.allowed_domains || [],
+      widget_config: mergeWidgetConfig(bot.widget_config, bot)
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

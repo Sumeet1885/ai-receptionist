@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
-import { Bot } from '../types';
+import { Bot, WidgetConfig } from '../types';
 import { supabase } from '../lib/supabaseClient';
+import { mergeWidgetConfig } from '../lib/widgetConfig';
 
 function mapBotFromDb(b: any): Bot {
   return {
@@ -10,9 +11,10 @@ function mapBotFromDb(b: any): Bot {
     subDomain: b.subdomain,
     greeting: b.greeting,
     primaryColor: b.primary_color,
-    languages: b.languages,
+    languages: b.languages || ['English'],
     knowledgeBase: b.knowledge_base,
     allowedDomains: b.allowed_domains || [],
+    widgetConfig: mergeWidgetConfig(b.widget_config),
     createdAt: b.created_at
   };
 }
@@ -47,8 +49,8 @@ export function useBots() {
     subdomain: string;
     greeting: string;
     primary_color: string;
-    languages: string[];
     knowledge_base: string;
+    widget_config?: WidgetConfig;
   }) => {
     const { data, error } = await supabase
       .from('bots')
@@ -68,18 +70,18 @@ export function useBots() {
     industry: string;
     greeting: string;
     primaryColor: string;
-    languages: string[];
     knowledgeBase: string;
     allowedDomains: string[];
+    widgetConfig: WidgetConfig;
   }>) => {
     const dbUpdates: any = {};
     if (updates.businessName !== undefined) dbUpdates.business_name = updates.businessName;
     if (updates.industry !== undefined) dbUpdates.industry = updates.industry;
     if (updates.greeting !== undefined) dbUpdates.greeting = updates.greeting;
     if (updates.primaryColor !== undefined) dbUpdates.primary_color = updates.primaryColor;
-    if (updates.languages !== undefined) dbUpdates.languages = updates.languages;
     if (updates.knowledgeBase !== undefined) dbUpdates.knowledge_base = updates.knowledgeBase;
     if (updates.allowedDomains !== undefined) dbUpdates.allowed_domains = updates.allowedDomains;
+    if (updates.widgetConfig !== undefined) dbUpdates.widget_config = updates.widgetConfig;
 
     const { error } = await supabase
       .from('bots')

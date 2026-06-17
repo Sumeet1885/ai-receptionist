@@ -1,77 +1,949 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Customer Site Widget Demo</title>
-    <link rel="stylesheet" href="./styles.css" />
-  </head>
-  <body>
-    <header class="site-header">
-      <div>
-        <p class="eyebrow">Customer Website Demo</p>
-        <h1>Northstar Dental Studio</h1>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>iReceptionist — Enterprise AI Front-Desk & Voice Intelligence System</title>
+  <meta name="description" content="Deploy autonomous, 24/7 virtual enterprise agents built to route calls, secure complex appointments, respond on WhatsApp, and capture high-fidelity CRM telemetry." />
+  
+  <!-- Premium Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- CSS Link -->
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="dark-mode">
+
+  <!-- Background Grid & Subtle Ambient Glows -->
+  <div class="enterprise-grid-overlay"></div>
+  <div class="ambient-glow glow-primary"></div>
+  <div class="ambient-glow glow-secondary"></div>
+
+  <!-- HEADER / NAVIGATION -->
+  <header class="navbar">
+    <div class="nav-container">
+      <a href="#" class="logo">
+        <div class="logo-icon">
+          <i data-lucide="phone-call"></i>
+        </div>
+        <span class="logo-text">i<span class="gradient-text">Receptionist</span></span>
+      </a>
+      
+      <nav class="nav-menu">
+        <a href="#narrative" class="nav-link">The Challenge</a>
+        <a href="#capabilities" class="nav-link">Capabilities</a>
+        <a href="#interactive-simulator" class="nav-link">Live Sandbox</a>
+        <a href="#industries" class="nav-link">Industry Models</a>
+        <a href="#roi-calculator" class="nav-link">ROI Modeler</a>
+      </nav>
+
+      <div class="nav-actions">
+        <!-- Theme Switcher -->
+        <button id="theme-toggle" class="theme-switch-btn" aria-label="Toggle Interface Mode">
+          <i data-lucide="sun" class="sun-icon"></i>
+          <i data-lucide="moon" class="moon-icon"></i>
+        </button>
+        <a href="#interactive-simulator" class="btn btn-secondary btn-sm">Launch Sandbox</a>
+        <a href="#book-demo" class="btn btn-primary btn-sm">Request Enterprise Briefing</a>
       </div>
-      <span class="status">Local test site</span>
-    </header>
 
-    <main class="layout">
-      <section class="hero">
-        <p class="kicker">Cosmetic and family dentistry</p>
-        <h2>Book appointments, ask treatment questions, and check availability without waiting on hold.</h2>
-        <p>
-          This page represents a normal business website. The AI Receptionist widget should appear as a floating
-          button in the bottom-right corner after you inject the script.
-        </p>
-        <div class="actions">
-          <a href="#services">View services</a>
-          <a href="#contact" class="secondary">Contact clinic</a>
+      <button class="mobile-menu-btn" aria-label="Toggle Navigation Menu">
+        <i data-lucide="menu"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- MOBILE NAVIGATION OVERLAY -->
+  <div class="mobile-nav-overlay">
+    <div class="mobile-nav-content">
+      <div class="mobile-nav-header">
+        <span class="logo-text">i<span class="gradient-text">Receptionist</span></span>
+        <button class="mobile-close-btn" aria-label="Close Menu"><i data-lucide="x"></i></button>
+      </div>
+      <nav class="mobile-links">
+        <a href="#narrative" class="mobile-link">The Challenge</a>
+        <a href="#capabilities" class="mobile-link">Capabilities</a>
+        <a href="#interactive-simulator" class="mobile-link">Live Sandbox</a>
+        <a href="#industries" class="mobile-link">Industry Models</a>
+        <a href="#roi-calculator" class="mobile-link">ROI Modeler</a>
+        <div class="mobile-actions">
+          <div class="mobile-theme-row">
+            <span>Interface Mode</span>
+            <button id="theme-toggle-mobile" class="theme-switch-btn">
+              <i data-lucide="sun"></i>
+            </button>
+          </div>
+          <a href="#interactive-simulator" class="btn btn-secondary w-full text-center">Open Live Sandbox</a>
+          <a href="#book-demo" class="btn btn-primary w-full text-center">Request Briefing</a>
         </div>
-      </section>
+      </nav>
+    </div>
+  </div>
 
-      <aside class="panel">
-        <h3>Inject Widget</h3>
-        <p class="hint">
-          Start your AI Receptionist backend on port 4000, paste a real bot UUID, then click inject.
-        </p>
+  <main>
+    <!-- HERO SECTION -->
+    <section class="hero-section">
+      <div class="container hero-grid">
+        <div class="hero-content">
+          <div class="announcement-badge">
+            <span class="pulse-indicator-emerald"></span>
+            <span class="badge-text">v2.4 Cognitive Voice Infrastructure Ready</span>
+          </div>
+          <h1 class="hero-title">
+            The Autonomous Voice Employee for <span class="accent-text-glow">24/7 Inbound Operations</span>
+          </h1>
+          <p class="hero-subtitle">
+            Scale clinical, real estate, admissions, or hiring operations with sub-second latency conversational AI. Deflect administrative overhead, automate real-time scheduling integrations, and instantly capture high-fidelity CRM telemetry.
+          </p>
+          
+          <div class="hero-cta-group">
+            <a href="#interactive-simulator" class="btn btn-primary btn-lg">
+              <i data-lucide="play" class="btn-icon"></i> Run Live Sandbox
+            </a>
+            <a href="#narrative" class="btn btn-secondary btn-lg">
+              Operational Impact Brief
+            </a>
+          </div>
 
-        <label for="botId">Bot ID</label>
-        <input id="botId" placeholder="Paste bot UUID from your dashboard" />
-
-        <label for="widgetHost">Widget host</label>
-        <input id="widgetHost" value="http://localhost:4000" />
-
-        <pre id="snippet"></pre>
-
-        <div class="button-row">
-          <button id="injectButton">Inject Widget</button>
-          <button id="removeButton" class="ghost" disabled>Remove</button>
+          <!-- Trust & Compliance Badges -->
+          <div class="compliance-row">
+            <div class="compliance-item">
+              <i data-lucide="shield-check"></i>
+              <span>HIPAA & GDPR Compliant</span>
+            </div>
+            <div class="compliance-item">
+              <i data-lucide="lock"></i>
+              <span>ISO 27001 Certified System</span>
+            </div>
+            <div class="compliance-item">
+              <i data-lucide="database"></i>
+              <span>Zero-Data Retention Sandbox Available</span>
+            </div>
+          </div>
         </div>
 
-        <div id="message" class="message"></div>
-      </aside>
-    </main>
+        <!-- HERO VISUAL: Tabbed Interactive Widget Preview -->
+        <div class="hero-visual">
+          <div class="slate-console-card">
+            <div class="console-titlebar">
+              <div class="window-controls">
+                <span class="dot crimson"></span>
+                <span class="dot amber"></span>
+                <span class="dot success"></span>
+              </div>
+              <div class="console-status"><i data-lucide="activity" class="icon-pulse"></i> Engine: Active (0.2s latency)</div>
+            </div>
+            <div class="console-tabs">
+              <button class="console-tab active" data-tab="voice"><i data-lucide="phone"></i> Phone Interface</button>
+              <button class="console-tab" data-tab="whatsapp"><i data-lucide="message-square"></i> WhatsApp Hub</button>
+              <button class="console-tab" data-tab="webchat"><i data-lucide="globe"></i> Web Widget</button>
+            </div>
 
-    <section id="services" class="services">
-      <article>
-        <h4>Dental implants</h4>
-        <p>Consultations, treatment planning, and follow-up scheduling.</p>
-      </article>
-      <article>
-        <h4>Smile design</h4>
-        <p>Cosmetic treatment discovery with pricing and eligibility questions.</p>
-      </article>
-      <article>
-        <h4>Routine care</h4>
-        <p>Cleaning, checkups, and calendar-based appointment booking.</p>
-      </article>
+            <!-- Tab Content 1: Voice -->
+            <div class="console-body active" id="tab-voice">
+              <div class="live-voice-tracker">
+                <div class="voice-peer-info">
+                  <div class="peer-avatar"><i data-lucide="user"></i></div>
+                  <div>
+                    <h4 class="peer-name">Inbound Partner Session</h4>
+                    <p class="peer-details">Active Call Stream • Dialect: English (Global)</p>
+                  </div>
+                  <span class="peer-badge">Connected</span>
+                </div>
+
+                <div class="audio-spectrum">
+                  <span class="spectrum-bar"></span>
+                  <span class="spectrum-bar sound-wave-1"></span>
+                  <span class="spectrum-bar sound-wave-2"></span>
+                  <span class="spectrum-bar sound-wave-3"></span>
+                  <span class="spectrum-bar sound-wave-4"></span>
+                  <span class="spectrum-bar sound-wave-2"></span>
+                  <span class="spectrum-bar sound-wave-1"></span>
+                  <span class="spectrum-bar"></span>
+                </div>
+
+                <div class="transcript-scroller">
+                  <div class="dialogue-line caller">
+                    <span class="dialogue-role">Caller</span>
+                    <p>"We need to schedule a consultation with the attending physician this Thursday at 10 AM, and verify what insurance you accept."</p>
+                  </div>
+                  <div class="dialogue-line receiver">
+                    <span class="dialogue-role">iReceptionist</span>
+                    <p>"I can confirm Dr. Roberts has an open slot at 10:00 AM on Thursday. We accept Blue Shield and Aetna. Let me write this directly to your portal."</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tab Content 2: WhatsApp -->
+            <div class="console-body" id="tab-whatsapp">
+              <div class="wa-mock-container">
+                <div class="wa-bar">
+                  <div class="wa-indicator"></div>
+                  <div>
+                    <span class="wa-header-title">Enterprise Virtual Agent</span>
+                    <p class="wa-header-sub">Automated Intake System</p>
+                  </div>
+                </div>
+                <div class="wa-scroller">
+                  <div class="wa-bubble client">
+                    <p>I would like to receive the pricing details for the real estate site visit we discussed over the phone.</p>
+                    <span class="wa-time">14:02 PM</span>
+                  </div>
+                  <div class="wa-bubble system">
+                    <p>Understood! 🏠 Here is the link to download the layout brochure for Phase II plots, detailing the flexible 24-month payment structures. Would you like to confirm a guided drive tomorrow?</p>
+                    <span class="wa-time">14:02 PM ✅</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tab Content 3: Web Widget -->
+            <div class="console-body" id="tab-webchat">
+              <div class="web-widget-mock">
+                <div class="widget-intro">Select an immediate action query to observe structural payload processing:</div>
+                <div class="widget-actions">
+                  <button class="btn btn-secondary btn-xs" onclick="triggerWebDemoOption('pricing')">💬 What is the licensing pricing?</button>
+                  <button class="btn btn-secondary btn-xs" onclick="triggerWebDemoOption('hours')">⏰ What are operational uptimes?</button>
+                  <button class="btn btn-secondary btn-xs" onclick="triggerWebDemoOption('human')">👤 Can I escalate to a live director?</button>
+                </div>
+                <div class="widget-live-output" id="web-demo-reply">
+                  <span class="text-secondary">Awaiting direct user payload selection...</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
     </section>
 
-    <footer id="contact">
-      <span>Northstar Dental Studio</span>
-      <span>Open Monday to Saturday, 9 AM to 6 PM</span>
-    </footer>
+    <!-- STORYTELLING CHALLENGE/RESOLUTION SECTION -->
+    <section id="narrative" class="narrative-section">
+      <div class="container">
+        <div class="section-heading text-center">
+          <span class="section-tag">Corporate Operational Reality</span>
+          <h2>The Operational Reality: <span class="gradient-text">Missed Calls, Bleeding Pipelines</span></h2>
+          <p class="section-description">
+            Traditional staffing models struggle with off-hour surges, sudden peak capacities, and localized language dialects. iReceptionist bridges this administrative gap.
+          </p>
+        </div>
 
-    <script src="./app.js"></script>
-  </body>
+        <div class="narrative-timeline-grid">
+          <!-- Step 1 -->
+          <div class="timeline-step-card">
+            <div class="step-icon err-color"><i data-lucide="phone-off"></i></div>
+            <div class="step-index">01</div>
+            <h3 class="step-title">The After-Hours Leak</h3>
+            <p class="step-text">62% of inbound high-intent leads hang up when greeted by a robotic answering machine or a continuous ringtone. In clinical, recruiting, or real estate fields, this represents thousands in immediate lost revenue.</p>
+            <div class="step-metric-badge">Revenue Leakage: High</div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="timeline-step-card">
+            <div class="step-icon system-color"><i data-lucide="git-branch"></i></div>
+            <div class="step-index">02</div>
+            <h3 class="step-title">Autonomous Processing</h3>
+            <p class="step-text">iReceptionist answers on the first ring, completely eliminating hold lines. Synthesizing context, local dialect preferences, and query intents, it handles scheduling and captures CRM data seamlessly in under 0.2s.</p>
+            <div class="step-metric-badge">Latency: Sub-Millisecond</div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="timeline-step-card">
+            <div class="step-icon success-color"><i data-lucide="database"></i></div>
+            <div class="step-index">03</div>
+            <h3 class="step-title">CRM Synchronization</h3>
+            <p class="step-text">Intelligent extraction models instantly clean and parse names, phone records, intended requests, and budget parameters, pushing them directly into systems like Salesforce, HubSpot, or Recrui8 portals.</p>
+            <div class="step-metric-badge">Data Fidelity: 99.8% Accurate</div>
+          </div>
+        </div>
+
+        <!-- Narrative Highlight Card -->
+        <div class="narrative-feature-callout">
+          <div class="callout-content">
+            <div class="quote-sign"><i data-lucide="quote"></i></div>
+            <blockquote>
+              "By integrating iReceptionist's customized cognitive employee into our clinical booking pipelines, we eliminated dropped intake forms entirely and scaled call routing capabilities by 240% overnight."
+            </blockquote>
+            <p class="quote-author">— Executive VP of Administration, Lifespan Health Networks</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TRUSTED INTEGRATIONS ROW -->
+    <section class="trust-logos-row">
+      <div class="container">
+        <p class="row-subtitle">Seamless Synchronization and Interconnectivity Across Core Ecosystems</p>
+        <div class="logos-grid">
+          <div class="logo-box"><i data-lucide="calendar"></i> <span>Google Calendar</span></div>
+          <div class="logo-box"><i data-lucide="mail"></i> <span>Outlook CRM</span></div>
+          <div class="logo-box"><i data-lucide="database"></i> <span>Salesforce Enterprise</span></div>
+          <div class="logo-box"><i data-lucide="message-square"></i> <span>WhatsApp API</span></div>
+          <div class="logo-box"><i data-lucide="layers"></i> <span>Recrui8 Recruiting Hub</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- UNIFIED CAPABILITIES -->
+    <section id="capabilities" class="capabilities-section">
+      <div class="container">
+        <div class="section-heading text-center">
+          <span class="section-tag">System Parameters</span>
+          <h2>Platform Capabilities & Enterprise Guardrails</h2>
+          <p class="section-description">
+            A cohesive virtual employee operating on unified intent models, providing enterprise consistency across all channels.
+          </p>
+        </div>
+
+        <div class="capability-matrix">
+          <!-- Card 1 -->
+          <div class="capability-card">
+            <div class="card-icon-container"><i data-lucide="languages" class="system-color"></i></div>
+            <h3>Multilingual Cognitive Layer</h3>
+            <p>Speak naturally with callers in English, Hindi, Marathi, Tamil, and local dialects. System detects semantic nuances and transitions language seamlessly mid-call.</p>
+            <ul class="card-bullet-list">
+              <li><i data-lucide="check"></i> Automatic dialect orientation</li>
+              <li><i data-lucide="check"></i> Accent neutralization algorithm</li>
+            </ul>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="capability-card">
+            <div class="card-icon-container"><i data-lucide="calendar-check" class="success-color"></i></div>
+            <h3>Conflict-Free Booking</h3>
+            <p>Native bi-directional scheduling loops interface with Google Workspace, Outlook Office, and medical clinical portals. Resolves appointment collisions in real time.</p>
+            <ul class="card-bullet-list">
+              <li><i data-lucide="check"></i> Immediate booking confirmations</li>
+              <li><i data-lucide="check"></i> Smart calendar holding thresholds</li>
+            </ul>
+          </div>
+
+          <!-- Card 3 -->
+          <div class="capability-card">
+            <div class="card-icon-container"><i data-lucide="database" class="accent-color"></i></div>
+            <h3>Structured CRM Pipelines</h3>
+            <p>Automatically extract callers' names, contact numbers, exact requirements, and estimated budgets, packaging and pushing clean telemetry to enterprise systems.</p>
+            <ul class="card-bullet-list">
+              <li><i data-lucide="check"></i> Multi-field JSON structures</li>
+              <li><i data-lucide="check"></i> Instant pipeline scoring</li>
+            </ul>
+          </div>
+
+          <!-- Card 4 -->
+          <div class="capability-card">
+            <div class="card-icon-container"><i data-lucide="brain" class="system-color"></i></div>
+            <h3>Sentiment & Priority Triggers</h3>
+            <p>Monitor callers' voices for signs of frustration or urgency. Flags hot leads and automatically escalates critical client issues to physical supervisors.</p>
+            <ul class="card-bullet-list">
+              <li><i data-lucide="check"></i> Active sentiment metric logging</li>
+              <li><i data-lucide="check"></i> Human-escalation handoffs</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LIVE DEMO & INTERACTIVE SIMULATOR -->
+    <section id="interactive-simulator" class="simulator-section">
+      <div class="container">
+        <div class="section-heading text-center">
+          <span class="section-tag">Interactive Environment</span>
+          <h2>The Live Telemetry Sandbox</h2>
+          <p class="section-description">
+            Select a target vertical below to load the specialized context guidelines, and run a live interactive voice call simulation with real-time semantic logs.
+          </p>
+        </div>
+
+        <div class="simulator-framework">
+          <!-- Left: Industries Selector -->
+          <div class="simulator-sidebar">
+            <h4 class="sidebar-heading">Industry Verticals</h4>
+            <div class="industry-selector-group">
+              <button class="selector-btn active" data-industry="healthcare">
+                <i data-lucide="stethoscope"></i>
+                <div class="btn-meta">
+                  <span>Healthcare Assistant</span>
+                  <p>Handles scheduling & clinical inquiries</p>
+                </div>
+              </button>
+
+              <button class="selector-btn" data-industry="recruitment">
+                <i data-lucide="users"></i>
+                <div class="btn-meta">
+                  <span>Recruitment (Recrui8 Portal)</span>
+                  <p>Interviews vetting, status updates & ATS sync</p>
+                </div>
+              </button>
+
+              <button class="selector-btn" data-industry="realestate">
+                <i data-lucide="home"></i>
+                <div class="btn-meta">
+                  <span>Real Estate Liaison</span>
+                  <p>Property information & layout pricing</p>
+                </div>
+              </button>
+
+              <button class="selector-btn" data-industry="education">
+                <i data-lucide="graduation-cap"></i>
+                <div class="btn-meta">
+                  <span>Educational Intake Agent</span>
+                  <p>Enrollment periods, fees & scholarships</p>
+                </div>
+              </button>
+            </div>
+
+            <!-- Language configuration selection -->
+            <div class="language-picker-box">
+              <label for="sandbox-language-picker"><i data-lucide="globe"></i> Primary Interface Dialect</label>
+              <select id="sandbox-language-picker">
+                <option value="en">English (US/UK Standard)</option>
+                <option value="hi">Hindi (हिंदी - Standard)</option>
+                <option value="mr">Marathi (मराठी)</option>
+                <option value="ta">Tamil (தமிழ்)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Middle: Chat Stream Box -->
+          <div class="simulator-main">
+            <div class="simulator-bar">
+              <div class="agent-avatar-meta">
+                <span class="status-indicator"></span>
+                <div>
+                  <h4 id="active-agent-name">Healthcare Intake AI</h4>
+                  <p class="text-secondary">Status: Live Inbound Monitoring</p>
+                </div>
+              </div>
+              <span class="badge-outline-slate"><i data-lucide="phone"></i> Simulated Voice Link</span>
+            </div>
+
+            <!-- Chat message streams -->
+            <div class="chat-viewport" id="chat-stream-box">
+              <div class="chat-bubble-ai">
+                <span class="sender-label">AI Receptionist</span>
+                <p id="chat-initial-message">Hello, thanks for calling Green Valley Clinic. I'm your AI assistant. How can I help you today? You can ask about doctor appointments, fees, or our clinic location!</p>
+              </div>
+            </div>
+
+            <!-- Interaction triggers -->
+            <div class="quick-options-area">
+              <span class="options-lbl">Simulate Inbound Queries:</span>
+              <div class="quick-options-grid" id="quick-reply-options">
+                <!-- Populated dynamically via JS -->
+              </div>
+            </div>
+
+            <!-- Custom message submission line -->
+            <div class="custom-query-line">
+              <input type="text" id="custom-user-text" placeholder="Type a custom scenario query (e.g. 'How much are the consultation fees?')..." aria-label="Simulate custom caller voice input" />
+              <button id="send-custom-msg-btn" aria-label="Send Query"><i data-lucide="send"></i></button>
+            </div>
+          </div>
+
+          <!-- Right: Telemetry Dashboard -->
+          <div class="simulator-telemetry">
+            <div class="telemetry-bar">
+              <i data-lucide="cpu"></i>
+              <h4>AI Processing Logs</h4>
+            </div>
+
+            <div class="telemetry-content">
+              <!-- Lead Scoring Widget -->
+              <div class="tel-widget">
+                <span class="tel-lbl">Lead Qualification Tier</span>
+                <div class="temp-indicator-row">
+                  <span class="temp-tab cold" id="temp-indicator-cold">Cold</span>
+                  <span class="temp-tab warm" id="temp-indicator-warm">Warm</span>
+                  <span class="temp-tab hot" id="temp-indicator-hot">Hot 🔥</span>
+                </div>
+                <div class="telemetry-bar-bg">
+                  <div class="telemetry-bar-fill" id="lead-score-progress-bar" style="width: 20%;"></div>
+                </div>
+                <div class="score-meta-label">Qualification Score: <span id="lead-score-text">20%</span></div>
+              </div>
+
+              <!-- Sentiment tracker -->
+              <div class="tel-widget">
+                <span class="tel-lbl">Caller Sentiment Analysis</span>
+                <div class="sentiment-box" id="sentiment-indicator-box">
+                  <i data-lucide="smile" id="sentiment-icon"></i>
+                  <span id="sentiment-text">Cooperative</span>
+                </div>
+              </div>
+
+              <!-- Structured Database Sync -->
+              <div class="tel-widget">
+                <span class="tel-lbl">Structured Data Extracted</span>
+                <div class="structured-logs-wrapper">
+                  <div class="log-row">
+                    <span class="log-key">Caller Name:</span>
+                    <span class="log-val" id="crm-captured-name">Waiting...</span>
+                  </div>
+                  <div class="log-row">
+                    <span class="log-key">Phone Num:</span>
+                    <span class="log-val" id="crm-captured-phone">Waiting...</span>
+                  </div>
+                  <div class="log-row">
+                    <span class="log-key">Core Query:</span>
+                    <span class="log-val" id="crm-captured-req">Waiting...</span>
+                  </div>
+                  <div class="log-row">
+                    <span class="log-key">Est. Budget:</span>
+                    <span class="log-val" id="crm-captured-budget">Waiting...</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Live Summarization Box -->
+              <div class="tel-widget">
+                <span class="tel-lbl">Autonomous Conversation Summary</span>
+                <div class="summary-code-block" id="live-call-summary-box">
+                  * Pipeline active. Waiting for audio parameters.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DETAILED INDUSTRY SPECIFICS SHOWCASE -->
+    <section id="industries" class="industries-showcase-section">
+      <div class="container">
+        <div class="section-heading text-center">
+          <span class="section-tag">System Blueprints</span>
+          <h2>Specialized Training Blueprints</h2>
+          <p class="section-description">
+            Each agent is trained on rigorous regulatory parameters, ensuring safe, compliant operations in specialized fields.
+          </p>
+        </div>
+
+        <div class="grid md-grid-2 gap-40 align-center">
+          <!-- Left Side: Interactive vertical configuration cards -->
+          <div class="industry-verticals-cards">
+            <!-- Healthcare -->
+            <div class="showcase-card active" data-showcase="healthcare">
+              <div class="sh-card-header">
+                <div class="sh-icon h-color"><i data-lucide="stethoscope"></i></div>
+                <h3>Clinical Healthcare Agent</h3>
+              </div>
+              <p>Ensures patient booking processes remain HIPAA-compliant. Intersects appointment calendars, answers doctor timing questions, and flags urgent medical callouts.</p>
+              <ul class="sh-list-bullets">
+                <li><i data-lucide="arrow-right"></i> HIPAA compliance architecture protocols</li>
+                <li><i data-lucide="arrow-right"></i> Multi-office doctor calendar conflict resolution</li>
+              </ul>
+            </div>
+
+            <!-- Recruitment -->
+            <div class="showcase-card" data-showcase="recruitment">
+              <div class="sh-card-header">
+                <div class="sh-icon r-color"><i data-lucide="users"></i></div>
+                <h3>Recruitment Liaison (Recrui8 Sync)</h3>
+              </div>
+              <p>Integrated natively with the **Recrui8** Applicant Tracking System. Checks interview progress, takes candidates' data, and logs ratings scorecard records automatically.</p>
+              <ul class="sh-list-bullets">
+                <li><i data-lucide="arrow-right"></i> Seamless Recrui8 ATS pipeline syncing</li>
+                <li><i data-lucide="arrow-right"></i> Early-stage candidate eligibility scorecards</li>
+              </ul>
+            </div>
+
+            <!-- Real Estate -->
+            <div class="showcase-card" data-showcase="realestate">
+              <div class="sh-card-header">
+                <div class="sh-icon re-color"><i data-lucide="home"></i></div>
+                <h3>Real Estate Broker Liaison</h3>
+              </div>
+              <p>Captures real estate client budgets and property preferences. Dispatches layout files directly over WhatsApp and schedules guided agent tours.</p>
+              <ul class="sh-list-bullets">
+                <li><i data-lucide="arrow-right"></i> Instant plot location sharing via WhatsApp</li>
+                <li><i data-lucide="arrow-right"></i> Automated budget verification telemetry</li>
+              </ul>
+            </div>
+
+            <!-- Education -->
+            <div class="showcase-card" data-showcase="education">
+              <div class="sh-card-header">
+                <div class="sh-icon e-color"><i data-lucide="graduation-cap"></i></div>
+                <h3>University Admissions Advisor</h3>
+              </div>
+              <p>Acts as an auxiliary academic office counselor. Answers course fees structures, admission periods schedules, and merit-based eligibility rules.</p>
+              <ul class="sh-list-bullets">
+                <li><i data-lucide="arrow-right"></i> Complete course tuition catalog lookup</li>
+                <li><i data-lucide="arrow-right"></i> Student application timeline tracking</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Right Side: Dynamic Console Panel -->
+          <div class="showcase-dynamic-panel">
+            <div class="console-screen-frame">
+              <div class="screen-titlebar">
+                <span class="control-dot"></span>
+                <span class="control-dot"></span>
+                <span class="control-dot"></span>
+                <div class="screen-url">https://ireceptionist.ai/console/training</div>
+              </div>
+              <div class="screen-layout">
+                <div class="screen-side">
+                  <div class="side-item active"><i data-lucide="sliders"></i> Parameters</div>
+                  <div class="side-item"><i data-lucide="mic"></i> Voice Synth</div>
+                  <div class="side-item"><i data-lucide="blocks"></i> Integrations</div>
+                </div>
+                <div class="screen-main">
+                  <div class="dynamic-value-card" id="showcase-console-values">
+                    <!-- Dynamic state output populated based on vertical card clicks -->
+                    <div class="flex-row-between">
+                      <h4 id="v-showcase-title">Healthcare Engine Active</h4>
+                      <span class="status-pill green">HIPAA Verified</span>
+                    </div>
+                    <p class="meta-desc" id="v-showcase-desc">Secure clinical pipeline integrated with medical booking system.</p>
+                    
+                    <div class="gauge-bar-wrapper">
+                      <div class="gauge-label-row">
+                        <span id="v-stat-lbl-1">Patient Slot Booking Automation</span>
+                        <strong id="v-stat-val-1">98.2% Success</strong>
+                      </div>
+                      <div class="gauge-track">
+                        <div class="gauge-fill" id="v-stat-fill-1" style="width: 98.2%"></div>
+                      </div>
+                    </div>
+
+                    <div class="gauge-bar-wrapper">
+                      <div class="gauge-label-row">
+                        <span id="v-stat-lbl-2">Clinical FAQ Answering Accuracy</span>
+                        <strong id="v-stat-val-2">99.7% Score</strong>
+                      </div>
+                      <div class="gauge-track">
+                        <div class="gauge-fill" id="v-stat-fill-2" style="width: 99.7%"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VOICE CLONING (VOCAL SYNTHESIS) -->
+    <section id="voice-cloning" class="voice-cloning-section">
+      <div class="container">
+        <div class="cloning-wrapper-card">
+          <div class="grid md-grid-2 align-center gap-40">
+            <div>
+              <span class="section-tag">Brand Consistency</span>
+              <h2>Custom Voice Cloning & Tone Adaptation</h2>
+              <p class="section-description">
+                Keep call interactions completely inline with your corporate brand design guidelines. Provide a 30-second audio record of your chief officer, and our neural voice engine builds matching conversational voice patterns to address clients.
+              </p>
+              
+              <div class="cloning-steps">
+                <div class="step-line-item">
+                  <div class="step-circle">1</div>
+                  <div>
+                    <h4>Record Sample Timbre</h4>
+                    <p class="text-secondary">Provide or capture a 30-second acoustic audio sample of your organization's speaker.</p>
+                  </div>
+                </div>
+
+                <div class="step-line-item">
+                  <div class="step-circle">2</div>
+                  <div>
+                    <h4>Map Tone Nuances</h4>
+                    <p class="text-secondary">System automatically maps pitch accents, vowel pronunciations, and pause rates.</p>
+                  </div>
+                </div>
+
+                <div class="step-line-item">
+                  <div class="step-circle">3</div>
+                  <div>
+                    <h4>Deploy Globally</h4>
+                    <p class="text-secondary">Deploy your synthetic voice model onto local hotlines and digital pipelines in minutes.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Voice Cloning Interactive Widget -->
+            <div class="voice-cloning-interactive">
+              <div class="slate-recorder-card">
+                <div class="recorder-bar">
+                  <i data-lucide="mic"></i>
+                  <h4>Acoustic Training Panel</h4>
+                </div>
+                
+                <div class="spectrogram-panel">
+                  <div class="spectrogram-waves" id="voice-waves">
+                    <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                  </div>
+                  <span class="spectrogram-time" id="cloning-timer">00:00</span>
+                </div>
+
+                <div class="recorder-actions">
+                  <button class="btn btn-danger w-full" id="start-voice-clone-btn">
+                    <i data-lucide="mic"></i> Record Timbre Sample
+                  </button>
+                  <button class="btn btn-secondary w-full disabled" id="play-cloned-btn">
+                    <i data-lucide="play"></i> Audit Synthesized Voice
+                  </button>
+                </div>
+
+                <div class="recorder-log">
+                  <span id="cloning-status-msg" class="text-secondary">Capture your training voice metrics to initialize synthesis blueprints.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ROI & SAVINGS CALCULATOR -->
+    <section id="roi-calculator" class="roi-section">
+      <div class="container">
+        <div class="section-heading text-center">
+          <span class="section-tag">Value Assessment</span>
+          <h2>The Operational Efficiency Calculator</h2>
+          <p class="section-description">
+            Evaluate exact overhead optimizations when scheduling repetitive inbound customer queries to our virtual employee.
+          </p>
+        </div>
+
+        <div class="roi-modeling-box">
+          <div class="grid md-grid-2 gap-40">
+            <!-- Sliders -->
+            <div class="roi-sliders-pane">
+              <div class="roi-slider-group">
+                <div class="label-row">
+                  <label for="calls-range">Expected Monthly Calls:</label>
+                  <span class="slider-val" id="calls-count-val">2,500</span>
+                </div>
+                <input type="range" id="calls-range" min="500" max="15000" step="500" value="2500" />
+              </div>
+
+              <div class="roi-slider-group">
+                <div class="label-row">
+                  <label for="hours-range">Hourly Rate of Local Front Desk Representative ($):</label>
+                  <span class="slider-val" id="rate-val">$18/hr</span>
+                </div>
+                <input type="range" id="hours-range" min="10" max="45" step="1" value="18" />
+              </div>
+
+              <div class="roi-slider-group">
+                <div class="label-row">
+                  <label for="missed-calls">Estimated Missed Call Rate (%):</label>
+                  <span class="slider-val" id="missed-val">25%</span>
+                </div>
+                <input type="range" id="missed-calls" min="5" max="60" step="5" value="25" />
+              </div>
+            </div>
+
+            <!-- Financial Outputs -->
+            <div class="roi-outputs-pane">
+              <div class="roi-main-card">
+                <span class="card-subtitle-upper">Projected Monthly Cost Deflection</span>
+                <span class="card-main-savings" id="roi-savings-calc">$3,240</span>
+                <p class="card-savings-desc">Optimized operating margins relative to physical calling resource parameters.</p>
+              </div>
+
+              <div class="roi-mini-stats-grid">
+                <div class="mini-stat-card">
+                  <span class="mini-title">Representative Hours Deflected</span>
+                  <span class="mini-value" id="roi-hours-saved">160 hrs</span>
+                </div>
+                <div class="mini-stat-card">
+                  <span class="mini-title">Recovered Leads Capture</span>
+                  <span class="mini-value" id="roi-leads-saved">48 Leads</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- INTEGRATIONS CARDS SECTION -->
+    <section class="integrations-cards-section">
+      <div class="container text-center">
+        <h2>Flawless Enterprise Architecture Integration</h2>
+        <p class="text-secondary max-w-600 mx-auto">Connect directly to your active tech ecosystem. Pushes parsed call details, appointment parameters, and qualified leads in real time.</p>
+        
+        <div class="apps-grid mt-40">
+          <div class="app-card">
+            <div class="app-logo"><i data-lucide="calendar"></i></div>
+            <h4>Google Calendar</h4>
+            <span class="app-status">Active Pipeline</span>
+          </div>
+          <div class="app-card">
+            <div class="app-logo"><i data-lucide="database"></i></div>
+            <h4>Salesforce Cloud</h4>
+            <span class="app-status">Dynamic Push</span>
+          </div>
+          <div class="app-card">
+            <div class="app-logo"><i data-lucide="mail"></i></div>
+            <h4>Outlook 365</h4>
+            <span class="app-status">Bi-directional Sync</span>
+          </div>
+          <div class="app-card">
+            <div class="app-logo"><i data-lucide="layers"></i></div>
+            <h4>Recrui8 Integration</h4>
+            <span class="app-status">Connected Hub</span>
+          </div>
+          <div class="app-card">
+            <div class="app-logo"><i data-lucide="slack"></i></div>
+            <h4>Slack Notification</h4>
+            <span class="app-status">Instant Webhooks</span>
+          </div>
+          <div class="app-card">
+            <div class="app-logo"><i data-lucide="link"></i></div>
+            <h4>Zapier Webhook</h4>
+            <span class="app-status">Infinite Automation</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LEAD CAPTURE FORM SECTION -->
+    <section id="book-demo" class="lead-capture-section">
+      <div class="container">
+        <div class="glass-enterprise-intake-card grid md-grid-2 gap-40 align-center">
+          <div>
+            <span class="section-tag">Enterprise Integration</span>
+            <h2>Configure Your Virtual Employee Parameters</h2>
+            <p class="section-description">
+              Secure an expert briefing session. Submit your operating parameters, and observe your values map directly into our interactive sandbox simulator active telemetry.
+            </p>
+            
+            <div class="intake-bullets">
+              <div class="bullet-row">
+                <i data-lucide="shield-check"></i>
+                <span>Configure custom telephone numbers to test conversational responsiveness.</span>
+              </div>
+              <div class="bullet-row">
+                <i data-lucide="zap"></i>
+                <span>Deploy multilingual parameters to handle regional dialects.</span>
+              </div>
+              <div class="bullet-row">
+                <i data-lucide="mic"></i>
+                <span>Establish custom synthetic voice blueprints for your company.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- The Registration form widget -->
+          <div class="intake-form-container">
+            <form id="lead-signup-form" class="signup-form">
+              <h4 class="form-heading">Establish Agent Specifications</h4>
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="client-name">Administrator Name</label>
+                  <input type="text" id="client-name" required placeholder="Johnathan Miller" />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="client-phone">Corporate Phone Number</label>
+                  <input type="tel" id="client-phone" required placeholder="+1 (555) 019-2834" />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="client-industry">Primary Operating Vertical</label>
+                  <select id="client-industry">
+                    <option value="healthcare">Healthcare & Clinical Networks</option>
+                    <option value="recruitment">Recruitment & Staffing Vetting (Recrui8)</option>
+                    <option value="realestate">Real Estate & Asset Placement</option>
+                    <option value="education">University Admissions & Intake Systems</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="client-budget">Expected Average Inbound Volume</label>
+                  <select id="client-budget">
+                    <option value="tier-1">Less than 50 calls / day</option>
+                    <option value="tier-2">50 - 250 calls / day</option>
+                    <option value="tier-3">Over 250 calls / day (Enterprise Scale)</option>
+                  </select>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-primary w-full">
+                <i data-lucide="sparkles"></i> Deploy Parameter Specifications
+              </button>
+
+              <div id="form-success-alert" class="form-success-alert hidden">
+                <i data-lucide="check-circle"></i>
+                <span><strong>Profile Deployed!</strong> Your parameters have synced directly to the Telemetry Simulator above.</span>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div class="footer-meta">
+        <a href="#" class="logo">
+          <div class="logo-icon">
+            <i data-lucide="phone-call"></i>
+          </div>
+          <span class="logo-text">i<span class="gradient-text">Receptionist</span></span>
+        </a>
+        <p class="footer-summary">
+          Architecting autonomous, enterprise-grade cognitive voice systems for leading healthcare clinical portals, corporate recruiting firms, real estate agencies, and academic intake offices globally.
+        </p>
+      </div>
+
+      <div class="footer-col">
+        <h5>Platform Capabilities</h5>
+        <a href="#capabilities">Sub-second Latency</a>
+        <a href="#interactive-simulator">Live Sandbox Logs</a>
+        <a href="#voice-cloning">Voice Synthesis</a>
+        <a href="#roi-calculator">Cost Deflection Model</a>
+      </div>
+
+      <div class="footer-col">
+        <h5>Field Blueprints</h5>
+        <a href="#industries">Clinical (HIPAA Ready)</a>
+        <a href="#industries">Talent ATS (Recrui8)</a>
+        <a href="#industries">Real Estate Asset Sales</a>
+        <a href="#industries">University Admissions</a>
+      </div>
+
+      <div class="footer-col">
+        <h5>Regulatory & Security</h5>
+        <a href="#">Compliance Guidelines</a>
+        <a href="#">HIPAA Compliance Sheet</a>
+        <a href="#">Security Safeguards</a>
+        <a href="#">Terms & Service SLA</a>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div class="container footer-bottom-flex">
+        <p>&copy; 2026 iReceptionist Group Inc. All architectural system rights reserved.</p>
+        <p class="signature">Made with ❤️ by Code Ignite by Yash Chandnani</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- JS Link -->
+  <script src="js/app.js"></script>
+  <script src="https://ai-receptionist-server-production-ef92.up.railway.app/widget/loader.js" data-bot-id="4d7aac5d-b7cb-4ca4-9892-b2d4a72ee71d"></script>
+</body>
 </html>

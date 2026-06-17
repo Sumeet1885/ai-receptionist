@@ -33,13 +33,10 @@ export const StatsCards: React.FC<StatsCardsProps> = ({ activeBot, leads }) => {
       </div>
 
       <div className="bg-brand-card p-5 rounded-xl border border-brand-border shadow-sm">
-        <p className="text-xs font-semibold text-brand-muted uppercase tracking-wider font-mono">Languages Active</p>
-        <div className="flex flex-wrap gap-1.5 mt-3.5">
-          {activeBot.languages.map(lang => (
-            <span key={lang} className="px-2 py-0.5 bg-brand-bg border border-brand-border text-brand-accent text-[10px] font-bold rounded font-mono">
-              {lang}
-            </span>
-          ))}
+        <p className="text-xs font-semibold text-brand-muted uppercase tracking-wider font-mono">Widget Color</p>
+        <div className="flex items-center mt-4 space-x-2">
+          <span className="w-5 h-5 rounded-full border border-brand-border" style={{ background: activeBot.widgetConfig.primaryColor }} />
+          <span className="text-xs text-brand-muted font-sans">Theme preset</span>
         </div>
       </div>
 

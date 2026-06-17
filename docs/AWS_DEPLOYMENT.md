@@ -101,6 +101,11 @@ CLIENT_URL=https://app.yourdomain.com
 EXPRESS_SERVER_URL=https://api.yourdomain.com
 WIDGET_BASE_URL=https://api.yourdomain.com
 
+ALLOW_ALL_WIDGET_DOMAINS=false
+WIDGET_RATE_LIMIT_PER_MINUTE=120
+CHAT_RATE_LIMIT_PER_MINUTE=60
+LIVE_VOICE_RATE_LIMIT_PER_MINUTE=20
+
 SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=...
 
@@ -117,6 +122,8 @@ MICROSOFT_REDIRECT_URI=https://api.yourdomain.com/api/calendar/callback/outlook
 ```
 
 Store secrets such as `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`, `GOOGLE_CLIENT_SECRET`, and `MICROSOFT_CLIENT_SECRET` in Secrets Manager or SSM Parameter Store. Do not bake them into the image.
+
+`ALLOW_ALL_WIDGET_DOMAINS` must stay `false` in production. It exists only as an emergency/debug escape hatch.
 
 ## DNS And TLS
 
@@ -200,6 +207,8 @@ app.yourdomain.com
 Do not use `localhost` in production agent settings.
 
 The backend accepts domain-only values and compares by hostname, so `customerwebsite.com` and `https://customerwebsite.com` both authorize the same host.
+
+The widget loader JavaScript is public, but the iframe HTML, chat APIs, and live voice WebSocket validate browser `Origin` / `Referer` headers against the agent's allowed domains, the backend runtime origin, and `CLIENT_URL`. Public requests are also rate-limited by IP.
 
 ## Smoke Test Checklist
 

@@ -5,6 +5,8 @@ import { config } from '../config';
 import { analyzeLead } from './leadController';
 import { geminiGuard } from '../services/geminiGuard';
 import WebSocket from 'ws';
+import { checkAllowedOrigin } from '../utils/security';
+import { checkWebSocketRateLimit } from '../middleware/rateLimit';
 
 const supabase = createClient(config.supabaseUrl, config.supabaseServiceKey, {
   realtime: { transport: WebSocket },
@@ -32,16 +34,14 @@ export function setupWebSocketServer(server: Server) {
       return;
     }
 
-    // ── GeminiGuard: acquire a concurrent session slot ────────────────────────
-    // Blocks (queues) if all 3 slots are occupied; rejects after 30 s.
-    try {
-      await geminiGuard.acquireSession(sessionId);
-    } catch (reason) {
-      console.warn(`[GeminiGuard] Session rejected (${sessionId}): ${reason}`);
-      ws.close(1013, 'All AI receptionist lines are busy. Please try again shortly.');
+    const rateLimit = checkWebSocketRateLimit(req);
+    if (!rateLimit.allowed) {
+      ws.close(1013, 'Too many voice connection attempts. Please try again shortly.');
       return;
     }
 
+    // ── GeminiGuard: acquire a concurrent session slot ────────────────────────
+    // Blocks (queues) if all 3 slots are occupied; rejects after 30 s.
     // 1. Fetch Bot Configuration
     const { data: bot } = await supabase
       .from('bots')
@@ -51,6 +51,26 @@ export function setupWebSocketServer(server: Server) {
 
     if (!bot) {
       ws.close(1008, 'Bot not found');
+      return;
+    }
+
+    const originCheck = checkAllowedOrigin(req, {
+      allowedDomains: bot.allowed_domains || [],
+      extraAllowedOrigins: [config.clientUrl],
+      allowRuntimeOrigin: true,
+      requireSource: true,
+    });
+
+    if (!originCheck.allowed) {
+      ws.close(1008, originCheck.reason || 'Origin is not authorized');
+      return;
+    }
+
+    try {
+      await geminiGuard.acquireSession(sessionId);
+    } catch (reason) {
+      console.warn(`[GeminiGuard] Session rejected (${sessionId}): ${reason}`);
+      ws.close(1013, 'All AI receptionist lines are busy. Please try again shortly.');
       return;
     }
 

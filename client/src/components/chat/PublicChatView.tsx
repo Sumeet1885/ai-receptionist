@@ -113,13 +113,12 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
                 </div>
 
                 <div className="space-y-2 bg-brand-bg border border-brand-border p-4 rounded-xl text-xs shadow-inner">
-                  <span className="font-semibold block text-brand-text font-sans">Languages Available:</span>
-                  <div className="flex flex-wrap gap-1.5 pt-1.5">
-                    {activeBot.languages.map(l => (
-                      <span key={l} className="px-2 py-0.5 bg-brand-card border border-brand-border rounded text-[10px] text-brand-text/70 font-medium font-mono">
-                        {l}
-                      </span>
-                    ))}
+                  <span className="font-semibold block text-brand-text font-sans">Widget Theme:</span>
+                  <div className="flex items-center justify-between gap-3 pt-1.5">
+                    <span className="text-brand-text/70">Color preset</span>
+                    <span className="px-2 py-0.5 bg-brand-card border border-brand-border rounded text-[10px] text-brand-text font-medium font-mono capitalize">
+                      {activeBot.primaryColor}
+                    </span>
                   </div>
                 </div>
               </div>

@@ -1,5 +1,4 @@
 import React from 'react';
-import { Icons } from '../common/Icons';
 
 interface OnboardingViewProps {
   newBotName: string;
@@ -12,8 +11,6 @@ interface OnboardingViewProps {
   setNewBotKB: (kb: string) => void;
   newBotColor: string;
   setNewBotColor: (color: string) => void;
-  newBotLanguages: string[];
-  setNewBotLanguages: (languages: string[]) => void;
   setView: (view: string) => void;
   handleCreateBot: (e: React.FormEvent) => void;
 }
@@ -29,8 +26,6 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
   setNewBotKB,
   newBotColor,
   setNewBotColor,
-  newBotLanguages,
-  setNewBotLanguages,
   setView,
   handleCreateBot
 }: OnboardingViewProps) => {
@@ -97,7 +92,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
               <div>
                 <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider mb-2 font-mono">Primary Color UI Theme</label>
                 <div className="flex items-center space-x-3 mt-1.5">
-                  {['indigo', 'emerald', 'rose', 'amber'].map((c) => (
+              {['indigo', 'emerald', 'rose', 'amber'].map((c) => (
                     <button
                       key={c}
                       type="button"
@@ -105,33 +100,6 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                       className={`w-10 h-10 rounded-full border-2 transition duration-200 ${newBotColor === c ? 'border-brand-text scale-110 shadow-md' : 'border-transparent'} ${c === 'indigo' ? 'bg-indigo-600' : c === 'emerald' ? 'bg-brand-success' : c === 'rose' ? 'bg-brand-danger' : 'bg-brand-warning'}`}
                     />
                   ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider mb-2 font-mono">Languages Enabled</label>
-                <div className="flex flex-wrap gap-2">
-                  {['English', 'Hindi', 'Marathi', 'Tamil'].map(lang => {
-                    const hasLang = newBotLanguages.includes(lang);
-                    return (
-                      <button
-                        key={lang}
-                        type="button"
-                        onClick={() => {
-                          if (hasLang) {
-                            if (newBotLanguages.length > 1) {
-                              setNewBotLanguages(newBotLanguages.filter(l => l !== lang));
-                            }
-                          } else {
-                            setNewBotLanguages([...newBotLanguages, lang]);
-                          }
-                        }}
-                        className={`px-3 py-2 rounded-lg text-xs font-sans font-semibold border transition duration-200 ${hasLang ? 'bg-brand-accent border-brand-accent text-brand-text' : 'bg-brand-bg border-brand-border text-brand-muted hover:bg-brand-card'}`}
-                      >
-                        {lang}
-                      </button>
-                    );
-                  })}
                 </div>
               </div>
             </div>

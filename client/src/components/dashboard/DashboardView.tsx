@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bot, Lead } from '../../types';
+import { Bot, Lead, WidgetConfig } from '../../types';
 import { Icons } from '../common/Icons';
 
 import { StatsCards } from './StatsCards';
@@ -30,9 +30,9 @@ interface DashboardViewProps {
     industry: string;
     greeting: string;
     primaryColor: string;
-    languages: string[];
     knowledgeBase: string;
     allowedDomains: string[];
+    widgetConfig: WidgetConfig;
   }>) => Promise<void>;
 }
 

@@ -1,3 +1,32 @@
+export type WidgetTheme = 'dark' | 'light' | 'brand';
+export type WidgetLauncherPosition = 'bottom-right' | 'bottom-left';
+export type WidgetLauncherStyle = 'icon' | 'text';
+export type WidgetSize = 'compact' | 'standard' | 'large';
+export type WidgetRadius = 'sharp' | 'soft' | 'rounded';
+export type LeadField = 'name' | 'phone' | 'email' | 'requirement';
+
+export interface WidgetConfig {
+  assistantName: string;
+  avatarText: string;
+  theme: WidgetTheme;
+  primaryColor: string;
+  backgroundColor: string;
+  surfaceColor: string;
+  textColor: string;
+  launcherPosition: WidgetLauncherPosition;
+  launcherStyle: WidgetLauncherStyle;
+  launcherText: string;
+  widgetSize: WidgetSize;
+  radius: WidgetRadius;
+  inputPlaceholder: string;
+  suggestedPrompts: string[];
+  enableVoice: boolean;
+  enableCalendar: boolean;
+  showPoweredBy: boolean;
+  requiredLeadFields: LeadField[];
+  handoffText: string;
+}
+
 export interface Bot {
   id: string;
   businessName: string;
@@ -8,6 +37,7 @@ export interface Bot {
   languages: string[];
   knowledgeBase: string;
   allowedDomains?: string[];
+  widgetConfig: WidgetConfig;
   createdAt: string;
 }
 

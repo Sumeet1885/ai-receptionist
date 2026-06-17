@@ -1,5 +1,8 @@
 import { Request, Response } from 'express';
 import { supabase } from '../services/db';
+import { config } from '../config';
+import { buildFrameAncestors, checkAllowedOrigin } from '../utils/security';
+import { defaultWidgetConfig, escapeHtml, mergeWidgetConfig } from '../utils/widgetConfig';
 
 const CONFIGURED_BASE_URL = process.env.WIDGET_BASE_URL || process.env.EXPRESS_SERVER_URL || '';
 
@@ -24,18 +27,6 @@ function getWidgetRuntimeBaseUrl(req: Request): string {
   return trimTrailingSlash(CONFIGURED_BASE_URL || getRequestBaseUrl(req));
 }
 
-function getHostname(value: string): string {
-  const trimmed = value.trim();
-  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-  return new URL(withScheme).hostname.toLowerCase();
-}
-
-function getOriginForCsp(value: string): string {
-  const trimmed = value.trim();
-  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-  return new URL(withScheme).origin;
-}
-
 /**
  * GET /widget/loader.js
  * Serves the universal embed loader script.
@@ -47,8 +38,132 @@ export const serveLoader = (req: Request, res: Response) => {
   res.setHeader('Content-Type', 'application/javascript');
   res.setHeader('Cache-Control', 'no-cache');
 
-  // Minified loader script
-  const js = `!function(){if(!window.__aiReceptionistLoaded){window.__aiReceptionistLoaded=!0;var e=document.currentScript||function(){for(var e=document.getElementsByTagName("script"),t=e.length-1;t>=0;t--)if(e[t].src&&-1!==e[t].src.indexOf("/widget/loader.js"))return e[t];return null}();var t=e?e.getAttribute("data-bot-id"):null;if(t){var n="${baseUrl}",i=!1,o=document.createElement("style");o.textContent="#air-widget-bubble{position:fixed;bottom:24px;right:24px;z-index:2147483647;width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;cursor:pointer;box-shadow:0 4px 24px rgba(99,102,241,.4);display:flex;align-items:center;justify-content:center;transition:transform .2s ease,box-shadow .2s ease}#air-widget-bubble:hover{transform:scale(1.1);box-shadow:0 6px 32px rgba(99,102,241,.55)}#air-widget-bubble svg{width:28px;height:28px;fill:#fff}#air-widget-container{position:fixed;bottom:96px;right:24px;z-index:2147483647;width:400px;height:560px;max-width:calc(100vw - 32px);max-height:calc(100vh - 120px);border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.25);transition:opacity .25s ease,transform .25s ease;opacity:0;transform:translateY(16px) scale(.95);pointer-events:none}#air-widget-container.air-open{opacity:1;transform:translateY(0) scale(1);pointer-events:all}#air-widget-container iframe{width:100%;height:100%;border:none;border-radius:16px}@media(max-width:480px){#air-widget-container{width:calc(100vw - 16px);height:calc(100vh - 80px);bottom:8px;right:8px;border-radius:12px}#air-widget-bubble{bottom:16px;right:16px;width:52px;height:52px}}",document.head.appendChild(o);var r=document.createElement("button");r.id="air-widget-bubble",r.setAttribute("aria-label","Open chat"),r.innerHTML='<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/><path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>',document.body.appendChild(r);var d,a=document.createElement("div");a.id="air-widget-container",document.body.appendChild(a),r.addEventListener("click",(function(){(i=!i)?(d||((d=document.createElement("iframe")).src=n+"/widget/"+t,d.setAttribute("allow","microphone"),d.setAttribute("title","AI Receptionist Chat"),a.appendChild(d)),a.classList.add("air-open"),r.innerHTML='<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>'):(a.classList.remove("air-open"),r.innerHTML='<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/><path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>')})),window.addEventListener("message",(function(e){e.data&&"air-widget-close"===e.data.type&&(i=!1,a.classList.remove("air-open"),r.innerHTML='<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/><path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>')}))}else console.error("[AI Receptionist] Missing data-bot-id on script tag.")}}();`;
+  const js = `(function(){
+  if (window.__aiReceptionistLoaded) return;
+  window.__aiReceptionistLoaded = true;
+
+  var script = document.currentScript || (function(){
+    var scripts = document.getElementsByTagName('script');
+    for (var i = scripts.length - 1; i >= 0; i--) {
+      if (scripts[i].src && scripts[i].src.indexOf('/widget/loader.js') !== -1) return scripts[i];
+    }
+    return null;
+  })();
+
+  var botId = script ? script.getAttribute('data-bot-id') : null;
+  if (!botId) {
+    console.error('[AI Receptionist] Missing data-bot-id on script tag.');
+    return;
+  }
+
+  var baseUrl = ${JSON.stringify(baseUrl)};
+  var config = ${JSON.stringify(defaultWidgetConfig)};
+  var isOpen = false;
+  var iframe = null;
+  var style = document.createElement('style');
+  var bubble = document.createElement('button');
+  var container = document.createElement('div');
+
+  function escapeText(value) {
+    return String(value || '').replace(/[&<>"']/g, function(match) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[match];
+    });
+  }
+
+  function cleanHex(value, fallback) {
+    return /^#[0-9a-f]{6}$/i.test(value || '') ? value : fallback;
+  }
+
+  function mergeConfig(next) {
+    next = next || {};
+    config = Object.assign({}, config, next);
+    config.primaryColor = cleanHex(config.primaryColor, '#22e6a8');
+    config.launcherPosition = config.launcherPosition === 'bottom-left' ? 'bottom-left' : 'bottom-right';
+    config.launcherStyle = config.launcherStyle === 'text' ? 'text' : 'icon';
+    config.launcherText = String(config.launcherText || 'Chat').slice(0, 24);
+    config.widgetSize = ['compact', 'standard', 'large'].indexOf(config.widgetSize) >= 0 ? config.widgetSize : 'standard';
+    config.radius = ['sharp', 'soft', 'rounded'].indexOf(config.radius) >= 0 ? config.radius : 'soft';
+  }
+
+  function chatSvg() {
+    return '<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/><path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>';
+  }
+
+  function closeSvg() {
+    return '<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
+  }
+
+  function renderBubble() {
+    if (isOpen) {
+      bubble.innerHTML = closeSvg();
+      return;
+    }
+    bubble.innerHTML = config.launcherStyle === 'text'
+      ? '<span>' + escapeText(config.launcherText || 'Chat') + '</span>'
+      : chatSvg();
+  }
+
+  function renderStyle() {
+    var left = config.launcherPosition === 'bottom-left';
+    var width = config.widgetSize === 'compact' ? '340px' : config.widgetSize === 'large' ? '460px' : '400px';
+    var height = config.widgetSize === 'compact' ? '500px' : config.widgetSize === 'large' ? '640px' : '560px';
+    var radius = config.radius === 'sharp' ? '6px' : config.radius === 'rounded' ? '24px' : '16px';
+    var bubbleSize = config.launcherStyle === 'text' ? 'auto' : '60px';
+    var bubblePadding = config.launcherStyle === 'text' ? '0 18px' : '0';
+    var sideRule = left ? 'left:24px;right:auto;' : 'right:24px;left:auto;';
+    var mobileSideRule = left ? 'left:16px;right:auto;' : 'right:16px;left:auto;';
+    style.textContent =
+      '#air-widget-bubble{position:fixed;bottom:24px;' + sideRule + 'z-index:2147483647;min-width:60px;width:' + bubbleSize + ';height:60px;padding:' + bubblePadding + ';border-radius:999px;background:' + config.primaryColor + ';border:none;cursor:pointer;box-shadow:0 8px 28px rgba(0,0,0,.24);display:flex;align-items:center;justify-content:center;transition:transform .2s ease,box-shadow .2s ease;color:#07130f;font:700 14px Arial,sans-serif}' +
+      '#air-widget-bubble:hover{transform:scale(1.06);box-shadow:0 12px 36px rgba(0,0,0,.28)}#air-widget-bubble svg{width:26px;height:26px;fill:currentColor}#air-widget-bubble span{white-space:nowrap}' +
+      '#air-widget-container{position:fixed;bottom:96px;' + sideRule + 'z-index:2147483647;width:' + width + ';height:' + height + ';max-width:calc(100vw - 32px);max-height:calc(100vh - 120px);border-radius:' + radius + ';overflow:hidden;box-shadow:0 14px 44px rgba(0,0,0,.28);transition:opacity .25s ease,transform .25s ease;opacity:0;transform:translateY(16px) scale(.96);pointer-events:none}' +
+      '#air-widget-container.air-open{opacity:1;transform:translateY(0) scale(1);pointer-events:all}#air-widget-container iframe{width:100%;height:100%;border:none;border-radius:' + radius + '}' +
+      '@media(max-width:480px){#air-widget-container{width:calc(100vw - 16px);height:calc(100vh - 80px);bottom:8px;right:8px;left:8px;border-radius:12px}#air-widget-bubble{bottom:16px;' + mobileSideRule + 'height:52px;min-width:52px}}';
+  }
+
+  function applyConfig(next) {
+    mergeConfig(next);
+    renderStyle();
+    renderBubble();
+  }
+
+  document.head.appendChild(style);
+  bubble.id = 'air-widget-bubble';
+  bubble.setAttribute('aria-label', 'Open chat');
+  container.id = 'air-widget-container';
+  document.body.appendChild(bubble);
+  document.body.appendChild(container);
+  applyConfig(config);
+
+  bubble.addEventListener('click', function() {
+    isOpen = !isOpen;
+    if (isOpen) {
+      if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.src = baseUrl + '/widget/' + encodeURIComponent(botId);
+        iframe.setAttribute('allow', 'microphone');
+        iframe.setAttribute('title', 'AI Receptionist Chat');
+        container.appendChild(iframe);
+      }
+      container.classList.add('air-open');
+    } else {
+      container.classList.remove('air-open');
+    }
+    renderBubble();
+  });
+
+  window.addEventListener('message', function(event) {
+    if (event.data && event.data.type === 'air-widget-close') {
+      isOpen = false;
+      container.classList.remove('air-open');
+      renderBubble();
+    }
+  });
+
+  fetch(baseUrl + '/api/chat/bot/' + encodeURIComponent(botId), { method: 'GET' })
+    .then(function(response) { return response.ok ? response.json() : null; })
+    .then(function(data) { if (data && data.widget_config) applyConfig(data.widget_config); })
+    .catch(function() {});
+})();`;
 
   res.send(js);
 };
@@ -64,9 +179,7 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
   // Validate bot exists and get allowed domains
   const { data: bot, error } = await supabase
     .from('bots')
-    // We intentionally don't throw if allowed_domains doesn't exist yet via RPC,
-    // but standard REST select works if schema is updated.
-    .select('id, business_name, greeting, primary_color, languages, industry, knowledge_base, allowed_domains')
+    .select('*')
     .eq('id', botId)
     .eq('is_active', true)
     .single();
@@ -76,55 +189,59 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
     return;
   }
 
-  // Strict CORS check: If allowed_domains is empty, reject entirely
-  const origin = req.get('Referer') || req.get('Origin');
-  if (!bot.allowed_domains || bot.allowed_domains.length === 0) {
-    res.status(403).send('<html><body><p>Widget is disabled. No allowed domains configured.</p></body></html>');
-    return;
-  }
-
-  if (!origin) {
-    res.status(403).send('<html><body><p>Access Denied (Missing Origin)</p></body></html>');
-    return;
-  }
-
-  const originUrl = new URL(origin);
-  const originHostname = originUrl.hostname.toLowerCase();
-  const isAllowed = bot.allowed_domains.some((domain: string) => {
-    try { return getHostname(domain) === originHostname; } catch { return false; }
+  const originCheck = checkAllowedOrigin(req, {
+    allowedDomains: bot.allowed_domains || [],
+    extraAllowedOrigins: [config.clientUrl],
+    allowRuntimeOrigin: false,
+    requireSource: true,
   });
-  
-  if (!isAllowed) {
-    res.status(403).send(`<html><body><p>Access Denied. Origin ${originUrl.origin} is not authorized for this widget.</p></body></html>`);
+
+  if (!originCheck.allowed) {
+    res.status(403).send(`<html><body><p>Access Denied. ${originCheck.reason || 'Origin is not authorized for this widget.'}</p></body></html>`);
     return;
   }
 
   const apiBase = getWidgetRuntimeBaseUrl(req);
+  const widgetConfig = mergeWidgetConfig(bot.widget_config, bot);
+  const displayName = escapeHtml(widgetConfig.assistantName || bot.business_name);
+  const avatarText = escapeHtml(widgetConfig.avatarText || bot.business_name.charAt(0));
+  const radiusPx = widgetConfig.radius === 'sharp' ? '6px' : widgetConfig.radius === 'rounded' ? '24px' : '16px';
+  const promptButtons = widgetConfig.suggestedPrompts.map((prompt, index) => (
+    `<button type="button" class="suggestion-btn" data-prompt-index="${index}">${escapeHtml(prompt)}</button>`
+  )).join('');
+  const voiceButtonHtml = widgetConfig.enableVoice ? `
+  <button type="button" id="voiceBtn" class="voice-btn" title="Talk to agent" aria-label="Talk to agent">
+    <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg>
+  </button>` : '';
+  const poweredByHtml = widgetConfig.showPoweredBy
+    ? `<div class="powered-by">Powered by <a href="https://agilewaters.com" target="_blank" rel="noopener">Agilewaters.com</a></div>`
+    : '';
 
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${bot.business_name} - Chat</title>
+<title>${displayName} - Chat</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --bg: #0f1117;
-    --card: #181a20;
-    --border: #23262f;
-    --text: #e6e8ec;
+    --bg: ${widgetConfig.backgroundColor};
+    --card: ${widgetConfig.surfaceColor};
+    --border: ${widgetConfig.primaryColor}33;
+    --text: ${widgetConfig.textColor};
     --muted: #6b7280;
-    --accent: #6366f1;
-    --accent-hover: #818cf8;
+    --accent: ${widgetConfig.primaryColor};
+    --accent-hover: ${widgetConfig.primaryColor};
     --success: #22c55e;
+    --radius: ${radiusPx};
   }
 
   body {
-    font-family: 'Inter', -apple-system, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     background: var(--bg);
     color: var(--text);
     height: 100vh;
@@ -144,9 +261,9 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
   .widget-header-left { display: flex; align-items: center; gap: 10px; }
   .widget-avatar {
     width: 36px; height: 36px; border-radius: 50%;
-    background: var(--bg); border: 1px solid var(--border);
+    background: var(--accent); border: 1px solid var(--accent);
     display: flex; align-items: center; justify-content: center;
-    font-weight: 700; color: var(--accent); font-size: 14px;
+    font-weight: 700; color: var(--bg); font-size: 14px;
   }
   .widget-header-info h4 { font-size: 13px; font-weight: 600; }
   .widget-header-info span {
@@ -183,6 +300,7 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
   .msg-user {
     align-self: flex-end;
     background: var(--accent); border: 1px solid var(--accent);
+    color: var(--bg);
     border-top-right-radius: 4px;
   }
   .msg-time { font-size: 9px; color: var(--muted); margin-top: 4px; text-align: right; }
@@ -192,6 +310,15 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
     width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
     animation: bounce 1.4s infinite ease-in-out both;
   }
+
+  .suggestions {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-top: -2px;
+  }
+  .suggestion-btn {
+    background: transparent; border: 1px solid var(--border); color: var(--accent);
+    border-radius: 999px; padding: 7px 10px; font-size: 11px; cursor: pointer;
+  }
+  .suggestion-btn:hover { background: var(--card); }
   .typing span:nth-child(2) { animation-delay: 0.16s; }
   .typing span:nth-child(3) { animation-delay: 0.32s; }
   @keyframes bounce {
@@ -215,7 +342,7 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
   .input-area input:focus { border-color: var(--accent); }
   .input-area button {
     background: var(--accent); border: none; border-radius: 10px;
-    color: #fff; cursor: pointer; padding: 10px 14px;
+    color: var(--bg); cursor: pointer; padding: 10px 14px;
     transition: background 0.2s;
   }
   .input-area .voice-btn {
@@ -250,9 +377,9 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
 
 <div class="widget-header">
   <div class="widget-header-left">
-    <div class="widget-avatar">${bot.business_name.charAt(0)}</div>
+    <div class="widget-avatar">${avatarText}</div>
     <div class="widget-header-info">
-      <h4>${bot.business_name}</h4>
+      <h4>${displayName}</h4>
       <span><span class="dot"></span> Online</span>
     </div>
   </div>
@@ -264,22 +391,21 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
 <div class="messages" id="messages"></div>
 
 <form class="input-area" id="chatForm">
-  <button type="button" id="voiceBtn" class="voice-btn" title="Talk to agent" aria-label="Talk to agent">
-    <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg>
-  </button>
-  <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off" />
+  ${voiceButtonHtml}
+  <input type="text" id="chatInput" placeholder="${escapeHtml(widgetConfig.inputPlaceholder)}" autocomplete="off" />
   <button type="submit" id="sendBtn">
     <svg viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
   </button>
 </form>
 
-<div class="powered-by">Powered by <a href="https://agilewaters.com" target="_blank" rel="noopener">Agilewaters.com</a></div>
+${poweredByHtml}
 
 <script>
 (function() {
   var API = '${apiBase}';
   var BOT_ID = '${bot.id}';
   var GREETING = ${JSON.stringify(bot.greeting)};
+  var SUGGESTED_PROMPTS = ${JSON.stringify(widgetConfig.suggestedPrompts)};
   var sessionId = null;
   var isResponding = false;
 
@@ -324,12 +450,31 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
+  function renderSuggestions() {
+    if (!SUGGESTED_PROMPTS.length) return;
+    var existing = document.getElementById('suggestions');
+    if (existing) existing.remove();
+    var wrap = document.createElement('div');
+    wrap.id = 'suggestions';
+    wrap.className = 'suggestions';
+    wrap.innerHTML = ${JSON.stringify(promptButtons)};
+    messagesEl.appendChild(wrap);
+    Array.prototype.forEach.call(wrap.querySelectorAll('.suggestion-btn'), function(button) {
+      button.addEventListener('click', function() {
+        chatInput.value = SUGGESTED_PROMPTS[Number(button.getAttribute('data-prompt-index'))] || button.textContent || '';
+        chatForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+      });
+    });
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
   function hideTyping() {
     var t = document.getElementById('typing-indicator');
     if (t) t.remove();
   }
 
   function setVoiceState(state) {
+    if (!voiceBtn) return;
     voiceBtn.classList.remove('active', 'connecting');
     voiceBtn.disabled = !sessionId || state === 'connecting';
     if (state === 'connecting') {
@@ -371,7 +516,7 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
   }
 
   async function startVoice() {
-    if (!sessionId || isVoiceActive) return;
+    if (!voiceBtn || !sessionId || isVoiceActive) return;
     setVoiceState('connecting');
     try {
       mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -482,6 +627,7 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
       setVoiceState('idle');
 
       addMessage(GREETING, 'bot');
+      renderSuggestions();
     } catch (err) {
       console.error('[AI Receptionist Widget] Init error:', err);
       addMessage('Welcome! Please try refreshing if the connection fails.', 'bot');
@@ -518,10 +664,12 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
     }
   });
 
-  voiceBtn.addEventListener('click', function() {
-    if (isVoiceActive) stopVoice();
-    else startVoice();
-  });
+  if (voiceBtn) {
+    voiceBtn.addEventListener('click', function() {
+      if (isVoiceActive) stopVoice();
+      else startVoice();
+    });
+  }
 
   setVoiceState('idle');
 
@@ -532,16 +680,10 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
 </html>`;
 
   res.setHeader('Content-Type', 'text/html');
-  res.setHeader('Cache-Control', 'public, s-maxage=3600'); // Edge cache HTML response
+  res.setHeader('Cache-Control', 'no-cache');
   
-  if (bot.allowed_domains && bot.allowed_domains.length > 0) {
-    const ancestors = bot.allowed_domains.map((d:string) => {
-      try { return getOriginForCsp(d); } catch { return ''; }
-    }).filter(Boolean).join(' ');
-    res.setHeader('Content-Security-Policy', `frame-ancestors ${ancestors}`);
-  } else {
-    res.setHeader('Content-Security-Policy', "frame-ancestors *");
-  }
+  const frameAncestors = buildFrameAncestors(bot.allowed_domains || [], [config.clientUrl]);
+  res.setHeader('Content-Security-Policy', frameAncestors ? `frame-ancestors ${frameAncestors}` : "frame-ancestors 'none'");
   
   res.removeHeader('X-Frame-Options');
   res.send(html);
