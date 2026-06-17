@@ -364,6 +364,123 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
   .input-area button:disabled { opacity: 0.5; cursor: not-allowed; }
   .input-area button svg { width: 16px; height: 16px; fill: currentColor; }
 
+  /* Voice call overlay styles matching AIVoiceInput */
+  .voice-overlay {
+    position: absolute;
+    top: 65px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg);
+    opacity: 0.98;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .voice-overlay-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+    max-width: 320px;
+    padding: 24px;
+    text-align: center;
+  }
+  .overlay-mic-btn {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    background: none;
+    border: none;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s;
+    outline: none;
+  }
+  .overlay-mic-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .overlay-mic-btn svg {
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
+    color: var(--text);
+    opacity: 0.7;
+  }
+  .overlay-mic-btn .stop-icon {
+    width: 24px;
+    height: 24px;
+    background: var(--text);
+    border-radius: 4px;
+    animation: spin 3s linear infinite;
+  }
+  .voice-timer {
+    font-family: monospace;
+    font-size: 14px;
+    color: var(--text);
+    opacity: 0.7;
+    transition: opacity 0.3s;
+  }
+  .visualizer {
+    height: 16px;
+    width: 256px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+  .visualizer-bar {
+    width: 2px;
+    height: 4px;
+    background: var(--text);
+    border-radius: 99px;
+    opacity: 0.1;
+    transition: all 0.3s ease;
+  }
+  .visualizer.active .visualizer-bar {
+    opacity: 0.5;
+    animation: bounceBar 1.2s infinite ease-in-out;
+  }
+  @keyframes bounceBar {
+    0%, 100% { height: 4px; }
+    50% { height: calc(4px + 12px * var(--height-multiplier, 1)); }
+  }
+  .voice-status {
+    font-size: 12px;
+    color: var(--text);
+    opacity: 0.7;
+    height: 16px;
+  }
+  .end-call-btn {
+    margin-top: 12px;
+    padding: 10px 24px;
+    border-radius: 99px;
+    background: #ef4444;
+    color: #fff;
+    border: none;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+  }
+  .end-call-btn:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
+  }
+
   /* Powered By */
   .powered-by {
     text-align: center; padding: 6px; font-size: 9px;
@@ -389,6 +506,26 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
 </div>
 
 <div class="messages" id="messages"></div>
+
+<!-- Voice Input Overlay Component (AIVoiceInput representation) -->
+<div id="voiceOverlay" class="voice-overlay" style="display: none;">
+  <div class="voice-overlay-content">
+    <button type="button" id="overlayMicBtn" class="overlay-mic-btn" title="End voice call">
+      <div id="overlayMicIcon" style="display: none;">
+        <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg>
+      </div>
+      <div id="overlayStopIcon" class="stop-icon"></div>
+    </button>
+    
+    <span id="voiceTimer" class="voice-timer">00:00</span>
+    
+    <div id="visualizer" class="visualizer"></div>
+    
+    <p id="voiceStatus" class="voice-status">Listening...</p>
+    
+    <button type="button" id="endCallBtn" class="end-call-btn">End Call</button>
+  </div>
+</div>
 
 <form class="input-area" id="chatForm">
   ${voiceButtonHtml}
@@ -422,6 +559,52 @@ ${poweredByHtml}
   var playbackContext = null;
   var nextPlayTime = 0;
   var isVoiceActive = false;
+
+  var voiceOverlay = document.getElementById('voiceOverlay');
+  var overlayMicBtn = document.getElementById('overlayMicBtn');
+  var overlayMicIcon = document.getElementById('overlayMicIcon');
+  var overlayStopIcon = document.getElementById('overlayStopIcon');
+  var voiceTimer = document.getElementById('voiceTimer');
+  var visualizer = document.getElementById('visualizer');
+  var voiceStatus = document.getElementById('voiceStatus');
+  var endCallBtn = document.getElementById('endCallBtn');
+  var timerInterval = null;
+  var secondsElapsed = 0;
+
+  function formatTimer(sec) {
+    var mins = Math.floor(sec / 60);
+    var secs = sec % 60;
+    return (mins < 10 ? '0' : '') + mins + ':' + (secs < 10 ? '0' : '') + secs;
+  }
+
+  function startTimer() {
+    stopTimer();
+    secondsElapsed = 0;
+    voiceTimer.textContent = '00:00';
+    timerInterval = setInterval(function() {
+      secondsElapsed++;
+      voiceTimer.textContent = formatTimer(secondsElapsed);
+    }, 1000);
+  }
+
+  function stopTimer() {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+  }
+
+  function initVisualizer() {
+    if (!visualizer) return;
+    visualizer.innerHTML = '';
+    for (var i = 0; i < 48; i++) {
+      var bar = document.createElement('div');
+      bar.className = 'visualizer-bar';
+      bar.style.animationDelay = (i * 0.05) + 's';
+      bar.style.setProperty('--height-multiplier', (1 + Math.random() * 2));
+      visualizer.appendChild(bar);
+    }
+  }
 
   function timeStr() {
     return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -480,11 +663,33 @@ ${poweredByHtml}
     if (state === 'connecting') {
       voiceBtn.classList.add('connecting');
       voiceBtn.title = 'Connecting...';
+      
+      if (voiceOverlay) {
+        voiceOverlay.style.display = 'flex';
+        overlayMicIcon.style.display = 'none';
+        overlayStopIcon.style.display = 'block';
+        visualizer.classList.remove('active');
+        voiceStatus.textContent = 'Connecting...';
+        startTimer();
+      }
     } else if (state === 'active') {
       voiceBtn.classList.add('active');
       voiceBtn.title = 'End voice call';
+      
+      if (voiceOverlay) {
+        voiceOverlay.style.display = 'flex';
+        overlayMicIcon.style.display = 'none';
+        overlayStopIcon.style.display = 'block';
+        visualizer.classList.add('active');
+        voiceStatus.textContent = 'Listening...';
+      }
     } else {
       voiceBtn.title = 'Talk to agent';
+      
+      if (voiceOverlay) {
+        voiceOverlay.style.display = 'none';
+        stopTimer();
+      }
     }
   }
 
@@ -671,8 +876,20 @@ ${poweredByHtml}
     });
   }
 
-  setVoiceState('idle');
+  if (overlayMicBtn) {
+    overlayMicBtn.addEventListener('click', function() {
+      if (isVoiceActive) stopVoice();
+    });
+  }
 
+  if (endCallBtn) {
+    endCallBtn.addEventListener('click', function() {
+      stopVoice();
+    });
+  }
+
+  setVoiceState('idle');
+  initVisualizer();
   initSession();
 })();
 </script>
