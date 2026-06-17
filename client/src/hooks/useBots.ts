@@ -91,5 +91,20 @@ export function useBots() {
     setBots(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
   };
 
-  return { bots, setBots, activeBotId, setActiveBotId, fetchBots, createBot, updateBot };
+  const deleteBot = async (id: string) => {
+    const { error } = await supabase
+      .from('bots')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    setBots(prev => {
+      const nextBots = prev.filter(b => b.id !== id);
+      setActiveBotId(currentId => currentId === id ? nextBots[0]?.id || '' : currentId);
+      return nextBots;
+    });
+  };
+
+  return { bots, setBots, activeBotId, setActiveBotId, fetchBots, createBot, updateBot, deleteBot };
 }

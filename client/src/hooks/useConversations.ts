@@ -7,14 +7,19 @@ export function useConversations() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const fetchSessions = useCallback(async (botId: string) => {
+  const fetchSessions = useCallback(async (botId?: string | 'all') => {
     setLoading(true);
-    // Fetch sessions
-    const { data: sessionData, error: sessionError } = await supabase
+
+    let query = supabase
       .from('chat_sessions')
       .select('id, bot_id, visitor_id, created_at, ended_at')
-      .eq('bot_id', botId)
       .order('created_at', { ascending: false });
+
+    if (botId && botId !== 'all') {
+      query = query.eq('bot_id', botId);
+    }
+
+    const { data: sessionData, error: sessionError } = await query;
 
     if (sessionError || !sessionData) {
       setLoading(false);

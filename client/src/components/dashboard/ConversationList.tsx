@@ -4,7 +4,7 @@ import { useConversations } from '../../hooks/useConversations';
 import { ConversationDetail } from './ConversationDetail';
 
 interface ConversationListProps {
-  activeBotId: string;
+  activeBotId?: string | 'all';
 }
 
 export const ConversationList: React.FC<ConversationListProps> = ({ activeBotId }) => {
@@ -12,17 +12,18 @@ export const ConversationList: React.FC<ConversationListProps> = ({ activeBotId 
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (activeBotId) {
-      fetchSessions(activeBotId);
-      setSelectedSessionId(null);
-    }
+    fetchSessions(activeBotId);
+    setSelectedSessionId(null);
   }, [activeBotId, fetchSessions]);
 
   if (selectedSessionId) {
     const session = sessions.find(s => s.id === selectedSessionId);
+    if (!session) {
+      return null;
+    }
     return (
       <ConversationDetail 
-        session={session!} 
+        session={session} 
         onBack={() => setSelectedSessionId(null)} 
       />
     );
@@ -33,7 +34,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({ activeBotId 
       <div className="px-6 py-4 border-b border-brand-border flex items-center justify-between bg-brand-bg/40">
         <h3 className="font-display font-bold text-brand-text text-lg flex items-center">
           <Icons.Chat />
-          <span className="ml-2">Chat Sessions</span>
+          <span className="ml-2">Conversations</span>
         </h3>
         <button 
           onClick={() => fetchSessions(activeBotId)}

@@ -181,7 +181,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <LeadTable 
             leads={leads} 
             setLeads={setLeads} 
-            activeBotId={activeBotId} 
+            selectedBotId={activeBotId} 
             launchPublicChat={launchPublicChat} 
             showToast={showToast} 
           />

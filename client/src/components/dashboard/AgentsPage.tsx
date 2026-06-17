@@ -8,6 +8,8 @@ interface AgentsPageProps {
   setActiveBotId: (id: string) => void;
   navigate: (path: string) => void;
   launchPublicChat: (botId: string) => void;
+  deleteBot: (id: string) => Promise<void>;
+  showToast: (message: string, type?: 'success' | 'error') => void;
 }
 
 export const AgentsPage: React.FC<AgentsPageProps> = ({
@@ -15,8 +17,25 @@ export const AgentsPage: React.FC<AgentsPageProps> = ({
   activeBotId,
   setActiveBotId,
   navigate,
-  launchPublicChat
+  launchPublicChat,
+  deleteBot,
+  showToast
 }) => {
+  const handleDeleteAgent = async (bot: Bot) => {
+    const confirmed = window.confirm(
+      `Delete "${bot.businessName}"?\n\nThis removes the agent and its related leads, conversations, and appointments.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await deleteBot(bot.id);
+      showToast('Agent deleted');
+      navigate('/agents');
+    } catch (err: any) {
+      showToast(err?.message || 'Could not delete agent', 'error');
+    }
+  };
+
   if (bots.length === 0) {
     return (
       <div className="bg-brand-card border border-brand-border rounded-lg p-10 text-center text-brand-muted">
@@ -54,7 +73,7 @@ export const AgentsPage: React.FC<AgentsPageProps> = ({
               <p className="text-xs text-brand-accent mt-1 break-all">/chats/{bot.subDomain}</p>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => {
                   setActiveBotId(bot.id);
@@ -78,6 +97,12 @@ export const AgentsPage: React.FC<AgentsPageProps> = ({
                 className="px-3 py-2 bg-brand-bg hover:bg-brand-border border border-brand-border rounded-md text-xs font-semibold text-brand-text transition"
               >
                 Install
+              </button>
+              <button
+                onClick={() => handleDeleteAgent(bot)}
+                className="px-3 py-2 bg-brand-bg hover:bg-brand-danger/20 border border-brand-border hover:border-brand-danger/50 rounded-md text-xs font-semibold text-brand-danger transition"
+              >
+                Delete
               </button>
             </div>
           </article>

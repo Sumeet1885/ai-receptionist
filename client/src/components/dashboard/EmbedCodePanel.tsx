@@ -9,6 +9,9 @@ interface EmbedCodePanelProps {
 }
 
 export const EmbedCodePanel: React.FC<EmbedCodePanelProps> = ({ activeBot, showToast, launchPublicChat }) => {
+  const baseUrl = window.location.origin;
+  const widgetScript = `<script src="${baseUrl}/widget/loader.js" data-bot-id="${activeBot.id}"></script>`;
+
   return (
     <div className="bg-brand-bg border border-brand-border p-4 rounded-xl space-y-3 shadow-inner">
       <div className="flex items-center justify-between">
@@ -16,12 +19,12 @@ export const EmbedCodePanel: React.FC<EmbedCodePanelProps> = ({ activeBot, showT
         <span className="text-[10px] text-brand-success border border-brand-success/30 bg-brand-success/10 px-1.5 py-0.5 rounded font-mono">LIVE</span>
       </div>
       <p className="text-[11px] text-brand-muted break-all font-mono">
-        AI Receptionist/chats/{activeBot.subDomain}
+        {baseUrl}/chats/{activeBot.subDomain}
       </p>
       <div className="flex space-x-2 pt-1">
         <button
           onClick={() => {
-            const dummyLink = `${window.location.origin}/chats/${activeBot.subDomain}`;
+            const dummyLink = `${baseUrl}/chats/${activeBot.subDomain}`;
             navigator.clipboard.writeText(dummyLink);
             showToast("Copied chatbot link to clipboard!");
           }}
@@ -44,12 +47,11 @@ export const EmbedCodePanel: React.FC<EmbedCodePanelProps> = ({ activeBot, showT
           <h4 className="text-xs font-semibold text-brand-text">Embed Widget Script</h4>
         </div>
         <div className="bg-brand-bg/50 border border-brand-border p-3 rounded text-[10px] text-brand-muted font-mono overflow-x-auto whitespace-pre">
-          &lt;script src="https://agilewaters.com/widget/loader.js" data-bot-id="{activeBot.id}"&gt;&lt;/script&gt;
+          {widgetScript}
         </div>
         <button
           onClick={() => {
-            const snippet = `<script src="https://agilewaters.com/widget/loader.js" data-bot-id="${activeBot.id}"></script>`;
-            navigator.clipboard.writeText(snippet);
+            navigator.clipboard.writeText(widgetScript);
             showToast("Copied embed script to clipboard!");
           }}
           className="w-full mt-3 py-2.5 bg-brand-card hover:bg-brand-border text-brand-text text-xs font-semibold rounded-lg flex items-center justify-center space-x-1.5 transition border border-brand-border"

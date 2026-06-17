@@ -5,37 +5,41 @@ import { Icons } from '../common/Icons';
 interface LeadTableProps {
   leads: Lead[];
   setLeads: React.Dispatch<React.SetStateAction<Lead[]>>;
-  activeBotId: string;
+  selectedBotId: string | 'all';
   launchPublicChat: (botId: string) => void;
   showToast: (message: string, type?: 'success' | 'error') => void;
 }
 
-export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, activeBotId, launchPublicChat, showToast }) => {
-  const botLeads = leads.filter(l => l.botId === activeBotId);
+export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, selectedBotId, launchPublicChat, showToast }) => {
+  const visibleLeads = selectedBotId === 'all' ? leads : leads.filter(l => l.botId === selectedBotId);
 
   return (
     <div className="bg-brand-card border border-brand-border rounded-xl overflow-hidden shadow-sm">
       <div className="px-6 py-4 border-b border-brand-border flex flex-col sm:flex-row items-start sm:items-center justify-between bg-brand-bg/40 gap-3">
         <h3 className="font-display font-bold text-brand-text text-lg flex items-center">
           <Icons.Users />
-          <span className="ml-2">Live CRM Prospect Sheet</span>
+          <span className="ml-2">Lead Queue</span>
         </h3>
       </div>
 
       <div className="divide-y divide-brand-border">
-        {botLeads.length === 0 ? (
+        {visibleLeads.length === 0 ? (
           <div className="p-12 text-center text-brand-muted space-y-4">
             <Icons.Chat />
-            <p className="text-sm font-sans">No prospective leads recorded yet for this AI agent.</p>
-            <button
-              onClick={() => launchPublicChat(activeBotId)}
-              className="px-4 py-2 bg-brand-accent hover:bg-brand-accent-hover border border-brand-border text-brand-text font-sans font-semibold text-xs rounded-md transition"
-            >
-              Trigger Demo Conversations
-            </button>
+            <p className="text-sm font-sans">
+              {selectedBotId === 'all' ? 'No leads recorded yet.' : 'No leads recorded yet for this receptionist.'}
+            </p>
+            {selectedBotId !== 'all' && (
+              <button
+                onClick={() => launchPublicChat(selectedBotId)}
+                className="px-4 py-2 bg-brand-accent hover:bg-brand-accent-hover border border-brand-border text-brand-text font-sans font-semibold text-xs rounded-md transition"
+              >
+                Trigger Demo Conversations
+              </button>
+            )}
           </div>
         ) : (
-          botLeads.map((lead) => (
+          visibleLeads.map((lead) => (
             <div key={lead.id} className="p-6 hover:bg-brand-bg/20 transition flex flex-col md:flex-row justify-between gap-6">
               <div className="space-y-4 flex-1">
                 {/* Lead header metadata */}

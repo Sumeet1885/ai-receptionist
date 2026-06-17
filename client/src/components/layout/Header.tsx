@@ -1,44 +1,40 @@
 import React, { useState } from 'react';
 import { Icons } from '../common/Icons';
-import { supabase } from '../../lib/supabaseClient';
 
 interface HeaderProps {
-  view: string;
-  setView: (view: string) => void;
-  hasBots: boolean;
-  activeBotId: string;
-  launchPublicChat: (botId: string) => void;
+  routeName: string;
+  navigate: (path: string) => void;
   user: any;
   signOut: () => Promise<void>;
 }
 
+const authedNav = [
+  { label: 'Dashboard', path: '/dashboard', key: 'dashboard' },
+  { label: 'Leads', path: '/leads', key: 'leads' },
+  { label: 'Inbox', path: '/inbox', key: 'inbox' },
+  { label: 'Calendar', path: '/calendar', key: 'calendar' },
+  { label: 'Agents', path: '/agents', key: 'agents' }
+];
+
 export const Header: React.FC<HeaderProps> = ({
-  view,
-  setView,
+  routeName,
+  navigate,
   user,
   signOut
 }: HeaderProps) => {
-  const isLanding = view === 'landing';
+  const isLanding = routeName === 'landing';
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const handleSignInGoogle = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: window.location.origin,
-        scopes: 'https://www.googleapis.com/auth/calendar',
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent'
-        }
-      }
-    });
+  const isActive = (key: string) => {
+    if (key === 'agents') return routeName === 'agents' || routeName === 'agent-detail' || routeName === 'agent-new';
+    return routeName === key;
   };
 
   const handleSignOut = async () => {
     try {
       await signOut();
       setMobileMenuOpen(false);
+      navigate('/');
     } catch (err) {
       console.error('Sign out error:', err);
     }
@@ -50,7 +46,7 @@ export const Header: React.FC<HeaderProps> = ({
         ? 'bg-black/95 border-b border-white/10 py-3'
         : 'bg-brand-bg/90 border-b border-brand-border py-4'
     }`}>
-      <div className="flex items-center space-x-2 sm:space-x-3 cursor-pointer" onClick={() => setView('landing')}>
+      <div className="flex items-center space-x-2 sm:space-x-3 cursor-pointer" onClick={() => navigate(user ? '/dashboard' : '/')}>
         <div className={`p-1.5 sm:p-2 border rounded-lg shadow-sm transition hover:scale-105 ${
           isLanding
             ? 'bg-white/5 border-white/10 text-emerald-400'
@@ -67,27 +63,27 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <nav className="hidden md:flex items-center space-x-6 text-sm font-sans font-medium">
-        <button 
-          onClick={() => setView('landing')} 
-          className={`hover:text-brand-text transition-colors duration-200 pb-1 border-b-2 ${view === 'landing' ? `text-brand-text ${isLanding ? 'border-emerald-400' : 'border-brand-accent'} font-semibold` : 'text-brand-muted border-transparent'}`}
-        >
-          Features
-        </button>
-        {user && (
-          <>
-            <button 
-              onClick={() => setView('onboarding')} 
-              className={`hover:text-brand-text transition-colors duration-200 pb-1 border-b-2 ${view === 'onboarding' ? 'text-brand-text border-brand-accent font-semibold' : 'text-brand-muted border-transparent'}`}
+        {user ? (
+          authedNav.map(item => (
+            <button
+              key={item.key}
+              onClick={() => navigate(item.path)}
+              className={`hover:text-brand-text transition-colors duration-200 pb-1 border-b-2 ${
+                isActive(item.key)
+                  ? 'text-brand-text border-brand-accent font-semibold'
+                  : 'text-brand-muted border-transparent'
+              }`}
             >
-              Configure Agent
+              {item.label}
             </button>
-            <button 
-              onClick={() => setView('dashboard')} 
-              className={`hover:text-brand-text transition-colors duration-200 pb-1 border-b-2 ${view === 'dashboard' ? 'text-brand-text border-brand-accent font-semibold' : 'text-brand-muted border-transparent'}`}
-            >
-              Console
-            </button>
-          </>
+          ))
+        ) : (
+          <button
+            onClick={() => navigate('/')}
+            className={`hover:text-brand-text transition-colors duration-200 pb-1 border-b-2 ${routeName === 'landing' ? `text-brand-text ${isLanding ? 'border-emerald-400' : 'border-brand-accent'} font-semibold` : 'text-brand-muted border-transparent'}`}
+          >
+            Features
+          </button>
         )}
       </nav>
 
@@ -97,11 +93,7 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="text-sm text-brand-muted">{user.email}</span>
             <button
               onClick={handleSignOut}
-              className={`px-4 py-2 font-sans font-semibold text-sm rounded-lg shadow-sm transition duration-200 border ${
-                isLanding
-                  ? 'border-white/10 hover:bg-white/5 text-white'
-                  : 'border-brand-border hover:bg-brand-card text-brand-text'
-              }`}
+              className="px-4 py-2 font-sans font-semibold text-sm rounded-lg shadow-sm transition duration-200 border border-brand-border hover:bg-brand-card text-brand-text"
             >
               Sign Out
             </button>
@@ -109,7 +101,7 @@ export const Header: React.FC<HeaderProps> = ({
         ) : (
           <div className="hidden md:flex items-center gap-3">
             <button
-              onClick={() => setView('auth-signin')}
+              onClick={() => navigate('/auth?mode=signin')}
               className={`px-4 py-2 font-sans font-semibold text-sm rounded-lg transition duration-200 ${
                 isLanding ? 'text-brand-muted hover:text-white' : 'text-brand-muted hover:text-brand-text'
               }`}
@@ -117,7 +109,7 @@ export const Header: React.FC<HeaderProps> = ({
               Sign In
             </button>
             <button
-              onClick={() => setView('auth-signup')}
+              onClick={() => navigate('/auth?mode=signup')}
               className={`px-4 py-2 font-sans font-semibold text-sm rounded-lg shadow-md hover:shadow-lg transition duration-200 ${
                 isLanding
                   ? 'bg-emerald-400 hover:bg-emerald-300 text-black'
@@ -152,37 +144,20 @@ export const Header: React.FC<HeaderProps> = ({
         <div className={`absolute top-full left-0 right-0 z-50 md:hidden ${
           isLanding ? 'bg-black/95 border-b border-white/10' : 'bg-brand-bg/95 border-b border-brand-border'
         } backdrop-blur-md px-4 py-4 space-y-2 shadow-xl`}>
-          <button
-            onClick={() => { setView('landing'); setMobileMenuOpen(false); }}
-            className={`w-full text-left px-4 py-3 rounded-lg text-sm font-sans font-medium transition ${
-              view === 'landing' ? 'bg-brand-accent/10 text-brand-accent' : 'text-brand-muted hover:bg-brand-card hover:text-brand-text'
-            }`}
-          >
-            Features
-          </button>
-          {user && (
+          {user ? (
             <>
-              <button
-                onClick={() => { setView('onboarding'); setMobileMenuOpen(false); }}
-                className={`w-full text-left px-4 py-3 rounded-lg text-sm font-sans font-medium transition ${
-                  view === 'onboarding' ? 'bg-brand-accent/10 text-brand-accent' : 'text-brand-muted hover:bg-brand-card hover:text-brand-text'
-                }`}
-              >
-                Configure Agent
-              </button>
-              <button
-                onClick={() => { setView('dashboard'); setMobileMenuOpen(false); }}
-                className={`w-full text-left px-4 py-3 rounded-lg text-sm font-sans font-medium transition ${
-                  view === 'dashboard' ? 'bg-brand-accent/10 text-brand-accent' : 'text-brand-muted hover:bg-brand-card hover:text-brand-text'
-                }`}
-              >
-                Console
-              </button>
-            </>
-          )}
-          <div className="pt-2 border-t border-brand-border space-y-2">
-            {user ? (
-              <>
+              {authedNav.map(item => (
+                <button
+                  key={item.key}
+                  onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
+                  className={`w-full text-left px-4 py-3 rounded-lg text-sm font-sans font-medium transition ${
+                    isActive(item.key) ? 'bg-brand-accent/10 text-brand-accent' : 'text-brand-muted hover:bg-brand-card hover:text-brand-text'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+              <div className="pt-2 border-t border-brand-border space-y-2">
                 <p className="px-4 py-2 text-xs text-brand-muted truncate">{user.email}</p>
                 <button
                   onClick={handleSignOut}
@@ -190,24 +165,32 @@ export const Header: React.FC<HeaderProps> = ({
                 >
                   Sign Out
                 </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => { setView('auth-signin'); setMobileMenuOpen(false); }}
-                  className="w-full text-left px-4 py-3 rounded-lg text-sm font-sans font-medium text-brand-muted hover:bg-brand-card hover:text-brand-text transition"
-                >
-                  Sign In
-                </button>
-                <button
-                  onClick={() => { setView('auth-signup'); setMobileMenuOpen(false); }}
-                  className="w-full text-left px-4 py-3 rounded-lg text-sm font-sans font-medium bg-brand-accent hover:bg-brand-accent-hover text-brand-text transition"
-                >
-                  Create an account
-                </button>
-              </>
-            )}
-          </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => { navigate('/'); setMobileMenuOpen(false); }}
+                className={`w-full text-left px-4 py-3 rounded-lg text-sm font-sans font-medium transition ${
+                  routeName === 'landing' ? 'bg-brand-accent/10 text-brand-accent' : 'text-brand-muted hover:bg-brand-card hover:text-brand-text'
+                }`}
+              >
+                Features
+              </button>
+              <button
+                onClick={() => { navigate('/auth?mode=signin'); setMobileMenuOpen(false); }}
+                className="w-full text-left px-4 py-3 rounded-lg text-sm font-sans font-medium text-brand-muted hover:bg-brand-card hover:text-brand-text transition"
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => { navigate('/auth?mode=signup'); setMobileMenuOpen(false); }}
+                className="w-full text-left px-4 py-3 rounded-lg text-sm font-sans font-medium bg-brand-accent hover:bg-brand-accent-hover text-brand-text transition"
+              >
+                Create an account
+              </button>
+            </>
+          )}
         </div>
       )}
     </header>
