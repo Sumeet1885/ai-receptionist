@@ -495,6 +495,65 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
     box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
   }
 
+  /* Voice Input Box */
+  .voice-input-container {
+    display: none; flex-direction: column; width: 100%; margin-top: 16px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    animation: fadeIn 0.3s ease;
+  }
+  .voice-input-container p { font-size: 12px; font-weight: 600; margin-bottom: 8px; color: var(--text); }
+  .voice-input-form { display: flex; gap: 6px; width: 100%; }
+  .voice-input-form input {
+    flex: 1; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 12px; color: var(--text); font-size: 13px; outline: none;
+    transition: border-color 0.2s;
+  }
+  .voice-input-form input:focus { border-color: var(--accent); }
+  .voice-input-form button {
+    background: var(--accent); border: none; border-radius: 8px;
+    color: var(--on-accent); cursor: pointer; padding: 8px 12px;
+    transition: background 0.2s; display: flex; align-items: center; justify-content: center;
+  }
+  .voice-input-form button:hover { background: var(--accent-hover); }
+  .voice-input-form button svg { width: 14px; height: 14px; fill: currentColor; }
+  .voice-input-form button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Powered By */
+  .powered-by {
+    text-align: center; padding: 6px; font-size: 9px;
+    color: var(--muted); background: var(--card);
+    border-top: 1px solid var(--border); flex-shrink: 0;
+  }
+  .powered-by a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="widget-header">
+  <div class="widget-header-left">
+    <div class="widget-avatar">${avatarText}</div>
+    <div class="widget-header-info">
+      <h4>${displayName}</h4>
+      <span><span class="dot"></span> Online</span>
+    </div>
+  </div>
+  <button class="close-btn" onclick="window.parent.postMessage({type:'air-widget-close'},'*')" title="Close">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+  </button>
+</div>
+
+<div class="messages" id="messages"></div>
+
+<!-- Voice Input Overlay Component (AIVoiceInput representation) -->
+<div id="voiceOverlay" class="voice-overlay" style="display: none;">
+  <div class="voice-overlay-content">
+    <button type="button" id="overlayMicBtn" class="overlay-mic-btn" title="End voice call">
+      <div id="overlayMicIcon" style="display: none;">
+        <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg>
+      </div>
+      <div id="overlayStopIcon" class="stop-icon"></div>
+    </button>
   /* Powered By */
   .powered-by {
     text-align: center; padding: 6px; font-size: 9px;
@@ -536,6 +595,16 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
     <div id="visualizer" class="visualizer"></div>
     
     <p id="voiceStatus" class="voice-status">Listening...</p>
+    
+    <div id="voiceInputContainer" class="voice-input-container">
+      <p id="voiceInputLabel">Please enter your details</p>
+      <form id="voiceInputForm" class="voice-input-form">
+        <input type="text" id="voiceInputField" autocomplete="off" />
+        <button type="submit" id="voiceInputBtn" disabled>
+          <svg viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
+        </button>
+      </form>
+    </div>
     
     <button type="button" id="endCallBtn" class="end-call-btn">End Call</button>
   </div>
@@ -582,6 +651,13 @@ ${poweredByHtml}
   var visualizer = document.getElementById('visualizer');
   var voiceStatus = document.getElementById('voiceStatus');
   var endCallBtn = document.getElementById('endCallBtn');
+  
+  var voiceInputContainer = document.getElementById('voiceInputContainer');
+  var voiceInputLabel = document.getElementById('voiceInputLabel');
+  var voiceInputForm = document.getElementById('voiceInputForm');
+  var voiceInputField = document.getElementById('voiceInputField');
+  var voiceInputBtn = document.getElementById('voiceInputBtn');
+
   var timerInterval = null;
   var secondsElapsed = 0;
 
@@ -731,6 +807,7 @@ ${poweredByHtml}
       mediaStream = null;
     }
     chatInput.disabled = false;
+    if (voiceInputContainer) voiceInputContainer.style.display = 'none';
     setVoiceState('idle');
   }
 
@@ -785,6 +862,17 @@ ${poweredByHtml}
         }
         if (msg.type === 'transcript' && msg.text) {
           addMessage(msg.text, 'bot');
+        }
+        if (msg.type === 'request_input' && msg.inputType) {
+          if (voiceInputContainer) {
+            voiceInputContainer.style.display = 'flex';
+            voiceInputLabel.textContent = 'Please enter your ' + msg.inputType;
+            voiceInputField.type = msg.inputType === 'email' ? 'email' : 'tel';
+            voiceInputField.placeholder = msg.inputType === 'email' ? 'name@example.com' : '(555) 000-0000';
+            voiceInputField.value = '';
+            voiceInputBtn.disabled = true;
+            voiceInputField.focus();
+          }
         }
         if (msg.type === 'appointment_booked' && msg.details) {
           addMessage('Appointment confirmed for ' + new Date(msg.details.startTime).toLocaleString() + '.', 'bot');
@@ -905,6 +993,20 @@ ${poweredByHtml}
   if (endCallBtn) {
     endCallBtn.addEventListener('click', function() {
       stopVoice();
+    });
+  }
+
+  if (voiceInputForm) {
+    voiceInputField.addEventListener('input', function() {
+      voiceInputBtn.disabled = !voiceInputField.value.trim();
+    });
+    voiceInputForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var text = voiceInputField.value.trim();
+      if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: 'textInput', text: text }));
+      voiceInputContainer.style.display = 'none';
+      voiceInputField.value = '';
     });
   }
 
