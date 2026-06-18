@@ -133,17 +133,32 @@ export class GoogleCalendarAdapter implements CalendarAdapter {
     const cal = await calendar.calendars.get({ calendarId: 'primary' });
     const timeZone = cal.data.timeZone || 'UTC';
 
-    // Helper to construct a Date object representing local time in the target timezone
-    const getUtcDate = (dateStr: string, timeStr: string, tz: string): Date => {
-      const localDate = new Date(`${dateStr}T${timeStr}`);
-      const invDate = new Date(localDate.toLocaleString('en-US', { timeZone: tz }));
-      const diff = localDate.getTime() - invDate.getTime();
-      return new Date(localDate.getTime() + diff);
+    // Helper to construct ISO strings using proper timezone offset
+    const tz = timezone || timeZone || 'UTC';
+    const getOffset = (dStr: string) => {
+      try {
+        const offsetParts = new Intl.DateTimeFormat('en-US', {
+          timeZone: tz,
+          timeZoneName: 'longOffset'
+        }).formatToParts(new Date(dStr));
+        const offsetPart = offsetParts.find(p => p.type === 'timeZoneName')?.value || '';
+        let offset = '+00:00';
+        const match = offsetPart.match(/GMT([+-])(\d+):?(\d+)?/);
+        if (match) {
+          const sign = match[1];
+          const hours = match[2].padStart(2, '0');
+          const mins = (match[3] || '00').padStart(2, '0');
+          offset = `${sign}${hours}:${mins}`;
+        }
+        return offset;
+      } catch (err) {
+        return 'Z';
+      }
     };
 
-    // Query availability for the entire 24-hour day in the calendar's time zone
-    const timeMin = getUtcDate(date, '00:00:00', timeZone);
-    const timeMax = getUtcDate(date, '23:59:59', timeZone);
+    const offset = getOffset(date);
+    const timeMin = new Date(`${date}T00:00:00${offset}`);
+    const timeMax = new Date(`${date}T23:59:59${offset}`);
     
     const res = await calendar.freebusy.query({
       requestBody: {

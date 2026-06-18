@@ -12,6 +12,8 @@ interface VoiceCallViewProps {
     isConnecting: boolean;
     liveTranscript: string;
     bookingDetails: any;
+    requestedInputType: 'phone' | 'email' | null;
+    sendTextData: (text: string) => void;
     startVoice: () => Promise<void>;
     stopVoice: () => void;
   };
@@ -24,7 +26,15 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
   onBack
 }) => {
   const [voiceDetected, setVoiceDetected] = useState(false);
+  const [inputValue, setInputValue] = useState('');
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);
+
+  const handleSubmitInput = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputValue.trim()) return;
+    liveVoice.sendTextData(inputValue.trim());
+    setInputValue('');
+  };
 
   // Auto-scroll the transcripts to keep the latest bot reply visible
   useEffect(() => {
@@ -128,6 +138,34 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
             <Icons.Calendar className="w-4 h-4" />
             Add to Calendar
           </a>
+        </div>
+      )}
+
+      {/* Conditional Text Input */}
+      {liveVoice.requestedInputType && (
+        <div className="w-full max-w-sm z-20 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <form onSubmit={handleSubmitInput} className="bg-brand-card/80 backdrop-blur-md border border-brand-accent/50 rounded-2xl p-4 shadow-2xl flex flex-col items-center">
+            <span className="text-sm font-semibold text-white mb-3 tracking-wide">
+              Please enter your {liveVoice.requestedInputType}
+            </span>
+            <div className="flex w-full gap-2">
+              <input
+                type={liveVoice.requestedInputType === 'email' ? 'email' : 'tel'}
+                autoFocus
+                className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent transition-all"
+                placeholder={liveVoice.requestedInputType === 'email' ? 'name@example.com' : '(555) 000-0000'}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+              />
+              <button
+                type="submit"
+                disabled={!inputValue.trim()}
+                className="bg-brand-accent hover:bg-brand-accent-hover disabled:opacity-50 text-white rounded-xl px-5 py-3 font-semibold transition-colors flex items-center justify-center"
+              >
+                <Icons.Send className="w-4 h-4" />
+              </button>
+            </div>
+          </form>
         </div>
       )}
 

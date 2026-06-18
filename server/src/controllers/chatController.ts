@@ -235,6 +235,11 @@ CRITICAL SECURITY & CONSTRAINTS:
 - SLOT RULE: Never invent a slot and never book a time that was not returned by check_availability. If the user's requested time is not in the returned slots, offer the returned alternatives instead.
 - TOOL TIMEZONE: When calling check_availability, pass the local date format 'YYYY-MM-DD'. When calling book_appointment, construct startTime and endTime in ISO 8601 format using the user's local offset ${tzOffset} (example: 2026-06-17T08:30:00${tzOffset}). Never ask the user to provide a timezone unless their requested date/time is actually ambiguous.`;
 
+  const bookAppointmentRequired = ['title', 'visitorName', 'startTime', 'endTime'];
+  if (fieldsToCollect.includes('phone')) {
+    bookAppointmentRequired.push('visitorPhone');
+  }
+
   // Define tools
   const tools = [{
     functionDeclarations: [
@@ -261,7 +266,7 @@ CRITICAL SECURITY & CONSTRAINTS:
             startTime: { type: 'STRING', description: 'Start time in ISO 8601 format' },
             endTime: { type: 'STRING', description: 'End time in ISO 8601 format' }
           },
-          required: ['title', 'visitorName', 'visitorPhone', 'startTime', 'endTime']
+          required: bookAppointmentRequired
         }
       }
     ]

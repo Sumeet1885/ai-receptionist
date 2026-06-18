@@ -5,6 +5,7 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
   const [isConnecting, setIsConnecting] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState<string>('');
   const [bookingDetails, setBookingDetails] = useState<any>(null);
+  const [requestedInputType, setRequestedInputType] = useState<'phone' | 'email' | null>(null);
   
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -99,6 +100,10 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
           setLiveTranscript(prev => prev + msg.text);
         }
 
+        if (msg.type === 'request_input' && msg.field) {
+          setRequestedInputType(msg.field as 'phone' | 'email');
+        }
+
         if (msg.type === 'appointment_booked' && msg.details) {
           setBookingDetails(msg.details);
         }
@@ -155,6 +160,7 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
     setIsVoiceActive(false);
     setIsConnecting(false);
     setBookingDetails(null);
+    setRequestedInputType(null);
     
     if (wsRef.current) {
       wsRef.current.close();
@@ -188,12 +194,24 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
     };
   }, [stopVoice]);
 
+  const sendTextData = useCallback((text: string) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'textInput',
+        data: text
+      }));
+      setRequestedInputType(null);
+    }
+  }, []);
+
   return {
     isVoiceActive,
     isConnecting,
     liveTranscript,
     setLiveTranscript,
     bookingDetails,
+    requestedInputType,
+    sendTextData,
     startVoice,
     stopVoice
   };

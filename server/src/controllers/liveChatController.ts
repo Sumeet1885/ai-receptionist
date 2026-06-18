@@ -154,6 +154,10 @@ export function setupWebSocketServer(server: Server) {
       const userLocaleTime = new Date().toLocaleString('en-US', { timeZone: timezone });
       const widgetConfig = mergeWidgetConfig(bot.widget_config, bot);
       const fieldsToCollect = widgetConfig.requiredLeadFields || [];
+      const bookAppointmentRequired = ['title', 'visitorName', 'startTime', 'endTime'];
+      if (fieldsToCollect.includes('phone')) {
+        bookAppointmentRequired.push('visitorPhone');
+      }
 
       const fieldDescriptions: Record<string, string> = {
         name: 'Full Name',
@@ -203,6 +207,7 @@ CRITICAL SECURITY & CONSTRAINTS:
 - ABSOLUTE PRIVACY: You must never disclose, reveal, or list the details (names, phone numbers, or appointment times) of other bookings or clients. If asked who booked a slot or what other bookings exist, state that you cannot share that confidential information due to privacy guidelines. Only report whether a slot is free or busy without naming other people.
 - BOOKING ORDER: Never call book_appointment in the same turn as check_availability. After checking availability, speak the available options and ask "Would you like me to book one of these?" Wait for the user's next confirmation before booking.
 - SLOT RULE: Never invent a slot and never book a time that was not returned by check_availability. If the user's requested time is not in the returned slots, offer the returned alternatives instead.
+- TEXT INPUT FOR CONTACT: Voice recognition for phone numbers and emails is highly inaccurate. Whenever you need to ask the user for their phone number or email address, you MUST tell them to type it in the chat box, and simultaneously call the \`request_text_input\` tool. Do not try to collect it via voice.
 - TOOL TIMEZONE: When calling check_availability, pass the local date format 'YYYY-MM-DD'. When calling book_appointment, construct the startTime and endTime in ISO 8601 format using the user's local offset ${tzOffset} (e.g. if the user selects 8:30 AM on 2026-06-17, startTime must be '2026-06-17T08:30:00${tzOffset}').`;
 
       const setupMessage = {
@@ -247,7 +252,18 @@ CRITICAL SECURITY & CONSTRAINTS:
                     startTime: { type: 'STRING', description: 'Start time in ISO 8601 format' },
                     endTime: { type: 'STRING', description: 'End time in ISO 8601 format' }
                   },
-                  required: ['title', 'visitorName', 'visitorPhone', 'startTime', 'endTime']
+                  required: bookAppointmentRequired
+                }
+              },
+              {
+                name: 'request_text_input',
+                description: 'Requests the user to type their phone number or email address into a text box. Use this whenever you ask for their phone or email.',
+                parameters: {
+                  type: 'OBJECT',
+                  properties: {
+                    field: { type: 'STRING', description: 'The field being requested (phone or email)' }
+                  },
+                  required: ['field']
                 }
               }
             ]
@@ -392,6 +408,12 @@ CRITICAL SECURITY & CONSTRAINTS:
                   details: args
                 }));
               }
+            } else if (name === 'request_text_input') {
+              ws.send(JSON.stringify({
+                type: 'request_input',
+                field: args.field
+              }));
+              functionResponse = { success: true, message: `Text input for ${args.field} requested from user.` };
             }
           } catch (err: any) {
             console.error(`Error executing ${name}:`, err);
@@ -440,6 +462,17 @@ CRITICAL SECURITY & CONSTRAINTS:
               mime_type: 'audio/pcm;rate=16000',
               data: message.data // base64 string
             }
+          }
+        }));
+      } else if (message.type === 'textInput') {
+        // Forward client text input directly to Gemini
+        geminiWs.send(JSON.stringify({
+          clientContent: {
+            turns: [{
+              role: 'user',
+              parts: [{ text: message.data }]
+            }],
+            turnComplete: true
           }
         }));
       }
