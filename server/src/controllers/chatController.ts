@@ -40,35 +40,68 @@ function getRetryDelayMs(response: Response, attempt: number): number {
 }
 
 async function callGeminiWithRetry(reqBody: any): Promise<any> {
-  let lastErrorText = '';
+  const defaultModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+  const models = Array.from(new Set([
+    defaultModel,
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-3.5-flash'
+  ]));
+
   let lastStatus = 0;
+  let lastErrorText = '';
 
-  for (let attempt = 0; attempt <= GEMINI_MAX_RETRIES; attempt++) {
-    const geminiResponse = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(reqBody)
-    });
+  for (const model of models) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+    
+    let modelStatus = 0;
+    let modelErrorText = '';
 
-    if (geminiResponse.ok) {
-      return geminiResponse.json();
+    for (let attempt = 0; attempt <= GEMINI_MAX_RETRIES; attempt++) {
+      try {
+        const geminiResponse = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(reqBody)
+        });
+
+        if (geminiResponse.ok) {
+          return await geminiResponse.json();
+        }
+
+        modelStatus = geminiResponse.status;
+        modelErrorText = await geminiResponse.text();
+        console.error(`Gemini API Error Body for model ${model}:`, modelErrorText);
+
+        if (attempt < GEMINI_MAX_RETRIES && isRetryableGeminiStatus(geminiResponse.status)) {
+          const delayMs = getRetryDelayMs(geminiResponse, attempt);
+          console.warn(`[Gemini/Chat] ${geminiResponse.status} from ${model}. Retrying in ${delayMs}ms...`);
+          await sleep(delayMs);
+          continue;
+        }
+      } catch (fetchErr: any) {
+        modelStatus = 500;
+        modelErrorText = fetchErr.message || String(fetchErr);
+        console.error(`Fetch exception for model ${model}:`, fetchErr);
+        
+        if (attempt < GEMINI_MAX_RETRIES) {
+          const delayMs = Math.min(750 * Math.pow(2, attempt), 4000);
+          console.warn(`[Gemini/Chat] Fetch error for ${model}. Retrying in ${delayMs}ms...`);
+          await sleep(delayMs);
+          continue;
+        }
+      }
+      break;
     }
 
-    lastStatus = geminiResponse.status;
-    lastErrorText = await geminiResponse.text();
-    console.error('Gemini API Error Body:', lastErrorText);
-
-    if (attempt < GEMINI_MAX_RETRIES && isRetryableGeminiStatus(geminiResponse.status)) {
-      const delayMs = getRetryDelayMs(geminiResponse, attempt);
-      console.warn(`[Gemini/Chat] ${geminiResponse.status} from ${GEMINI_MODEL}. Retrying in ${delayMs}ms...`);
-      await sleep(delayMs);
-      continue;
-    }
-
-    break;
+    // Log the error clearly so it is captured in Railway dashboard logs
+    console.error(`[Railway Log] Gemini model ${model} failed with status ${modelStatus}. Error detail: ${modelErrorText}. Trying next fallback model if available.`);
+    
+    lastStatus = modelStatus;
+    lastErrorText = modelErrorText;
   }
 
-  throw new Error(`Gemini API error: ${lastStatus} - ${lastErrorText}`);
+  throw new Error(`All Gemini models failed. Last error: ${lastStatus} - ${lastErrorText}`);
 }
 
 function buildNoModelFallback(userMessage: string): string {
