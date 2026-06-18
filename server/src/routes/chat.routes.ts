@@ -6,6 +6,8 @@ import { config } from '../config';
 import { chatRateLimit } from '../middleware/rateLimit';
 import { checkAllowedOrigin } from '../utils/security';
 import { mergeWidgetConfig } from '../utils/widgetConfig';
+import { applyCorsOrigin } from '../utils/corsPolicy';
+import { fetchRecentMessageHistory } from '../services/conversationHistory';
 
 const router = Router();
 
@@ -23,6 +25,8 @@ function checkCors(req: Request, res: Response, allowedDomains: string[] | undef
     res.status(403).json({ error: originCheck.reason || 'Access Denied. Origin is not authorized.' });
     return false;
   }
+
+  applyCorsOrigin(res, originCheck.sourceOrigin);
 
   return true;
 }
@@ -64,19 +68,7 @@ router.post('/reply', async (req: Request, res: Response): Promise<void> => {
     if (!checkCors(req, res, bot.allowed_domains)) return;
 
     // 3. Fetch last 20 messages (conversation history window)
-    const { data: messages } = await supabase
-      .from('messages')
-      .select('sender, content, created_at')
-      .eq('session_id', sessionId)
-      .order('created_at', { ascending: true })
-      .limit(20);
-
-    const history = (messages ?? []).map((m: any) => ({
-      id: m.created_at,
-      sender: m.sender,
-      text: m.content,
-      timestamp: m.created_at
-    }));
+    const history = await fetchRecentMessageHistory(supabase, sessionId);
 
     // 4. Call chat controller (builds prompt, calls Gemini)
     const { reply } = await handleChat({

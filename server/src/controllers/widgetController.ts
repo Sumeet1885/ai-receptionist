@@ -554,41 +554,6 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
       </div>
       <div id="overlayStopIcon" class="stop-icon"></div>
     </button>
-  /* Powered By */
-  .powered-by {
-    text-align: center; padding: 6px; font-size: 9px;
-    color: var(--muted); background: var(--card);
-    border-top: 1px solid var(--border); flex-shrink: 0;
-  }
-  .powered-by a { color: var(--accent); text-decoration: none; }
-</style>
-</head>
-<body>
-
-<div class="widget-header">
-  <div class="widget-header-left">
-    <div class="widget-avatar">${avatarText}</div>
-    <div class="widget-header-info">
-      <h4>${displayName}</h4>
-      <span><span class="dot"></span> Online</span>
-    </div>
-  </div>
-  <button class="close-btn" onclick="window.parent.postMessage({type:'air-widget-close'},'*')" title="Close">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-  </button>
-</div>
-
-<div class="messages" id="messages"></div>
-
-<!-- Voice Input Overlay Component (AIVoiceInput representation) -->
-<div id="voiceOverlay" class="voice-overlay" style="display: none;">
-  <div class="voice-overlay-content">
-    <button type="button" id="overlayMicBtn" class="overlay-mic-btn" title="End voice call">
-      <div id="overlayMicIcon" style="display: none;">
-        <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg>
-      </div>
-      <div id="overlayStopIcon" class="stop-icon"></div>
-    </button>
     
     <span id="voiceTimer" class="voice-timer">00:00</span>
     

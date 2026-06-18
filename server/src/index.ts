@@ -5,11 +5,22 @@ import { errorHandler } from './middleware/errorHandler';
 import calendarRoutes from './routes/calendar.routes';
 import chatRoutes from './routes/chat.routes';
 import { geminiGuard } from './services/geminiGuard';
+import { isTrustedCorsOrigin } from './utils/corsPolicy';
 
 const app = express();
 
 app.set('trust proxy', 1);
-app.use(cors());
+const trustedCorsOrigins = [
+  config.clientUrl,
+  process.env.WIDGET_BASE_URL,
+  process.env.EXPRESS_SERVER_URL,
+].filter((origin): origin is string => Boolean(origin));
+
+app.use(cors({
+  origin(origin, callback) {
+    callback(null, isTrustedCorsOrigin(origin, trustedCorsOrigins));
+  },
+}));
 app.use(express.json());
 
 import widgetRoutes from './routes/widget.routes';
