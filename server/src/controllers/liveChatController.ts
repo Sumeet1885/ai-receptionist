@@ -8,6 +8,8 @@ import WebSocket from 'ws';
 import { checkAllowedOrigin } from '../utils/security';
 import { checkWebSocketRateLimit } from '../middleware/rateLimit';
 import { wsTransport } from '../utils/wsTransport';
+import { mergeWidgetConfig } from '../utils/widgetConfig';
+import { LiveInputTranscriptAccumulator } from '../services/llm/liveInputTranscript';
 
 const supabase = createClient(config.supabaseUrl, config.supabaseServiceKey, {
   realtime: { transport: wsTransport },
@@ -98,11 +100,50 @@ export function setupWebSocketServer(server: Server) {
     const geminiWs = new WebSocket(LIVE_API_URL);
     let setupSent = false;
     let accumulatedBotText = '';
+    const inputTranscript = new LiveInputTranscriptAccumulator();
+
+    const persistPendingUserTranscript = async () => {
+      try {
+        await inputTranscript.flush(async content => {
+          const { error } = await supabase.from('messages').insert({
+            session_id: sessionId,
+            sender: 'user',
+            content
+          });
+          if (error) throw error;
+        });
+      } catch (err) {
+        console.error('Error saving user voice transcript:', err);
+      }
+    };
 
     geminiWs.on('open', () => {
       console.log('Connected to Gemini Live API');
       
       const userLocaleTime = new Date().toLocaleString('en-US', { timeZone: timezone });
+      const widgetConfig = mergeWidgetConfig(bot.widget_config, bot);
+      const fieldsToCollect = widgetConfig.requiredLeadFields || [];
+
+      const fieldDescriptions: Record<string, string> = {
+        name: 'Full Name',
+        phone: 'Contact Phone Number',
+        email: 'Email Address',
+        requirement: 'Specific interest/visit purpose',
+        budget: 'Budget / Financial capability if relevant'
+      };
+
+      const enabledFields = fieldsToCollect
+        .map(field => fieldDescriptions[field])
+        .filter(Boolean);
+
+      let leadCollectionInstruction = enabledFields.length > 0
+        ? `Naturally and conversationally collect the basic lead details before booking: ${enabledFields.join(', ')}.`
+        : `Answer questions warmly but do not proactively collect contact details.`;
+
+      if (widgetConfig.additionalCollectInfo) {
+        leadCollectionInstruction += ` Also, collect the following additional information: ${widgetConfig.additionalCollectInfo}.`;
+      }
+
       const systemInstruction = `You are the Virtual AI Receptionist representing "${bot.business_name}" (${bot.industry} sector).
 
 CURRENT TIMEZONE: ${timezone}
@@ -114,7 +155,7 @@ ${bot.knowledge_base}
 
 YOUR GOALS:
 1. Warmly answer the user's questions relying strictly on the business details above.
-2. Naturally and conversationally collect the basic lead details before booking: Full Name, Contact Phone Number, Specific interest/visit purpose, and Budget if relevant.
+2. ${leadCollectionInstruction}
 3. If the user asks for a visit, booking, appointment, callback, or you judge that human intervention is needed, move into appointment-assist mode:
    - Ask for any missing basic details first.
    - Ask for the preferred date if it is missing.
@@ -149,6 +190,7 @@ CRITICAL SECURITY & CONSTRAINTS:
           system_instruction: {
             parts: [{ text: systemInstruction }]
           },
+          input_audio_transcription: {},
           tools: [{
             function_declarations: [
               {
@@ -189,6 +231,7 @@ CRITICAL SECURITY & CONSTRAINTS:
     // 3. Handle messages from Gemini
     geminiWs.on('message', async (data: Buffer) => {
       const response = JSON.parse(data.toString());
+      inputTranscript.accept(response);
 
       if (response.setupComplete || response.setup_complete) {
         console.log('Gemini Live API Setup Complete. Triggering initial greeting...');
@@ -247,6 +290,10 @@ CRITICAL SECURITY & CONSTRAINTS:
             console.error('Error saving bot message:', err);
           }
           accumulatedBotText = '';
+        }
+
+        if (response.serverContent.turnComplete) {
+          await persistPendingUserTranscript();
         }
       }
 
@@ -406,6 +453,9 @@ CRITICAL SECURITY & CONSTRAINTS:
           console.error('Error saving final bot message:', err);
         }
       }
+
+      // Save any final user transcription received before disconnect.
+      await persistPendingUserTranscript();
 
       // Run lead analysis asynchronously when the call finishes
       try {

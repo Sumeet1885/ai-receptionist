@@ -19,7 +19,8 @@ export const defaultWidgetConfig: WidgetConfig = {
   enableCalendar: true,
   showPoweredBy: true,
   requiredLeadFields: ['name', 'phone'],
-  handoffText: 'I can connect you with the team for this.'
+  handoffText: 'I can connect you with the team for this.',
+  additionalCollectInfo: ''
 };
 
 export function mergeWidgetConfig(value: Partial<WidgetConfig> | null | undefined): WidgetConfig {
@@ -27,6 +28,7 @@ export function mergeWidgetConfig(value: Partial<WidgetConfig> | null | undefine
   return {
     ...config,
     suggestedPrompts: Array.isArray(config.suggestedPrompts) ? config.suggestedPrompts : [],
-    requiredLeadFields: Array.isArray(config.requiredLeadFields) ? config.requiredLeadFields : defaultWidgetConfig.requiredLeadFields
+    requiredLeadFields: Array.isArray(config.requiredLeadFields) ? config.requiredLeadFields : defaultWidgetConfig.requiredLeadFields,
+    additionalCollectInfo: config.additionalCollectInfo || ''
   };
 }

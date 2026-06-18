@@ -120,14 +120,19 @@ router.post('/reply', async (req: Request, res: Response): Promise<void> => {
       err?.message?.includes('No calendar connected')
         ? 'I can help with that, but the business calendar is not connected right now.'
         : err?.message?.includes('Gemini API error')
-          ? 'I am having trouble reaching the assistant service right now. Please try again in a moment.'
+          ? 'I can help with that. Please share your name, phone number, and what you need, and I will try again.'
           : 'I ran into a temporary issue while processing that request. Please try again.';
 
-    res.status(200).json({
-      reply: safeReply,
-      error: err?.message || 'Internal server error',
-      requestId
-    });
+    try {
+      await supabase.from('messages').insert([
+        { session_id: sessionId, sender: 'user', content: userMessage },
+        { session_id: sessionId, sender: 'bot', content: safeReply }
+      ]);
+    } catch (persistErr) {
+      console.error('Failed to persist chat fallback messages:', persistErr);
+    }
+
+    res.status(200).json({ reply: safeReply });
   }
 });
 

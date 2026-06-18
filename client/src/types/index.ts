@@ -3,7 +3,7 @@ export type WidgetLauncherPosition = 'bottom-right' | 'bottom-left';
 export type WidgetLauncherStyle = 'icon' | 'text';
 export type WidgetSize = 'compact' | 'standard' | 'large';
 export type WidgetRadius = 'sharp' | 'soft' | 'rounded';
-export type LeadField = 'name' | 'phone' | 'email' | 'requirement';
+export type LeadField = 'name' | 'phone' | 'email' | 'requirement' | 'budget';
 
 export interface WidgetConfig {
   assistantName: string;
@@ -25,6 +25,7 @@ export interface WidgetConfig {
   showPoweredBy: boolean;
   requiredLeadFields: LeadField[];
   handoffText: string;
+  additionalCollectInfo?: string;
 }
 
 export interface Bot {

@@ -18,6 +18,7 @@ export interface WidgetConfig {
   showPoweredBy: boolean;
   requiredLeadFields: string[];
   handoffText: string;
+  additionalCollectInfo?: string;
 }
 
 const colorMap: Record<string, string> = {
@@ -46,7 +47,8 @@ export const defaultWidgetConfig: WidgetConfig = {
   enableCalendar: true,
   showPoweredBy: true,
   requiredLeadFields: ['name', 'phone'],
-  handoffText: 'I can connect you with the team for this.'
+  handoffText: 'I can connect you with the team for this.',
+  additionalCollectInfo: ''
 };
 
 function cleanHex(value: unknown, fallback: string) {
@@ -92,9 +94,10 @@ export function mergeWidgetConfig(value: any, bot?: { business_name?: string; pr
     enableCalendar: input.enableCalendar !== false,
     showPoweredBy: input.showPoweredBy !== false,
     requiredLeadFields: Array.isArray(input.requiredLeadFields)
-      ? input.requiredLeadFields.filter((item: unknown) => typeof item === 'string').slice(0, 4)
+      ? input.requiredLeadFields.filter((item: unknown) => typeof item === 'string').slice(0, 6)
       : defaultWidgetConfig.requiredLeadFields,
-    handoffText: cleanText(input.handoffText, defaultWidgetConfig.handoffText, 180)
+    handoffText: cleanText(input.handoffText, defaultWidgetConfig.handoffText, 180),
+    additionalCollectInfo: cleanText(input.additionalCollectInfo, '', 500)
   };
 }
 

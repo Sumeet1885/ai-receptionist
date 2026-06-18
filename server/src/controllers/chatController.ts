@@ -2,9 +2,12 @@
 import { Bot, Message } from '../types/index.ts';
 import { config } from '../config';
 import { geminiGuard, RateLimitError } from '../services/geminiGuard';
+import { mergeWidgetConfig } from '../utils/widgetConfig';
 
 const GEMINI_API_KEY = config.geminiApiKey ?? '';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_MAX_RETRIES = Number(process.env.GEMINI_MAX_RETRIES || 2);
 
 export interface ChatInput {
   bot: Bot;
@@ -16,6 +19,69 @@ export interface ChatInput {
 
 export interface ChatOutput {
   reply: string;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function isRetryableGeminiStatus(status: number): boolean {
+  return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+}
+
+function getRetryDelayMs(response: Response, attempt: number): number {
+  const retryAfter = response.headers.get('retry-after');
+  const retryAfterSeconds = retryAfter ? Number(retryAfter) : 0;
+  if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+    return Math.min(retryAfterSeconds * 1000, 8000);
+  }
+
+  return Math.min(750 * Math.pow(2, attempt), 4000);
+}
+
+async function callGeminiWithRetry(reqBody: any): Promise<any> {
+  let lastErrorText = '';
+  let lastStatus = 0;
+
+  for (let attempt = 0; attempt <= GEMINI_MAX_RETRIES; attempt++) {
+    const geminiResponse = await fetch(GEMINI_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reqBody)
+    });
+
+    if (geminiResponse.ok) {
+      return geminiResponse.json();
+    }
+
+    lastStatus = geminiResponse.status;
+    lastErrorText = await geminiResponse.text();
+    console.error('Gemini API Error Body:', lastErrorText);
+
+    if (attempt < GEMINI_MAX_RETRIES && isRetryableGeminiStatus(geminiResponse.status)) {
+      const delayMs = getRetryDelayMs(geminiResponse, attempt);
+      console.warn(`[Gemini/Chat] ${geminiResponse.status} from ${GEMINI_MODEL}. Retrying in ${delayMs}ms...`);
+      await sleep(delayMs);
+      continue;
+    }
+
+    break;
+  }
+
+  throw new Error(`Gemini API error: ${lastStatus} - ${lastErrorText}`);
+}
+
+function buildNoModelFallback(userMessage: string): string {
+  const text = userMessage.toLowerCase();
+  const looksLikeBooking =
+    /\b(book|booking|appointment|calendar|schedule|visit|callback|meeting|slot|tomorrow|today)\b/.test(text) ||
+    /\b\d{1,2}\s*(am|pm)\b/.test(text);
+
+  if (looksLikeBooking) {
+    return 'I can help with the booking. Please share your full name, phone number, and preferred date and time so I can check availability.';
+  }
+
+  return 'I am here to help. Could you share a little more detail about what you need?';
 }
 
 /**
@@ -49,6 +115,29 @@ export async function handleChat(
   const userLocaleTime = new Date().toLocaleString('en-US', { timeZone: timezone });
 
   // 1. Build system instruction from bot configuration
+  const widgetConfig = mergeWidgetConfig(bot.widget_config, bot);
+  const fieldsToCollect = widgetConfig.requiredLeadFields || [];
+
+  const fieldDescriptions: Record<string, string> = {
+    name: 'Full Name',
+    phone: 'Contact Phone Number',
+    email: 'Email Address',
+    requirement: 'Specific interest/visit purpose',
+    budget: 'Budget / Financial capability if relevant'
+  };
+
+  const enabledFields = fieldsToCollect
+    .map(field => fieldDescriptions[field])
+    .filter(Boolean);
+
+  let leadCollectionInstruction = enabledFields.length > 0
+    ? `Naturally and conversationally collect the basic lead details before booking: ${enabledFields.join(', ')}.`
+    : `Answer questions warmly but do not proactively collect contact details.`;
+
+  if (widgetConfig.additionalCollectInfo) {
+    leadCollectionInstruction += ` Also, collect the following additional information: ${widgetConfig.additionalCollectInfo}.`;
+  }
+
   const systemInstruction = `You are the Virtual AI Receptionist representing "${bot.business_name}" (${bot.industry} sector).
 
 CURRENT TIMEZONE: ${timezone}
@@ -60,7 +149,7 @@ ${bot.knowledge_base}
 
 YOUR GOALS:
 1. Warmly answer the user's questions relying strictly on the business details above.
-2. Naturally and conversationally collect the basic lead details before booking: Full Name, Contact Phone Number, Specific interest/visit purpose, and Budget if relevant.
+2. ${leadCollectionInstruction}
 3. If the user asks for a visit, booking, appointment, callback, or you judge that human intervention is needed, move into appointment-assist mode:
    - Ask for any missing basic details first.
    - Ask for the preferred date if it is missing.
@@ -155,19 +244,17 @@ CRITICAL SECURITY & CONSTRAINTS:
       }
     }
 
-    const geminiResponse = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(reqBody)
-    });
-
-    if (!geminiResponse.ok) {
-      const errText = await geminiResponse.text();
-      console.error('Gemini API Error Body:', errText);
-      throw new Error(`Gemini API error: ${geminiResponse.status} - ${errText}`);
+    let geminiData: any;
+    try {
+      geminiData = await callGeminiWithRetry(reqBody);
+    } catch (err: any) {
+      if (err?.message?.includes('Gemini API error')) {
+        console.error('[Gemini/Chat] Exhausted retries:', err.message);
+        break;
+      }
+      throw err;
     }
 
-    const geminiData = await geminiResponse.json();
     const candidate = geminiData.candidates?.[0];
     const parts = candidate?.content?.parts || [];
 
@@ -259,7 +346,7 @@ CRITICAL SECURITY & CONSTRAINTS:
   }
 
   if (!reply) {
-    reply = 'I need a moment to confirm that. Please tell me your preferred date and time again.';
+    reply = buildNoModelFallback(userMessage);
   }
 
   return { reply };

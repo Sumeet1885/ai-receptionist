@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { Message } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { speakText } from '../services/speech';
+import { createChatReplyBody } from '../lib/chatRequest';
 
 export function useChat() {
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
@@ -68,7 +69,7 @@ export function useChat() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ sessionId: currentSessionId, userMessage: userText })
+        body: JSON.stringify(createChatReplyBody(currentSessionId, userText))
       });
 
       if (!response.ok) {

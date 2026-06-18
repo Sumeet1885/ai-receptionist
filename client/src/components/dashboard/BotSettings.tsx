@@ -42,7 +42,8 @@ const leadFields: Array<{ id: LeadField; label: string }> = [
   { id: 'name', label: 'Name' },
   { id: 'phone', label: 'Phone' },
   { id: 'email', label: 'Email' },
-  { id: 'requirement', label: 'Requirement' }
+  { id: 'requirement', label: 'Requirement' },
+  { id: 'budget', label: 'Budget' }
 ];
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
@@ -162,7 +163,8 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
         avatarText: activeBot.widgetConfig.avatarText.trim().slice(0, 3).toUpperCase(),
         suggestedPrompts: activeBot.widgetConfig.suggestedPrompts.map(prompt => prompt.trim()).filter(Boolean),
         launcherText: activeBot.widgetConfig.launcherText.trim() || 'Chat',
-        inputPlaceholder: activeBot.widgetConfig.inputPlaceholder.trim() || 'Type a message...'
+        inputPlaceholder: activeBot.widgetConfig.inputPlaceholder.trim() || 'Type a message...',
+        additionalCollectInfo: activeBot.widgetConfig.additionalCollectInfo?.trim() || ''
       };
 
       await updateBot(activeBot.id, {
@@ -349,6 +351,14 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                   </button>
                 ))}
               </div>
+            </div>
+            <div>
+              <FieldLabel>Additional Info to Collect (Optional)</FieldLabel>
+              <TextInput
+                placeholder="e.g. Company name, budget limits, custom queries"
+                value={activeBot.widgetConfig.additionalCollectInfo || ''}
+                onChange={(e) => patchConfig({ additionalCollectInfo: e.target.value })}
+              />
             </div>
             <div>
               <FieldLabel>Human Handoff Text</FieldLabel>
