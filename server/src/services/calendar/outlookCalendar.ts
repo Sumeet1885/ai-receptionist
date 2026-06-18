@@ -155,8 +155,8 @@ export class OutlookCalendarAdapter implements CalendarAdapter {
   async checkAvailability(date: string, ownerId: string, timezone?: string): Promise<TimeSlot[]> {
     const client = await this.getAuthenticatedClient(ownerId);
     
-    const timeMin = new Date(`${date}T09:00:00Z`);
-    const timeMax = new Date(`${date}T17:00:00Z`);
+    const timeMin = new Date(`${date}T00:00:00Z`);
+    const timeMax = new Date(`${date}T23:59:59Z`);
 
     const res = await client.api('/me/calendar/getSchedule').post({
       schedules: ['primary'], // would need actual email in real life, 'primary' might not work directly for getSchedule

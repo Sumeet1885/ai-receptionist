@@ -141,9 +141,9 @@ export class GoogleCalendarAdapter implements CalendarAdapter {
       return new Date(localDate.getTime() + diff);
     };
 
-    // Calculate start (9 AM) and end (5 PM) of workday in calendar's time zone
-    const timeMin = getUtcDate(date, '09:00:00', timeZone);
-    const timeMax = getUtcDate(date, '17:00:00', timeZone);
+    // Query availability for the entire 24-hour day in the calendar's time zone
+    const timeMin = getUtcDate(date, '00:00:00', timeZone);
+    const timeMax = getUtcDate(date, '23:59:59', timeZone);
     
     const res = await calendar.freebusy.query({
       requestBody: {

@@ -32,7 +32,7 @@ ${bot.knowledgeBase}
 
 YOUR GOALS:
 1. Warmly answer the user's questions relying strictly on the business details above. If you don't know the answer, politely request their name and phone number so a specialist can reach them.
-2. Naturally and conversationally guide the chat to collect: Full Name, Contact Phone Number, Specific interest, and Budget.
+2. Naturally and conversationally guide the chat.
 3. Support multilingual outputs automatically — match the user's language.
 4. Keep answers short (2-3 sentences max) for a rapid web-chat format.`;
 
