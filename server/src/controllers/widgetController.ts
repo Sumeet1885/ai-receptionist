@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { supabase } from '../services/db';
 import { config } from '../config';
 import { buildFrameAncestors, checkAllowedOrigin } from '../utils/security';
-import { defaultWidgetConfig, escapeHtml, mergeWidgetConfig } from '../utils/widgetConfig';
+import { defaultWidgetConfig, escapeHtml, getContrastingTextColor, mergeWidgetConfig } from '../utils/widgetConfig';
 
 const CONFIGURED_BASE_URL = process.env.WIDGET_BASE_URL || process.env.EXPRESS_SERVER_URL || '';
 
@@ -74,10 +74,22 @@ export const serveLoader = (req: Request, res: Response) => {
     return /^#[0-9a-f]{6}$/i.test(value || '') ? value : fallback;
   }
 
+  function contrastColor(hex) {
+    var value = cleanHex(hex, '#000000').slice(1);
+    var channels = [0, 2, 4].map(function(index) {
+      var channel = parseInt(value.slice(index, index + 2), 16) / 255;
+      return channel <= 0.04045 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4);
+    });
+    var luminance = 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+    var whiteContrast = 1.05 / (luminance + 0.05);
+    var darkContrast = (luminance + 0.05) / 0.057;
+    return whiteContrast >= darkContrast ? '#FFFFFF' : '#111827';
+  }
+
   function mergeConfig(next) {
     next = next || {};
     config = Object.assign({}, config, next);
-    config.primaryColor = cleanHex(config.primaryColor, '#22e6a8');
+    config.primaryColor = cleanHex(config.primaryColor, '#5B8CFF');
     config.launcherPosition = config.launcherPosition === 'bottom-left' ? 'bottom-left' : 'bottom-right';
     config.launcherStyle = config.launcherStyle === 'text' ? 'text' : 'icon';
     config.launcherText = String(config.launcherText || 'Chat').slice(0, 24);
@@ -113,7 +125,7 @@ export const serveLoader = (req: Request, res: Response) => {
     var sideRule = left ? 'left:24px;right:auto;' : 'right:24px;left:auto;';
     var mobileSideRule = left ? 'left:16px;right:auto;' : 'right:16px;left:auto;';
     style.textContent =
-      '#air-widget-bubble{position:fixed;bottom:24px;' + sideRule + 'z-index:2147483647;min-width:60px;width:' + bubbleSize + ';height:60px;padding:' + bubblePadding + ';border-radius:999px;background:' + config.primaryColor + ';border:none;cursor:pointer;box-shadow:0 8px 28px rgba(0,0,0,.24);display:flex;align-items:center;justify-content:center;transition:transform .2s ease,box-shadow .2s ease;color:#07130f;font:700 14px Arial,sans-serif}' +
+      '#air-widget-bubble{position:fixed;bottom:24px;' + sideRule + 'z-index:2147483647;min-width:60px;width:' + bubbleSize + ';height:60px;padding:' + bubblePadding + ';border-radius:999px;background:' + config.primaryColor + ';border:none;cursor:pointer;box-shadow:0 8px 28px rgba(0,0,0,.24);display:flex;align-items:center;justify-content:center;transition:transform .2s ease,box-shadow .2s ease;color:' + contrastColor(config.primaryColor) + ';font:700 14px Arial,sans-serif}' +
       '#air-widget-bubble:hover{transform:scale(1.06);box-shadow:0 12px 36px rgba(0,0,0,.28)}#air-widget-bubble svg{width:26px;height:26px;fill:currentColor}#air-widget-bubble span{white-space:nowrap}' +
       '#air-widget-container{position:fixed;bottom:96px;' + sideRule + 'z-index:2147483647;width:' + width + ';height:' + height + ';max-width:calc(100vw - 32px);max-height:calc(100vh - 120px);border-radius:' + radius + ';overflow:hidden;box-shadow:0 14px 44px rgba(0,0,0,.28);transition:opacity .25s ease,transform .25s ease;opacity:0;transform:translateY(16px) scale(.96);pointer-events:none}' +
       '#air-widget-container.air-open{opacity:1;transform:translateY(0) scale(1);pointer-events:all}#air-widget-container iframe{width:100%;height:100%;border:none;border-radius:' + radius + '}' +
@@ -203,6 +215,7 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
 
   const apiBase = getWidgetRuntimeBaseUrl(req);
   const widgetConfig = mergeWidgetConfig(bot.widget_config, bot);
+  const onAccentColor = getContrastingTextColor(widgetConfig.primaryColor);
   const displayName = escapeHtml(widgetConfig.assistantName || bot.business_name);
   const avatarText = escapeHtml(widgetConfig.avatarText || bot.business_name.charAt(0));
   const radiusPx = widgetConfig.radius === 'sharp' ? '6px' : widgetConfig.radius === 'rounded' ? '24px' : '16px';
@@ -233,9 +246,10 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
     --card: ${widgetConfig.surfaceColor};
     --border: ${widgetConfig.primaryColor}33;
     --text: ${widgetConfig.textColor};
-    --muted: #6b7280;
+    --muted: ${widgetConfig.textColor}99;
     --accent: ${widgetConfig.primaryColor};
     --accent-hover: ${widgetConfig.primaryColor};
+    --on-accent: ${onAccentColor};
     --success: #22c55e;
     --radius: ${radiusPx};
   }
@@ -263,7 +277,7 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
     width: 36px; height: 36px; border-radius: 50%;
     background: var(--accent); border: 1px solid var(--accent);
     display: flex; align-items: center; justify-content: center;
-    font-weight: 700; color: var(--bg); font-size: 14px;
+    font-weight: 700; color: var(--on-accent); font-size: 14px;
   }
   .widget-header-info h4 { font-size: 13px; font-weight: 600; }
   .widget-header-info span {
@@ -300,7 +314,7 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
   .msg-user {
     align-self: flex-end;
     background: var(--accent); border: 1px solid var(--accent);
-    color: var(--bg);
+    color: var(--on-accent);
     border-top-right-radius: 4px;
   }
   .msg-time { font-size: 9px; color: var(--muted); margin-top: 4px; text-align: right; }
@@ -342,7 +356,7 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
   .input-area input:focus { border-color: var(--accent); }
   .input-area button {
     background: var(--accent); border: none; border-radius: 10px;
-    color: var(--bg); cursor: pointer; padding: 10px 14px;
+    color: var(--on-accent); cursor: pointer; padding: 10px 14px;
     transition: background 0.2s;
   }
   .input-area .voice-btn {

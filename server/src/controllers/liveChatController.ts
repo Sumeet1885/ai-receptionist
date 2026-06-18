@@ -81,10 +81,41 @@ export function setupWebSocketServer(server: Server) {
     const getTzOffsetStr = (tz: string) => {
       try {
         const d = new Date();
-        const tzString = d.toLocaleString('en-US', { timeZone: tz });
-        const tzDate = new Date(tzString);
-        // Calculate difference in minutes
-        const diffMin = Math.round((tzDate.getTime() - d.getTime()) / 60000);
+        const formatter = new Intl.DateTimeFormat('en-US', {
+          timeZone: tz,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        });
+        const parts = formatter.formatToParts(d);
+        const getPart = (type: string) => parts.find(p => p.type === type)?.value || '';
+        
+        let hour = getPart('hour');
+        if (hour === '24') hour = '00';
+
+        const targetUtc = Date.UTC(
+          Number(getPart('year')),
+          Number(getPart('month')) - 1,
+          Number(getPart('day')),
+          Number(hour),
+          Number(getPart('minute')),
+          Number(getPart('second'))
+        );
+        
+        const actualUtc = Date.UTC(
+          d.getUTCFullYear(),
+          d.getUTCMonth(),
+          d.getUTCDate(),
+          d.getUTCHours(),
+          d.getUTCMinutes(),
+          d.getUTCSeconds()
+        );
+        
+        const diffMin = Math.round((targetUtc - actualUtc) / 60000);
         const sign = diffMin >= 0 ? '+' : '-';
         const absMin = Math.abs(diffMin);
         const hours = String(Math.floor(absMin / 60)).padStart(2, '0');
@@ -311,7 +342,7 @@ CRITICAL SECURITY & CONSTRAINTS:
 
           try {
             if (name === 'check_availability') {
-              const res = await fetch(`${EXPRESS_SERVER_URL}/api/calendar/availability?date=${args.date}&ownerId=${bot.owner_id}`);
+              const res = await fetch(`${EXPRESS_SERVER_URL}/api/calendar/availability?date=${args.date}&ownerId=${bot.owner_id}&timezone=${encodeURIComponent(timezone)}`);
               functionResponse = await res.json();
               checkedAvailabilityThisToolTurn = true;
               
@@ -345,7 +376,8 @@ CRITICAL SECURITY & CONSTRAINTS:
                   details: args, 
                   ownerId: bot.owner_id, 
                   botId: bot.id, 
-                  sessionId: sessionId 
+                  sessionId: sessionId,
+                  timezone: timezone
                 })
               });
               functionResponse = await res.json();

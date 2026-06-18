@@ -8,7 +8,7 @@ interface ConversationListProps {
 }
 
 export const ConversationList: React.FC<ConversationListProps> = ({ activeBotId }) => {
-  const { sessions, fetchSessions, loading } = useConversations();
+  const { sessions, fetchSessions, loading, error } = useConversations();
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -49,6 +49,23 @@ export const ConversationList: React.FC<ConversationListProps> = ({ activeBotId 
         {loading ? (
           <div className="p-12 text-center text-brand-muted space-y-4">
             <p className="text-sm font-sans animate-pulse">Loading sessions...</p>
+          </div>
+        ) : error ? (
+          <div className="p-12 text-center space-y-4">
+            <div className="mx-auto w-12 h-12 rounded-full bg-brand-danger/10 border border-brand-danger/30 text-brand-danger flex items-center justify-center">
+              <Icons.Chat />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-brand-text">Conversations could not be loaded</p>
+              <p className="text-xs text-brand-muted mt-1">{error}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => fetchSessions(activeBotId)}
+              className="h-9 px-4 rounded-md bg-brand-accent text-brand-bg text-xs font-bold"
+            >
+              Try again
+            </button>
           </div>
         ) : sessions.length === 0 ? (
           <div className="p-12 text-center text-brand-muted space-y-4">

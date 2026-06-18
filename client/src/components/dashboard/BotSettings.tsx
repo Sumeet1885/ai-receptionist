@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Bot, LeadField, WidgetConfig, WidgetLauncherPosition, WidgetLauncherStyle, WidgetRadius, WidgetSize, WidgetTheme } from '../../types';
+import { Bot, LeadField, WidgetConfig, WidgetLauncherPosition, WidgetLauncherStyle, WidgetRadius, WidgetSize } from '../../types';
 import { AllowedDomainsEditor } from './AllowedDomainsEditor';
 import { normalizeDomains } from '../../lib/domain';
+import { isThemePresetActive, WidgetThemePreset, widgetThemePresets } from '../../lib/widgetThemes';
 
 interface BotSettingsProps {
   bots: Bot[];
@@ -27,15 +28,6 @@ const sections: Array<{ id: SettingsSection; label: string; description: string 
   { id: 'behavior', label: 'Behavior', description: 'Voice, calendar, lead fields' },
   { id: 'knowledge', label: 'Knowledge', description: 'Facts and FAQs' },
   { id: 'security', label: 'Security', description: 'Allowed domains' }
-];
-
-const colorPresets = [
-  { label: 'Mint', value: '#22e6a8' },
-  { label: 'Sky', value: '#38bdf8' },
-  { label: 'Coral', value: '#fb7185' },
-  { label: 'Amber', value: '#f59e0b' },
-  { label: 'Violet', value: '#8b5cf6' },
-  { label: 'Slate', value: '#64748b' }
 ];
 
 const leadFields: Array<{ id: LeadField; label: string }> = [
@@ -65,6 +57,32 @@ function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
       {...props}
       className={`w-full bg-brand-bg border border-brand-border rounded-md px-3 py-2.5 text-sm text-brand-text placeholder:text-brand-muted/60 focus:outline-none focus:border-brand-accent transition ${props.className || ''}`}
     />
+  );
+}
+
+function ColorControl({
+  label,
+  value,
+  onChange
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="flex items-center justify-between gap-3 rounded-md border border-brand-border bg-brand-bg px-3 py-2 cursor-pointer hover:border-brand-muted transition">
+      <span>
+        <span className="block text-xs font-semibold text-brand-text">{label}</span>
+        <span className="block mt-0.5 text-[10px] font-mono uppercase text-brand-muted">{value}</span>
+      </span>
+      <input
+        type="color"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-8 w-10 rounded border border-brand-border bg-transparent p-0.5 cursor-pointer"
+        aria-label={`${label} color`}
+      />
+    </label>
   );
 }
 
@@ -129,6 +147,16 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
 
   const patchConfig = (patch: Partial<WidgetConfig>) => {
     patchActiveBot({ widgetConfig: { ...activeBot.widgetConfig, ...patch } });
+  };
+
+  const applyThemePreset = (preset: WidgetThemePreset) => {
+    patchConfig({
+      theme: preset.theme,
+      primaryColor: preset.primaryColor,
+      backgroundColor: preset.backgroundColor,
+      surfaceColor: preset.surfaceColor,
+      textColor: preset.textColor,
+    });
   };
 
   const toggleLeadField = (field: LeadField) => {
@@ -232,44 +260,63 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
         {section === 'widget' && (
           <div className="space-y-5">
             <div>
-              <FieldLabel>Color Preset</FieldLabel>
-              <div className="flex flex-wrap gap-2">
-                {colorPresets.map(color => (
+              <div className="mb-3">
+                <h3 className="text-sm font-bold text-brand-text">Quick sets</h3>
+                <p className="mt-1 text-xs text-brand-muted">Professionally balanced palettes. One click updates the complete widget.</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-3">
+                {widgetThemePresets.map(preset => {
+                  const selected = isThemePresetActive(preset, activeBot.widgetConfig);
+                  return (
                   <button
-                    key={color.value}
+                    key={preset.id}
                     type="button"
-                    onClick={() => patchConfig({ primaryColor: color.value })}
-                    className={`h-9 px-3 rounded-md border text-xs font-bold flex items-center gap-2 ${activeBot.widgetConfig.primaryColor === color.value ? 'border-brand-text text-brand-text' : 'border-brand-border text-brand-muted'}`}
+                    onClick={() => applyThemePreset(preset)}
+                    aria-pressed={selected}
+                    className={`relative overflow-hidden rounded-lg border p-3 text-left transition hover:-translate-y-0.5 hover:shadow-lg ${selected ? 'border-brand-accent ring-1 ring-brand-accent' : 'border-brand-border hover:border-brand-muted'}`}
+                    style={{ backgroundColor: preset.backgroundColor }}
                   >
-                    <span className="w-4 h-4 rounded-full border border-white/20" style={{ background: color.value }} />
-                    {color.label}
+                    <span className="flex items-center justify-between gap-3">
+                      <span>
+                        <span className="block text-sm font-bold" style={{ color: preset.textColor }}>{preset.name}</span>
+                        <span className="block mt-0.5 text-[10px] opacity-65" style={{ color: preset.textColor }}>{preset.description}</span>
+                      </span>
+                      {selected && (
+                        <span className="rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wide" style={{ backgroundColor: preset.primaryColor, color: preset.backgroundColor }}>
+                          Selected
+                        </span>
+                      )}
+                    </span>
+                    <span className="mt-3 flex items-end gap-2 rounded-md p-2" style={{ backgroundColor: preset.surfaceColor }}>
+                      <span className="h-7 flex-1 rounded-md border border-black/5" style={{ backgroundColor: preset.backgroundColor }} />
+                      <span className="h-5 w-12 rounded-full" style={{ backgroundColor: preset.primaryColor }} />
+                    </span>
                   </button>
-                ))}
+                  );
+                })}
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <FieldLabel>Primary</FieldLabel>
-                <TextInput type="color" value={activeBot.widgetConfig.primaryColor} onChange={(e) => patchConfig({ primaryColor: e.target.value })} className="p-1" />
+
+            <details className="group rounded-lg border border-brand-border bg-brand-bg/50">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-brand-text">
+                <span>
+                  Fine tune colors
+                  <span className="ml-2 text-[10px] font-normal text-brand-muted">Advanced</span>
+                </span>
+                <span className="text-brand-muted transition group-open:rotate-180">⌄</span>
+              </summary>
+              <div className="border-t border-brand-border px-4 py-4">
+                <p className="mb-3 text-xs text-brand-muted">Manual changes create a custom palette. Choosing a quick set later will reset all four colors.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <ColorControl label="Accent" value={activeBot.widgetConfig.primaryColor} onChange={(primaryColor) => patchConfig({ primaryColor })} />
+                  <ColorControl label="Background" value={activeBot.widgetConfig.backgroundColor} onChange={(backgroundColor) => patchConfig({ backgroundColor })} />
+                  <ColorControl label="Surface" value={activeBot.widgetConfig.surfaceColor} onChange={(surfaceColor) => patchConfig({ surfaceColor })} />
+                  <ColorControl label="Text" value={activeBot.widgetConfig.textColor} onChange={(textColor) => patchConfig({ textColor })} />
+                </div>
               </div>
-              <div>
-                <FieldLabel>Background</FieldLabel>
-                <TextInput type="color" value={activeBot.widgetConfig.backgroundColor} onChange={(e) => patchConfig({ backgroundColor: e.target.value })} className="p-1" />
-              </div>
-              <div>
-                <FieldLabel>Surface</FieldLabel>
-                <TextInput type="color" value={activeBot.widgetConfig.surfaceColor} onChange={(e) => patchConfig({ surfaceColor: e.target.value })} className="p-1" />
-              </div>
-            </div>
+            </details>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <FieldLabel>Theme</FieldLabel>
-                <SelectControl<WidgetTheme>
-                  value={activeBot.widgetConfig.theme}
-                  onChange={(theme) => patchConfig({ theme })}
-                  options={[{ value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }, { value: 'brand', label: 'Brand' }]}
-                />
-              </div>
               <div>
                 <FieldLabel>Size</FieldLabel>
                 <SelectControl<WidgetSize>

@@ -32,10 +32,10 @@ export const defaultWidgetConfig: WidgetConfig = {
   assistantName: '',
   avatarText: '',
   theme: 'dark',
-  primaryColor: '#22e6a8',
-  backgroundColor: '#0b1511',
-  surfaceColor: '#10231d',
-  textColor: '#f7fffb',
+  primaryColor: '#5B8CFF',
+  backgroundColor: '#08111F',
+  surfaceColor: '#101C2E',
+  textColor: '#F4F7FB',
   launcherPosition: 'bottom-right',
   launcherStyle: 'icon',
   launcherText: 'Chat',
@@ -56,6 +56,27 @@ function cleanHex(value: unknown, fallback: string) {
   const mapped = colorMap[value.toLowerCase()];
   if (mapped) return mapped;
   return /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
+}
+
+function channelToLinear(channel: number) {
+  const normalized = channel / 255;
+  return normalized <= 0.04045
+    ? normalized / 12.92
+    : Math.pow((normalized + 0.055) / 1.055, 2.4);
+}
+
+export function getContrastingTextColor(hex: string) {
+  const cleaned = cleanHex(hex, '#000000').slice(1);
+  const red = parseInt(cleaned.slice(0, 2), 16);
+  const green = parseInt(cleaned.slice(2, 4), 16);
+  const blue = parseInt(cleaned.slice(4, 6), 16);
+  const luminance = 0.2126 * channelToLinear(red)
+    + 0.7152 * channelToLinear(green)
+    + 0.0722 * channelToLinear(blue);
+
+  const whiteContrast = 1.05 / (luminance + 0.05);
+  const darkContrast = (luminance + 0.05) / 0.057;
+  return whiteContrast >= darkContrast ? '#FFFFFF' : '#111827';
 }
 
 function cleanText(value: unknown, fallback: string, maxLength = 120) {

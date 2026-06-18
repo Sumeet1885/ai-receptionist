@@ -1,19 +1,22 @@
 import { useState, useCallback } from 'react';
 import { ChatSession, Message } from '../types';
 import { supabase } from '../lib/supabaseClient';
+import { mapConversationSessions } from '../lib/conversations';
 
 export function useConversations() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchSessions = useCallback(async (botId?: string | 'all') => {
     setLoading(true);
+    setError(null);
 
     let query = supabase
       .from('chat_sessions')
-      .select('id, bot_id, visitor_id, created_at, ended_at')
-      .order('created_at', { ascending: false });
+      .select('id, bot_id, visitor_id, started_at, ended_at')
+      .order('started_at', { ascending: false });
 
     if (botId && botId !== 'all') {
       query = query.eq('bot_id', botId);
@@ -22,6 +25,8 @@ export function useConversations() {
     const { data: sessionData, error: sessionError } = await query;
 
     if (sessionError || !sessionData) {
+      setSessions([]);
+      setError(sessionError?.message || 'Could not load conversations.');
       setLoading(false);
       return;
     }
@@ -33,11 +38,18 @@ export function useConversations() {
     
     let messagesMap: Record<string, { count: number, lastMsg: string }> = {};
     if (sessionIds.length > 0) {
-      const { data: msgData } = await supabase
+      const { data: msgData, error: messageError } = await supabase
         .from('messages')
         .select('session_id, content, created_at')
         .in('session_id', sessionIds)
         .order('created_at', { ascending: true });
+
+      if (messageError) {
+        setSessions([]);
+        setError(messageError.message || 'Could not load conversation messages.');
+        setLoading(false);
+        return;
+      }
         
       if (msgData) {
         msgData.forEach(m => {
@@ -50,15 +62,13 @@ export function useConversations() {
       }
     }
 
-    const mapped: ChatSession[] = sessionData.map(s => ({
-      id: s.id,
-      botId: s.bot_id,
-      visitorId: s.visitor_id,
-      startedAt: new Date(s.created_at).toLocaleString(),
-      endedAt: s.ended_at ? new Date(s.ended_at).toLocaleString() : null,
-      lastMessage: messagesMap[s.id]?.lastMsg || 'No messages yet',
-      messageCount: messagesMap[s.id]?.count || 0
-    }));
+    const messageRows = Object.entries(messagesMap).flatMap(([sessionId, summary]) =>
+      Array.from({ length: summary.count }, (_, index) => ({
+        session_id: sessionId,
+        content: index === summary.count - 1 ? summary.lastMsg : '',
+      }))
+    );
+    const mapped: ChatSession[] = mapConversationSessions(sessionData, messageRows);
 
     setSessions(mapped);
     setLoading(false);
@@ -66,6 +76,7 @@ export function useConversations() {
 
   const fetchMessagesForSession = useCallback(async (sessionId: string) => {
     setLoading(true);
+    setError(null);
     const { data, error } = await supabase
       .from('messages')
       .select('id, sender, content, created_at')
@@ -81,9 +92,10 @@ export function useConversations() {
       })));
     } else {
       setMessages([]);
+      setError(error?.message || 'Could not load conversation messages.');
     }
     setLoading(false);
   }, []);
 
-  return { sessions, messages, loading, fetchSessions, fetchMessagesForSession };
+  return { sessions, messages, loading, error, fetchSessions, fetchMessagesForSession };
 }

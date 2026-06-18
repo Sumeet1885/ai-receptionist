@@ -14,6 +14,7 @@ export interface BookingDetails {
 export interface CalendarAdapter {
   getAuthUrl(ownerId: string): string;
   handleCallback(code: string, ownerId: string): Promise<void>;
-  checkAvailability(date: string, ownerId: string): Promise<TimeSlot[]>;
+  checkAvailability(date: string, ownerId: string, timezone?: string): Promise<TimeSlot[]>;
   bookAppointment(details: BookingDetails, ownerId: string): Promise<{ eventId: string }>;
 }
+

@@ -9,6 +9,52 @@ const supabase = createClient(config.supabaseUrl, config.supabaseServiceKey, {
   realtime: { transport: wsTransport },
 });
 
+const formatInTimezone = (date: Date, tz?: string): string => {
+  if (!tz) return date.toISOString();
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+    const parts = formatter.formatToParts(date);
+    const getPart = (type: string) => parts.find(p => p.type === type)?.value || '';
+    
+    let hour = getPart('hour');
+    if (hour === '24') hour = '00';
+    
+    const year = getPart('year');
+    const month = getPart('month');
+    const day = getPart('day');
+    const minute = getPart('minute');
+    const second = getPart('second');
+
+    // Get offset
+    const tzParts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      timeZoneName: 'longOffset'
+    }).formatToParts(date);
+    const offsetPart = tzParts.find(p => p.type === 'timeZoneName')?.value || '';
+    let offset = '+00:00';
+    const match = offsetPart.match(/GMT([+-])(\d+):?(\d+)?/);
+    if (match) {
+      const sign = match[1];
+      const hours = match[2].padStart(2, '0');
+      const mins = (match[3] || '00').padStart(2, '0');
+      offset = `${sign}${hours}:${mins}`;
+    }
+    
+    return `${year}-${month}-${day}T${hour}:${minute}:${second}${offset}`;
+  } catch {
+    return date.toISOString();
+  }
+};
+
 export class OutlookCalendarAdapter implements CalendarAdapter {
   
   getAuthUrl(ownerId: string): string {
@@ -106,7 +152,7 @@ export class OutlookCalendarAdapter implements CalendarAdapter {
     });
   }
 
-  async checkAvailability(date: string, ownerId: string): Promise<TimeSlot[]> {
+  async checkAvailability(date: string, ownerId: string, timezone?: string): Promise<TimeSlot[]> {
     const client = await this.getAuthenticatedClient(ownerId);
     
     const timeMin = new Date(`${date}T09:00:00Z`);
@@ -132,8 +178,8 @@ export class OutlookCalendarAdapter implements CalendarAdapter {
     const end = timeMax.getTime();
     while (current + 30 * 60000 <= end) {
       freeSlots.push({
-        start: new Date(current).toISOString(),
-        end: new Date(current + 30 * 60000).toISOString()
+        start: formatInTimezone(new Date(current), timezone),
+        end: formatInTimezone(new Date(current + 30 * 60000), timezone)
       });
       current += 30 * 60000;
     }

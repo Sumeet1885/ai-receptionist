@@ -63,13 +63,13 @@ export const getStatus = async (req: any, res: Response) => {
 
 // Internal API used by Edge Functions for LLM function calling
 export const getAvailability = async (req: Request, res: Response) => {
-  const { date, ownerId } = req.query;
+  const { date, ownerId, timezone } = req.query;
   try {
     const { data } = await supabase.from('calendar_connections').select('provider').eq('owner_id', ownerId).single();
     if (!data) throw new Error('No calendar connected');
 
     const adapter = getAdapter(data.provider);
-    const slots = await adapter.checkAvailability(date as string, ownerId as string);
+    const slots = await adapter.checkAvailability(date as string, ownerId as string, timezone as string);
     res.json({ slots });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
@@ -77,7 +77,7 @@ export const getAvailability = async (req: Request, res: Response) => {
 };
 
 export const bookAppointment = async (req: Request, res: Response) => {
-  const { details, ownerId, botId, sessionId, leadId } = req.body;
+  const { details, ownerId, botId, sessionId, leadId, timezone } = req.body;
   try {
     const requestedStart = new Date(details?.startTime);
     const requestedEnd = new Date(details?.endTime);
@@ -101,7 +101,7 @@ export const bookAppointment = async (req: Request, res: Response) => {
 
     const adapter = getAdapter(data.provider);
     const requestedLocalDate = details.startTime.slice(0, 10);
-    const availableSlots = await adapter.checkAvailability(requestedLocalDate, ownerId);
+    const availableSlots = await adapter.checkAvailability(requestedLocalDate, ownerId, timezone);
     const requestedStartMs = requestedStart.getTime();
     const requestedEndMs = requestedEnd.getTime();
     const exactAvailableSlot = availableSlots.some(slot =>
