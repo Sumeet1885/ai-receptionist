@@ -14,6 +14,7 @@ interface VoiceCallViewProps {
     bookingDetails: any;
     requestedInputType: 'phone' | 'email' | null;
     validationError: string;
+    isSubmittingContact: boolean;
     clearValidationError: () => void;
     sendTextData: (text: string, field: 'phone' | 'email') => void;
     startVoice: () => Promise<void>;
@@ -168,12 +169,17 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
               <input
                 type={liveVoice.requestedInputType === 'email' ? 'email' : 'tel'}
                 autoFocus
-                maxLength={400}
+                maxLength={liveVoice.requestedInputType === 'phone' ? 10 : 254}
+                inputMode={liveVoice.requestedInputType === 'phone' ? 'numeric' : 'email'}
+                disabled={liveVoice.isSubmittingContact}
                 className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent transition-all"
-                placeholder={liveVoice.requestedInputType === 'email' ? 'name@example.com' : '(555) 000-0000'}
+                placeholder={liveVoice.requestedInputType === 'email' ? 'name@example.com' : '9876543210'}
                 value={inputValue}
                 onChange={(e) => {
-                  setInputValue(e.target.value);
+                  const nextValue = liveVoice.requestedInputType === 'phone'
+                    ? e.target.value.replace(/\D/g, '').slice(0, 10)
+                    : e.target.value;
+                  setInputValue(nextValue);
                   if (localValidationError) {
                     setLocalValidationError('');
                   }
@@ -184,10 +190,10 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
               />
               <button
                 type="submit"
-                disabled={!inputValue.trim()}
+                disabled={!inputValue.trim() || liveVoice.isSubmittingContact}
                 className="bg-brand-accent hover:bg-brand-accent-hover disabled:opacity-50 text-white rounded-xl px-5 py-3 font-semibold transition-colors flex items-center justify-center"
               >
-                <Icons.Send className="w-4 h-4" />
+                {liveVoice.isSubmittingContact ? 'Checking…' : <Icons.Send className="w-4 h-4" />}
               </button>
             </div>
             {(localValidationError || liveVoice.validationError) && (

@@ -7,6 +7,7 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
   const [bookingDetails, setBookingDetails] = useState<any>(null);
   const [requestedInputType, setRequestedInputType] = useState<'phone' | 'email' | null>(null);
   const [validationError, setValidationError] = useState<string>('');
+  const [isSubmittingContact, setIsSubmittingContact] = useState(false);
   
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -45,6 +46,7 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
     setBookingDetails(null);
     setRequestedInputType(null);
     setValidationError('');
+    setIsSubmittingContact(false);
     
     if (wsRef.current) {
       wsRef.current.close();
@@ -61,6 +63,7 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
 
   const finishVoiceFromAssistant = useCallback(() => {
     setRequestedInputType(null);
+    setIsSubmittingContact(false);
     disconnectMicrophone();
 
     const playbackContext = playbackContextRef.current;
@@ -163,6 +166,7 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
         if (msg.type === 'request_input' && msg.field) {
           setRequestedInputType(msg.field as 'phone' | 'email');
           setValidationError('');
+          setIsSubmittingContact(false);
         }
 
         if (msg.type === 'input_validation_error' && msg.message) {
@@ -170,6 +174,13 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
             setRequestedInputType(msg.field);
           }
           setValidationError(msg.message);
+          setIsSubmittingContact(false);
+        }
+
+        if (msg.type === 'input_validation_success') {
+          setRequestedInputType(null);
+          setValidationError('');
+          setIsSubmittingContact(false);
         }
 
         if (msg.type === 'appointment_booked' && msg.details) {
@@ -242,8 +253,8 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
         data: text,
         field
       }));
-      setRequestedInputType(null);
       setValidationError('');
+      setIsSubmittingContact(true);
     }
   }, []);
 
@@ -259,6 +270,7 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
     bookingDetails,
     requestedInputType,
     validationError,
+    isSubmittingContact,
     clearValidationError,
     sendTextData,
     startVoice,

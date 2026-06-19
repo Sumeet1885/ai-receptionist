@@ -1,7 +1,8 @@
 export type ContactField = 'phone' | 'email';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
-const PHONE_ALLOWED_PATTERN = /^[0-9+\-\s().]+$/;
+const PHONE_PATTERN = /^\d{10}$/;
+const ASCENDING_SEQUENCE = '01234567890123456789';
 
 export function validateContactInput(field: ContactField, value: string) {
   const trimmed = value.trim();
@@ -27,20 +28,19 @@ export function validateContactInput(field: ContactField, value: string) {
     return { valid: true, normalized, error: '' };
   }
 
-  if (!PHONE_ALLOWED_PATTERN.test(trimmed)) {
+  if (!PHONE_PATTERN.test(trimmed)) {
     return {
       valid: false,
       normalized: trimmed,
-      error: 'Please enter a valid phone number using digits and symbols like +, -, or spaces only.',
+      error: 'Please enter exactly 10 digits with no spaces or symbols.',
     };
   }
 
-  const digitsOnly = trimmed.replace(/\D/g, '');
-  if (digitsOnly.length < 7 || digitsOnly.length > 15) {
+  if (/^(\d)\1{9}$/.test(trimmed) || ASCENDING_SEQUENCE.includes(trimmed)) {
     return {
       valid: false,
       normalized: trimmed,
-      error: 'Please enter a valid phone number with 7 to 15 digits.',
+      error: 'Please enter a real phone number, not a repeated or sequential pattern.',
     };
   }
 

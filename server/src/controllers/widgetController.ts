@@ -791,14 +791,13 @@ ${poweredByHtml}
       return { valid: true, normalized: normalizedEmail, error: '' };
     }
 
-    var phoneAllowedPattern = /^[0-9+\\-\\s().]+$/;
-    if (!phoneAllowedPattern.test(trimmed)) {
-      return { valid: false, normalized: trimmed, error: 'Please enter a valid phone number using digits and symbols like +, -, or spaces only.' };
+    var phonePattern = /^\\d{10}$/;
+    if (!phonePattern.test(trimmed)) {
+      return { valid: false, normalized: trimmed, error: 'Please enter exactly 10 digits with no spaces or symbols.' };
     }
 
-    var digitsOnly = trimmed.replace(/\\D/g, '');
-    if (digitsOnly.length < 7 || digitsOnly.length > 15) {
-      return { valid: false, normalized: trimmed, error: 'Please enter a valid phone number with 7 to 15 digits.' };
+    if (/^(\\d)\\1{9}$/.test(trimmed) || '01234567890123456789'.indexOf(trimmed) !== -1) {
+      return { valid: false, normalized: trimmed, error: 'Please enter a real phone number, not a repeated or sequential pattern.' };
     }
 
     return { valid: true, normalized: trimmed, error: '' };
@@ -925,7 +924,9 @@ ${poweredByHtml}
             voiceInputContainer.style.display = 'flex';
             voiceInputLabel.textContent = 'Please enter your ' + msg.field;
             voiceInputField.type = msg.field === 'email' ? 'email' : 'tel';
-            voiceInputField.placeholder = msg.field === 'email' ? 'name@example.com' : '(555) 000-0000';
+            voiceInputField.placeholder = msg.field === 'email' ? 'name@example.com' : '9876543210';
+            voiceInputField.maxLength = msg.field === 'email' ? 254 : 10;
+            voiceInputField.inputMode = msg.field === 'email' ? 'email' : 'numeric';
             voiceInputField.value = '';
             voiceInputBtn.disabled = true;
             showVoiceInputError('');
@@ -937,6 +938,13 @@ ${poweredByHtml}
           if (voiceInputContainer) voiceInputContainer.style.display = 'flex';
           showVoiceInputError(msg.message);
           if (voiceInputField) voiceInputField.focus();
+          if (voiceInputBtn) voiceInputBtn.disabled = !voiceInputField.value.trim();
+        }
+        if (msg.type === 'input_validation_success') {
+          pendingInputField = null;
+          if (voiceInputContainer) voiceInputContainer.style.display = 'none';
+          if (voiceInputField) voiceInputField.value = '';
+          showVoiceInputError('');
         }
         if (msg.type === 'appointment_booked' && msg.details) {
           addMessage('Appointment confirmed for ' + new Date(msg.details.startTime).toLocaleString() + '.', 'bot');
@@ -1066,6 +1074,9 @@ ${poweredByHtml}
 
   if (voiceInputForm) {
     voiceInputField.addEventListener('input', function() {
+      if (pendingInputField === 'phone') {
+        voiceInputField.value = voiceInputField.value.replace(/\\D/g, '').slice(0, 10);
+      }
       voiceInputBtn.disabled = !voiceInputField.value.trim();
       showVoiceInputError('');
     });
@@ -1079,8 +1090,7 @@ ${poweredByHtml}
         return;
       }
       ws.send(JSON.stringify({ type: 'textInput', data: validation.normalized, field: pendingInputField }));
-      voiceInputContainer.style.display = 'none';
-      voiceInputField.value = '';
+      voiceInputBtn.disabled = true;
       showVoiceInputError('');
     });
   }

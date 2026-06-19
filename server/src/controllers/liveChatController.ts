@@ -18,7 +18,7 @@ import {
   LIVE_FORCE_END_SIGNAL,
   LIVE_WRAP_WARNING_SIGNAL
 } from '../services/liveTools';
-import { type ContactField, validateContactInput } from '../utils/contactValidation';
+import { LiveContactCollection, type ContactField } from '../utils/contactValidation';
 
 const supabase = createClient(config.supabaseUrl, config.supabaseServiceKey, {
   realtime: { transport: wsTransport },
@@ -138,7 +138,9 @@ export function setupWebSocketServer(server: Server) {
     let setupSent = false;
     let accumulatedBotText = '';
     const inputTranscript = new LiveInputTranscriptAccumulator();
-    let pendingTextInputField: ContactField | null = null;
+    const contactCollection = new LiveContactCollection();
+    let pendingContactToolCall: { id: string; name: string; field: ContactField } | null = null;
+    let requiresVerifiedPhone = false;
     let pendingAssistantHangup: { reason: string } | null = null;
     let assistantHangupTimeout: NodeJS.Timeout | null = null;
     let forcedShutdownTimeout: NodeJS.Timeout | null = null;
@@ -201,8 +203,9 @@ export function setupWebSocketServer(server: Server) {
       const userLocaleTime = new Date().toLocaleString('en-US', { timeZone: timezone });
       const widgetConfig = mergeWidgetConfig(bot.widget_config, bot);
       const fieldsToCollect = widgetConfig.requiredLeadFields || [];
+      requiresVerifiedPhone = fieldsToCollect.includes('phone');
       const bookAppointmentRequired = ['title', 'visitorName', 'startTime', 'endTime'];
-      if (fieldsToCollect.includes('phone')) {
+      if (requiresVerifiedPhone) {
         bookAppointmentRequired.push('visitorPhone');
       }
 
@@ -261,7 +264,7 @@ CRITICAL SECURITY & CONSTRAINTS:
 - BOOKING ORDER: Never call book_appointment in the same turn as check_availability. After checking availability, speak the available options and ask "Would you like me to book one of these?" Wait for the user's next confirmation before booking.
 - SLOT RULE: Never invent a slot and never book a time that was not returned by check_availability. If the user's requested time is not in the returned slots, offer the returned alternatives instead.
 - TEXT INPUT FOR CONTACT: Voice recognition for phone numbers and emails is highly inaccurate. Whenever you need to ask the user for their phone number or email address, you MUST tell them to type it in the chat box, and simultaneously call the \`request_text_input\` tool. Do not try to collect it via voice.
-- TYPED CONTACT CONFIRMATION: If you have asked for a phone number or email in the text box, do not accept spoken claims like "I entered it" or "I already shared it". Wait until the system gives you the actual validated typed value before proceeding.
+- TYPED CONTACT CONFIRMATION: Calling \`request_text_input\` pauses your turn. Do not speak, assume success, request another field, or continue the workflow after that tool call. The backend will resume you only when its tool response contains \`verified: true\` and the actual validated value. Do not accept spoken claims like "I entered it" or "I already shared it" as confirmation.
 - INTERNAL SESSION SIGNALS:
   - If you receive exactly ${LIVE_WRAP_WARNING_SIGNAL}, treat it as an internal system event, not as user speech. Politely tell the caller, in natural words, that you have an important class to attend soon and would like to quickly wrap up. Keep it brief and start closing the conversation gracefully.
   - If you receive exactly ${LIVE_FORCE_END_SIGNAL}, treat it as an internal system event, not as user speech. Immediately give a short polite goodbye, then call the \`end_call\` tool.
@@ -368,6 +371,7 @@ CRITICAL SECURITY & CONSTRAINTS:
         for (const call of response.toolCall.functionCalls) {
           const { name, args, id } = call;
           let functionResponse: any = {};
+          let deferFunctionResponse = false;
 
           try {
             if (name === 'check_availability') {
@@ -403,9 +407,21 @@ CRITICAL SECURITY & CONSTRAINTS:
                 continue;
               }
 
+              const verifiedPhone = contactCollection.getVerified('phone');
+              if (requiresVerifiedPhone && !verifiedPhone) {
+                functionResponse = {
+                  error: 'A server-verified phone number is required. Call request_text_input for phone and wait for its verified tool response.'
+                };
+                functionResponses.push({ id, name, response: functionResponse });
+                continue;
+              }
+
+              const bookingDetails = verifiedPhone
+                ? { ...args, visitorPhone: verifiedPhone }
+                : args;
               functionResponse = await bookCalendarAppointment({
                 db: supabase,
-                details: args,
+                details: bookingDetails,
                 ownerId: bot.owner_id,
                 botId: bot.id,
                 sessionId,
@@ -413,13 +429,13 @@ CRITICAL SECURITY & CONSTRAINTS:
               });
               if (functionResponse.success) {
                 await supabase.from('messages').insert([
-                  { session_id: sessionId, sender: 'user', content: `I'd like to book an appointment: "${args.title}" for ${args.visitorName} (Phone: ${args.visitorPhone}) starting at ${args.startTime}.` },
-                  { session_id: sessionId, sender: 'bot', content: `Appointment Confirmed. Booked for ${new Date(args.startTime).toLocaleDateString()} at ${new Date(args.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.` }
+                  { session_id: sessionId, sender: 'user', content: `I'd like to book an appointment: "${bookingDetails.title}" for ${bookingDetails.visitorName} (Phone: ${bookingDetails.visitorPhone}) starting at ${bookingDetails.startTime}.` },
+                  { session_id: sessionId, sender: 'bot', content: `Appointment Confirmed. Booked for ${new Date(bookingDetails.startTime).toLocaleDateString()} at ${new Date(bookingDetails.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.` }
                 ]);
 
                 ws.send(JSON.stringify({
                   type: 'appointment_booked',
-                  details: args
+                  details: bookingDetails
                 }));
               }
             } else if (name === 'request_text_input') {
@@ -435,15 +451,28 @@ CRITICAL SECURITY & CONSTRAINTS:
                 continue;
               }
 
-              pendingTextInputField = (args.field === 'phone' || args.field === 'email')
-                ? args.field
-                : null;
+              const requestedField: ContactField | null =
+                args.field === 'phone' || args.field === 'email' ? args.field : null;
+              if (!requestedField) {
+                functionResponse = { error: 'field must be either phone or email' };
+                functionResponses.push({ id, name, response: functionResponse });
+                continue;
+              }
+
+              const requestResult = contactCollection.request(requestedField);
+              if (!requestResult.accepted) {
+                functionResponse = { error: requestResult.error };
+                functionResponses.push({ id, name, response: functionResponse });
+                continue;
+              }
+
+              pendingContactToolCall = { id, name, field: requestedField };
               requestedTextInputThisToolTurn = true;
               ws.send(JSON.stringify({
                 type: 'request_input',
-                field: args.field
+                field: requestedField
               }));
-              functionResponse = { success: true, message: `Text input for ${args.field} requested from user.` };
+              deferFunctionResponse = true;
             } else if (name === 'end_call') {
               pendingAssistantHangup = {
                 reason: args.reason || 'Call completed'
@@ -462,19 +491,23 @@ CRITICAL SECURITY & CONSTRAINTS:
             functionResponse = serializeCalendarToolError(err);
           }
 
-          functionResponses.push({
-            id: id,
-            name: name,
-            response: functionResponse
-          });
+          if (!deferFunctionResponse) {
+            functionResponses.push({
+              id: id,
+              name: name,
+              response: functionResponse
+            });
+          }
         }
 
         // Send tool responses back to Gemini
-        geminiWs.send(JSON.stringify({
-          toolResponse: {
-            functionResponses: functionResponses
-          }
-        }));
+        if (functionResponses.length > 0) {
+          geminiWs.send(JSON.stringify({
+            toolResponse: {
+              functionResponses: functionResponses
+            }
+          }));
+        }
       }
     });
 
@@ -494,13 +527,14 @@ CRITICAL SECURITY & CONSTRAINTS:
     });
 
     // 4. Handle messages from Client
-    ws.on('message', (data: Buffer) => {
+    ws.on('message', async (data: Buffer) => {
       if (!setupSent || geminiWs.readyState !== WebSocket.OPEN) {
         return;
       }
       const message = JSON.parse(data.toString());
 
       if (message.type === 'realtimeInput') {
+        if (contactCollection.pendingField) return;
         // Forward client audio chunks to Gemini using the non-deprecated audio format
         geminiWs.send(JSON.stringify({
           realtime_input: {
@@ -511,43 +545,59 @@ CRITICAL SECURITY & CONSTRAINTS:
           }
         }));
       } else if (message.type === 'textInput') {
-        const requestedField = pendingTextInputField ?? (message.field === 'phone' || message.field === 'email' ? message.field : null);
-
-        if (requestedField) {
-          const validation = validateContactInput(requestedField, String(message.data || ''));
-          if (!validation.valid) {
-            ws.send(JSON.stringify({
-              type: 'input_validation_error',
-              field: requestedField,
-              message: validation.error
-            }));
-            return;
-          }
-
-          pendingTextInputField = null;
-          const fieldLabel = requestedField === 'email' ? 'email address' : 'phone number';
-          geminiWs.send(JSON.stringify({
-            clientContent: {
-              turns: [{
-                role: 'user',
-                parts: [{ text: `My ${fieldLabel} typed in the text box is: ${validation.normalized}` }]
-              }],
-              turnComplete: true
-            }
+        const submittedField: ContactField | null =
+          message.field === 'phone' || message.field === 'email' ? message.field : null;
+        const submission = contactCollection.submit(submittedField, String(message.data || ''));
+        if (!submission.accepted) {
+          ws.send(JSON.stringify({
+            type: 'input_validation_error',
+            field: contactCollection.pendingField ?? submittedField,
+            message: submission.error
           }));
           return;
         }
 
-        // Forward client text input directly to Gemini
+        if (!pendingContactToolCall || pendingContactToolCall.field !== submission.field) {
+          ws.send(JSON.stringify({
+            type: 'input_validation_error',
+            field: submission.field,
+            message: 'This input request expired. Please ask the assistant to request it again.'
+          }));
+          return;
+        }
+
+        ws.send(JSON.stringify({
+          type: 'input_validation_success',
+          field: submission.field
+        }));
+
+        const completedToolCall = pendingContactToolCall;
+        pendingContactToolCall = null;
+
+        const { error: contactSaveError } = await supabase.from('messages').insert({
+          session_id: sessionId,
+          sender: 'user',
+          content: `Verified typed ${submission.field}: ${submission.value}`
+        });
+        if (contactSaveError) {
+          console.error('Error saving verified contact input:', contactSaveError);
+        }
+
         geminiWs.send(JSON.stringify({
-          clientContent: {
-            turns: [{
-              role: 'user',
-              parts: [{ text: message.data }]
-            }],
-            turnComplete: true
+          toolResponse: {
+            functionResponses: [{
+              id: completedToolCall.id,
+              name: completedToolCall.name,
+              response: {
+                success: true,
+                verified: true,
+                field: submission.field,
+                value: submission.value
+              }
+            }]
           }
         }));
+        return;
       }
 
       if (message.type === 'clientContent' && geminiWs.readyState === WebSocket.OPEN) {
