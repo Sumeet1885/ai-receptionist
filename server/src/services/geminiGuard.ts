@@ -11,6 +11,10 @@
  *   - Semaphore + FIFO Queue  → Concurrent session gating (linked-list head/tail, O(1))
  *   - Map<sessionId, handle>  → Session registry for hard-timeout enforcement (O(1))
  *
+ * It also enforces the live-call session lifecycle:
+ *   - 4-minute wrap warning
+ *   - 5-minute hard stop
+ *
  * CRITICAL: This module is purely infrastructure. It wraps around I/O boundaries
  * and never touches the conversational logic, audio pipeline, or tool-call handlers.
  */
@@ -21,7 +25,8 @@ const MAX_RPM                  = 10;
 const RPM_WINDOW_MS            = 60_000;          // 1-minute sliding window
 const MAX_WAIT_QUEUE_SIZE      = 5;               // Max clients queued for a slot
 const SESSION_QUEUE_TIMEOUT_MS = 30_000;          // 30 s max wait before rejection
-const SESSION_MAX_DURATION_MS  = 9 * 60_000;      // 9 min hard session cap (1 min safety buffer)
+const SESSION_WRAP_WARNING_MS  = 4 * 60_000;      // Warn the assistant to wrap up after 4 min
+const SESSION_MAX_DURATION_MS  = 5 * 60_000;      // 5 min hard session cap
 const TPM_BUDGET               = 240_000;         // 240K (10K safety margin below 250K hard limit)
 const TOKENS_PER_CHAR          = 0.25;            // ~4 chars / token (conservative for English)
 
@@ -35,6 +40,7 @@ interface QueueEntry {
 interface SessionRecord {
   sessionId:   string;
   startedAt:   number;
+  warningHandle: ReturnType<typeof setTimeout>;
   timeoutHandle: ReturnType<typeof setTimeout>;
 }
 
@@ -170,6 +176,7 @@ class GeminiGuard {
   releaseSession(sessionId: string): void {
     const record = this.sessionRegistry.get(sessionId);
     if (record) {
+      clearTimeout(record.warningHandle);
       clearTimeout(record.timeoutHandle);
       this.sessionRegistry.delete(sessionId);
     }
@@ -189,11 +196,17 @@ class GeminiGuard {
 
   // ─── Session Hard Timeout ───────────────────────────────────────────────────
   /**
-   * Registers a hard 9-minute timeout for a session.
-   * If the session is not closed by then, `onTimeout` is invoked.
+   * Registers a 4-minute wrap warning and a hard 5-minute timeout for a session.
+   * If the session is still active after the warning period, `onWarning` is invoked.
+   * If the session is not closed by the hard cap, `onTimeout` is invoked.
    * This prevents zombie sessions from permanently occupying a slot.
    */
-  registerSessionTimeout(sessionId: string, onTimeout: () => void): void {
+  registerSessionLifecycle(sessionId: string, onWarning: () => void, onTimeout: () => void): void {
+    const warningHandle = setTimeout(() => {
+      console.warn(`[GeminiGuard] Session ${sessionId} reached wrap warning (${SESSION_WRAP_WARNING_MS / 60000} min).`);
+      onWarning();
+    }, SESSION_WRAP_WARNING_MS);
+
     const timeoutHandle = setTimeout(() => {
       console.warn(`[GeminiGuard] Session ${sessionId} exceeded max duration (${SESSION_MAX_DURATION_MS / 60000} min). Force-closing.`);
       onTimeout();
@@ -203,6 +216,7 @@ class GeminiGuard {
     this.sessionRegistry.set(sessionId, {
       sessionId,
       startedAt: Date.now(),
+      warningHandle,
       timeoutHandle
     });
   }

@@ -1,5 +1,7 @@
 export const LIVE_END_CALL_INSTRUCTION =
   'Use the `end_call` tool only after you have clearly confirmed the conversation is over, no more help is needed, and you have already said goodbye.';
+export const LIVE_WRAP_WARNING_SIGNAL = '[[SESSION_WRAP_WARNING]]';
+export const LIVE_FORCE_END_SIGNAL = '[[SESSION_FORCE_END]]';
 
 export function buildLiveFunctionDeclarations(bookAppointmentRequired: string[], enableCalendar = true) {
   const declarations: any[] = [];
@@ -38,7 +40,7 @@ export function buildLiveFunctionDeclarations(bookAppointmentRequired: string[],
   declarations.push(
     {
       name: 'request_text_input',
-      description: 'Requests the user to type their phone number or email address into a text box. Use this whenever you ask for their phone or email.',
+      description: 'Requests the user to type exactly one field into the text box. Use this whenever you ask for their phone or email. Never request phone and email together in the same turn.',
       parameters: {
         type: 'OBJECT',
         properties: {

@@ -12,7 +12,12 @@ import { mergeWidgetConfig } from '../utils/widgetConfig';
 import { LiveInputTranscriptAccumulator } from '../services/llm/liveInputTranscript';
 import { bookCalendarAppointment, checkCalendarAvailability, serializeCalendarToolError } from '../services/calendar/calendarOperations';
 import { loadLiveSessionContext } from '../services/liveSession';
-import { buildLiveFunctionDeclarations, LIVE_END_CALL_INSTRUCTION } from '../services/liveTools';
+import {
+  buildLiveFunctionDeclarations,
+  LIVE_END_CALL_INSTRUCTION,
+  LIVE_FORCE_END_SIGNAL,
+  LIVE_WRAP_WARNING_SIGNAL
+} from '../services/liveTools';
 import { type ContactField, validateContactInput } from '../utils/contactValidation';
 
 const supabase = createClient(config.supabaseUrl, config.supabaseServiceKey, {
@@ -136,12 +141,33 @@ export function setupWebSocketServer(server: Server) {
     let pendingTextInputField: ContactField | null = null;
     let pendingAssistantHangup: { reason: string } | null = null;
     let assistantHangupTimeout: NodeJS.Timeout | null = null;
+    let forcedShutdownTimeout: NodeJS.Timeout | null = null;
 
     const clearAssistantHangupTimeout = () => {
       if (assistantHangupTimeout) {
         clearTimeout(assistantHangupTimeout);
         assistantHangupTimeout = null;
       }
+    };
+
+    const clearForcedShutdownTimeout = () => {
+      if (forcedShutdownTimeout) {
+        clearTimeout(forcedShutdownTimeout);
+        forcedShutdownTimeout = null;
+      }
+    };
+
+    const sendInternalSignal = (signal: string) => {
+      if (geminiWs.readyState !== WebSocket.OPEN) return;
+      geminiWs.send(JSON.stringify({
+        clientContent: {
+          turns: [{
+            role: 'user',
+            parts: [{ text: signal }]
+          }],
+          turnComplete: true
+        }
+      }));
     };
 
     const sendAssistantHangup = () => {
@@ -228,6 +254,7 @@ ${calendarInstruction}
 6. User should feel like he/she is talking to an actual call center guy.
 7. Do not answer if user attempts to ask anything off the topic not related to the business.
 8. Ask 1 question at a time.
+9. CONTACT COLLECTION ORDER: When collecting lead details, request only ONE missing detail at a time. Never ask for phone number and email together, never ask for multiple text-box fields in the same turn, and wait for the validated typed answer before asking for the next detail.
 CRITICAL SECURITY & CONSTRAINTS:
 - SINGLE APPOINTMENT LIMIT: You are strictly authorized to book only ONE appointment per call. Do not book multiple appointments or book for different people in a single conversation. If an appointment has already been successfully booked during this session, politely decline to book another.
 - ABSOLUTE PRIVACY: You must never disclose, reveal, or list the details (names, phone numbers, or appointment times) of other bookings or clients. If asked who booked a slot or what other bookings exist, state that you cannot share that confidential information due to privacy guidelines. Only report whether a slot is free or busy without naming other people.
@@ -235,6 +262,9 @@ CRITICAL SECURITY & CONSTRAINTS:
 - SLOT RULE: Never invent a slot and never book a time that was not returned by check_availability. If the user's requested time is not in the returned slots, offer the returned alternatives instead.
 - TEXT INPUT FOR CONTACT: Voice recognition for phone numbers and emails is highly inaccurate. Whenever you need to ask the user for their phone number or email address, you MUST tell them to type it in the chat box, and simultaneously call the \`request_text_input\` tool. Do not try to collect it via voice.
 - TYPED CONTACT CONFIRMATION: If you have asked for a phone number or email in the text box, do not accept spoken claims like "I entered it" or "I already shared it". Wait until the system gives you the actual validated typed value before proceeding.
+- INTERNAL SESSION SIGNALS:
+  - If you receive exactly ${LIVE_WRAP_WARNING_SIGNAL}, treat it as an internal system event, not as user speech. Politely tell the caller, in natural words, that you have an important class to attend soon and would like to quickly wrap up. Keep it brief and start closing the conversation gracefully.
+  - If you receive exactly ${LIVE_FORCE_END_SIGNAL}, treat it as an internal system event, not as user speech. Immediately give a short polite goodbye, then call the \`end_call\` tool.
 - TOOL TIMEZONE: When calling check_availability, pass the local date format 'YYYY-MM-DD'. When calling book_appointment, construct the startTime and endTime in ISO 8601 format using the user's local offset ${tzOffset} (e.g. if the user selects 8:30 AM on 2026-06-17, startTime must be '2026-06-17T08:30:00${tzOffset}').
 - CALL ENDING: ${LIVE_END_CALL_INSTRUCTION}`;
 
@@ -333,6 +363,7 @@ CRITICAL SECURITY & CONSTRAINTS:
         console.log('Gemini Tool Call:', response.toolCall);
         const functionResponses: any[] = [];
         let checkedAvailabilityThisToolTurn = false;
+        let requestedTextInputThisToolTurn = false;
 
         for (const call of response.toolCall.functionCalls) {
           const { name, args, id } = call;
@@ -392,9 +423,22 @@ CRITICAL SECURITY & CONSTRAINTS:
                 }));
               }
             } else if (name === 'request_text_input') {
+              if (requestedTextInputThisToolTurn) {
+                functionResponse = {
+                  error: 'Request only one typed contact field at a time. Wait for the user to submit that validated field before requesting another.'
+                };
+                functionResponses.push({
+                  id: id,
+                  name: name,
+                  response: functionResponse
+                });
+                continue;
+              }
+
               pendingTextInputField = (args.field === 'phone' || args.field === 'email')
                 ? args.field
                 : null;
+              requestedTextInputThisToolTurn = true;
               ws.send(JSON.stringify({
                 type: 'request_input',
                 field: args.field
@@ -437,6 +481,7 @@ CRITICAL SECURITY & CONSTRAINTS:
     geminiWs.on('error', (err) => {
       console.error('Gemini WS Error:', err);
       clearAssistantHangupTimeout();
+      clearForcedShutdownTimeout();
       ws.close(1011, 'Gemini WS Error');
     });
 
@@ -444,6 +489,7 @@ CRITICAL SECURITY & CONSTRAINTS:
       const reasonStr = reason ? reason.toString() : 'None';
       console.log(`Gemini WS Closed. Code: ${code}, Reason: ${reasonStr}`);
       clearAssistantHangupTimeout();
+      clearForcedShutdownTimeout();
       ws.close(1000, `Gemini WS Closed: ${reasonStr}`.slice(0, 100));
     });
 
@@ -519,14 +565,28 @@ CRITICAL SECURITY & CONSTRAINTS:
     });
 
     // ── GeminiGuard: hard session timeout (9 min) ────────────────────────────
-    geminiGuard.registerSessionTimeout(sessionId, () => {
-      console.warn(`[GeminiGuard] Force-closing session ${sessionId} after max duration.`);
-      ws.close(1001, 'Session duration limit reached.');
-    });
+    geminiGuard.registerSessionLifecycle(
+      sessionId,
+      () => {
+        console.warn(`[GeminiGuard] Sending wrap warning for session ${sessionId}.`);
+        sendInternalSignal(LIVE_WRAP_WARNING_SIGNAL);
+      },
+      () => {
+        console.warn(`[GeminiGuard] Triggering final call-end sequence for session ${sessionId}.`);
+        sendInternalSignal(LIVE_FORCE_END_SIGNAL);
+        clearForcedShutdownTimeout();
+        forcedShutdownTimeout = setTimeout(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.close(1001, 'Session duration limit reached.');
+          }
+        }, 8000);
+      }
+    );
 
     ws.on('close', async () => {
       console.log('Client disconnected from Live API proxy');
       clearAssistantHangupTimeout();
+      clearForcedShutdownTimeout();
       // ── GeminiGuard: release slot → wakes next queued caller ─────────────
       geminiGuard.releaseSession(sessionId);
 
