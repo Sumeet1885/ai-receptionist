@@ -119,7 +119,6 @@ export const AgentDetailPage: React.FC<AgentDetailPageProps> = ({
 
       {tab === 'preview' && (
         <div className="bg-brand-card border border-brand-border rounded-lg p-8 text-center space-y-4">
-          <Icons.Chat />
           <h3 className="text-xl font-display font-bold text-brand-text">Preview this receptionist</h3>
           <p className="text-sm text-brand-muted max-w-md mx-auto">Open the public chat experience exactly as a visitor would see it.</p>
           <button
