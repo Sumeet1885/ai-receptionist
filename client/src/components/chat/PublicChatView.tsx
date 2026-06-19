@@ -96,7 +96,7 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
         )}
 
         {/* Chat Simulator Content Layout */}
-        <div className={cn("flex-1 flex flex-col md:flex-row bg-brand-card", isStandalone ? "min-h-0" : "min-h-[500px]")}>
+        <div className={cn("flex-1 flex flex-col md:flex-row bg-brand-card overflow-hidden", isStandalone ? "h-full min-h-0" : "h-[500px]")}>
           
           {/* Left side widget helper info (Simulating informational landing space of the academy/business) */}
           {((previewMode === 'desktop' && !isStandalone) || isStandalone) && (
