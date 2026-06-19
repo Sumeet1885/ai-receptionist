@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Bot, Message } from '../../types';
 import { Icons } from '../common/Icons';
 
@@ -43,6 +43,25 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
   isStandalone = false
 }: PublicChatViewProps) => {
   const liveVoice = useLiveVoice(activeBot.id, sessionId);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const messagesContainer = messagesContainerRef.current;
+    if (!messagesContainer) return;
+
+    const behavior: ScrollBehavior = chatMessages.length <= 1 ? 'auto' : 'smooth';
+    requestAnimationFrame(() => {
+      messagesContainer.scrollTo({
+        top: messagesContainer.scrollHeight,
+        behavior,
+      });
+    });
+  }, [chatMessages, isBotResponding]);
+
+  const normalizeMessageText = (text: string) =>
+    text
+      .replace(/\r\n/g, '\n')
+      .replace(/\*{2,3}([^*]+?)\*{2,3}/g, '$1');
 
   // If a voice call is active or connecting, redirect to the VoiceCallView
   if (liveVoice.isVoiceActive || liveVoice.isConnecting) {
@@ -56,7 +75,7 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
   }
 
   return (
-    <div className={cn("flex-1 bg-brand-bg flex flex-col font-sans", isStandalone ? "w-full h-screen overflow-hidden" : "items-center justify-center p-4")}>
+    <div className={cn("flex-1 bg-brand-bg flex flex-col font-sans", isStandalone ? "w-full min-h-0 overflow-hidden" : "items-center justify-center p-4")}>
       {/* Header Address Bar simulator */}
       <div className={cn("w-full bg-brand-card flex flex-col overflow-hidden", isStandalone ? "flex-1 min-h-0" : "max-w-4xl rounded-2xl border border-brand-border shadow-xl")}>
         
@@ -96,7 +115,7 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
         )}
 
         {/* Chat Simulator Content Layout */}
-        <div className={cn("flex-1 flex flex-col md:flex-row bg-brand-card overflow-hidden", isStandalone ? "h-full min-h-0" : "h-[500px]")}>
+        <div className={cn("flex-1 flex flex-col md:flex-row bg-brand-card overflow-hidden", isStandalone ? "min-h-0" : "h-[500px]")}>
           
           {/* Left side widget helper info (Simulating informational landing space of the academy/business) */}
           {((previewMode === 'desktop' && !isStandalone) || isStandalone) && (
@@ -121,7 +140,7 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
           )}
 
            {/* Simulated interactive chat viewport */}
-           <div className={cn("flex-1 flex flex-col bg-brand-bg overflow-hidden", isStandalone ? "h-full min-h-0" : "h-[500px]", !isStandalone && previewMode === 'mobile' ? 'max-w-md mx-auto border-x border-brand-border rounded-2xl' : '')}>
+           <div className={cn("flex-1 flex flex-col bg-brand-bg overflow-hidden", isStandalone ? "min-h-0" : "h-[500px]", !isStandalone && previewMode === 'mobile' ? 'max-w-md mx-auto border-x border-brand-border rounded-2xl' : '')}>
             
             {/* Chat interface custom banner */}
             <div className="flex-shrink-0 p-4 bg-brand-card border-b border-brand-border text-brand-text flex items-center justify-between shadow-sm">
@@ -141,13 +160,18 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
             </div>
 
             {/* Chat message streams */}
-            <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 font-sans text-sm bg-brand-bg/50 chat-messages-scroll">
+            <div
+              ref={messagesContainerRef}
+              className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 font-sans text-sm bg-brand-bg/50 chat-messages-scroll"
+            >
               {chatMessages.map((msg: Message) => {
                 const isUser = msg.sender === 'user';
                 return (
                   <div key={msg.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[80%] rounded-xl p-3 px-4 border ${isUser ? 'bg-brand-accent border-brand-accent text-brand-text rounded-tr-none' : 'bg-brand-card border-brand-border text-brand-text rounded-tl-none'} shadow-sm`}>
-                      <p className="leading-relaxed text-xs md:text-sm">{msg.text}</p>
+                      <p className="leading-relaxed text-xs md:text-sm whitespace-pre-wrap break-words">
+                        {normalizeMessageText(msg.text)}
+                      </p>
                       <span className="text-[9px] text-brand-text/55 mt-1 block text-right font-mono">
                         {msg.timestamp}
                       </span>

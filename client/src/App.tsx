@@ -205,12 +205,6 @@ export default function App() {
     loadStandaloneChat();
   }, [route]);
 
-  useEffect(() => {
-    if (chat.messageEndRef.current) {
-      chat.messageEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [chat.chatMessages]);
-
   const applyOnboardingTemplate = (industry: string) => {
     if (industry === 'Education') {
       setNewBotName('Alpha Education Institute');
@@ -300,7 +294,7 @@ export default function App() {
         />
       )}
 
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 flex flex-col min-h-0">
         {route.name === 'landing' && (
           <LandingView
             setView={legacySetView}

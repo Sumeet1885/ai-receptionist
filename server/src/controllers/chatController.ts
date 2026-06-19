@@ -54,7 +54,7 @@ async function callGeminiWithRetry(reqBody: any): Promise<any> {
 
   for (const model of models) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
-    
+
     let modelStatus = 0;
     let modelErrorText = '';
 
@@ -84,7 +84,7 @@ async function callGeminiWithRetry(reqBody: any): Promise<any> {
         modelStatus = 500;
         modelErrorText = fetchErr.message || String(fetchErr);
         console.error(`Fetch exception for model ${model}:`, fetchErr);
-        
+
         if (attempt < GEMINI_MAX_RETRIES) {
           const delayMs = Math.min(750 * Math.pow(2, attempt), 4000);
           console.warn(`[Gemini/Chat] Fetch error for ${model}. Retrying in ${delayMs}ms...`);
@@ -97,7 +97,7 @@ async function callGeminiWithRetry(reqBody: any): Promise<any> {
 
     // Log the error clearly so it is captured in Railway dashboard logs
     console.error(`[Railway Log] Gemini model ${model} failed with status ${modelStatus}. Error detail: ${modelErrorText}. Trying next fallback model if available.`);
-    
+
     lastStatus = modelStatus;
     lastErrorText = modelErrorText;
   }
@@ -163,7 +163,7 @@ export async function handleChat(
       });
       const parts = formatter.formatToParts(d);
       const getPart = (type: string) => parts.find(p => p.type === type)?.value || '';
-      
+
       let hour = getPart('hour');
       if (hour === '24') hour = '00';
 
@@ -175,7 +175,7 @@ export async function handleChat(
         Number(getPart('minute')),
         Number(getPart('second'))
       );
-      
+
       const actualUtc = Date.UTC(
         d.getUTCFullYear(),
         d.getUTCMonth(),
@@ -184,7 +184,7 @@ export async function handleChat(
         d.getUTCMinutes(),
         d.getUTCSeconds()
       );
-      
+
       const diffMin = Math.round((targetUtc - actualUtc) / 60000);
       const sign = diffMin >= 0 ? '+' : '-';
       const absMin = Math.abs(diffMin);
@@ -355,7 +355,7 @@ CRITICAL SECURITY & CONSTRAINTS:
 
     // Check if there is a function call
     const functionCall = parts.find((p: any) => p.functionCall);
-    
+
     if (functionCall) {
       const { name, args } = functionCall.functionCall;
       let functionResponse: any = {};

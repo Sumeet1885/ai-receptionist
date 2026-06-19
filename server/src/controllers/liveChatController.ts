@@ -93,7 +93,7 @@ export function setupWebSocketServer(server: Server) {
         });
         const parts = formatter.formatToParts(d);
         const getPart = (type: string) => parts.find(p => p.type === type)?.value || '';
-        
+
         let hour = getPart('hour');
         if (hour === '24') hour = '00';
 
@@ -105,7 +105,7 @@ export function setupWebSocketServer(server: Server) {
           Number(getPart('minute')),
           Number(getPart('second'))
         );
-        
+
         const actualUtc = Date.UTC(
           d.getUTCFullYear(),
           d.getUTCMonth(),
@@ -114,7 +114,7 @@ export function setupWebSocketServer(server: Server) {
           d.getUTCMinutes(),
           d.getUTCSeconds()
         );
-        
+
         const diffMin = Math.round((targetUtc - actualUtc) / 60000);
         const sign = diffMin >= 0 ? '+' : '-';
         const absMin = Math.abs(diffMin);
@@ -169,7 +169,7 @@ export function setupWebSocketServer(server: Server) {
 
     geminiWs.on('open', () => {
       console.log('Connected to Gemini Live API');
-      
+
       const userLocaleTime = new Date().toLocaleString('en-US', { timeZone: timezone });
       const widgetConfig = mergeWidgetConfig(bot.widget_config, bot);
       const fieldsToCollect = widgetConfig.requiredLeadFields || [];
@@ -352,7 +352,7 @@ CRITICAL SECURITY & CONSTRAINTS:
               });
               functionResponse = { slots };
               checkedAvailabilityThisToolTurn = true;
-              
+
               if (functionResponse.slots) {
                 const slotsStr = functionResponse.slots
                   .map((s: any) => new Date(s.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
@@ -477,18 +477,18 @@ CRITICAL SECURITY & CONSTRAINTS:
           }
         }));
       }
-      
+
       if (message.type === 'clientContent' && geminiWs.readyState === WebSocket.OPEN) {
-         // Forward text messages if any
-         geminiWs.send(JSON.stringify({
-            clientContent: {
-              turns: [{
-                role: 'user',
-                parts: [{ text: message.text }]
-              }],
-              turnComplete: true
-            }
-         }));
+        // Forward text messages if any
+        geminiWs.send(JSON.stringify({
+          clientContent: {
+            turns: [{
+              role: 'user',
+              parts: [{ text: message.text }]
+            }],
+            turnComplete: true
+          }
+        }));
       }
     });
 
