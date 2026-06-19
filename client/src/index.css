@@ -608,7 +608,12 @@ select {
   min-height: 860vh;
 }
 
+.landing-product-hero {
+  top: clamp(84px, 10vh, 110px);
+}
+
 .landing-product-hero h1 {
+  margin-top: 26px;
   max-width: 980px;
   font-family: "Space Grotesk", var(--font-display);
   font-weight: 700;
@@ -618,16 +623,18 @@ select {
 }
 
 .landing-product-hero p {
+  margin-top: 18px;
   color: rgba(255, 255, 255, 0.74);
   font-size: clamp(15px, 1.05vw, 17px);
 }
 
 .landing-product-device {
-  height: 680px;
+  bottom: -68px;
+  height: 660px;
 }
 
 .landing-product-panel {
-  height: 620px;
+  height: 600px;
 }
 
 .landing-product-stack {
@@ -1139,6 +1146,10 @@ select {
     top: 12%;
   }
 
+  .landing-product-hero {
+    top: 78px;
+  }
+
   .landing-hero-copy h1 {
     font-size: 48px;
     line-height: 0.95;
@@ -1166,7 +1177,8 @@ select {
   }
 
   .landing-product-device {
-    height: 622px;
+    bottom: -22px;
+    height: 612px;
   }
 
   .landing-device-top {
@@ -1186,7 +1198,7 @@ select {
   }
 
   .landing-product-panel {
-    height: 572px;
+    height: 560px;
   }
 
   .landing-product-stack {

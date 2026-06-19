@@ -25,8 +25,8 @@ const mapRange = (
 
 const channels = [
   { name: 'Voice calls', detail: 'Answers inbound calls, asks questions, and books appointments.' },
-  { name: 'WhatsApp', detail: 'Replies instantly to quotations, follow-ups, and basic queries.' },
-  { name: 'Website chat', detail: 'Same AI agent available on every landing page and campaign.' }
+  { name: 'Website chat', detail: 'Same AI agent embedded on your website to assist visitors 24/7.' },
+  { name: 'Lead capture', detail: 'Automatically extracts name, phone, requirements, and sentiment.' }
 ];
 
 const industries = [
@@ -36,7 +36,7 @@ const industries = [
   { name: 'Education', detail: 'Admissions, course details, batches, and fee structure.' }
 ];
 
-const aiFeatures = ['Call summary', 'Sentiment analysis', 'Lead scoring', 'Voice cloning'];
+const aiFeatures = ['Call summary', 'Sentiment analysis', 'Lead scoring', 'Multi-language support'];
 const storyCount = 6;
 
 export const LandingView: React.FC<LandingViewProps> = ({
@@ -126,8 +126,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
           </h1>
 
           <p>
-            One AI agent that answers calls, replies on WhatsApp, chats on your website,
-            books appointments, captures leads, and pushes every detail to your CRM.
+            One AI agent that answers calls, chats on your website,
+            books appointments, captures leads, and scores every interaction.
           </p>
 
           <button 
@@ -150,9 +150,9 @@ export const LandingView: React.FC<LandingViewProps> = ({
             </div>
             <div className="landing-mini-nav">
               <span>Voice</span>
-              <span>WhatsApp</span>
-              <span>Website</span>
-              <span>CRM</span>
+              <span>Chat</span>
+              <span>Leads</span>
+              <span>Booking</span>
             </div>
             <button onClick={openDashboard}>Console</button>
           </div>
@@ -205,11 +205,11 @@ export const LandingView: React.FC<LandingViewProps> = ({
               <section className="landing-story-panel landing-channel-section">
                 <span className="landing-section-eyebrow">One agent everywhere</span>
                 <h2>
-                  Voice + WhatsApp + Website <span>unified</span>
+                  Voice + Website chat <span>unified</span>
                 </h2>
                 <p>
-                  Customers can call, message, or chat. The same receptionist keeps context
-                  and pushes structured data into Google Calendar, Outlook, and CRM.
+                  Customers can call or chat. The same receptionist keeps context
+                  and automatically books appointments with Google Calendar or Outlook.
                 </p>
 
                 <div className="landing-channel-grid">
@@ -223,8 +223,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
                 <div className="landing-integration-rail">
                   <span>Google Calendar</span>
-                  <span>Outlook</span>
-                  <span>CRM</span>
+                  <span>Lead Scoring</span>
+                  <span>Appointment Booking</span>
                 </div>
               </section>
 
@@ -232,9 +232,9 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <div className="landing-lead-copy">
                   <span className="landing-section-eyebrow">Lead capture</span>
                   <h2>
-                    Every inquiry becomes a <span>CRM-ready lead</span>
+                    Every inquiry becomes a <span>scored lead</span>
                   </h2>
-                  <p>Name, phone, requirement, budget, appointment status, and sentiment are captured automatically.</p>
+                  <p>Name, phone, requirement, budget, sentiment, and appointment status are captured automatically.</p>
                 </div>
 
                 <div className="landing-product-crm-card">
@@ -267,11 +267,11 @@ export const LandingView: React.FC<LandingViewProps> = ({
               <section className="landing-story-panel landing-intelligence-section">
                 <span className="landing-section-eyebrow">AI features</span>
                 <h2>
-                  Summaries, sentiment, scoring, and <span>branded voice</span>
+                  Summaries, sentiment, scoring, and <span>multi-language</span>
                 </h2>
                 <p>
-                  Detect angry customers, urgent issues, high-value leads, hot/warm/cold intent,
-                  and call outcomes without asking staff to listen to every recording.
+                  Detect angry customers, urgent issues, high-value leads, and call outcomes
+                  across multiple languages without manual review.
                 </p>
 
                 <div className="landing-ai-feature-grid">
@@ -286,11 +286,11 @@ export const LandingView: React.FC<LandingViewProps> = ({
               <section className="landing-story-panel landing-product-dark-story landing-final-story">
                 <div>
                   <h2>
-                    <span>One AI employee</span> handling every first response
+                    <span>One AI receptionist</span> handling every first response
                   </h2>
                   <p>
-                    Calls, WhatsApp, and website chats become booked appointments, CRM leads,
-                    call summaries, sentiment signals, and follow-ups.
+                    Calls and website chats become booked appointments, scored leads,
+                    call summaries, and sentiment insights.
                   </p>
                   <button onClick={createBot}>Configure your AI receptionist</button>
                 </div>
@@ -313,7 +313,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
     <footer className="landing-site-footer">
       <div>
         <span>AI Receptionist</span>
-        <p>One 24x7 AI receptionist for calls, WhatsApp, website chat, bookings, summaries, and CRM handoff.</p>
+        <p>One 24x7 AI receptionist for calls, website chat, appointment booking, and lead scoring.</p>
       </div>
       <nav aria-label="Footer">
         <button onClick={createBot}>Configure Agent</button>
