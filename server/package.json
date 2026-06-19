@@ -6,6 +6,7 @@
     "dev": "npx tsx watch src/index.ts",
     "start": "npx tsx src/index.ts",
     "test": "tsx --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit",
     "deploy:functions": "supabase functions deploy chat-reply && supabase functions deploy analyze-lead",
     "db:migrate": "supabase db push"
   },

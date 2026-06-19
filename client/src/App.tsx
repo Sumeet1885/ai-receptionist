@@ -154,17 +154,14 @@ export default function App() {
       loadedPublicSubdomainRef.current = route.subdomain;
 
       try {
-        const { data, error } = await supabase
-          .from('bots')
-          .select('*')
-          .eq('subdomain', route.subdomain)
-          .single();
-
-        if (error || !data) {
+        const expressUrl = import.meta.env.VITE_EXPRESS_SERVER_URL || 'http://localhost:4000';
+        const response = await fetch(`${expressUrl}/api/chat/bot/subdomain/${encodeURIComponent(route.subdomain)}`);
+        if (!response.ok) {
           showToast('Chatbot not found or inactive', 'error');
           navigate('/', true);
           return;
         }
+        const data = await response.json();
 
         const mappedBot = {
           id: data.id,
@@ -174,8 +171,8 @@ export default function App() {
           greeting: data.greeting,
           primaryColor: data.primary_color,
           languages: data.languages || ['English'],
-          knowledgeBase: data.knowledge_base,
-          allowedDomains: data.allowed_domains || [],
+          knowledgeBase: '',
+          allowedDomains: [],
           widgetConfig: mergeWidgetConfig(data.widget_config),
           createdAt: data.created_at
         };

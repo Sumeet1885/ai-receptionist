@@ -1,6 +1,5 @@
 import { useState, useRef } from 'react';
 import { Message } from '../types';
-import { supabase } from '../lib/supabaseClient';
 import { speakText } from '../services/speech';
 import { createChatReplyBody } from '../lib/chatRequest';
 
@@ -17,20 +16,16 @@ export function useChat() {
     localStorage.setItem('visitor_id', visitorId);
 
     try {
-      const { data, error } = await supabase
-        .from('chat_sessions')
-        .insert([{ bot_id: botId, visitor_id: visitorId }])
-        .select('id')
-        .single();
-
-      if (!error && data) {
-        setCurrentSessionId(data.id);
-        await supabase.from('messages').insert([{
-          session_id: data.id,
-          sender: 'bot',
-          content: greeting
-        }]);
-      }
+      const expressUrl = import.meta.env.VITE_EXPRESS_SERVER_URL || 'http://localhost:4000';
+      const response = await fetch(`${expressUrl}/api/chat/session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ botId, visitorId }),
+      });
+      if (!response.ok) throw new Error(`Session request failed: ${response.status}`);
+      const data = await response.json();
+      if (!data.sessionId) throw new Error('Session response did not include a sessionId');
+      setCurrentSessionId(data.sessionId);
     } catch (e) {
       console.warn('Could not create remote session', e);
     }

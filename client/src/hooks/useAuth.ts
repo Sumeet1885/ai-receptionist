@@ -26,7 +26,7 @@ const saveProviderTokens = async (session: any) => {
         refresh_token: providerRefreshToken || undefined,
         token_expires_at: expiresAt,
         calendar_id: 'primary'
-      }, { onConflict: 'owner_id, provider' });
+      }, { onConflict: 'owner_id' });
   } catch (err) {
     console.error('Error saving provider calendar tokens:', err);
   }

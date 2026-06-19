@@ -211,12 +211,10 @@ They are not part of the normal Railway request path. The frontend and embedded 
 ## Important Current Limitations
 
 1. **No semantic retrieval:** the whole knowledge base is injected into every prompt.
-2. **Voice Inbox completeness:** voice currently persists bot transcript text, but normal user speech is not reliably persisted as a transcript.
-3. **History selection:** typed chat requests the first 20 messages in ascending order rather than the latest 20, which could lose recent context in long conversations.
-4. **Lead analysis frequency:** Groq runs after every typed turn, potentially producing unnecessary cost.
-5. **Model configuration:** text Gemini is configurable through `GEMINI_MODEL`; voice and Groq models are hardcoded.
-6. **Provider abstraction:** there is currently no common model-provider interface.
-7. **Gemini is mandatory:** the server refuses to start without `GEMINI_API_KEY`; Groq is optional.
-8. **Calendar internal endpoints:** availability and booking routes are server-oriented but are not independently authenticated, so they deserve tightening before production.
+2. **Lead analysis frequency:** Groq runs after every typed turn, potentially producing unnecessary cost.
+3. **Model configuration:** text Gemini is configurable through `GEMINI_MODEL`; voice and Groq models are hardcoded.
+4. **Provider abstraction:** there is currently no common model-provider interface.
+5. **Gemini is mandatory:** the server refuses to start without `GEMINI_API_KEY`; Groq is optional.
+6. **Horizontal scaling:** Gemini concurrency and request-budget guards are process-local. Keep one backend replica until these controls use a shared store.
 
 That is the system as it exists today, without including any proposed migration architecture.

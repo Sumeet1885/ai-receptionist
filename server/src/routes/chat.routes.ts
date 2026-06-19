@@ -5,11 +5,25 @@ import { supabase } from '../services/db';
 import { config } from '../config';
 import { chatRateLimit } from '../middleware/rateLimit';
 import { checkAllowedOrigin } from '../utils/security';
-import { mergeWidgetConfig } from '../utils/widgetConfig';
 import { applyCorsOrigin } from '../utils/corsPolicy';
 import { fetchRecentMessageHistory } from '../services/conversationHistory';
+import { toPublicBotResponse } from '../services/publicBot';
 
 const router = Router();
+
+// JSON POSTs from customer sites are preflighted before their body is available.
+// The preflight carries no protected data; each real request below still performs
+// the bot-specific origin check before reading or mutating application data.
+router.options(['/reply', '/session'], (req: Request, res: Response): void => {
+  applyCorsOrigin(res, req.headers.origin);
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    req.headers['access-control-request-headers'] || 'Content-Type',
+  );
+  res.setHeader('Access-Control-Max-Age', '600');
+  res.sendStatus(204);
+});
 
 router.use(chatRateLimit);
 
@@ -57,6 +71,7 @@ router.post('/reply', async (req: Request, res: Response): Promise<void> => {
       .from('bots')
       .select('*')
       .eq('id', session.bot_id)
+      .eq('is_active', true)
       .single();
 
     if (botErr || !bot) {
@@ -103,7 +118,6 @@ router.post('/reply', async (req: Request, res: Response): Promise<void> => {
       requestId,
       sessionId,
       timezone,
-      userMessage,
       message: err?.message,
       stack: err?.stack
     });
@@ -147,15 +161,29 @@ router.get('/bot/:botId', async (req: Request, res: Response): Promise<void> => 
     // CORS Check
     if (!checkCors(req, res, bot.allowed_domains)) return;
 
-    res.json({
-      id: bot.id,
-      business_name: bot.business_name,
-      greeting: bot.greeting,
-      primary_color: bot.primary_color,
-      industry: bot.industry,
-      allowed_domains: bot.allowed_domains || [],
-      widget_config: mergeWidgetConfig(bot.widget_config, bot)
-    });
+    res.json(toPublicBotResponse(bot));
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Public endpoint: resolve an active bot for the standalone hosted chat page.
+router.get('/bot/subdomain/:subdomain', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { data: bot, error } = await supabase
+      .from('bots')
+      .select('*')
+      .eq('subdomain', req.params.subdomain)
+      .eq('is_active', true)
+      .single();
+
+    if (error || !bot) {
+      res.status(404).json({ error: 'Bot not found or inactive' });
+      return;
+    }
+
+    if (!checkCors(req, res, bot.allowed_domains)) return;
+    res.json(toPublicBotResponse(bot));
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -175,6 +203,7 @@ router.post('/session', async (req: Request, res: Response): Promise<void> => {
       .from('bots')
       .select('greeting, allowed_domains')
       .eq('id', botId)
+      .eq('is_active', true)
       .single();
 
     if (botErr || !bot) {

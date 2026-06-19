@@ -828,12 +828,12 @@ ${poweredByHtml}
         if (msg.type === 'transcript' && msg.text) {
           addMessage(msg.text, 'bot');
         }
-        if (msg.type === 'request_input' && msg.inputType) {
+        if (msg.type === 'request_input' && msg.field) {
           if (voiceInputContainer) {
             voiceInputContainer.style.display = 'flex';
-            voiceInputLabel.textContent = 'Please enter your ' + msg.inputType;
-            voiceInputField.type = msg.inputType === 'email' ? 'email' : 'tel';
-            voiceInputField.placeholder = msg.inputType === 'email' ? 'name@example.com' : '(555) 000-0000';
+            voiceInputLabel.textContent = 'Please enter your ' + msg.field;
+            voiceInputField.type = msg.field === 'email' ? 'email' : 'tel';
+            voiceInputField.placeholder = msg.field === 'email' ? 'name@example.com' : '(555) 000-0000';
             voiceInputField.value = '';
             voiceInputBtn.disabled = true;
             voiceInputField.focus();
@@ -969,7 +969,7 @@ ${poweredByHtml}
       e.preventDefault();
       var text = voiceInputField.value.trim();
       if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-      ws.send(JSON.stringify({ type: 'textInput', text: text }));
+      ws.send(JSON.stringify({ type: 'textInput', data: text }));
       voiceInputContainer.style.display = 'none';
       voiceInputField.value = '';
     });

@@ -10,6 +10,8 @@ import { checkWebSocketRateLimit } from '../middleware/rateLimit';
 import { wsTransport } from '../utils/wsTransport';
 import { mergeWidgetConfig } from '../utils/widgetConfig';
 import { LiveInputTranscriptAccumulator } from '../services/llm/liveInputTranscript';
+import { bookCalendarAppointment, checkCalendarAvailability, serializeCalendarToolError } from '../services/calendar/calendarOperations';
+import { loadLiveSessionContext } from '../services/liveSession';
 
 const supabase = createClient(config.supabaseUrl, config.supabaseServiceKey, {
   realtime: { transport: wsTransport },
@@ -46,14 +48,11 @@ export function setupWebSocketServer(server: Server) {
     // ── GeminiGuard: acquire a concurrent session slot ────────────────────────
     // Blocks (queues) if all 3 slots are occupied; rejects after 30 s.
     // 1. Fetch Bot Configuration
-    const { data: bot } = await supabase
-      .from('bots')
-      .select('*')
-      .eq('id', botId)
-      .single();
-
-    if (!bot) {
-      ws.close(1008, 'Bot not found');
+    let bot: any;
+    try {
+      ({ bot } = await loadLiveSessionContext(supabase, botId, sessionId));
+    } catch (error: any) {
+      ws.close(1008, error.message || 'Invalid chat session');
       return;
     }
 
@@ -347,8 +346,6 @@ CRITICAL SECURITY & CONSTRAINTS:
       if (response.toolCall) {
         // Handle tool calls securely on the backend
         console.log('Gemini Tool Call:', response.toolCall);
-        const EXPRESS_SERVER_URL = process.env.EXPRESS_SERVER_URL || `http://localhost:${config.port}`;
-        
         const functionResponses: any[] = [];
         let checkedAvailabilityThisToolTurn = false;
 
@@ -358,8 +355,13 @@ CRITICAL SECURITY & CONSTRAINTS:
 
           try {
             if (name === 'check_availability') {
-              const res = await fetch(`${EXPRESS_SERVER_URL}/api/calendar/availability?date=${args.date}&ownerId=${bot.owner_id}&timezone=${encodeURIComponent(timezone)}`);
-              functionResponse = await res.json();
+              const slots = await checkCalendarAvailability({
+                db: supabase,
+                ownerId: bot.owner_id,
+                date: args.date,
+                timezone,
+              });
+              functionResponse = { slots };
               checkedAvailabilityThisToolTurn = true;
               
               if (functionResponse.slots) {
@@ -385,18 +387,14 @@ CRITICAL SECURITY & CONSTRAINTS:
                 continue;
               }
 
-              const res = await fetch(`${EXPRESS_SERVER_URL}/api/calendar/book`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                  details: args, 
-                  ownerId: bot.owner_id, 
-                  botId: bot.id, 
-                  sessionId: sessionId,
-                  timezone: timezone
-                })
+              functionResponse = await bookCalendarAppointment({
+                db: supabase,
+                details: args,
+                ownerId: bot.owner_id,
+                botId: bot.id,
+                sessionId,
+                timezone,
               });
-              functionResponse = await res.json();
               if (functionResponse.success) {
                 await supabase.from('messages').insert([
                   { session_id: sessionId, sender: 'user', content: `I'd like to book an appointment: "${args.title}" for ${args.visitorName} (Phone: ${args.visitorPhone}) starting at ${args.startTime}.` },
@@ -417,7 +415,7 @@ CRITICAL SECURITY & CONSTRAINTS:
             }
           } catch (err: any) {
             console.error(`Error executing ${name}:`, err);
-            functionResponse = { error: err.message };
+            functionResponse = serializeCalendarToolError(err);
           }
 
           functionResponses.push({

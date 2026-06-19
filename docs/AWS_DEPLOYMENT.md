@@ -16,7 +16,7 @@ The backend serves:
 - Embeddable website widget at `/widget/loader.js` and `/widget/:botId`
 - Health check at `/health`
 
-The project is AWS-compatible with the recommended AWS layout below. The current application still depends on Supabase for Auth, Postgres, RLS policies, and public database access from the frontend. Moving Supabase fully into AWS means a separate migration project to RDS/Postgres plus Cognito or a custom auth layer.
+The project is AWS-compatible with the recommended AWS layout below. The current application still depends on Supabase for Auth, Postgres, and authenticated dashboard access protected by RLS. Anonymous widget and hosted-chat traffic goes through Express. Moving Supabase fully into AWS means a separate migration project to RDS/Postgres plus Cognito or a custom auth layer.
 
 ## Recommended AWS Architecture
 
@@ -91,7 +91,7 @@ ECS task settings:
 - Protocol: HTTP from ALB to target
 - Public listener: HTTPS 443 on `api.yourdomain.com`
 - CPU/memory: start with `0.5 vCPU / 1 GB`, increase if live voice traffic grows
-- Desired tasks: at least 2 for production
+- Desired tasks: 1 until Gemini concurrency and rate-limit coordination use a shared store. Running multiple tasks currently multiplies those in-memory limits.
 
 Required backend environment variables:
 
@@ -184,7 +184,7 @@ The app expects these tables and policies to exist:
 - `calendar_connections`
 - `appointments`
 
-Important: the frontend uses the Supabase publishable key and RLS policies for logged-in dashboard reads/writes. The backend uses the service role key for trusted operations.
+Important: the frontend uses the Supabase publishable key and RLS policies for logged-in dashboard reads/writes. Anonymous chat sessions and messages are created through Express. The backend uses the service role key for trusted operations.
 
 Supabase Edge Functions under `server/supabase/functions/` are not the primary production path when the Express backend is deployed. The current frontend and widget call the Express API through `VITE_EXPRESS_SERVER_URL`.
 

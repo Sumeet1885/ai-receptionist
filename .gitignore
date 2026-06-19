@@ -2,11 +2,12 @@ node_modules/
 dist/
 .env
 .env.local
+.env.vercel
 *.log
 .DS_Store
 Thumbs.db
 PRD.md
 target.md
 .agents
-test
+tests
 .superpowers

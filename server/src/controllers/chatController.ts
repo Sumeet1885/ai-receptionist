@@ -3,6 +3,7 @@ import { Bot, Message } from '../types/index.ts';
 import { config } from '../config';
 import { geminiGuard, RateLimitError } from '../services/geminiGuard';
 import { mergeWidgetConfig } from '../utils/widgetConfig';
+import { bookCalendarAppointment, checkCalendarAvailability, serializeCalendarToolError } from '../services/calendar/calendarOperations';
 
 const GEMINI_API_KEY = config.geminiApiKey ?? '';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
@@ -127,7 +128,6 @@ export async function handleChat(
 ): Promise<ChatOutput> {
   const { bot, history, userMessage } = input;
 
-  const EXPRESS_SERVER_URL = process.env.EXPRESS_SERVER_URL || `http://localhost:${config.port}`;
   const timezone = input.timezone || 'Asia/Kolkata';
   const getTzOffsetStr = (tz: string) => {
     try {
@@ -337,8 +337,13 @@ CRITICAL SECURITY & CONSTRAINTS:
 
       try {
         if (name === 'check_availability') {
-          const res = await fetch(`${EXPRESS_SERVER_URL}/api/calendar/availability?date=${args.date}&ownerId=${bot.owner_id}&timezone=${encodeURIComponent(timezone)}`);
-          functionResponse = await res.json();
+          const slots = await checkCalendarAvailability({
+            db: supabase,
+            ownerId: bot.owner_id,
+            date: args.date,
+            timezone,
+          });
+          functionResponse = { slots };
           checkedAvailabilityThisTurn = true;
           lastFunctionName = name;
           lastFunctionResponse = functionResponse;
@@ -348,25 +353,21 @@ CRITICAL SECURITY & CONSTRAINTS:
               error: 'Do not book immediately after checking availability. Present the returned slots to the user and wait for explicit confirmation in the next user turn.'
             };
           } else {
-            const res = await fetch(`${EXPRESS_SERVER_URL}/api/calendar/book`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                details: args, 
-                ownerId: bot.owner_id, 
-                botId: bot.id, 
-                sessionId: input.sessionId,
-                timezone: timezone
-              })
+            functionResponse = await bookCalendarAppointment({
+              db: supabase,
+              details: args,
+              ownerId: bot.owner_id,
+              botId: bot.id,
+              sessionId: input.sessionId,
+              timezone,
             });
-            functionResponse = await res.json();
           }
           lastFunctionName = name;
           lastFunctionResponse = functionResponse;
         }
       } catch (err: any) {
         console.error(`Error calling ${name}:`, err);
-        functionResponse = { error: err.message };
+        functionResponse = serializeCalendarToolError(err);
       }
 
       if (functionResponse?.error) {
