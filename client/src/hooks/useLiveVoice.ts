@@ -6,6 +6,7 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
   const [liveTranscript, setLiveTranscript] = useState<string>('');
   const [bookingDetails, setBookingDetails] = useState<any>(null);
   const [requestedInputType, setRequestedInputType] = useState<'phone' | 'email' | null>(null);
+  const [validationError, setValidationError] = useState<string>('');
   
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -43,6 +44,7 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
     setIsConnecting(false);
     setBookingDetails(null);
     setRequestedInputType(null);
+    setValidationError('');
     
     if (wsRef.current) {
       wsRef.current.close();
@@ -160,6 +162,14 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
 
         if (msg.type === 'request_input' && msg.field) {
           setRequestedInputType(msg.field as 'phone' | 'email');
+          setValidationError('');
+        }
+
+        if (msg.type === 'input_validation_error' && msg.message) {
+          if (msg.field === 'phone' || msg.field === 'email') {
+            setRequestedInputType(msg.field);
+          }
+          setValidationError(msg.message);
         }
 
         if (msg.type === 'appointment_booked' && msg.details) {
@@ -225,14 +235,20 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
     };
   }, [stopVoice]);
 
-  const sendTextData = useCallback((text: string) => {
+  const sendTextData = useCallback((text: string, field: 'phone' | 'email') => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
         type: 'textInput',
-        data: text
+        data: text,
+        field
       }));
       setRequestedInputType(null);
+      setValidationError('');
     }
+  }, []);
+
+  const clearValidationError = useCallback(() => {
+    setValidationError('');
   }, []);
 
   return {
@@ -242,6 +258,8 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
     setLiveTranscript,
     bookingDetails,
     requestedInputType,
+    validationError,
+    clearValidationError,
     sendTextData,
     startVoice,
     stopVoice

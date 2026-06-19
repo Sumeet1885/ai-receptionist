@@ -13,6 +13,7 @@ import { LiveInputTranscriptAccumulator } from '../services/llm/liveInputTranscr
 import { bookCalendarAppointment, checkCalendarAvailability, serializeCalendarToolError } from '../services/calendar/calendarOperations';
 import { loadLiveSessionContext } from '../services/liveSession';
 import { buildLiveFunctionDeclarations, LIVE_END_CALL_INSTRUCTION } from '../services/liveTools';
+import { type ContactField, validateContactInput } from '../utils/contactValidation';
 
 const supabase = createClient(config.supabaseUrl, config.supabaseServiceKey, {
   realtime: { transport: wsTransport },
@@ -132,6 +133,7 @@ export function setupWebSocketServer(server: Server) {
     let setupSent = false;
     let accumulatedBotText = '';
     const inputTranscript = new LiveInputTranscriptAccumulator();
+    let pendingTextInputField: ContactField | null = null;
     let pendingAssistantHangup: { reason: string } | null = null;
     let assistantHangupTimeout: NodeJS.Timeout | null = null;
 
@@ -232,6 +234,7 @@ CRITICAL SECURITY & CONSTRAINTS:
 - BOOKING ORDER: Never call book_appointment in the same turn as check_availability. After checking availability, speak the available options and ask "Would you like me to book one of these?" Wait for the user's next confirmation before booking.
 - SLOT RULE: Never invent a slot and never book a time that was not returned by check_availability. If the user's requested time is not in the returned slots, offer the returned alternatives instead.
 - TEXT INPUT FOR CONTACT: Voice recognition for phone numbers and emails is highly inaccurate. Whenever you need to ask the user for their phone number or email address, you MUST tell them to type it in the chat box, and simultaneously call the \`request_text_input\` tool. Do not try to collect it via voice.
+- TYPED CONTACT CONFIRMATION: If you have asked for a phone number or email in the text box, do not accept spoken claims like "I entered it" or "I already shared it". Wait until the system gives you the actual validated typed value before proceeding.
 - TOOL TIMEZONE: When calling check_availability, pass the local date format 'YYYY-MM-DD'. When calling book_appointment, construct the startTime and endTime in ISO 8601 format using the user's local offset ${tzOffset} (e.g. if the user selects 8:30 AM on 2026-06-17, startTime must be '2026-06-17T08:30:00${tzOffset}').
 - CALL ENDING: ${LIVE_END_CALL_INSTRUCTION}`;
 
@@ -389,6 +392,9 @@ CRITICAL SECURITY & CONSTRAINTS:
                 }));
               }
             } else if (name === 'request_text_input') {
+              pendingTextInputField = (args.field === 'phone' || args.field === 'email')
+                ? args.field
+                : null;
               ws.send(JSON.stringify({
                 type: 'request_input',
                 field: args.field
@@ -459,6 +465,33 @@ CRITICAL SECURITY & CONSTRAINTS:
           }
         }));
       } else if (message.type === 'textInput') {
+        const requestedField = pendingTextInputField ?? (message.field === 'phone' || message.field === 'email' ? message.field : null);
+
+        if (requestedField) {
+          const validation = validateContactInput(requestedField, String(message.data || ''));
+          if (!validation.valid) {
+            ws.send(JSON.stringify({
+              type: 'input_validation_error',
+              field: requestedField,
+              message: validation.error
+            }));
+            return;
+          }
+
+          pendingTextInputField = null;
+          const fieldLabel = requestedField === 'email' ? 'email address' : 'phone number';
+          geminiWs.send(JSON.stringify({
+            clientContent: {
+              turns: [{
+                role: 'user',
+                parts: [{ text: `My ${fieldLabel} typed in the text box is: ${validation.normalized}` }]
+              }],
+              turnComplete: true
+            }
+          }));
+          return;
+        }
+
         // Forward client text input directly to Gemini
         geminiWs.send(JSON.stringify({
           clientContent: {

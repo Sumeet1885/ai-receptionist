@@ -527,6 +527,14 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
   .voice-input-form button:hover { background: var(--accent-hover); }
   .voice-input-form button svg { width: 14px; height: 14px; fill: currentColor; }
   .voice-input-form button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .voice-input-error {
+    display: none;
+    width: 100%;
+    margin-top: 8px;
+    color: #fca5a5;
+    font-size: 11px;
+    line-height: 1.4;
+  }
 
   /* Powered By */
   .powered-by {
@@ -578,6 +586,7 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
           <svg viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
         </button>
       </form>
+      <div id="voiceInputError" class="voice-input-error"></div>
     </div>
     
     <button type="button" id="endCallBtn" class="end-call-btn">End Call</button>
@@ -617,6 +626,7 @@ ${poweredByHtml}
   var nextPlayTime = 0;
   var assistantEndingCall = false;
   var assistantEndTimer = null;
+  var pendingInputField = null;
   var isVoiceActive = false;
 
   var voiceOverlay = document.getElementById('voiceOverlay');
@@ -633,6 +643,7 @@ ${poweredByHtml}
   var voiceInputForm = document.getElementById('voiceInputForm');
   var voiceInputField = document.getElementById('voiceInputField');
   var voiceInputBtn = document.getElementById('voiceInputBtn');
+  var voiceInputError = document.getElementById('voiceInputError');
 
   var timerInterval = null;
   var secondsElapsed = 0;
@@ -759,6 +770,40 @@ ${poweredByHtml}
     }
   }
 
+  function showVoiceInputError(message) {
+    if (!voiceInputError) return;
+    voiceInputError.textContent = message || '';
+    voiceInputError.style.display = message ? 'block' : 'none';
+  }
+
+  function validateContactInput(field, value) {
+    var trimmed = String(value || '').trim();
+    if (!trimmed) {
+      return { valid: false, normalized: '', error: 'Please enter your ' + field + '.' };
+    }
+
+    if (field === 'email') {
+      var normalizedEmail = trimmed.toLowerCase();
+      var emailPattern = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/i;
+      if (!emailPattern.test(normalizedEmail)) {
+        return { valid: false, normalized: normalizedEmail, error: 'Please enter a valid email address like name@example.com.' };
+      }
+      return { valid: true, normalized: normalizedEmail, error: '' };
+    }
+
+    var phoneAllowedPattern = /^[0-9+\\-\\s().]+$/;
+    if (!phoneAllowedPattern.test(trimmed)) {
+      return { valid: false, normalized: trimmed, error: 'Please enter a valid phone number using digits and symbols like +, -, or spaces only.' };
+    }
+
+    var digitsOnly = trimmed.replace(/\\D/g, '');
+    if (digitsOnly.length < 7 || digitsOnly.length > 15) {
+      return { valid: false, normalized: trimmed, error: 'Please enter a valid phone number with 7 to 15 digits.' };
+    }
+
+    return { valid: true, normalized: trimmed, error: '' };
+  }
+
   function stopVoice() {
     assistantEndingCall = false;
     if (assistantEndTimer) {
@@ -788,6 +833,8 @@ ${poweredByHtml}
       mediaStream = null;
     }
     chatInput.disabled = false;
+    pendingInputField = null;
+    showVoiceInputError('');
     if (voiceInputContainer) voiceInputContainer.style.display = 'none';
     setVoiceState('idle');
   }
@@ -873,6 +920,7 @@ ${poweredByHtml}
           addMessage(msg.text, 'bot');
         }
         if (msg.type === 'request_input' && msg.field) {
+          pendingInputField = msg.field;
           if (voiceInputContainer) {
             voiceInputContainer.style.display = 'flex';
             voiceInputLabel.textContent = 'Please enter your ' + msg.field;
@@ -880,8 +928,15 @@ ${poweredByHtml}
             voiceInputField.placeholder = msg.field === 'email' ? 'name@example.com' : '(555) 000-0000';
             voiceInputField.value = '';
             voiceInputBtn.disabled = true;
+            showVoiceInputError('');
             voiceInputField.focus();
           }
+        }
+        if (msg.type === 'input_validation_error' && msg.message) {
+          pendingInputField = msg.field || pendingInputField;
+          if (voiceInputContainer) voiceInputContainer.style.display = 'flex';
+          showVoiceInputError(msg.message);
+          if (voiceInputField) voiceInputField.focus();
         }
         if (msg.type === 'appointment_booked' && msg.details) {
           addMessage('Appointment confirmed for ' + new Date(msg.details.startTime).toLocaleString() + '.', 'bot');
@@ -1012,14 +1067,21 @@ ${poweredByHtml}
   if (voiceInputForm) {
     voiceInputField.addEventListener('input', function() {
       voiceInputBtn.disabled = !voiceInputField.value.trim();
+      showVoiceInputError('');
     });
     voiceInputForm.addEventListener('submit', function(e) {
       e.preventDefault();
       var text = voiceInputField.value.trim();
-      if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-      ws.send(JSON.stringify({ type: 'textInput', data: text }));
+      if (!text || !ws || ws.readyState !== WebSocket.OPEN || !pendingInputField) return;
+      var validation = validateContactInput(pendingInputField, text);
+      if (!validation.valid) {
+        showVoiceInputError(validation.error);
+        return;
+      }
+      ws.send(JSON.stringify({ type: 'textInput', data: validation.normalized, field: pendingInputField }));
       voiceInputContainer.style.display = 'none';
       voiceInputField.value = '';
+      showVoiceInputError('');
     });
   }
 

@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bot } from '../../types';
 import { Icons } from '../common/Icons';
 import { VoicePoweredOrb } from '../ui/voice-powered-orb';
-import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
+import { validateContactInput } from '@/lib/contactValidation';
 
 interface VoiceCallViewProps {
   activeBot: Bot;
@@ -13,7 +13,9 @@ interface VoiceCallViewProps {
     liveTranscript: string;
     bookingDetails: any;
     requestedInputType: 'phone' | 'email' | null;
-    sendTextData: (text: string) => void;
+    validationError: string;
+    clearValidationError: () => void;
+    sendTextData: (text: string, field: 'phone' | 'email') => void;
     startVoice: () => Promise<void>;
     stopVoice: () => void;
   };
@@ -27,13 +29,22 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
 }) => {
   const [voiceDetected, setVoiceDetected] = useState(false);
   const [inputValue, setInputValue] = useState('');
+  const [localValidationError, setLocalValidationError] = useState('');
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);
 
   const handleSubmitInput = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim()) return;
-    liveVoice.sendTextData(inputValue.trim());
+    if (!liveVoice.requestedInputType) return;
+
+    const result = validateContactInput(liveVoice.requestedInputType, inputValue);
+    if (!result.valid) {
+      setLocalValidationError(result.error);
+      return;
+    }
+
+    liveVoice.sendTextData(result.normalized, liveVoice.requestedInputType);
     setInputValue('');
+    setLocalValidationError('');
   };
 
   // Auto-scroll the transcripts to keep the latest bot reply visible
@@ -42,6 +53,11 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
       transcriptEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [liveVoice.liveTranscript]);
+
+  useEffect(() => {
+    setInputValue('');
+    setLocalValidationError('');
+  }, [liveVoice.requestedInputType]);
 
   const getColorHue = (color: string) => {
     const maps: Record<string, number> = {
@@ -156,7 +172,15 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
                 className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent transition-all"
                 placeholder={liveVoice.requestedInputType === 'email' ? 'name@example.com' : '(555) 000-0000'}
                 value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
+                onChange={(e) => {
+                  setInputValue(e.target.value);
+                  if (localValidationError) {
+                    setLocalValidationError('');
+                  }
+                  if (liveVoice.validationError) {
+                    liveVoice.clearValidationError();
+                  }
+                }}
               />
               <button
                 type="submit"
@@ -166,6 +190,11 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
                 <Icons.Send className="w-4 h-4" />
               </button>
             </div>
+            {(localValidationError || liveVoice.validationError) && (
+              <p className="mt-3 w-full text-left text-xs text-red-300">
+                {localValidationError || liveVoice.validationError}
+              </p>
+            )}
           </form>
         </div>
       )}
