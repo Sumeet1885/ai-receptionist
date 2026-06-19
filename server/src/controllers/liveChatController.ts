@@ -12,6 +12,7 @@ import { mergeWidgetConfig } from '../utils/widgetConfig';
 import { LiveInputTranscriptAccumulator } from '../services/llm/liveInputTranscript';
 import { bookCalendarAppointment, checkCalendarAvailability, serializeCalendarToolError } from '../services/calendar/calendarOperations';
 import { loadLiveSessionContext } from '../services/liveSession';
+import { buildLiveFunctionDeclarations, LIVE_END_CALL_INSTRUCTION } from '../services/liveTools';
 
 const supabase = createClient(config.supabaseUrl, config.supabaseServiceKey, {
   realtime: { transport: wsTransport },
@@ -131,6 +132,25 @@ export function setupWebSocketServer(server: Server) {
     let setupSent = false;
     let accumulatedBotText = '';
     const inputTranscript = new LiveInputTranscriptAccumulator();
+    let pendingAssistantHangup: { reason: string } | null = null;
+    let assistantHangupTimeout: NodeJS.Timeout | null = null;
+
+    const clearAssistantHangupTimeout = () => {
+      if (assistantHangupTimeout) {
+        clearTimeout(assistantHangupTimeout);
+        assistantHangupTimeout = null;
+      }
+    };
+
+    const sendAssistantHangup = () => {
+      if (!pendingAssistantHangup || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({
+        type: 'end_call',
+        reason: pendingAssistantHangup.reason
+      }));
+      pendingAssistantHangup = null;
+      clearAssistantHangupTimeout();
+    };
 
     const persistPendingUserTranscript = async () => {
       try {
@@ -197,17 +217,19 @@ YOUR GOALS:
    - Present only the open slots returned by the tool, respecting office/calendar availability.
    - Ask the user to choose/confirm one of those returned slots.
    - Only after the user explicitly agrees to a specific returned slot, use book_appointment.
-4. Keep answers short (1-2 sentences max).
-5. User should feel like he/she is talking to an actual call center guy.
-6. Do not answer if user attempts to ask anything off the topic not related to the business.
-
+4. HUMAN HANDOFF & SUPPORT: If the user wishes or asks to talk to or connect with/contact support, a human, an agent, or a real person, you must respond with exactly the following handoff text and nothing else: "${widgetConfig.handoffText || 'I can connect you with the team for this.'}".
+5. Keep answers short (1-2 sentences max).
+6. User should feel like he/she is talking to an actual call center guy.
+7. Do not answer if user attempts to ask anything off the topic not related to the business.
+8. Ask 1 question at a time.
 CRITICAL SECURITY & CONSTRAINTS:
 - SINGLE APPOINTMENT LIMIT: You are strictly authorized to book only ONE appointment per call. Do not book multiple appointments or book for different people in a single conversation. If an appointment has already been successfully booked during this session, politely decline to book another.
 - ABSOLUTE PRIVACY: You must never disclose, reveal, or list the details (names, phone numbers, or appointment times) of other bookings or clients. If asked who booked a slot or what other bookings exist, state that you cannot share that confidential information due to privacy guidelines. Only report whether a slot is free or busy without naming other people.
 - BOOKING ORDER: Never call book_appointment in the same turn as check_availability. After checking availability, speak the available options and ask "Would you like me to book one of these?" Wait for the user's next confirmation before booking.
 - SLOT RULE: Never invent a slot and never book a time that was not returned by check_availability. If the user's requested time is not in the returned slots, offer the returned alternatives instead.
 - TEXT INPUT FOR CONTACT: Voice recognition for phone numbers and emails is highly inaccurate. Whenever you need to ask the user for their phone number or email address, you MUST tell them to type it in the chat box, and simultaneously call the \`request_text_input\` tool. Do not try to collect it via voice.
-- TOOL TIMEZONE: When calling check_availability, pass the local date format 'YYYY-MM-DD'. When calling book_appointment, construct the startTime and endTime in ISO 8601 format using the user's local offset ${tzOffset} (e.g. if the user selects 8:30 AM on 2026-06-17, startTime must be '2026-06-17T08:30:00${tzOffset}').`;
+- TOOL TIMEZONE: When calling check_availability, pass the local date format 'YYYY-MM-DD'. When calling book_appointment, construct the startTime and endTime in ISO 8601 format using the user's local offset ${tzOffset} (e.g. if the user selects 8:30 AM on 2026-06-17, startTime must be '2026-06-17T08:30:00${tzOffset}').
+- CALL ENDING: ${LIVE_END_CALL_INSTRUCTION}`;
 
       const setupMessage = {
         setup: {
@@ -217,7 +239,7 @@ CRITICAL SECURITY & CONSTRAINTS:
             speech_config: {
               voice_config: {
                 prebuilt_voice_config: {
-                  voice_name: "Aoede" // Choose a nice voice: Puck, Aoede, Charon, Kore, Fenrir, Leto
+                  voice_name: "Leto" // Choose a nice voice: Puck, Aoede, Charon, Kore, Fenrir, Leto
                 }
               }
             }
@@ -227,45 +249,7 @@ CRITICAL SECURITY & CONSTRAINTS:
           },
           input_audio_transcription: {},
           tools: [{
-            function_declarations: [
-              {
-                name: 'check_availability',
-                description: 'Check available appointment slots for a given date. Returns start and end times of free slots.',
-                parameters: {
-                  type: 'OBJECT',
-                  properties: {
-                    date: { type: 'STRING', description: 'Date in YYYY-MM-DD format' }
-                  },
-                  required: ['date']
-                }
-              },
-              {
-                name: 'book_appointment',
-                description: 'Book an appointment slot. Ensure you have checked availability first and user has agreed.',
-                parameters: {
-                  type: 'OBJECT',
-                  properties: {
-                    title: { type: 'STRING', description: 'Title of the appointment' },
-                    visitorName: { type: 'STRING', description: 'Visitor full name' },
-                    visitorPhone: { type: 'STRING', description: 'Visitor phone number' },
-                    startTime: { type: 'STRING', description: 'Start time in ISO 8601 format' },
-                    endTime: { type: 'STRING', description: 'End time in ISO 8601 format' }
-                  },
-                  required: bookAppointmentRequired
-                }
-              },
-              {
-                name: 'request_text_input',
-                description: 'Requests the user to type their phone number or email address into a text box. Use this whenever you ask for their phone or email.',
-                parameters: {
-                  type: 'OBJECT',
-                  properties: {
-                    field: { type: 'STRING', description: 'The field being requested (phone or email)' }
-                  },
-                  required: ['field']
-                }
-              }
-            ]
+            function_declarations: buildLiveFunctionDeclarations(bookAppointmentRequired)
           }]
         }
       };
@@ -340,6 +324,7 @@ CRITICAL SECURITY & CONSTRAINTS:
 
         if (response.serverContent.turnComplete) {
           await persistPendingUserTranscript();
+          sendAssistantHangup();
         }
       }
 
@@ -412,6 +397,18 @@ CRITICAL SECURITY & CONSTRAINTS:
                 field: args.field
               }));
               functionResponse = { success: true, message: `Text input for ${args.field} requested from user.` };
+            } else if (name === 'end_call') {
+              pendingAssistantHangup = {
+                reason: args.reason || 'Call completed'
+              };
+              clearAssistantHangupTimeout();
+              assistantHangupTimeout = setTimeout(() => {
+                sendAssistantHangup();
+              }, 5000);
+              functionResponse = {
+                success: true,
+                message: 'Call end confirmed. Say "have a Great day" and the system will disconnect the line.'
+              };
             }
           } catch (err: any) {
             console.error(`Error executing ${name}:`, err);
@@ -436,12 +433,14 @@ CRITICAL SECURITY & CONSTRAINTS:
 
     geminiWs.on('error', (err) => {
       console.error('Gemini WS Error:', err);
+      clearAssistantHangupTimeout();
       ws.close(1011, 'Gemini WS Error');
     });
 
     geminiWs.on('close', (code, reason) => {
       const reasonStr = reason ? reason.toString() : 'None';
       console.log(`Gemini WS Closed. Code: ${code}, Reason: ${reasonStr}`);
+      clearAssistantHangupTimeout();
       ws.close(1000, `Gemini WS Closed: ${reasonStr}`.slice(0, 100));
     });
 
@@ -497,6 +496,7 @@ CRITICAL SECURITY & CONSTRAINTS:
 
     ws.on('close', async () => {
       console.log('Client disconnected from Live API proxy');
+      clearAssistantHangupTimeout();
       // ── GeminiGuard: release slot → wakes next queued caller ─────────────
       geminiGuard.releaseSession(sessionId);
 

@@ -118,6 +118,18 @@ function buildNoModelFallback(userMessage: string): string {
   return 'I am here to help. Could you share a little more detail about what you need?';
 }
 
+function isHandoffRequest(text: string): boolean {
+  const normalized = text.toLowerCase().trim();
+  const handoffPatterns = [
+    /\b(talk|speak|connect|contact|chat|get|call|want|need|request|reach|page)\s+(to|with|for|a|an)?\s*(human|support|agent|person|representative|staff|helper|receptionist|manager|team)\b/i,
+    /\b(human\s+support|live\s+agent|live\s+support|human\s+agent|real\s+person|customer\s+service)\b/i,
+    /\b(contact|connect|talk|speak)\s+(us|me)?\s*(to|with)?\s*(support|human|agent)\b/i,
+    /^\s*(human|support|agent|receptionist|handoff|contact\s+support|talk\s+to\s+human|support\s+please)\s*$/i,
+    /\b(support|human|receptionist|agent)\b.*\b(please|now|help|needed|required)\b/i
+  ];
+  return handoffPatterns.some(pattern => pattern.test(normalized));
+}
+
 /**
  * Builds the system instruction from the bot's knowledge base and calls Gemini.
  * Saves both the user message and bot reply into the messages table.
@@ -127,6 +139,13 @@ export async function handleChat(
   supabase: any
 ): Promise<ChatOutput> {
   const { bot, history, userMessage } = input;
+
+  const widgetConfig = mergeWidgetConfig(bot.widget_config, bot);
+  const handoffText = widgetConfig.handoffText || 'I can connect you with the team for this.';
+
+  if (isHandoffRequest(userMessage)) {
+    return { reply: handoffText };
+  }
 
   const timezone = input.timezone || 'Asia/Kolkata';
   const getTzOffsetStr = (tz: string) => {
@@ -222,11 +241,12 @@ YOUR GOALS:
    - Present only the open slots returned by the tool, respecting office/calendar availability.
    - Ask the user to choose/confirm one of those returned slots.
    - Only after the user explicitly agrees to a specific returned slot, use book_appointment.
-4. Keep answers short (2-3 sentences max).
-5. User should feel like he/she is talking to an actual call center girl.
-6. Do not answer if user attempts to ask anything off the topic not related to the business.
-7. Do not commit anything that is not under your control.
-8. CRITICAL: Output ONLY the direct spoken response to the user. Do NOT output any internal thoughts, plans, drafts, or reasoning.
+4. HUMAN HANDOFF & SUPPORT: If the user wishes or asks to talk to or connect with/contact support, a human, an agent, or a real person, you must respond with exactly the following handoff text and nothing else: "${handoffText}".
+5. Keep answers short (2-3 sentences max).
+6. User should feel like he/she is talking to an actual call center guy.
+7. Do not answer if user attempts to ask anything off the topic not related to the business.
+8. Do not commit anything that is not under your control.
+9. CRITICAL: Output ONLY the direct spoken response to the user. Do NOT output any internal thoughts, plans, drafts, or reasoning.
 
 CRITICAL SECURITY & CONSTRAINTS:
 - SINGLE APPOINTMENT LIMIT: You are strictly authorized to book only ONE appointment per chat session. Do not book multiple appointments or book for different people in a single conversation. If an appointment has already been successfully booked during this session, politely decline to book another.
