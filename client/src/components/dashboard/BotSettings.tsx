@@ -359,8 +359,11 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
             </div>
             <div className="grid grid-cols-1 md:grid-cols-[1fr_180px] gap-3">
               <div>
-                <FieldLabel>Launcher Text</FieldLabel>
-                <TextInput value={activeBot.widgetConfig.launcherText} onChange={(e) => patchConfig({ launcherText: e.target.value })} />
+                <div className="flex justify-between items-center">
+                  <FieldLabel>Launcher Text</FieldLabel>
+                  <span className="text-[10px] font-mono text-brand-muted">{(activeBot.widgetConfig.launcherText || '').length}/24</span>
+                </div>
+                <TextInput maxLength={24} value={activeBot.widgetConfig.launcherText} onChange={(e) => patchConfig({ launcherText: e.target.value })} />
               </div>
               <div>
                 <FieldLabel>Launcher Style</FieldLabel>
@@ -382,15 +385,21 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
               <Toggle checked={activeBot.widgetConfig.showPoweredBy} label="Powered by label" onChange={(showPoweredBy) => patchConfig({ showPoweredBy })} />
             </div>
             <div>
-              <FieldLabel>Input Placeholder</FieldLabel>
-              <TextInput value={activeBot.widgetConfig.inputPlaceholder} onChange={(e) => patchConfig({ inputPlaceholder: e.target.value })} />
+              <div className="flex justify-between items-center">
+                <FieldLabel>Input Placeholder</FieldLabel>
+                <span className="text-[10px] font-mono text-brand-muted">{(activeBot.widgetConfig.inputPlaceholder || '').length}/80</span>
+              </div>
+              <TextInput maxLength={80} value={activeBot.widgetConfig.inputPlaceholder} onChange={(e) => patchConfig({ inputPlaceholder: e.target.value })} />
             </div>
             <div>
               <FieldLabel>Suggested Prompts</FieldLabel>
               <div className="space-y-2">
                 {activeBot.widgetConfig.suggestedPrompts.map((prompt, index) => (
                   <div key={index} className="flex gap-2">
-                    <TextInput value={prompt} onChange={(e) => updatePrompt(index, e.target.value)} placeholder="What are your fees?" />
+                    <div className="flex-1 relative flex items-center">
+                      <TextInput maxLength={80} className="pr-12" value={prompt} onChange={(e) => updatePrompt(index, e.target.value)} placeholder="What are your fees?" />
+                      <span className="absolute right-3 text-[10px] font-mono text-brand-muted">{(prompt || '').length}/80</span>
+                    </div>
                     <button type="button" onClick={() => removePrompt(index)} className="h-10 px-3 rounded-md border border-brand-border text-brand-danger hover:border-brand-danger/50 transition">Delete</button>
                   </div>
                 ))}
@@ -415,16 +424,23 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
               </div>
             </div>
             <div>
-              <FieldLabel>Additional Info to Collect (Optional)</FieldLabel>
+              <div className="flex justify-between items-center">
+                <FieldLabel>Additional Info to Collect (Optional)</FieldLabel>
+                <span className="text-[10px] font-mono text-brand-muted">{(activeBot.widgetConfig.additionalCollectInfo || '').length}/500</span>
+              </div>
               <TextInput
+                maxLength={500}
                 placeholder="e.g. Company name, budget limits, custom queries"
                 value={activeBot.widgetConfig.additionalCollectInfo || ''}
                 onChange={(e) => patchConfig({ additionalCollectInfo: e.target.value })}
               />
             </div>
             <div>
-              <FieldLabel>Human Handoff Text</FieldLabel>
-              <TextArea rows={2} value={activeBot.widgetConfig.handoffText} onChange={(e) => patchConfig({ handoffText: e.target.value })} />
+              <div className="flex justify-between items-center">
+                <FieldLabel>Human Handoff Text</FieldLabel>
+                <span className="text-[10px] font-mono text-brand-muted">{(activeBot.widgetConfig.handoffText || '').length}/180</span>
+              </div>
+              <TextArea maxLength={180} rows={2} value={activeBot.widgetConfig.handoffText} onChange={(e) => patchConfig({ handoffText: e.target.value })} />
             </div>
           </div>
         )}

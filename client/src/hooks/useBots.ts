@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { Bot, WidgetConfig } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { mergeWidgetConfig } from '../lib/widgetConfig';
+import { BOT_SELECT_FIELDS } from '../lib/botQuery';
 
 function mapBotFromDb(b: any): Bot {
   return {
@@ -30,7 +31,10 @@ export function useBots() {
       setBots([]);
       return;
     }
-    const { data } = await supabase.from('bots').select('*').eq('owner_id', userId);
+    const { data } = await supabase
+      .from('bots')
+      .select(BOT_SELECT_FIELDS)
+      .eq('owner_id', userId);
     if (data) {
       const mapped = data.map(mapBotFromDb);
       setBots(mapped);
