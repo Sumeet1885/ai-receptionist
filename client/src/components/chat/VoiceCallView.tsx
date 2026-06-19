@@ -169,17 +169,14 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
               <input
                 type={liveVoice.requestedInputType === 'email' ? 'email' : 'tel'}
                 autoFocus
-                maxLength={liveVoice.requestedInputType === 'phone' ? 10 : 254}
+                maxLength={liveVoice.requestedInputType === 'phone' ? 32 : 254}
                 inputMode={liveVoice.requestedInputType === 'phone' ? 'numeric' : 'email'}
                 disabled={liveVoice.isSubmittingContact}
                 className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent transition-all"
-                placeholder={liveVoice.requestedInputType === 'email' ? 'name@example.com' : '9876543210'}
+                placeholder={liveVoice.requestedInputType === 'email' ? 'name@example.com' : '9415072638'}
                 value={inputValue}
                 onChange={(e) => {
-                  const nextValue = liveVoice.requestedInputType === 'phone'
-                    ? e.target.value.replace(/\D/g, '').slice(0, 10)
-                    : e.target.value;
-                  setInputValue(nextValue);
+                  setInputValue(e.target.value);
                   if (localValidationError) {
                     setLocalValidationError('');
                   }

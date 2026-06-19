@@ -7,7 +7,12 @@ dist/
 .DS_Store
 Thumbs.db
 PRD.md
+test
 target.md
 .agents
 tests
+!server/tests/
+server/tests/*
+!server/tests/liveContactCollection.test.ts
+!server/tests/liveVoiceEndCall.test.ts
 .superpowers

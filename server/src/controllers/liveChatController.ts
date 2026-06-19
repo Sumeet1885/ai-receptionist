@@ -18,7 +18,11 @@ import {
   LIVE_FORCE_END_SIGNAL,
   LIVE_WRAP_WARNING_SIGNAL
 } from '../services/liveTools';
-import { LiveContactCollection, type ContactField } from '../utils/contactValidation';
+import {
+  getLiveBookingContactError,
+  LiveContactCollection,
+  type ContactField
+} from '../utils/contactValidation';
 
 const supabase = createClient(config.supabaseUrl, config.supabaseServiceKey, {
   realtime: { transport: wsTransport },
@@ -140,7 +144,7 @@ export function setupWebSocketServer(server: Server) {
     const inputTranscript = new LiveInputTranscriptAccumulator();
     const contactCollection = new LiveContactCollection();
     let pendingContactToolCall: { id: string; name: string; field: ContactField } | null = null;
-    let requiresVerifiedPhone = false;
+    let requiredContactFields: ContactField[] = [];
     let pendingAssistantHangup: { reason: string } | null = null;
     let assistantHangupTimeout: NodeJS.Timeout | null = null;
     let forcedShutdownTimeout: NodeJS.Timeout | null = null;
@@ -203,9 +207,11 @@ export function setupWebSocketServer(server: Server) {
       const userLocaleTime = new Date().toLocaleString('en-US', { timeZone: timezone });
       const widgetConfig = mergeWidgetConfig(bot.widget_config, bot);
       const fieldsToCollect = widgetConfig.requiredLeadFields || [];
-      requiresVerifiedPhone = fieldsToCollect.includes('phone');
+      requiredContactFields = fieldsToCollect.filter(
+        (field): field is ContactField => field === 'phone' || field === 'email'
+      );
       const bookAppointmentRequired = ['title', 'visitorName', 'startTime', 'endTime'];
-      if (requiresVerifiedPhone) {
+      if (requiredContactFields.includes('phone')) {
         bookAppointmentRequired.push('visitorPhone');
       }
 
@@ -367,6 +373,9 @@ CRITICAL SECURITY & CONSTRAINTS:
         const functionResponses: any[] = [];
         let checkedAvailabilityThisToolTurn = false;
         let requestedTextInputThisToolTurn = false;
+        const batchRequestsContactInput = response.toolCall.functionCalls.some(
+          (call: any) => call.name === 'request_text_input'
+        );
 
         for (const call of response.toolCall.functionCalls) {
           const { name, args, id } = call;
@@ -407,15 +416,18 @@ CRITICAL SECURITY & CONSTRAINTS:
                 continue;
               }
 
-              const verifiedPhone = contactCollection.getVerified('phone');
-              if (requiresVerifiedPhone && !verifiedPhone) {
-                functionResponse = {
-                  error: 'A server-verified phone number is required. Call request_text_input for phone and wait for its verified tool response.'
-                };
+              const contactGateError = getLiveBookingContactError(
+                contactCollection,
+                requiredContactFields,
+                batchRequestsContactInput
+              );
+              if (contactGateError) {
+                functionResponse = { error: contactGateError };
                 functionResponses.push({ id, name, response: functionResponse });
                 continue;
               }
 
+              const verifiedPhone = contactCollection.getVerified('phone');
               const bookingDetails = verifiedPhone
                 ? { ...args, visitorPhone: verifiedPhone }
                 : args;
@@ -533,8 +545,11 @@ CRITICAL SECURITY & CONSTRAINTS:
       }
       const message = JSON.parse(data.toString());
 
+      if (contactCollection.pendingField && message.type !== 'textInput') {
+        return;
+      }
+
       if (message.type === 'realtimeInput') {
-        if (contactCollection.pendingField) return;
         // Forward client audio chunks to Gemini using the non-deprecated audio format
         geminiWs.send(JSON.stringify({
           realtime_input: {

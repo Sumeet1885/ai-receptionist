@@ -784,8 +784,26 @@ ${poweredByHtml}
 
     if (field === 'email') {
       var normalizedEmail = trimmed.toLowerCase();
-      var emailPattern = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/i;
-      if (!emailPattern.test(normalizedEmail)) {
+      var emailParts = normalizedEmail.split('@');
+      var emailLocal = emailParts[0] || '';
+      var emailDomain = emailParts[1] || '';
+      var domainLabels = emailDomain.split('.');
+      var validEmail = normalizedEmail.length <= 254
+        && normalizedEmail.indexOf('..') === -1
+        && emailParts.length === 2
+        && emailLocal.length > 0
+        && emailLocal.length <= 64
+        && emailLocal.charAt(0) !== '.'
+        && emailLocal.charAt(emailLocal.length - 1) !== '.'
+        && /^[a-z0-9!#$%&'*+/=?^_\`{|}~.-]+$/i.test(emailLocal)
+        && domainLabels.length >= 2
+        && domainLabels.every(function(label) {
+          return label.length > 0
+            && label.length <= 63
+            && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(label);
+        })
+        && /^[a-z]{2,63}$/i.test(domainLabels[domainLabels.length - 1]);
+      if (!validEmail) {
         return { valid: false, normalized: normalizedEmail, error: 'Please enter a valid email address like name@example.com.' };
       }
       return { valid: true, normalized: normalizedEmail, error: '' };
@@ -796,7 +814,12 @@ ${poweredByHtml}
       return { valid: false, normalized: trimmed, error: 'Please enter exactly 10 digits with no spaces or symbols.' };
     }
 
-    if (/^(\\d)\\1{9}$/.test(trimmed) || '01234567890123456789'.indexOf(trimmed) !== -1) {
+    if (
+      /^(\\d)\\1{9}$/.test(trimmed)
+      || /^(\\d{2,5})\\1+$/.test(trimmed)
+      || '01234567890123456789'.indexOf(trimmed) !== -1
+      || '98765432109876543210'.indexOf(trimmed) !== -1
+    ) {
       return { valid: false, normalized: trimmed, error: 'Please enter a real phone number, not a repeated or sequential pattern.' };
     }
 
@@ -924,8 +947,8 @@ ${poweredByHtml}
             voiceInputContainer.style.display = 'flex';
             voiceInputLabel.textContent = 'Please enter your ' + msg.field;
             voiceInputField.type = msg.field === 'email' ? 'email' : 'tel';
-            voiceInputField.placeholder = msg.field === 'email' ? 'name@example.com' : '9876543210';
-            voiceInputField.maxLength = msg.field === 'email' ? 254 : 10;
+            voiceInputField.placeholder = msg.field === 'email' ? 'name@example.com' : '9415072638';
+            voiceInputField.maxLength = msg.field === 'email' ? 254 : 32;
             voiceInputField.inputMode = msg.field === 'email' ? 'email' : 'numeric';
             voiceInputField.value = '';
             voiceInputBtn.disabled = true;
@@ -1074,9 +1097,6 @@ ${poweredByHtml}
 
   if (voiceInputForm) {
     voiceInputField.addEventListener('input', function() {
-      if (pendingInputField === 'phone') {
-        voiceInputField.value = voiceInputField.value.replace(/\\D/g, '').slice(0, 10);
-      }
       voiceInputBtn.disabled = !voiceInputField.value.trim();
       showVoiceInputError('');
     });
