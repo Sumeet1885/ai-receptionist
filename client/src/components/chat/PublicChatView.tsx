@@ -96,7 +96,7 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
         )}
 
         {/* Chat Simulator Content Layout */}
-        <div className={cn("flex-1 flex flex-col md:flex-row bg-brand-card overflow-hidden", isStandalone ? "min-h-0" : "min-h-[500px]")}>
+        <div className={cn("flex-1 flex flex-col md:flex-row bg-brand-card", isStandalone ? "min-h-0" : "min-h-[500px]")}>
           
           {/* Left side widget helper info (Simulating informational landing space of the academy/business) */}
           {((previewMode === 'desktop' && !isStandalone) || isStandalone) && (
@@ -121,7 +121,7 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
           )}
 
            {/* Simulated interactive chat viewport */}
-           <div className={cn("flex-1 flex flex-col bg-brand-bg min-h-0", isStandalone ? "" : "h-[500px]", !isStandalone && previewMode === 'mobile' ? 'max-w-md mx-auto border-x border-brand-border rounded-2xl' : '')}>
+           <div className={cn("flex-1 flex flex-col bg-brand-bg overflow-hidden", isStandalone ? "h-full min-h-0" : "h-[500px]", !isStandalone && previewMode === 'mobile' ? 'max-w-md mx-auto border-x border-brand-border rounded-2xl' : '')}>
             
             {/* Chat interface custom banner */}
             <div className="flex-shrink-0 p-4 bg-brand-card border-b border-brand-border text-brand-text flex items-center justify-between shadow-sm">
@@ -141,7 +141,7 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
             </div>
 
             {/* Chat message streams */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-4 font-sans text-sm scrollbar-thin scrollbar-thumb-brand-border bg-brand-bg/50">
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 font-sans text-sm bg-brand-bg/50 chat-messages-scroll">
               {chatMessages.map((msg: Message) => {
                 const isUser = msg.sender === 'user';
                 return (
