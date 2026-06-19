@@ -198,6 +198,16 @@ export function setupWebSocketServer(server: Server) {
         leadCollectionInstruction += ` Also, collect the following additional information: ${widgetConfig.additionalCollectInfo}.`;
       }
 
+      const calendarInstruction = widgetConfig.enableCalendar
+        ? `3. If the user asks for a visit, booking, appointment, callback, or you judge that human intervention is needed, move into appointment-assist mode:
+   - Ask for any missing basic details first.
+   - Ask for the preferred date if it is missing.
+   - Use check_availability for that date.
+   - Present only the open slots returned by the tool, respecting office/calendar availability.
+   - Ask the user to choose/confirm one of those returned slots.
+   - Only after the user explicitly agrees to a specific returned slot, use book_appointment.`
+        : `3. Online calendar booking is currently disabled. If the user asks to book an appointment, schedule a visit, or requests a callback, politely inform them that online calendar scheduling is currently unavailable, and collect their contact details (name and phone/email) so a human representative can contact them to schedule it manually. Do NOT try to check availability or book it.`;
+
       const systemInstruction = `You are the Virtual AI Receptionist representing "${bot.business_name}" (${bot.industry} sector).
 
 CURRENT TIMEZONE: ${timezone}
@@ -210,13 +220,7 @@ ${bot.knowledge_base}
 YOUR GOALS:
 1. Warmly answer the user's questions relying strictly on the business details above.
 2. ${leadCollectionInstruction}
-3. If the user asks for a visit, booking, appointment, callback, or you judge that human intervention is needed, move into appointment-assist mode:
-   - Ask for any missing basic details first.
-   - Ask for the preferred date if it is missing.
-   - Use check_availability for that date.
-   - Present only the open slots returned by the tool, respecting office/calendar availability.
-   - Ask the user to choose/confirm one of those returned slots.
-   - Only after the user explicitly agrees to a specific returned slot, use book_appointment.
+${calendarInstruction}
 4. HUMAN HANDOFF & SUPPORT: If the user wishes or asks to talk to or connect with/contact support, a human, an agent, or a real person, you must respond with exactly the following handoff text and nothing else: "${widgetConfig.handoffText || 'I can connect you with the team for this.'}".
 5. Keep answers short (1-2 sentences max).
 6. User should feel like he/she is talking to an actual call center guy.
@@ -249,7 +253,7 @@ CRITICAL SECURITY & CONSTRAINTS:
           },
           input_audio_transcription: {},
           tools: [{
-            function_declarations: buildLiveFunctionDeclarations(bookAppointmentRequired)
+            function_declarations: buildLiveFunctionDeclarations(bookAppointmentRequired, widgetConfig.enableCalendar)
           }]
         }
       };
