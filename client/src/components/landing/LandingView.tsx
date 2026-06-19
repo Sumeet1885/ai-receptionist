@@ -85,7 +85,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
       deviceY: mapRange(p, 0, 0.16, 300, -132),
       deviceScale: mapRange(p, 0, 0.16, 0.78, 1),
       panelY: mapRange(p, 0.04, 0.16, 92, 0),
-      storyStackY: -mapRange(p, 0.18, 0.82, 0, storyCount - 1) * 100
+      storyStackY: -mapRange(p, 0.18, 0.74, 0, storyCount - 1) * 100
     };
   }, [scrollProgress]);
 
@@ -308,7 +308,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
         </div>
       </section>
 
-      <div className="landing-scroll-spacer" aria-hidden="true" />
+      <div className="landing-scroll-spacer landing-product-scroll-spacer" aria-hidden="true" />
     </div>
     <footer className="landing-site-footer">
       <div>

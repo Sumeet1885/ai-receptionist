@@ -605,17 +605,18 @@ select {
 }
 
 .landing-product-cinema {
-  min-height: 860vh;
+  min-height: 810vh;
 }
 
 .landing-product-hero {
-  top: clamp(84px, 10vh, 110px);
+  top: clamp(68px, 8vh, 94px);
 }
 
 .landing-product-hero h1 {
-  margin-top: 26px;
+  margin-top: 22px;
   max-width: 980px;
   font-family: "Space Grotesk", var(--font-display);
+  font-size: clamp(52px, 7.3vw, 104px);
   font-weight: 700;
   line-height: 0.9;
   letter-spacing: 0;
@@ -629,12 +630,16 @@ select {
 }
 
 .landing-product-device {
-  bottom: -68px;
-  height: 660px;
+  bottom: -138px;
+  height: 624px;
 }
 
 .landing-product-panel {
-  height: 600px;
+  height: 564px;
+}
+
+.landing-product-scroll-spacer {
+  height: 340vh;
 }
 
 .landing-product-stack {
@@ -1147,7 +1152,7 @@ select {
   }
 
   .landing-product-hero {
-    top: 78px;
+    top: 62px;
   }
 
   .landing-hero-copy h1 {
@@ -1177,8 +1182,8 @@ select {
   }
 
   .landing-product-device {
-    bottom: -22px;
-    height: 612px;
+    bottom: -68px;
+    height: 584px;
   }
 
   .landing-device-top {
@@ -1198,7 +1203,7 @@ select {
   }
 
   .landing-product-panel {
-    height: 560px;
+    height: 532px;
   }
 
   .landing-product-stack {
