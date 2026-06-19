@@ -11,68 +11,10 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
-  const assistantEndTimerRef = useRef<number | null>(null);
   
   // For playing audio received from server
   const playbackContextRef = useRef<AudioContext | null>(null);
   const nextPlayTimeRef = useRef<number>(0);
-
-  const disconnectMicrophone = useCallback(() => {
-    if (processorRef.current) {
-      processorRef.current.disconnect();
-      processorRef.current = null;
-    }
-
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
-
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach(track => track.stop());
-      mediaStreamRef.current = null;
-    }
-  }, []);
-
-  const stopVoice = useCallback(() => {
-    if (assistantEndTimerRef.current) {
-      window.clearTimeout(assistantEndTimerRef.current);
-      assistantEndTimerRef.current = null;
-    }
-    setIsVoiceActive(false);
-    setIsConnecting(false);
-    setBookingDetails(null);
-    setRequestedInputType(null);
-    
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-    
-    disconnectMicrophone();
-    
-    if (playbackContextRef.current) {
-      playbackContextRef.current.close();
-      playbackContextRef.current = null;
-    }
-  }, [disconnectMicrophone]);
-
-  const finishVoiceFromAssistant = useCallback(() => {
-    setRequestedInputType(null);
-    disconnectMicrophone();
-
-    const playbackContext = playbackContextRef.current;
-    const remainingPlaybackMs = playbackContext
-      ? Math.max(0, (nextPlayTimeRef.current - playbackContext.currentTime) * 1000)
-      : 0;
-
-    if (assistantEndTimerRef.current) {
-      window.clearTimeout(assistantEndTimerRef.current);
-    }
-    assistantEndTimerRef.current = window.setTimeout(() => {
-      stopVoice();
-    }, remainingPlaybackMs + 150);
-  }, [disconnectMicrophone, stopVoice]);
 
   const startVoice = useCallback(async () => {
     if (!botId || !sessionId) return;
@@ -166,11 +108,6 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
           setBookingDetails(msg.details);
         }
 
-        if (msg.type === 'end_call') {
-          finishVoiceFromAssistant();
-          return;
-        }
-
         if (msg.type === 'audio' && msg.data) {
           // Base64 to ArrayBuffer
           const binaryString = atob(msg.data);
@@ -217,7 +154,39 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
       setIsConnecting(false);
       stopVoice();
     }
-  }, [botId, finishVoiceFromAssistant, sessionId, stopVoice]);
+  }, [botId, sessionId]);
+
+  const stopVoice = useCallback(() => {
+    setIsVoiceActive(false);
+    setIsConnecting(false);
+    setBookingDetails(null);
+    setRequestedInputType(null);
+    
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    
+    if (processorRef.current) {
+      processorRef.current.disconnect();
+      processorRef.current = null;
+    }
+    
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    
+    if (playbackContextRef.current) {
+      playbackContextRef.current.close();
+      playbackContextRef.current = null;
+    }
+    
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     return () => {

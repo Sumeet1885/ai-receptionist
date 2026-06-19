@@ -564,7 +564,7 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
     <div id="voiceInputContainer" class="voice-input-container">
       <p id="voiceInputLabel">Please enter your details</p>
       <form id="voiceInputForm" class="voice-input-form">
-        <input type="text" id="voiceInputField" maxlength="400" autocomplete="off" />
+        <input type="text" id="voiceInputField" autocomplete="off" />
         <button type="submit" id="voiceInputBtn" disabled>
           <svg viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
         </button>
@@ -577,7 +577,7 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
 
 <form class="input-area" id="chatForm">
   ${voiceButtonHtml}
-  <input type="text" id="chatInput" maxlength="400" placeholder="${escapeHtml(widgetConfig.inputPlaceholder)}" autocomplete="off" />
+  <input type="text" id="chatInput" placeholder="${escapeHtml(widgetConfig.inputPlaceholder)}" autocomplete="off" />
   <button type="submit" id="sendBtn">
     <svg viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
   </button>
@@ -606,8 +606,6 @@ ${poweredByHtml}
   var processor = null;
   var playbackContext = null;
   var nextPlayTime = 0;
-  var assistantEndingCall = false;
-  var assistantEndTimer = null;
   var isVoiceActive = false;
 
   var voiceOverlay = document.getElementById('voiceOverlay');
@@ -751,11 +749,6 @@ ${poweredByHtml}
   }
 
   function stopVoice() {
-    assistantEndingCall = false;
-    if (assistantEndTimer) {
-      clearTimeout(assistantEndTimer);
-      assistantEndTimer = null;
-    }
     isVoiceActive = false;
     if (ws) {
       var socket = ws;
@@ -781,34 +774,6 @@ ${poweredByHtml}
     chatInput.disabled = false;
     if (voiceInputContainer) voiceInputContainer.style.display = 'none';
     setVoiceState('idle');
-  }
-
-  function finishVoiceFromAssistant() {
-    assistantEndingCall = true;
-    if (processor) {
-      processor.disconnect();
-      processor = null;
-    }
-    if (audioContext) {
-      audioContext.close();
-      audioContext = null;
-    }
-    if (mediaStream) {
-      mediaStream.getTracks().forEach(function(track) { track.stop(); });
-      mediaStream = null;
-    }
-    if (voiceInputContainer) voiceInputContainer.style.display = 'none';
-    if (voiceStatus) voiceStatus.textContent = 'Call ending...';
-    if (visualizer) visualizer.classList.remove('active');
-
-    var remainingPlaybackMs = playbackContext
-      ? Math.max(0, (nextPlayTime - playbackContext.currentTime) * 1000)
-      : 0;
-
-    if (assistantEndTimer) clearTimeout(assistantEndTimer);
-    assistantEndTimer = setTimeout(function() {
-      stopVoice();
-    }, remainingPlaybackMs + 150);
   }
 
   async function startVoice() {
@@ -877,10 +842,6 @@ ${poweredByHtml}
         if (msg.type === 'appointment_booked' && msg.details) {
           addMessage('Appointment confirmed for ' + new Date(msg.details.startTime).toLocaleString() + '.', 'bot');
         }
-        if (msg.type === 'end_call') {
-          finishVoiceFromAssistant();
-          return;
-        }
         if (msg.type === 'audio' && msg.data && playbackContext) {
           var binaryString = atob(msg.data);
           var bytes = new Uint8Array(binaryString.length);
@@ -904,7 +865,7 @@ ${poweredByHtml}
         stopVoice();
       };
       ws.onclose = function() {
-        if (isVoiceActive && !assistantEndingCall) addMessage('Voice call ended.', 'bot');
+        if (isVoiceActive) addMessage('Voice call ended.', 'bot');
         stopVoice();
       };
     } catch (err) {

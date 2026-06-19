@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Lead } from '../types';
 import { supabase } from '../lib/supabaseClient';
-import { LEAD_SELECT_FIELDS } from '../lib/leadQuery';
 
 function mapLeadFromDb(l: any): Lead {
   return {
@@ -23,10 +22,7 @@ export function useLeads() {
   const [leads, setLeads] = useState<Lead[]>([]);
 
   const fetchLeads = useCallback(async (botId?: string) => {
-    let query = supabase
-      .from('leads')
-      .select(LEAD_SELECT_FIELDS)
-      .order('updated_at', { ascending: false });
+    let query = supabase.from('leads').select('*').order('updated_at', { ascending: false });
     if (botId) query = query.eq('bot_id', botId);
     const { data } = await query;
     if (data) setLeads(data.map(mapLeadFromDb));

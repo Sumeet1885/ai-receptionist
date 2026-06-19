@@ -79,7 +79,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({ activeBotId 
               onClick={() => setSelectedSessionId(session.id)}
               className="p-6 hover:bg-brand-bg/20 transition cursor-pointer flex flex-col md:flex-row justify-between gap-4"
             >
-              <div className="space-y-2 flex-1 min-w-0">
+              <div className="space-y-2 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <h4 className="text-sm font-display font-bold text-brand-text truncate max-w-[140px] sm:max-w-xs">{session.visitorId}</h4>
                   <span className="text-xs text-brand-muted font-mono">{session.startedAt}</span>

@@ -232,40 +232,25 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <div className="flex justify-between items-center">
-                  <FieldLabel>Business Name</FieldLabel>
-                  <span className="text-[10px] font-mono text-brand-muted">{(activeBot.businessName || '').length}/100</span>
-                </div>
-                <TextInput maxLength={100} value={activeBot.businessName} onChange={(e) => patchActiveBot({ businessName: e.target.value })} />
+                <FieldLabel>Business Name</FieldLabel>
+                <TextInput value={activeBot.businessName} onChange={(e) => patchActiveBot({ businessName: e.target.value })} />
               </div>
               <div>
-                <div className="flex justify-between items-center">
-                  <FieldLabel>Industry</FieldLabel>
-                  <span className="text-[10px] font-mono text-brand-muted">{(activeBot.industry || '').length}/100</span>
-                </div>
-                <TextInput maxLength={100} value={activeBot.industry} onChange={(e) => patchActiveBot({ industry: e.target.value })} />
+                <FieldLabel>Industry</FieldLabel>
+                <TextInput value={activeBot.industry} onChange={(e) => patchActiveBot({ industry: e.target.value })} />
               </div>
             </div>
             <div>
-              <div className="flex justify-between items-center">
-                <FieldLabel>Greeting</FieldLabel>
-                <span className="text-[10px] font-mono text-brand-muted">{(activeBot.greeting || '').length}/400</span>
-              </div>
-              <TextArea maxLength={400} rows={3} value={activeBot.greeting} onChange={(e) => patchActiveBot({ greeting: e.target.value })} />
+              <FieldLabel>Greeting</FieldLabel>
+              <TextArea rows={3} value={activeBot.greeting} onChange={(e) => patchActiveBot({ greeting: e.target.value })} />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <div className="flex justify-between items-center">
-                  <FieldLabel>Assistant Display Name</FieldLabel>
-                  <span className="text-[10px] font-mono text-brand-muted">{(activeBot.widgetConfig.assistantName || '').length}/50</span>
-                </div>
-                <TextInput maxLength={50} placeholder={activeBot.businessName} value={activeBot.widgetConfig.assistantName} onChange={(e) => patchConfig({ assistantName: e.target.value })} />
+                <FieldLabel>Assistant Display Name</FieldLabel>
+                <TextInput placeholder={activeBot.businessName} value={activeBot.widgetConfig.assistantName} onChange={(e) => patchConfig({ assistantName: e.target.value })} />
               </div>
               <div>
-                <div className="flex justify-between items-center">
-                  <FieldLabel>Avatar Text</FieldLabel>
-                  <span className="text-[10px] font-mono text-brand-muted">{(activeBot.widgetConfig.avatarText || '').length}/3</span>
-                </div>
+                <FieldLabel>Avatar Text</FieldLabel>
                 <TextInput maxLength={3} placeholder={activeBot.businessName.slice(0, 2).toUpperCase()} value={activeBot.widgetConfig.avatarText} onChange={(e) => patchConfig({ avatarText: e.target.value.toUpperCase() })} />
               </div>
             </div>
@@ -431,11 +416,8 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
 
         {section === 'knowledge' && (
           <div>
-            <div className="flex justify-between items-center">
-              <FieldLabel>Knowledge Base</FieldLabel>
-              <span className="text-[10px] font-mono text-brand-muted">{(activeBot.knowledgeBase || '').length}/1500</span>
-            </div>
-            <TextArea maxLength={1500} rows={16} value={activeBot.knowledgeBase} onChange={(e) => patchActiveBot({ knowledgeBase: e.target.value })} />
+            <FieldLabel>Knowledge Base</FieldLabel>
+            <TextArea rows={16} value={activeBot.knowledgeBase} onChange={(e) => patchActiveBot({ knowledgeBase: e.target.value })} />
           </div>
         )}
 

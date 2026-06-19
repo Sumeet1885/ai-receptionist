@@ -58,7 +58,7 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
   return (
     <div className={cn("flex-1 bg-brand-bg flex flex-col font-sans", isStandalone ? "w-full h-screen overflow-hidden" : "items-center justify-center p-4")}>
       {/* Header Address Bar simulator */}
-      <div className={cn("w-full bg-brand-card flex flex-col overflow-hidden", isStandalone ? "flex-1 min-h-0" : "max-w-4xl rounded-2xl border border-brand-border shadow-xl")}>
+      <div className={cn("w-full bg-brand-card flex flex-col overflow-hidden", isStandalone ? "flex-1 h-full" : "max-w-4xl rounded-2xl border border-brand-border shadow-xl")}>
         
         {/* Fake browser bar */}
         {!isStandalone && (
@@ -96,7 +96,7 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
         )}
 
         {/* Chat Simulator Content Layout */}
-        <div className={cn("flex-1 flex flex-col md:flex-row bg-brand-card overflow-hidden", isStandalone ? "min-h-0" : "min-h-[500px]")}>
+        <div className={cn("flex-1 flex flex-col md:flex-row bg-brand-card overflow-hidden", isStandalone ? "h-full" : "min-h-[500px]")}>
           
           {/* Left side widget helper info (Simulating informational landing space of the academy/business) */}
           {((previewMode === 'desktop' && !isStandalone) || isStandalone) && (
@@ -112,6 +112,15 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
                   </p>
                 </div>
 
+                <div className="space-y-2 bg-brand-bg border border-brand-border p-4 rounded-xl text-xs shadow-inner">
+                  <span className="font-semibold block text-brand-text font-sans">Widget Theme:</span>
+                  <div className="flex items-center justify-between gap-3 pt-1.5">
+                    <span className="text-brand-text/70">Color preset</span>
+                    <span className="px-2 py-0.5 bg-brand-card border border-brand-border rounded text-[10px] text-brand-text font-medium font-mono capitalize">
+                      {activeBot.primaryColor}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <div className="pt-6 border-t border-brand-border text-center font-mono">
@@ -121,7 +130,7 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
           )}
 
           {/* Simulated interactive chat viewport */}
-          <div className={cn("flex-1 flex flex-col bg-brand-bg overflow-hidden", isStandalone ? "min-h-0" : "h-[500px]", !isStandalone && previewMode === 'mobile' ? 'max-w-md mx-auto border-x border-brand-border rounded-2xl' : '')}>
+          <div className={cn("flex-1 flex flex-col bg-brand-bg overflow-hidden", isStandalone ? "h-full" : "h-[500px]", !isStandalone && previewMode === 'mobile' ? 'max-w-md mx-auto border-x border-brand-border rounded-2xl' : '')}>
             
             {/* Chat interface custom banner */}
             <div className="flex-shrink-0 p-4 bg-brand-card border-b border-brand-border text-brand-text flex items-center justify-between shadow-sm">
@@ -138,6 +147,15 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
                 </div>
               </div>
 
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setShowSpeech(!showSpeech)}
+                  className={`p-2.5 border border-brand-border bg-brand-bg hover:bg-brand-card rounded-md text-brand-text transition duration-200 ${showSpeech ? 'bg-brand-accent/20 border-brand-accent text-brand-accent' : 'text-brand-muted hover:text-brand-text'}`}
+                  title="Voice Read Out Loud toggler"
+                >
+                  <Icons.Volume />
+                </button>
+              </div>
             </div>
 
             {/* Chat message streams */}
@@ -190,7 +208,6 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setChatInput(e.target.value)}
                 placeholder={liveVoice.isVoiceActive ? "Voice call active... speak now" : "Type a query... (Try: What is the course curriculum or fees?)"}
                 disabled={liveVoice.isVoiceActive}
-                maxLength={400}
                 className={`flex-1 bg-brand-bg border border-brand-border focus:border-brand-accent rounded-lg px-4 py-3 text-brand-text text-sm focus:outline-none transition font-sans focus:ring-1 focus:ring-brand-accent ${liveVoice.isVoiceActive ? 'opacity-50 cursor-not-allowed' : 'placeholder-brand-muted/70'}`}
               />
               <button

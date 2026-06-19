@@ -3,7 +3,6 @@ import { supabase } from './lib/supabaseClient';
 
 import { Toast as ToastType } from './types';
 import { defaultWidgetConfig, mergeWidgetConfig } from './lib/widgetConfig';
-import { getLeadRefreshInterval } from './lib/leadQuery';
 import { useAuth } from './hooks/useAuth';
 import { useBots } from './hooks/useBots';
 import { useLeads } from './hooks/useLeads';
@@ -134,13 +133,12 @@ export default function App() {
   }, [user, route.name]);
 
   useEffect(() => {
-    if (!user) return;
-
-    const refreshInterval = getLeadRefreshInterval(route.name);
-    if (!refreshInterval) return;
-
-    const interval = setInterval(fetchLeads, refreshInterval);
-    return () => clearInterval(interval);
+    if (route.name === 'dashboard' || route.name === 'leads') {
+      if (user) {
+        const interval = setInterval(fetchLeads, 15000);
+        return () => clearInterval(interval);
+      }
+    }
   }, [route.name, user, fetchLeads]);
 
   useEffect(() => {
@@ -281,7 +279,7 @@ export default function App() {
     <div className={`bg-brand-bg text-brand-text font-sans antialiased flex flex-col selection:bg-brand-accent/30 selection:text-white ${isStandaloneChat ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
       {toast && <Toast toast={toast} />}
 
-      {!isStandaloneChat && route.name !== 'landing' && (
+      {!isStandaloneChat && (
         <Header
           routeName={route.name}
           navigate={navigate}
