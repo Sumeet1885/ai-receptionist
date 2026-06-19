@@ -3,6 +3,7 @@ import { supabase } from './lib/supabaseClient';
 
 import { Toast as ToastType } from './types';
 import { defaultWidgetConfig, mergeWidgetConfig } from './lib/widgetConfig';
+import { getLeadRefreshInterval } from './lib/leadQuery';
 import { useAuth } from './hooks/useAuth';
 import { useBots } from './hooks/useBots';
 import { useLeads } from './hooks/useLeads';
@@ -143,12 +144,13 @@ export default function App() {
   }, [user, route.name]);
 
   useEffect(() => {
-    if (route.name === 'dashboard' || route.name === 'leads') {
-      if (user) {
-        const interval = setInterval(fetchLeads, 15000);
-        return () => clearInterval(interval);
-      }
-    }
+    if (!user) return;
+
+    const refreshInterval = getLeadRefreshInterval(route.name);
+    if (!refreshInterval) return;
+
+    const interval = setInterval(fetchLeads, refreshInterval);
+    return () => clearInterval(interval);
   }, [route.name, user, fetchLeads]);
 
   useEffect(() => {

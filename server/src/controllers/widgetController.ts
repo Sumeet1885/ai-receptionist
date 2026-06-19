@@ -60,6 +60,7 @@ export const serveLoader = (req: Request, res: Response) => {
   var config = ${JSON.stringify(defaultWidgetConfig)};
   var isOpen = false;
   var iframe = null;
+  var mounted = false;
   var style = document.createElement('style');
   var bubble = document.createElement('button');
   var container = document.createElement('div');
@@ -138,42 +139,50 @@ export const serveLoader = (req: Request, res: Response) => {
     renderBubble();
   }
 
-  document.head.appendChild(style);
-  bubble.id = 'air-widget-bubble';
-  bubble.setAttribute('aria-label', 'Open chat');
-  container.id = 'air-widget-container';
-  document.body.appendChild(bubble);
-  document.body.appendChild(container);
-  applyConfig(config);
+  function mountWidget() {
+    if (mounted) return;
+    mounted = true;
 
-  bubble.addEventListener('click', function() {
-    isOpen = !isOpen;
-    if (isOpen) {
-      if (!iframe) {
-        iframe = document.createElement('iframe');
-        iframe.src = baseUrl + '/widget/' + encodeURIComponent(botId);
-        iframe.setAttribute('allow', 'microphone');
-        iframe.setAttribute('title', 'AI Receptionist Chat');
-        container.appendChild(iframe);
+    document.head.appendChild(style);
+    bubble.id = 'air-widget-bubble';
+    bubble.setAttribute('aria-label', 'Open chat');
+    container.id = 'air-widget-container';
+    document.body.appendChild(bubble);
+    document.body.appendChild(container);
+
+    bubble.addEventListener('click', function() {
+      isOpen = !isOpen;
+      if (isOpen) {
+        if (!iframe) {
+          iframe = document.createElement('iframe');
+          iframe.src = baseUrl + '/widget/' + encodeURIComponent(botId);
+          iframe.setAttribute('allow', 'microphone');
+          iframe.setAttribute('title', 'AI Receptionist Chat');
+          container.appendChild(iframe);
+        }
+        container.classList.add('air-open');
+      } else {
+        container.classList.remove('air-open');
       }
-      container.classList.add('air-open');
-    } else {
-      container.classList.remove('air-open');
-    }
-    renderBubble();
-  });
-
-  window.addEventListener('message', function(event) {
-    if (event.data && event.data.type === 'air-widget-close') {
-      isOpen = false;
-      container.classList.remove('air-open');
       renderBubble();
-    }
-  });
+    });
+
+    window.addEventListener('message', function(event) {
+      if (event.data && event.data.type === 'air-widget-close') {
+        isOpen = false;
+        container.classList.remove('air-open');
+        renderBubble();
+      }
+    });
+  }
 
   fetch(baseUrl + '/api/chat/bot/' + encodeURIComponent(botId), { method: 'GET' })
     .then(function(response) { return response.ok ? response.json() : null; })
-    .then(function(data) { if (data && data.widget_config) applyConfig(data.widget_config); })
+    .then(function(data) {
+      if (!data || !data.widget_config) return;
+      mountWidget();
+      applyConfig(data.widget_config);
+    })
     .catch(function() {});
 })();`;
 

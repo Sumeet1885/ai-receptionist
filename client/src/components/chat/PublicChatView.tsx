@@ -120,8 +120,8 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
             </div>
           )}
 
-          {/* Simulated interactive chat viewport */}
-          <div className={cn("flex-1 flex flex-col bg-brand-bg overflow-hidden", isStandalone ? "min-h-0" : "h-[500px]", !isStandalone && previewMode === 'mobile' ? 'max-w-md mx-auto border-x border-brand-border rounded-2xl' : '')}>
+           {/* Simulated interactive chat viewport */}
+           <div className={cn("flex-1 flex flex-col bg-brand-bg min-h-0", isStandalone ? "" : "h-[500px]", !isStandalone && previewMode === 'mobile' ? 'max-w-md mx-auto border-x border-brand-border rounded-2xl' : '')}>
             
             {/* Chat interface custom banner */}
             <div className="flex-shrink-0 p-4 bg-brand-card border-b border-brand-border text-brand-text flex items-center justify-between shadow-sm">
