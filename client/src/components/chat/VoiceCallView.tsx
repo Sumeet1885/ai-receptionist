@@ -107,7 +107,7 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
             </div>
           )}
         </div>
-        
+
         {/* Pulsing indicator under the orb */}
         <div className="text-center mt-2 h-6 flex items-center justify-center">
           {!liveVoice.isConnecting && (
@@ -152,6 +152,7 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
               <input
                 type={liveVoice.requestedInputType === 'email' ? 'email' : 'tel'}
                 autoFocus
+                maxLength={400}
                 className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent transition-all"
                 placeholder={liveVoice.requestedInputType === 'email' ? 'name@example.com' : '(555) 000-0000'}
                 value={inputValue}

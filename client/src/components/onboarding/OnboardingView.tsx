@@ -45,10 +45,14 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider mb-2 font-mono">Business or Academy Name</label>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider font-mono">Business or Academy Name</label>
+                  <span className="text-[10px] font-mono text-brand-muted">{(newBotName || '').length}/100</span>
+                </div>
                 <input
                   type="text"
                   required
+                  maxLength={100}
                   value={newBotName}
                   onChange={(e) => setNewBotName(e.target.value)}
                   placeholder="e.g., Apex Coding Academy"
@@ -78,9 +82,13 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
             <h3 className="text-lg font-display font-bold text-brand-text border-b border-brand-border pb-2">2. Chatbot Branding & Tone</h3>
             
             <div>
-              <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider mb-2 font-mono">AI Greeting Message</label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider font-mono">AI Greeting Message</label>
+                <span className="text-[10px] font-mono text-brand-muted">{(newBotGreeting || '').length}/400</span>
+              </div>
               <textarea
                 rows={3}
+                maxLength={400}
                 value={newBotGreeting}
                 onChange={(e) => setNewBotGreeting(e.target.value)}
                 placeholder="Welcome to our institute! I am your virtual receptionist..."
@@ -112,14 +120,18 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
               <span className="text-[10px] text-brand-accent font-mono tracking-widest bg-brand-accent/10 border border-brand-border/40 px-2 py-0.5 rounded uppercase">RAG Engine Ready</span>
             </div>
             
-            <p className="text-xs text-brand-muted leading-relaxed mb-2 font-sans">
-              Enter details about courses, timetables, fees, consultation costs, location coordinates, or general rules. Our integrated Gemini LLM uses this data to respond dynamically.
-            </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+              <p className="text-xs text-brand-muted leading-relaxed font-sans">
+                Enter details about courses, timetables, fees, consultation costs, location coordinates, or general rules. Our integrated Gemini LLM uses this data to respond dynamically.
+              </p>
+              <span className="text-[10px] font-mono text-brand-muted shrink-0">{(newBotKB || '').length}/1500</span>
+            </div>
             
             <div>
               <textarea
                 rows={6}
                 required
+                maxLength={1500}
                 value={newBotKB}
                 onChange={(e) => setNewBotKB(e.target.value)}
                 placeholder="Add system details (fees, batches, rules, location, hours...)"
