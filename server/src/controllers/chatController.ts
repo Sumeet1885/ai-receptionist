@@ -199,7 +199,6 @@ export async function handleChat(
   const userLocaleTime = new Date().toLocaleString('en-US', { timeZone: timezone });
 
   // 1. Build system instruction from bot configuration
-  const widgetConfig = mergeWidgetConfig(bot.widget_config, bot);
   const fieldsToCollect = widgetConfig.requiredLeadFields || [];
 
   const fieldDescriptions: Record<string, string> = {

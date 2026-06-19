@@ -23,6 +23,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
       if (mode === 'signup') {
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
+        localStorage.setItem('just_signed_up', 'true');
         showToast("Account created successfully! Check your email if verification is required.", "success");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });

@@ -126,7 +126,17 @@ export default function App() {
     if (user) {
       fetchBots();
       fetchLeads();
-      if (route.name === 'auth') navigate('/dashboard', true);
+      if (route.name === 'auth' || route.name === 'landing') {
+        const justSignedUp = localStorage.getItem('just_signed_up') === 'true' || 
+          (user.last_sign_in_at && user.created_at && Math.abs(new Date(user.last_sign_in_at).getTime() - new Date(user.created_at).getTime()) < 30000);
+        
+        if (justSignedUp) {
+          localStorage.removeItem('just_signed_up');
+          navigate('/agents/new', true);
+        } else if (route.name === 'auth') {
+          navigate('/dashboard', true);
+        }
+      }
     } else if (isProtectedRoute(route)) {
       navigate('/', true);
     }
