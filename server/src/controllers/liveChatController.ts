@@ -240,13 +240,6 @@ CRITICAL SECURITY & CONSTRAINTS:
           model: 'models/gemini-3.1-flash-live-preview', // Model string required in setup for Live API
           generation_config: {
             response_modalities: ["AUDIO"],
-            speech_config: {
-              voice_config: {
-                prebuilt_voice_config: {
-                  voice_name: "Leto" // Choose a nice voice: Puck, Aoede, Charon, Kore, Fenrir, Leto
-                }
-              }
-            }
           },
           system_instruction: {
             parts: [{ text: systemInstruction }]
