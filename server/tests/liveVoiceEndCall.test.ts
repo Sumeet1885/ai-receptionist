@@ -116,7 +116,12 @@ test('live voice contact collection requests exactly one typed field at a time',
 
   assert.match(requestTextInputTool.description, /exactly one field/i);
   assert.match(requestTextInputTool.description, /never request phone and email together/i);
+  assert.match(requestTextInputTool.description, /before speaking/i);
+  assert.match(requestTextInputTool.description, /do not announce/i);
   assert.match(liveControllerSource, /request only ONE missing detail at a time/i);
+  assert.match(liveControllerSource, /first action in that turn/i);
+  assert.match(liveControllerSource, /never say.*calling.*tool/i);
+  assert.match(liveControllerSource, /do not claim.*text box.*visible/i);
   assert.match(liveControllerSource, /requestedTextInputThisToolTurn/);
   assert.match(liveControllerSource, /Request only one typed contact field at a time/i);
 });
