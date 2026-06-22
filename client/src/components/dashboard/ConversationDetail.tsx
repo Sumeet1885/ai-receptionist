@@ -23,7 +23,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ session,
             onClick={onBack}
             className="p-1.5 bg-brand-bg border border-brand-border hover:bg-brand-border rounded-lg transition"
           >
-            <Icons.ArrowRight />
+            <Icons.ArrowLeft />
           </button>
           <div>
             <h3 className="font-display font-bold text-brand-text text-lg">

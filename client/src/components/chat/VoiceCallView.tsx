@@ -4,6 +4,8 @@ import { Icons } from '../common/Icons';
 import { VoicePoweredOrb } from '../ui/voice-powered-orb';
 import { cn } from '@/lib/utils';
 import { validateContactInput } from '@/lib/contactValidation';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 
 interface VoiceCallViewProps {
   activeBot: Bot;
@@ -33,28 +35,36 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
   const [localValidationError, setLocalValidationError] = useState('');
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);
 
-  // For phone: count only digit characters so we can enforce exactly 10
-  const digitCount = liveVoice.requestedInputType === 'phone'
-    ? inputValue.replace(/\D/g, '').length
-    : 0;
-  const phoneReady = liveVoice.requestedInputType !== 'phone' || digitCount === 10;
+  // For phone: use react-phone-number-input validation
+  const phoneReady = liveVoice.requestedInputType === 'phone' ? (inputValue && isValidPhoneNumber(inputValue)) : true;
+  
+  // For email: simple regex check
+  const emailReady = liveVoice.requestedInputType === 'email' ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inputValue) : true;
+  
+  const inputReady = phoneReady && emailReady;
 
   const handleSubmitInput = (e: React.FormEvent) => {
     e.preventDefault();
     if (!liveVoice.requestedInputType) return;
 
-    // Strict phone validation: must have exactly 10 digits
+    // Strict phone validation: rely on react-phone-number-input
     if (liveVoice.requestedInputType === 'phone') {
-      const digitsOnly = inputValue.replace(/\D/g, '');
-      if (digitsOnly.length !== 10) {
-        setLocalValidationError('Please enter exactly 10 digits.');
+      if (!isValidPhoneNumber(inputValue)) {
+        setLocalValidationError('Please enter a valid phone number.');
         return;
       }
-      // Pass only the 10 digits to the server
-      liveVoice.sendTextData(digitsOnly, 'phone');
+      // Pass the fully formatted E.164 number to the server
+      liveVoice.sendTextData(inputValue, 'phone');
       setInputValue('');
       setLocalValidationError('');
       return;
+    }
+
+    if (liveVoice.requestedInputType === 'email') {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inputValue)) {
+        setLocalValidationError('Please enter a valid email address.');
+        return;
+      }
     }
 
     const result = validateContactInput(liveVoice.requestedInputType, inputValue);
@@ -179,38 +189,55 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
       )}
 
       {/* Conditional Text Input */}
+
+
+
+      {/* Conditional Text Input */}
       {liveVoice.requestedInputType && (
         <div className="w-full max-w-sm z-20 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <form onSubmit={handleSubmitInput} className="bg-brand-card/80 backdrop-blur-md border border-brand-accent/50 rounded-2xl p-4 shadow-2xl flex flex-col items-center">
             <span className="text-sm font-semibold text-white mb-1 tracking-wide">
               Please type your {liveVoice.requestedInputType}
             </span>
-            {liveVoice.requestedInputType === 'phone' && (
-              <span className={`text-xs font-mono mb-3 transition-colors ${
-                digitCount === 10 ? 'text-brand-success' : digitCount > 0 ? 'text-yellow-400' : 'text-white/40'
-              }`}>
-                {digitCount}/10 digits
+            {liveVoice.requestedInputType === 'phone' && !phoneReady && inputValue && (
+              <span className="text-xs mb-3 transition-colors text-yellow-400">
+                Incomplete or invalid phone number
               </span>
             )}
             <div className="flex w-full gap-2">
-              <input
-                type={liveVoice.requestedInputType === 'email' ? 'email' : 'tel'}
-                autoFocus
-                maxLength={liveVoice.requestedInputType === 'phone' ? 15 : 254}
-                inputMode={liveVoice.requestedInputType === 'phone' ? 'numeric' : 'email'}
-                disabled={liveVoice.isSubmittingContact}
-                className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent transition-all"
-                placeholder={liveVoice.requestedInputType === 'email' ? 'name@example.com' : '10-digit number'}
-                value={inputValue}
-                onChange={(e) => {
-                  setInputValue(e.target.value);
-                  if (localValidationError) setLocalValidationError('');
-                  if (liveVoice.validationError) liveVoice.clearValidationError();
-                }}
-              />
+              {liveVoice.requestedInputType === 'phone' ? (
+                <PhoneInput
+                  defaultCountry="IN"
+                  placeholder="Enter phone number"
+                  value={inputValue}
+                  onChange={(val) => {
+                    setInputValue(val || '');
+                    if (localValidationError) setLocalValidationError('');
+                    if (liveVoice.validationError) liveVoice.clearValidationError();
+                  }}
+                  disabled={liveVoice.isSubmittingContact}
+                  className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus-within:border-brand-accent focus-within:ring-1 focus-within:ring-brand-accent transition-all PhoneInput-custom"
+                />
+              ) : (
+                <input
+                  type="email"
+                  autoFocus
+                  maxLength={30}
+                  inputMode="email"
+                  disabled={liveVoice.isSubmittingContact}
+                  className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent transition-all"
+                  placeholder="name@example.com"
+                  value={inputValue}
+                  onChange={(e) => {
+                    setInputValue(e.target.value);
+                    if (localValidationError) setLocalValidationError('');
+                    if (liveVoice.validationError) liveVoice.clearValidationError();
+                  }}
+                />
+              )}
               <button
                 type="submit"
-                disabled={!inputValue.trim() || !phoneReady || liveVoice.isSubmittingContact}
+                disabled={!inputValue.trim() || !inputReady || liveVoice.isSubmittingContact}
                 className="bg-brand-accent hover:bg-brand-accent-hover disabled:opacity-50 text-white rounded-xl px-5 py-3 font-semibold transition-colors flex items-center justify-center"
               >
                 {liveVoice.isSubmittingContact ? 'Checking…' : <Icons.Send className="w-4 h-4" />}

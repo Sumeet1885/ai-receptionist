@@ -274,63 +274,6 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
 
         {section === 'widget' && (
           <div className="space-y-5">
-            <div>
-              <div className="mb-3">
-                <h3 className="text-sm font-bold text-brand-text">Quick sets</h3>
-                <p className="mt-1 text-xs text-brand-muted">Professionally balanced palettes. One click updates the complete widget.</p>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-3">
-                {widgetThemePresets.map(preset => {
-                  const selected = isThemePresetActive(preset, activeBot.widgetConfig);
-                  return (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => applyThemePreset(preset)}
-                    aria-pressed={selected}
-                    className={`relative overflow-hidden rounded-lg border p-3 text-left transition hover:-translate-y-0.5 hover:shadow-lg ${selected ? 'border-brand-accent ring-1 ring-brand-accent' : 'border-brand-border hover:border-brand-muted'}`}
-                    style={{ backgroundColor: preset.backgroundColor }}
-                  >
-                    <span className="flex items-center justify-between gap-3">
-                      <span>
-                        <span className="block text-sm font-bold" style={{ color: preset.textColor }}>{preset.name}</span>
-                        <span className="block mt-0.5 text-[10px] opacity-65" style={{ color: preset.textColor }}>{preset.description}</span>
-                      </span>
-                      {selected && (
-                        <span className="rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-wide" style={{ backgroundColor: preset.primaryColor, color: preset.backgroundColor }}>
-                          Selected
-                        </span>
-                      )}
-                    </span>
-                    <span className="mt-3 flex items-end gap-2 rounded-md p-2" style={{ backgroundColor: preset.surfaceColor }}>
-                      <span className="h-7 flex-1 rounded-md border border-black/5" style={{ backgroundColor: preset.backgroundColor }} />
-                      <span className="h-5 w-12 rounded-full" style={{ backgroundColor: preset.primaryColor }} />
-                    </span>
-                  </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <details className="group rounded-lg border border-brand-border bg-brand-bg/50">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-brand-text">
-                <span>
-                  Fine tune colors
-                  <span className="ml-2 text-[10px] font-normal text-brand-muted">Advanced</span>
-                </span>
-                <span className="text-brand-muted transition group-open:rotate-180">⌄</span>
-              </summary>
-              <div className="border-t border-brand-border px-4 py-4">
-                <p className="mb-3 text-xs text-brand-muted">Manual changes create a custom palette. Choosing a quick set later will reset all four colors.</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <ColorControl label="Accent" value={activeBot.widgetConfig.primaryColor} onChange={(primaryColor) => patchConfig({ primaryColor })} />
-                  <ColorControl label="Background" value={activeBot.widgetConfig.backgroundColor} onChange={(backgroundColor) => patchConfig({ backgroundColor })} />
-                  <ColorControl label="Surface" value={activeBot.widgetConfig.surfaceColor} onChange={(surfaceColor) => patchConfig({ surfaceColor })} />
-                  <ColorControl label="Text" value={activeBot.widgetConfig.textColor} onChange={(textColor) => patchConfig({ textColor })} />
-                </div>
-              </div>
-            </details>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <FieldLabel>Size</FieldLabel>
@@ -380,7 +323,6 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
         {section === 'behavior' && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <Toggle checked={activeBot.widgetConfig.enableVoice} label="Voice button" onChange={(enableVoice) => patchConfig({ enableVoice })} />
               <Toggle checked={activeBot.widgetConfig.enableCalendar} label="Calendar booking" onChange={(enableCalendar) => patchConfig({ enableCalendar })} />
               <Toggle checked={activeBot.widgetConfig.showPoweredBy} label="Powered by label" onChange={(showPoweredBy) => patchConfig({ showPoweredBy })} />
             </div>
