@@ -28,6 +28,7 @@ export function buildLiveFunctionDeclarations(bookAppointmentRequired: string[],
             title: { type: 'STRING', description: 'Title of the appointment' },
             visitorName: { type: 'STRING', description: 'Visitor full name' },
             visitorPhone: { type: 'STRING', description: 'Visitor phone number' },
+            visitorEmail: { type: 'STRING', description: 'Visitor email address' },
             startTime: { type: 'STRING', description: 'Start time in ISO 8601 format' },
             endTime: { type: 'STRING', description: 'End time in ISO 8601 format' }
           },
@@ -37,8 +38,8 @@ export function buildLiveFunctionDeclarations(bookAppointmentRequired: string[],
     );
   }
 
-  declarations.push(
-    {
+  if (bookAppointmentRequired.includes('visitorPhone') || bookAppointmentRequired.includes('visitorEmail')) {
+    declarations.push({
       name: 'request_text_input',
       description: 'Requests the user to type exactly one field into the text box. Use this whenever you ask for their phone or email. Never request phone and email together in the same turn.',
       parameters: {
@@ -48,7 +49,10 @@ export function buildLiveFunctionDeclarations(bookAppointmentRequired: string[],
         },
         required: ['field']
       }
-    },
+    });
+  }
+
+  declarations.push(
     {
       name: 'end_call',
       description: 'Ends the voice call after you have confirmed the conversation is over and already said "Have a great day".',

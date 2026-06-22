@@ -6,7 +6,8 @@ export interface TimeSlot {
 export interface BookingDetails {
   title: string;
   visitorName: string;
-  visitorPhone: string;
+  visitorPhone?: string;
+  visitorEmail?: string;
   startTime: string;
   endTime: string;
 }

@@ -144,6 +144,7 @@ export function setupWebSocketServer(server: Server) {
     const inputTranscript = new LiveInputTranscriptAccumulator();
     const contactCollection = new LiveContactCollection();
     let pendingContactToolCall: { id: string; name: string; field: ContactField } | null = null;
+    let pendingFunctionResponses: any[] = [];
     let requiredContactFields: ContactField[] = [];
     let pendingAssistantHangup: { reason: string } | null = null;
     let assistantHangupTimeout: NodeJS.Timeout | null = null;
@@ -210,9 +211,15 @@ export function setupWebSocketServer(server: Server) {
       requiredContactFields = fieldsToCollect.filter(
         (field): field is ContactField => field === 'phone' || field === 'email'
       );
-      const bookAppointmentRequired = ['title', 'visitorName', 'startTime', 'endTime'];
+      const bookAppointmentRequired = ['title', 'startTime', 'endTime'];
+      if (fieldsToCollect.includes('name')) {
+        bookAppointmentRequired.push('visitorName');
+      }
       if (requiredContactFields.includes('phone')) {
         bookAppointmentRequired.push('visitorPhone');
+      }
+      if (requiredContactFields.includes('email')) {
+        bookAppointmentRequired.push('visitorEmail');
       }
 
       const fieldDescriptions: Record<string, string> = {
@@ -238,12 +245,17 @@ export function setupWebSocketServer(server: Server) {
       const calendarInstruction = widgetConfig.enableCalendar
         ? `3. If the user asks for a visit, booking, appointment, callback, or you judge that human intervention is needed, move into appointment-assist mode:
    - Ask for any missing basic details first.
+
    - Ask for the preferred date if it is missing.
    - Use check_availability for that date.
    - Present only the open slots returned by the tool, respecting office/calendar availability.
    - Ask the user to choose/confirm one of those returned slots.
    - Only after the user explicitly agrees to a specific returned slot, use book_appointment.`
-        : `3. Online calendar booking is currently disabled. If the user asks to book an appointment, schedule a visit, or requests a callback, politely inform them that online calendar scheduling is currently unavailable, and collect their contact details (name and phone/email) so a human representative can contact them to schedule it manually. Do NOT try to check availability or book it.`;
+        : `3. Online calendar booking is currently disabled. If the user asks to book an appointment, schedule a visit, or requests a callback, politely inform them that online calendar scheduling is currently unavailable, and collect their contact details (name and phone/email) so a human representative can contact them to schedule it manually.`;
+
+      const textInputInstructions = requiredContactFields.length > 0 ? `
+- TEXT INPUT FOR CONTACT: Voice recognition for phone numbers and emails is highly inaccurate. Whenever you need to ask the user for their phone number or email address, you MUST tell them to type it in the chat box, and simultaneously call the \`request_text_input\` tool. Do not try to collect it via voice.
+- TYPED CONTACT CONFIRMATION: Calling \`request_text_input\` pauses your turn. Do not speak, assume success, request another field, or continue the workflow after that tool call. The backend will resume you only when its tool response contains \`verified: true\` and the actual validated value. Do not accept spoken claims like "I entered it" or "I already shared it" as confirmation.` : '';
 
       const systemInstruction = `You are the Virtual AI Receptionist representing "${bot.business_name}" (${bot.industry} sector).
 
@@ -268,9 +280,7 @@ CRITICAL SECURITY & CONSTRAINTS:
 - SINGLE APPOINTMENT LIMIT: You are strictly authorized to book only ONE appointment per call. Do not book multiple appointments or book for different people in a single conversation. If an appointment has already been successfully booked during this session, politely decline to book another.
 - ABSOLUTE PRIVACY: You must never disclose, reveal, or list the details (names, phone numbers, or appointment times) of other bookings or clients. If asked who booked a slot or what other bookings exist, state that you cannot share that confidential information due to privacy guidelines. Only report whether a slot is free or busy without naming other people.
 - BOOKING ORDER: Never call book_appointment in the same turn as check_availability. After checking availability, speak the available options and ask "Would you like me to book one of these?" Wait for the user's next confirmation before booking.
-- SLOT RULE: Never invent a slot and never book a time that was not returned by check_availability. If the user's requested time is not in the returned slots, offer the returned alternatives instead.
-- TEXT INPUT FOR CONTACT: Voice recognition for phone numbers and emails is highly inaccurate. Whenever you need to ask the user for their phone number or email address, you MUST tell them to type it in the chat box, and simultaneously call the \`request_text_input\` tool. Do not try to collect it via voice.
-- TYPED CONTACT CONFIRMATION: Calling \`request_text_input\` pauses your turn. Do not speak, assume success, request another field, or continue the workflow after that tool call. The backend will resume you only when its tool response contains \`verified: true\` and the actual validated value. Do not accept spoken claims like "I entered it" or "I already shared it" as confirmation.
+- SLOT RULE: Never invent a slot and never book a time that was not returned by check_availability. If the user's requested time is not in the returned slots, offer the returned alternatives instead.${textInputInstructions}
 - INTERNAL SESSION SIGNALS:
   - If you receive exactly ${LIVE_WRAP_WARNING_SIGNAL}, treat it as an internal system event, not as user speech. Politely tell the caller, in natural words, that you have an important class to attend soon and would like to quickly wrap up. Keep it brief and start closing the conversation gracefully.
   - If you receive exactly ${LIVE_FORCE_END_SIGNAL}, treat it as an internal system event, not as user speech. Immediately give a short polite goodbye, then call the \`end_call\` tool.
@@ -348,6 +358,24 @@ CRITICAL SECURITY & CONSTRAINTS:
           }
         }
 
+      if (response.setupComplete || response.setup_complete) {
+        console.log('Gemini Live API Setup Complete. Triggering initial greeting...');
+        if (geminiWs.readyState === WebSocket.OPEN) {
+          geminiWs.send(JSON.stringify({
+            clientContent: {
+              turns: [{
+                role: 'user',
+                parts: [{ text: "Hello! I am on the line. Please greet me and welcome me to the business." }]
+              }],
+              turnComplete: true
+            }
+          }));
+        }
+        return;
+      }
+
+
+
         if (response.serverContent.turnComplete && accumulatedBotText.trim()) {
           try {
             await supabase.from('messages').insert({
@@ -376,6 +404,8 @@ CRITICAL SECURITY & CONSTRAINTS:
         const batchRequestsContactInput = response.toolCall.functionCalls.some(
           (call: any) => call.name === 'request_text_input'
         );
+        let deferEntireBatch = false;
+        let pendingContactToolCallTemp: any = null;
 
         for (const call of response.toolCall.functionCalls) {
           const { name, args, id } = call;
@@ -478,12 +508,13 @@ CRITICAL SECURITY & CONSTRAINTS:
                 continue;
               }
 
-              pendingContactToolCall = { id, name, field: requestedField };
+              pendingContactToolCallTemp = { id, name, field: requestedField };
               requestedTextInputThisToolTurn = true;
               ws.send(JSON.stringify({
                 type: 'request_input',
                 field: requestedField
               }));
+              deferEntireBatch = true;
               deferFunctionResponse = true;
             } else if (name === 'end_call') {
               pendingAssistantHangup = {
@@ -513,7 +544,10 @@ CRITICAL SECURITY & CONSTRAINTS:
         }
 
         // Send tool responses back to Gemini
-        if (functionResponses.length > 0) {
+        if (deferEntireBatch) {
+          pendingFunctionResponses = functionResponses;
+          pendingContactToolCall = pendingContactToolCallTemp;
+        } else if (functionResponses.length > 0) {
           geminiWs.send(JSON.stringify({
             toolResponse: {
               functionResponses: functionResponses
@@ -598,20 +632,33 @@ CRITICAL SECURITY & CONSTRAINTS:
           console.error('Error saving verified contact input:', contactSaveError);
         }
 
-        geminiWs.send(JSON.stringify({
-          toolResponse: {
-            functionResponses: [{
-              id: completedToolCall.id,
-              name: completedToolCall.name,
-              response: {
+        const responseIdx = pendingFunctionResponses.findIndex(r => r.id === completedToolCall.id);
+        if (responseIdx !== -1) {
+            pendingFunctionResponses[responseIdx].response = {
                 success: true,
                 verified: true,
                 field: submission.field,
                 value: submission.value
-              }
-            }]
+            };
+        } else {
+            pendingFunctionResponses.push({
+                id: completedToolCall.id,
+                name: completedToolCall.name,
+                response: {
+                    success: true,
+                    verified: true,
+                    field: submission.field,
+                    value: submission.value
+                }
+            });
+        }
+
+        geminiWs.send(JSON.stringify({
+          toolResponse: {
+            functionResponses: pendingFunctionResponses
           }
         }));
+        pendingFunctionResponses = [];
         return;
       }
 

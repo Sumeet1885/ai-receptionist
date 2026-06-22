@@ -1,5 +1,6 @@
 import { BookingDetails, CalendarAdapter, TimeSlot } from './calendarInterface';
 import { getCalendarAdapter } from './calendarAdapterFactory';
+import { validateContactInput } from '../../utils/contactValidation';
 
 type AdapterFactory = (provider: string) => CalendarAdapter;
 const inFlightBookingSessions = new Set<string>();
@@ -60,6 +61,24 @@ export async function bookCalendarAppointment(input: BookingInput) {
   }
   if (requestedEnd.getTime() <= requestedStart.getTime()) {
     throw new Error('Appointment endTime must be after startTime.');
+  }
+
+  // Strict Server-Side Validation: Ensure contact information is truly valid
+  // before proceeding, ignoring hallucinated inputs.
+  if (details.visitorPhone) {
+    const phoneValidation = validateContactInput('phone', details.visitorPhone);
+    if (!phoneValidation.valid) {
+      throw new Error(`Invalid phone number: ${phoneValidation.error}`);
+    }
+    details.visitorPhone = phoneValidation.normalized;
+  }
+  
+  if (details.visitorEmail) {
+    const emailValidation = validateContactInput('email', details.visitorEmail);
+    if (!emailValidation.valid) {
+      throw new Error(`Invalid email address: ${emailValidation.error}`);
+    }
+    details.visitorEmail = emailValidation.normalized;
   }
 
   if (inFlightBookingSessions.has(sessionId)) {
