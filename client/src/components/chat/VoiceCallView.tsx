@@ -36,11 +36,11 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);
 
   // For phone: use react-phone-number-input validation
-  const phoneReady = liveVoice.requestedInputType === 'phone' ? (inputValue && isValidPhoneNumber(inputValue)) : true;
-  
+  const phoneReady = liveVoice.requestedInputType === 'phone' ? !!(inputValue && isValidPhoneNumber(inputValue)) : true;
+
   // For email: simple regex check
   const emailReady = liveVoice.requestedInputType === 'email' ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inputValue) : true;
-  
+
   const inputReady = phoneReady && emailReady;
 
   const handleSubmitInput = (e: React.FormEvent) => {
@@ -177,7 +177,7 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
             Booked for {new Date(liveVoice.bookingDetails.startTime).toLocaleDateString()} at {new Date(liveVoice.bookingDetails.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </p>
           <a
-            href={`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(liveVoice.bookingDetails.title || 'Appointment')}&dates=${new Date(liveVoice.bookingDetails.startTime).toISOString().replace(/-|:|\.\d\d\d/g, '')}/${new Date(liveVoice.bookingDetails.endTime).toISOString().replace(/-|:|\.\d\d\d/g, '')}&details=${encodeURIComponent(`Name: ${liveVoice.bookingDetails.visitorName}\nPhone: ${liveVoice.bookingDetails.visitorPhone}`)}`}
+            href={`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(liveVoice.bookingDetails.title || 'Appointment')}&dates=${new Date(liveVoice.bookingDetails.startTime).toISOString().replace(/-|:|\\.\\d\\d\\d/g, '')}/${new Date(liveVoice.bookingDetails.endTime).toISOString().replace(/-|:|\\.\\d\\d\\d/g, '')}&details=${encodeURIComponent(`Name: ${liveVoice.bookingDetails.visitorName}\nPhone: ${liveVoice.bookingDetails.visitorPhone}`)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="bg-brand-accent hover:bg-brand-accent/90 text-white font-semibold py-2 px-6 rounded-full transition-colors flex items-center gap-2"
@@ -189,66 +189,86 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
       )}
 
       {/* Conditional Text Input */}
-
-
-
-      {/* Conditional Text Input */}
       {liveVoice.requestedInputType && (
         <div className="w-full max-w-sm z-20 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <form onSubmit={handleSubmitInput} className="bg-brand-card/80 backdrop-blur-md border border-brand-accent/50 rounded-2xl p-4 shadow-2xl flex flex-col items-center">
-            <span className="text-sm font-semibold text-white mb-1 tracking-wide">
+          <form onSubmit={handleSubmitInput} className="bg-brand-card/80 backdrop-blur-md border border-brand-accent/50 rounded-2xl p-4 shadow-2xl flex flex-col items-center gap-3">
+            <span className="text-sm font-semibold text-white tracking-wide">
               Please type your {liveVoice.requestedInputType}
             </span>
-            {liveVoice.requestedInputType === 'phone' && !phoneReady && inputValue && (
-              <span className="text-xs mb-3 transition-colors text-yellow-400">
-                Incomplete or invalid phone number
-              </span>
+
+            {/* ── Phone input ── */}
+            {liveVoice.requestedInputType === 'phone' ? (
+              <div className="w-full space-y-2.5">
+                <div className="voice-phone-card">
+                  <p className="vpc-label">
+                    Phone number <span className="vpc-required">*</span>
+                  </p>
+                  <PhoneInput
+                    defaultCountry="IN"
+                    placeholder="Enter phone number"
+                    value={inputValue}
+                    onChange={(val) => {
+                      setInputValue(val || '');
+                      if (localValidationError) setLocalValidationError('');
+                      if (liveVoice.validationError) liveVoice.clearValidationError();
+                    }}
+                    disabled={liveVoice.isSubmittingContact}
+                  />
+                  {inputValue && !phoneReady && (
+                    <p className="vpc-hint">Incomplete or invalid phone number</p>
+                  )}
+                </div>
+
+                {(localValidationError || liveVoice.validationError) && (
+                  <p className="text-xs text-red-300 text-center px-1">
+                    {localValidationError || liveVoice.validationError}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={!inputValue.trim() || !phoneReady || liveVoice.isSubmittingContact}
+                  className="w-full bg-brand-accent hover:bg-brand-accent-hover disabled:opacity-40 text-white rounded-xl py-3 font-bold transition-all duration-200 text-sm tracking-wide"
+                >
+                  {liveVoice.isSubmittingContact ? 'Verifying…' : 'Submit Phone Number'}
+                </button>
+              </div>
+            ) : (
+              /* ── Email input ── */
+              <div className="w-full space-y-2">
+                <div className="flex w-full gap-2">
+                  <input
+                    type="email"
+                    autoFocus
+                    maxLength={30}
+                    inputMode="email"
+                    disabled={liveVoice.isSubmittingContact}
+                    className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent transition-all"
+                    placeholder="name@example.com"
+                    value={inputValue}
+                    onChange={(e) => {
+                      setInputValue(e.target.value);
+                      if (localValidationError) setLocalValidationError('');
+                      if (liveVoice.validationError) liveVoice.clearValidationError();
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!inputValue.trim() || !emailReady || liveVoice.isSubmittingContact}
+                    className="bg-brand-accent hover:bg-brand-accent-hover disabled:opacity-50 text-white rounded-xl px-5 py-3 font-semibold transition-colors flex items-center justify-center"
+                  >
+                    {liveVoice.isSubmittingContact ? 'Checking…' : <Icons.Send className="w-4 h-4" />}
+                  </button>
+                </div>
+                {(localValidationError || liveVoice.validationError) && (
+                  <p className="text-xs text-red-300 text-left">
+                    {localValidationError || liveVoice.validationError}
+                  </p>
+                )}
+              </div>
             )}
-            <div className="flex w-full gap-2">
-              {liveVoice.requestedInputType === 'phone' ? (
-                <PhoneInput
-                  defaultCountry="IN"
-                  placeholder="Enter phone number"
-                  value={inputValue}
-                  onChange={(val) => {
-                    setInputValue(val || '');
-                    if (localValidationError) setLocalValidationError('');
-                    if (liveVoice.validationError) liveVoice.clearValidationError();
-                  }}
-                  disabled={liveVoice.isSubmittingContact}
-                  className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus-within:border-brand-accent focus-within:ring-1 focus-within:ring-brand-accent transition-all PhoneInput-custom"
-                />
-              ) : (
-                <input
-                  type="email"
-                  autoFocus
-                  maxLength={30}
-                  inputMode="email"
-                  disabled={liveVoice.isSubmittingContact}
-                  className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent transition-all"
-                  placeholder="name@example.com"
-                  value={inputValue}
-                  onChange={(e) => {
-                    setInputValue(e.target.value);
-                    if (localValidationError) setLocalValidationError('');
-                    if (liveVoice.validationError) liveVoice.clearValidationError();
-                  }}
-                />
-              )}
-              <button
-                type="submit"
-                disabled={!inputValue.trim() || !inputReady || liveVoice.isSubmittingContact}
-                className="bg-brand-accent hover:bg-brand-accent-hover disabled:opacity-50 text-white rounded-xl px-5 py-3 font-semibold transition-colors flex items-center justify-center"
-              >
-                {liveVoice.isSubmittingContact ? 'Checking…' : <Icons.Send className="w-4 h-4" />}
-              </button>
-            </div>
-            {(localValidationError || liveVoice.validationError) && (
-              <p className="mt-3 w-full text-left text-xs text-red-300">
-                {localValidationError || liveVoice.validationError}
-              </p>
-            )}
-            <p className="mt-2 text-[10px] text-white/30 text-center">
+
+            <p className="text-[10px] text-white/30 text-center">
               🎙️ Microphone is muted — please type your {liveVoice.requestedInputType} above
             </p>
           </form>

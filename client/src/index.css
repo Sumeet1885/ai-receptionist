@@ -1525,6 +1525,129 @@ select {
   background: rgba(25, 233, 157, 0.5);
 }
 
- . P h o n e I n p u t I n p u t  
-   b a c k g r o u n d :   t r a n s p a r e n t ;   b o r d e r :   n o n e ;   o u t l i n e :   n o n e ;   c o l o r :   i n h e r i t ;   w i d t h :   1 0 0 % ;    
- 
+
+
+/* â”€â”€ Voice call phone input card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.voice-phone-card {
+  width: 100%;
+  background: #ffffff;
+  border: 2px solid #e2e8f0;
+  border-radius: 14px;
+  overflow: visible;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  position: relative;
+}
+
+.voice-phone-card:focus-within {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.vpc-label {
+  display: block;
+  padding: 10px 14px 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7280;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+.vpc-required {
+  color: #ef4444;
+}
+
+.vpc-hint {
+  padding: 0 14px 8px;
+  font-size: 11px;
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+/* react-phone-number-input overrides inside .voice-phone-card */
+.voice-phone-card .PhoneInput {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  background: transparent;
+  border: none;
+  gap: 0;
+}
+
+.voice-phone-card .PhoneInputCountry {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px 10px 14px;
+  flex-shrink: 0;
+  cursor: pointer;
+  background: #f8fafc;
+  border-right: 1px solid #e2e8f0;
+  position: relative;
+}
+
+.voice-phone-card .PhoneInputCountryIcon {
+  width: 28px;
+  height: 20px;
+  border-radius: 3px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  flex-shrink: 0;
+}
+
+.voice-phone-card .PhoneInputCountryIcon--border {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.voice-phone-card .PhoneInputCountryIconImg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.voice-phone-card .PhoneInputCountrySelectArrow {
+  color: #374151;
+  opacity: 0.55;
+  width: 9px;
+  height: 9px;
+  border-color: #374151;
+  border-top-width: 0;
+  border-right-width: 2px;
+  border-bottom-width: 2px;
+  border-left-width: 0;
+  transform: rotate(45deg) translateY(-2px);
+}
+
+.voice-phone-card .PhoneInputCountrySelect {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.voice-phone-card .PhoneInputInput {
+  flex: 1;
+  padding: 8px 14px 10px 12px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  background: transparent;
+  border: none;
+  outline: none;
+  letter-spacing: 1px;
+  min-width: 0;
+}
+
+.voice-phone-card .PhoneInputInput::placeholder {
+  color: #9ca3af;
+  font-weight: 400;
+  font-size: 15px;
+  letter-spacing: 0;
+}
