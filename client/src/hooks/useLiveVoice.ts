@@ -9,6 +9,9 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
   const [validationError, setValidationError] = useState<string>('');
   const [isSubmittingContact, setIsSubmittingContact] = useState(false);
   
+  // Tracks whether the typed-input textbox is open; used to mute mic while pending
+  const inputPendingRef = useRef<boolean>(false);
+
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -118,6 +121,10 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
         processorRef.current = processor;
 
         processor.onaudioprocess = (e) => {
+          // CRITICAL: Do NOT send audio while typed-input textbox is open.
+          // This prevents Gemini from hearing verbal claims like "I already filled it"
+          // before the user has actually submitted verified contact data.
+          if (inputPendingRef.current) return;
           if (ws.readyState !== WebSocket.OPEN) return;
           const inputData = e.inputBuffer.getChannelData(0);
           
@@ -164,6 +171,7 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
         }
 
         if (msg.type === 'request_input' && msg.field) {
+          inputPendingRef.current = true; // Mute mic immediately
           setRequestedInputType(msg.field as 'phone' | 'email');
           setValidationError('');
           setIsSubmittingContact(false);
@@ -171,6 +179,7 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
 
         if (msg.type === 'input_validation_error' && msg.message) {
           if (msg.field === 'phone' || msg.field === 'email') {
+            inputPendingRef.current = true; // Keep mic muted
             setRequestedInputType(msg.field);
           }
           setValidationError(msg.message);
@@ -178,6 +187,7 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
         }
 
         if (msg.type === 'input_validation_success') {
+          inputPendingRef.current = false; // Unmute mic only on verified success
           setRequestedInputType(null);
           setValidationError('');
           setIsSubmittingContact(false);

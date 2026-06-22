@@ -33,9 +33,29 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
   const [localValidationError, setLocalValidationError] = useState('');
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);
 
+  // For phone: count only digit characters so we can enforce exactly 10
+  const digitCount = liveVoice.requestedInputType === 'phone'
+    ? inputValue.replace(/\D/g, '').length
+    : 0;
+  const phoneReady = liveVoice.requestedInputType !== 'phone' || digitCount === 10;
+
   const handleSubmitInput = (e: React.FormEvent) => {
     e.preventDefault();
     if (!liveVoice.requestedInputType) return;
+
+    // Strict phone validation: must have exactly 10 digits
+    if (liveVoice.requestedInputType === 'phone') {
+      const digitsOnly = inputValue.replace(/\D/g, '');
+      if (digitsOnly.length !== 10) {
+        setLocalValidationError('Please enter exactly 10 digits.');
+        return;
+      }
+      // Pass only the 10 digits to the server
+      liveVoice.sendTextData(digitsOnly, 'phone');
+      setInputValue('');
+      setLocalValidationError('');
+      return;
+    }
 
     const result = validateContactInput(liveVoice.requestedInputType, inputValue);
     if (!result.valid) {
@@ -162,32 +182,35 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
       {liveVoice.requestedInputType && (
         <div className="w-full max-w-sm z-20 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <form onSubmit={handleSubmitInput} className="bg-brand-card/80 backdrop-blur-md border border-brand-accent/50 rounded-2xl p-4 shadow-2xl flex flex-col items-center">
-            <span className="text-sm font-semibold text-white mb-3 tracking-wide">
-              Please enter your {liveVoice.requestedInputType}
+            <span className="text-sm font-semibold text-white mb-1 tracking-wide">
+              Please type your {liveVoice.requestedInputType}
             </span>
+            {liveVoice.requestedInputType === 'phone' && (
+              <span className={`text-xs font-mono mb-3 transition-colors ${
+                digitCount === 10 ? 'text-brand-success' : digitCount > 0 ? 'text-yellow-400' : 'text-white/40'
+              }`}>
+                {digitCount}/10 digits
+              </span>
+            )}
             <div className="flex w-full gap-2">
               <input
                 type={liveVoice.requestedInputType === 'email' ? 'email' : 'tel'}
                 autoFocus
-                maxLength={liveVoice.requestedInputType === 'phone' ? 32 : 254}
+                maxLength={liveVoice.requestedInputType === 'phone' ? 15 : 254}
                 inputMode={liveVoice.requestedInputType === 'phone' ? 'numeric' : 'email'}
                 disabled={liveVoice.isSubmittingContact}
                 className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent transition-all"
-                placeholder={liveVoice.requestedInputType === 'email' ? 'name@example.com' : '9415072638'}
+                placeholder={liveVoice.requestedInputType === 'email' ? 'name@example.com' : '10-digit number'}
                 value={inputValue}
                 onChange={(e) => {
                   setInputValue(e.target.value);
-                  if (localValidationError) {
-                    setLocalValidationError('');
-                  }
-                  if (liveVoice.validationError) {
-                    liveVoice.clearValidationError();
-                  }
+                  if (localValidationError) setLocalValidationError('');
+                  if (liveVoice.validationError) liveVoice.clearValidationError();
                 }}
               />
               <button
                 type="submit"
-                disabled={!inputValue.trim() || liveVoice.isSubmittingContact}
+                disabled={!inputValue.trim() || !phoneReady || liveVoice.isSubmittingContact}
                 className="bg-brand-accent hover:bg-brand-accent-hover disabled:opacity-50 text-white rounded-xl px-5 py-3 font-semibold transition-colors flex items-center justify-center"
               >
                 {liveVoice.isSubmittingContact ? 'Checking…' : <Icons.Send className="w-4 h-4" />}
@@ -198,6 +221,9 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
                 {localValidationError || liveVoice.validationError}
               </p>
             )}
+            <p className="mt-2 text-[10px] text-white/30 text-center">
+              🎙️ Microphone is muted — please type your {liveVoice.requestedInputType} above
+            </p>
           </form>
         </div>
       )}
