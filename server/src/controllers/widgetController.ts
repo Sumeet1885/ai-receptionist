@@ -504,14 +504,14 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
     box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
   }
 
+
   /* Voice Input Box */
   .voice-input-container {
     display: none; flex-direction: column; width: 100%; margin-top: 16px;
-    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-    padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    background: transparent; padding: 0;
     animation: fadeIn 0.3s ease;
   }
-  .voice-input-container p { font-size: 12px; font-weight: 600; margin-bottom: 8px; color: var(--text); }
+  .voice-input-container p#voiceInputLabel { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--text); text-align: center; }
   .voice-input-form { display: flex; gap: 6px; width: 100%; }
   .voice-input-form input {
     flex: 1; background: var(--bg); border: 1px solid var(--border);
@@ -527,13 +527,185 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
   .voice-input-form button:hover { background: var(--accent-hover); }
   .voice-input-form button svg { width: 14px; height: 14px; fill: currentColor; }
   .voice-input-form button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Premium Voice Call Card Design matching inspiration */
+  .voice-phone-card {
+    width: 100%;
+    background: #ffffff;
+    border: 2px solid #e2e8f0;
+    border-radius: 14px;
+    position: relative;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    text-align: left;
+    color: #111827;
+  }
+  .vpc-label {
+    display: block;
+    padding: 10px 14px 0;
+    font-size: 11px;
+    font-weight: 700;
+    color: #6b7280;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    user-select: none;
+  }
+  .vpc-required {
+    color: #ef4444;
+  }
+  .phone-input-row {
+    display: flex;
+    align-items: center;
+    padding: 6px 12px 10px;
+    gap: 8px;
+  }
+  .phone-country-selector {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 6px 10px;
+    flex-shrink: 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+    position: relative;
+  }
+  .phone-country-selector:hover {
+    background: #f1f5f9;
+  }
+  .country-arrow {
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 4px solid #6b7280;
+    margin-left: 2px;
+    display: inline-block;
+    vertical-align: middle;
+  }
+  .phone-input-row input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 18px;
+    font-weight: 700;
+    color: #111827;
+    padding: 4px 0;
+    min-width: 0;
+  }
+  .phone-input-row input::placeholder {
+    color: #9ca3af;
+    font-weight: 400;
+    font-size: 14px;
+  }
+  .phone-input-row button {
+    background: #2563eb;
+    border: none;
+    border-radius: 8px;
+    color: #ffffff;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .phone-input-row button:hover {
+    background: #1d4ed8;
+  }
+  .phone-input-row button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #9ca3af;
+  }
+  .phone-input-row button svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+  }
+
+  /* Country Dropdown inside Card */
+  .country-dropdown-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    margin-top: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
+  }
+  .country-search-box {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    position: sticky;
+    top: 0;
+    background: #ffffff;
+    z-index: 10;
+  }
+  .country-search-box .search-icon {
+    width: 16px;
+    height: 16px;
+    fill: #9ca3af;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  .country-search-box input {
+    width: 100%;
+    border: none;
+    outline: none;
+    font-size: 13px;
+    color: #111827;
+  }
+  .country-options {
+    padding: 4px 0;
+  }
+  .country-option {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #374151;
+    gap: 8px;
+  }
+  .country-option:hover {
+    background: #f1f5f9;
+    color: #111827;
+  }
+  .country-option .country-flag {
+    font-size: 16px;
+  }
+  .country-option .country-name {
+    flex: 1;
+    font-weight: 500;
+  }
+  .country-option .country-dialcode {
+    color: #6b7280;
+    font-weight: 600;
+  }
+
   .voice-input-error {
     display: none;
     width: 100%;
     margin-top: 8px;
-    color: #fca5a5;
-    font-size: 11px;
+    color: #ef4444;
+    font-size: 12px;
     line-height: 1.4;
+    text-align: center;
+    font-weight: 500;
   }
 
   /* Powered By */
@@ -580,12 +752,40 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
     
     <div id="voiceInputContainer" class="voice-input-container">
       <p id="voiceInputLabel">Please enter your details</p>
+
+      <!-- Standard Input Form (for Email/text) -->
       <form id="voiceInputForm" class="voice-input-form">
         <input type="text" id="voiceInputField" maxlength="400" autocomplete="off" />
         <button type="submit" id="voiceInputBtn" disabled>
           <svg viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
         </button>
       </form>
+
+      <!-- Phone Input Form (for Phone) -->
+      <form id="voicePhoneForm" class="voice-phone-form" style="display: none;">
+        <div class="voice-phone-card">
+          <p class="vpc-label">Phone number <span class="vpc-required">*</span></p>
+          <div class="phone-input-row">
+            <div class="phone-country-selector" id="phoneCountrySelector">
+              <span id="selectedCountryFlag">🇮🇳</span>
+              <span id="selectedCountryCode">+91</span>
+              <span class="country-arrow"></span>
+            </div>
+            <input type="tel" id="phoneInputField" placeholder="Enter phone number" autocomplete="tel-national" inputmode="numeric" maxlength="20" />
+            <button type="submit" id="phoneInputBtn" disabled>
+              <svg viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
+            </button>
+          </div>
+          <div class="country-dropdown-list" id="countryDropdownList" style="display: none;">
+            <div class="country-search-box">
+              <svg class="search-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+              <input type="text" id="countrySearchInput" placeholder="Search for countries" autocomplete="off" />
+            </div>
+            <div class="country-options" id="countryOptions"></div>
+          </div>
+        </div>
+      </form>
+
       <div id="voiceInputError" class="voice-input-error"></div>
     </div>
     
@@ -627,7 +827,14 @@ ${poweredByHtml}
   var assistantEndingCall = false;
   var assistantEndTimer = null;
   var pendingInputField = null;
+  var micMuted = false; // Muted while typed-input textbox is open
   var isVoiceActive = false;
+
+  function resetPlaybackQueue() {
+    if (playbackContext) playbackContext.close();
+    playbackContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+    nextPlayTime = playbackContext.currentTime;
+  }
 
   var voiceOverlay = document.getElementById('voiceOverlay');
   var overlayMicBtn = document.getElementById('overlayMicBtn');
@@ -644,6 +851,33 @@ ${poweredByHtml}
   var voiceInputField = document.getElementById('voiceInputField');
   var voiceInputBtn = document.getElementById('voiceInputBtn');
   var voiceInputError = document.getElementById('voiceInputError');
+
+  var voicePhoneForm = document.getElementById('voicePhoneForm');
+  var phoneCountrySelector = document.getElementById('phoneCountrySelector');
+  var selectedCountryFlag = document.getElementById('selectedCountryFlag');
+  var selectedCountryCode = document.getElementById('selectedCountryCode');
+  var phoneInputField = document.getElementById('phoneInputField');
+  var phoneInputBtn = document.getElementById('phoneInputBtn');
+  var countryDropdownList = document.getElementById('countryDropdownList');
+  var countrySearchInput = document.getElementById('countrySearchInput');
+
+  var COUNTRIES = [
+    { name: 'India', code: 'IN', flag: '🇮🇳', dial: '+91', len: [10] },
+    { name: 'United States', code: 'US', flag: '🇺🇸', dial: '+1', len: [10] },
+    { name: 'United Kingdom', code: 'GB', flag: '🇬🇧', dial: '+44', len: [10] },
+    { name: 'Germany', code: 'DE', flag: '🇩🇪', dial: '+49', len: [9, 10, 11] },
+    { name: 'Canada', code: 'CA', flag: '🇨🇦', dial: '+1', len: [10] },
+    { name: 'Australia', code: 'AU', flag: '🇦🇺', dial: '+61', len: [9] },
+    { name: 'United Arab Emirates', code: 'AE', flag: '🇦🇪', dial: '+971', len: [9] },
+    { name: 'Saudi Arabia', code: 'SA', flag: '🇸🇦', dial: '+966', len: [9] },
+    { name: 'Singapore', code: 'SG', flag: '🇸🇬', dial: '+65', len: [8] },
+    { name: 'Malaysia', code: 'MY', flag: '🇲🇾', dial: '+60', len: [9, 10] },
+    { name: 'Kenya', code: 'KE', flag: '🇰🇪', dial: '+254', len: [9] },
+    { name: 'Nigeria', code: 'NG', flag: '🇳🇬', dial: '+234', len: [10] },
+    { name: 'South Africa', code: 'ZA', flag: '🇿🇦', dial: '+27', len: [9] },
+    { name: 'Georgia', code: 'GE', flag: '🇬🇪', dial: '+995', len: [9] }
+  ];
+  var currentSelectedCountry = COUNTRIES[0]; // default to India (+91)
 
   var timerInterval = null;
   var secondsElapsed = 0;
@@ -776,6 +1010,40 @@ ${poweredByHtml}
     voiceInputError.style.display = message ? 'block' : 'none';
   }
 
+  function renderCountryOptions(filter) {
+    var optionsEl = document.getElementById('countryOptions');
+    if (!optionsEl) return;
+    optionsEl.innerHTML = '';
+    var searchStr = (filter || '').toLowerCase();
+    var filtered = COUNTRIES.filter(function(c) {
+      return c.name.toLowerCase().indexOf(searchStr) !== -1 || c.dial.indexOf(searchStr) !== -1;
+    });
+
+    filtered.forEach(function(c) {
+      var opt = document.createElement('div');
+      opt.className = 'country-option';
+      opt.innerHTML = '<span class="country-flag">' + c.flag + '</span>' +
+                      '<span class="country-name">' + c.name + '</span>' +
+                      '<span class="country-dialcode">' + c.dial + '</span>';
+      opt.addEventListener('click', function(e) {
+        e.stopPropagation();
+        currentSelectedCountry = c;
+        selectedCountryFlag.textContent = c.flag;
+        selectedCountryCode.textContent = c.dial;
+        countryDropdownList.style.display = 'none';
+
+        // Trigger validation check on current input value
+        var val = phoneInputField.value.trim();
+        var validation = validateContactInput('phone', val);
+        phoneInputBtn.disabled = !validation.valid;
+        if (validation.valid) {
+          showVoiceInputError('');
+        }
+      });
+      optionsEl.appendChild(opt);
+    });
+  }
+
   function validateContactInput(field, value) {
     var trimmed = String(value || '').trim();
     if (!trimmed) {
@@ -809,21 +1077,56 @@ ${poweredByHtml}
       return { valid: true, normalized: normalizedEmail, error: '' };
     }
 
-    var phonePattern = /^\\d{10}$/;
-    if (!phonePattern.test(trimmed)) {
-      return { valid: false, normalized: trimmed, error: 'Please enter exactly 10 digits with no spaces or symbols.' };
+    // The selector owns the calling code. Reject arbitrary text instead of
+    // silently deleting it and accidentally turning junk into a valid number.
+    var subscriber = trimmed;
+    if (subscriber.indexOf('+') === 0) {
+      var matchedCountry = null;
+      for (var i = 0; i < COUNTRIES.length; i++) {
+        var candidate = COUNTRIES[i];
+        if (
+          subscriber.indexOf(candidate.dial) === 0
+          && (!matchedCountry || candidate.dial.length > matchedCountry.dial.length)
+        ) {
+          matchedCountry = candidate;
+        }
+      }
+      if (!matchedCountry) {
+        return { valid: false, normalized: trimmed, error: 'Select a country and enter a valid phone number.' };
+      }
+      currentSelectedCountry = matchedCountry;
+      selectedCountryFlag.textContent = matchedCountry.flag;
+      selectedCountryCode.textContent = matchedCountry.dial;
+      subscriber = subscriber.substring(matchedCountry.dial.length);
+    }
+
+    if (!/^[0-9\\s()-]+$/.test(subscriber)) {
+      return { valid: false, normalized: trimmed, error: 'Phone numbers can contain digits only.' };
+    }
+
+    subscriber = subscriber.replace(/[\\s()-]/g, '');
+    var selectedDial = currentSelectedCountry.dial;
+    var fullNumber = selectedDial + subscriber;
+
+    var allowedLens = currentSelectedCountry.len;
+    if (allowedLens.indexOf(subscriber.length) === -1) {
+      if (allowedLens.length === 1) {
+        return { valid: false, normalized: fullNumber, error: 'Please enter exactly ' + allowedLens[0] + ' digits.' };
+      } else {
+        return { valid: false, normalized: fullNumber, error: 'Please enter between ' + allowedLens[0] + ' and ' + allowedLens[allowedLens.length - 1] + ' digits.' };
+      }
     }
 
     if (
-      /^(\\d)\\1{9}$/.test(trimmed)
-      || /^(\\d{2,5})\\1+$/.test(trimmed)
-      || '01234567890123456789'.indexOf(trimmed) !== -1
-      || '98765432109876543210'.indexOf(trimmed) !== -1
+      /^(\\d)\\1{7,}$/.test(subscriber)
+      || /^(\\d{2,5})\\1+$/.test(subscriber)
+      || '01234567890123456789'.indexOf(subscriber) !== -1
+      || '98765432109876543210'.indexOf(subscriber) !== -1
     ) {
-      return { valid: false, normalized: trimmed, error: 'Please enter a real phone number, not a repeated or sequential pattern.' };
+      return { valid: false, normalized: fullNumber, error: 'Please enter a real phone number, not a repeated or sequential pattern.' };
     }
 
-    return { valid: true, normalized: trimmed, error: '' };
+    return { valid: true, normalized: fullNumber, error: '' };
   }
 
   function stopVoice() {
@@ -856,6 +1159,7 @@ ${poweredByHtml}
     }
     chatInput.disabled = false;
     pendingInputField = null;
+    micMuted = false;
     showVoiceInputError('');
     if (voiceInputContainer) voiceInputContainer.style.display = 'none';
     setVoiceState('idle');
@@ -912,6 +1216,10 @@ ${poweredByHtml}
         var source = audioContext.createMediaStreamSource(mediaStream);
         processor = audioContext.createScriptProcessor(4096, 1, 1);
         processor.onaudioprocess = function(event) {
+          // CRITICAL: Do NOT send audio while typed-input textbox is open.
+          // Prevents Gemini from hearing verbal claims like "I already filled it"
+          // before the user has submitted verified contact data.
+          if (micMuted) return;
           if (!ws || ws.readyState !== WebSocket.OPEN) return;
           var inputData = event.inputBuffer.getChannelData(0);
           var pcm16 = new Int16Array(inputData.length);
@@ -931,42 +1239,59 @@ ${poweredByHtml}
       ws.onmessage = function(event) {
         var msg = JSON.parse(event.data);
         if (msg.type === 'interrupted') {
-          if (playbackContext) {
-            playbackContext.close();
-            playbackContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
-            nextPlayTime = playbackContext.currentTime;
-          }
+          resetPlaybackQueue();
           return;
         }
         if (msg.type === 'transcript' && msg.text) {
           addMessage(msg.text, 'bot');
         }
         if (msg.type === 'request_input' && msg.field) {
+          resetPlaybackQueue();
           pendingInputField = msg.field;
+          micMuted = true; // Mute mic: prevent verbal bypass of typed-input validation
           if (voiceInputContainer) {
             voiceInputContainer.style.display = 'flex';
             voiceInputLabel.textContent = 'Please enter your ' + msg.field;
-            voiceInputField.type = msg.field === 'email' ? 'email' : 'tel';
-            voiceInputField.placeholder = msg.field === 'email' ? 'name@example.com' : '9415072638';
-            voiceInputField.maxLength = msg.field === 'email' ? 254 : 32;
-            voiceInputField.inputMode = msg.field === 'email' ? 'email' : 'numeric';
-            voiceInputField.value = '';
-            voiceInputBtn.disabled = true;
-            showVoiceInputError('');
-            voiceInputField.focus();
+            if (msg.field === 'phone') {
+              voiceInputForm.style.display = 'none';
+              voicePhoneForm.style.display = 'block';
+              phoneInputField.value = '';
+              phoneInputBtn.disabled = true;
+              showVoiceInputError('');
+              phoneInputField.focus();
+            } else {
+              voicePhoneForm.style.display = 'none';
+              voiceInputForm.style.display = 'flex';
+              voiceInputField.type = msg.field === 'email' ? 'email' : 'text';
+              voiceInputField.placeholder = msg.field === 'email' ? 'name@example.com' : 'Your details';
+              voiceInputField.maxLength = msg.field === 'email' ? 254 : 32;
+              voiceInputField.inputMode = msg.field === 'email' ? 'email' : 'text';
+              voiceInputField.value = '';
+              voiceInputBtn.disabled = true;
+              showVoiceInputError('');
+              voiceInputField.focus();
+            }
           }
         }
         if (msg.type === 'input_validation_error' && msg.message) {
           pendingInputField = msg.field || pendingInputField;
+          micMuted = true; // Keep mic muted on validation error
           if (voiceInputContainer) voiceInputContainer.style.display = 'flex';
           showVoiceInputError(msg.message);
-          if (voiceInputField) voiceInputField.focus();
-          if (voiceInputBtn) voiceInputBtn.disabled = !voiceInputField.value.trim();
+          if (pendingInputField === 'phone') {
+            if (phoneInputField) phoneInputField.focus();
+            if (phoneInputBtn) phoneInputBtn.disabled = true;
+          } else {
+            if (voiceInputField) voiceInputField.focus();
+            if (voiceInputBtn) voiceInputBtn.disabled = true;
+          }
         }
         if (msg.type === 'input_validation_success') {
           pendingInputField = null;
+          micMuted = false; // Unmute mic: typed input was verified
           if (voiceInputContainer) voiceInputContainer.style.display = 'none';
           if (voiceInputField) voiceInputField.value = '';
+          if (phoneInputField) phoneInputField.value = '';
           showVoiceInputError('');
         }
         if (msg.type === 'appointment_booked' && msg.details) {
@@ -1111,6 +1436,58 @@ ${poweredByHtml}
       }
       ws.send(JSON.stringify({ type: 'textInput', data: validation.normalized, field: pendingInputField }));
       voiceInputBtn.disabled = true;
+      showVoiceInputError('');
+    });
+  }
+
+  // Country selector toggles
+  if (phoneCountrySelector) {
+    phoneCountrySelector.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var show = countryDropdownList.style.display === 'none' || countryDropdownList.style.display === '';
+      countryDropdownList.style.display = show ? 'block' : 'none';
+      if (show) {
+        countrySearchInput.value = '';
+        renderCountryOptions('');
+        countrySearchInput.focus();
+      }
+    });
+  }
+
+  if (countrySearchInput) {
+    countrySearchInput.addEventListener('input', function() {
+      renderCountryOptions(countrySearchInput.value);
+    });
+    countrySearchInput.addEventListener('click', function(e) {
+      e.stopPropagation();
+    });
+  }
+
+  document.addEventListener('click', function() {
+    if (countryDropdownList) countryDropdownList.style.display = 'none';
+  });
+
+  if (phoneInputField) {
+    phoneInputField.addEventListener('input', function() {
+      var val = phoneInputField.value.trim();
+      var validation = validateContactInput('phone', val);
+      phoneInputBtn.disabled = !validation.valid;
+      showVoiceInputError('');
+    });
+  }
+
+  if (voicePhoneForm) {
+    voicePhoneForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var text = phoneInputField.value.trim();
+      if (!text || !ws || ws.readyState !== WebSocket.OPEN || !pendingInputField) return;
+      var validation = validateContactInput('phone', text);
+      if (!validation.valid) {
+        showVoiceInputError(validation.error);
+        return;
+      }
+      ws.send(JSON.stringify({ type: 'textInput', data: validation.normalized, field: 'phone' }));
+      phoneInputBtn.disabled = true;
       showVoiceInputError('');
     });
   }

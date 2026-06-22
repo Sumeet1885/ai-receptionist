@@ -4,7 +4,7 @@ import { Icons } from '../common/Icons';
 import { VoicePoweredOrb } from '../ui/voice-powered-orb';
 import { cn } from '@/lib/utils';
 import { validateContactInput } from '@/lib/contactValidation';
-import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 
 interface VoiceCallViewProps {
@@ -35,45 +35,22 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
   const [localValidationError, setLocalValidationError] = useState('');
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);
 
-  // For phone: use react-phone-number-input validation
-  const phoneReady = liveVoice.requestedInputType === 'phone' ? !!(inputValue && isValidPhoneNumber(inputValue)) : true;
-
-  // For email: simple regex check
-  const emailReady = liveVoice.requestedInputType === 'email' ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inputValue) : true;
-
-  const inputReady = phoneReady && emailReady;
+  const currentValidation = liveVoice.requestedInputType
+    ? validateContactInput(liveVoice.requestedInputType, inputValue)
+    : { valid: false, normalized: '', error: '' };
+  const phoneReady = liveVoice.requestedInputType === 'phone' ? currentValidation.valid : true;
+  const emailReady = liveVoice.requestedInputType === 'email' ? currentValidation.valid : true;
 
   const handleSubmitInput = (e: React.FormEvent) => {
     e.preventDefault();
     if (!liveVoice.requestedInputType) return;
 
-    // Strict phone validation: rely on react-phone-number-input
-    if (liveVoice.requestedInputType === 'phone') {
-      if (!isValidPhoneNumber(inputValue)) {
-        setLocalValidationError('Please enter a valid phone number.');
-        return;
-      }
-      // Pass the fully formatted E.164 number to the server
-      liveVoice.sendTextData(inputValue, 'phone');
-      setInputValue('');
-      setLocalValidationError('');
+    if (!currentValidation.valid) {
+      setLocalValidationError(currentValidation.error);
       return;
     }
 
-    if (liveVoice.requestedInputType === 'email') {
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inputValue)) {
-        setLocalValidationError('Please enter a valid email address.');
-        return;
-      }
-    }
-
-    const result = validateContactInput(liveVoice.requestedInputType, inputValue);
-    if (!result.valid) {
-      setLocalValidationError(result.error);
-      return;
-    }
-
-    liveVoice.sendTextData(result.normalized, liveVoice.requestedInputType);
+    liveVoice.sendTextData(currentValidation.normalized, liveVoice.requestedInputType);
     setInputValue('');
     setLocalValidationError('');
   };
@@ -240,7 +217,7 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
                   <input
                     type="email"
                     autoFocus
-                    maxLength={30}
+                    maxLength={254}
                     inputMode="email"
                     disabled={liveVoice.isSubmittingContact}
                     className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent transition-all"

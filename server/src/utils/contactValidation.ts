@@ -1,8 +1,13 @@
+import { parsePhoneNumberFromString } from 'libphonenumber-js/max';
+
 export type ContactField = 'phone' | 'email';
+export type PendingContactToolCall = {
+  id: string;
+  name: string;
+  field: ContactField;
+};
 
 const EMAIL_LOCAL_PATTERN = /^[a-z0-9!#$%&'*+/=?^_`{|}~.-]+$/i;
-// E.164 international format: + followed by 7 to 15 digits (e.g. +919876543210)
-const PHONE_E164_PATTERN = /^\+[1-9]\d{6,14}$/;
 const ASCENDING_SEQUENCE = '01234567890123456789';
 const DESCENDING_SEQUENCE = '98765432109876543210';
 
@@ -49,28 +54,40 @@ export function validateContactInput(field: ContactField, value: string) {
     return { valid: true, normalized, error: '' };
   }
 
-  // Accept E.164 format (from react-phone-number-input: e.g. +919876543210)
-  if (PHONE_E164_PATTERN.test(trimmed)) {
-    // Strip country code to run fake-number checks on subscriber digits only
-    const subscriberDigits = trimmed.replace(/^\+\d{1,3}/, '');
-    if (
-      /^(\d)\1{7,}$/.test(subscriberDigits)
-      || ASCENDING_SEQUENCE.includes(subscriberDigits)
-      || DESCENDING_SEQUENCE.includes(subscriberDigits)
-    ) {
-      return {
-        valid: false,
-        normalized: trimmed,
-        error: 'Please enter a real phone number, not a repeated or sequential pattern.',
-      };
-    }
-    return { valid: true, normalized: trimmed, error: '' };
+  const isInternational = /^\+[1-9]\d+$/.test(trimmed);
+  const isLegacyIndianNumber = /^\d{10}$/.test(trimmed);
+  const parsedPhone = isInternational
+    ? parsePhoneNumberFromString(trimmed)
+    : isLegacyIndianNumber
+      ? parsePhoneNumberFromString(trimmed, 'IN')
+      : undefined;
+
+  if (!parsedPhone?.isValid()) {
+    return {
+      valid: false,
+      normalized: trimmed,
+      error: 'Select a country and enter a valid phone number.',
+    };
+  }
+
+  const subscriberDigits = parsedPhone.nationalNumber;
+  if (
+    /^(\d)\1+$/.test(subscriberDigits)
+    || /^(\d{2,5})\1+$/.test(subscriberDigits)
+    || ASCENDING_SEQUENCE.includes(subscriberDigits)
+    || DESCENDING_SEQUENCE.includes(subscriberDigits)
+  ) {
+    return {
+      valid: false,
+      normalized: trimmed,
+      error: 'Please enter a real phone number, not a repeated or sequential pattern.',
+    };
   }
 
   return {
-    valid: false,
-    normalized: trimmed,
-    error: 'Please enter a valid phone number with country code.',
+    valid: true,
+    normalized: isInternational ? parsedPhone.number : trimmed,
+    error: '',
   };
 }
 
@@ -138,4 +155,42 @@ export function getLiveBookingContactError(
   return missingFields.length > 0
     ? `Missing server-verified contact field: ${missingFields[0]}. Call request_text_input for that field and wait for its verified response before booking.`
     : null;
+}
+
+export function canForwardLiveModelOutput(
+  collection: LiveContactCollection,
+  pendingToolCall: PendingContactToolCall | null = null
+): boolean {
+  return !collection.pendingField && !pendingToolCall;
+}
+
+export function submitLiveContactForTool(
+  collection: LiveContactCollection,
+  pendingToolCall: PendingContactToolCall | null,
+  submittedField: ContactField | null,
+  value: string
+) {
+  if (!pendingToolCall || pendingToolCall.field !== submittedField) {
+    return {
+      accepted: false as const,
+      field: collection.pendingField ?? submittedField,
+      error: 'This input request expired. Please ask the assistant to request it again.',
+    };
+  }
+
+  return collection.submit(submittedField, value);
+}
+
+export function applyVerifiedContactDetails<T extends Record<string, any>>(
+  collection: LiveContactCollection,
+  details: T
+): T {
+  const verifiedPhone = collection.getVerified('phone');
+  const verifiedEmail = collection.getVerified('email');
+
+  return {
+    ...details,
+    ...(verifiedPhone ? { visitorPhone: verifiedPhone } : {}),
+    ...(verifiedEmail ? { visitorEmail: verifiedEmail } : {}),
+  };
 }

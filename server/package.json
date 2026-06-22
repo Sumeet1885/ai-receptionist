@@ -19,6 +19,7 @@
     "express": "^4.21.0",
     "googleapis": "^144.0.0",
     "isomorphic-fetch": "^3.0.0",
+    "libphonenumber-js": "^1.13.7",
     "ws": "^8.21.0"
   },
   "devDependencies": {

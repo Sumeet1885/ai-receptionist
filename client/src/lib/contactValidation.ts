@@ -1,7 +1,8 @@
+import { parsePhoneNumberFromString } from 'libphonenumber-js/max';
+
 export type ContactField = 'phone' | 'email';
 
 const EMAIL_LOCAL_PATTERN = /^[a-z0-9!#$%&'*+/=?^_`{|}~.-]+$/i;
-const PHONE_PATTERN = /^\d{10}$/;
 const ASCENDING_SEQUENCE = '01234567890123456789';
 const DESCENDING_SEQUENCE = '98765432109876543210';
 
@@ -48,19 +49,28 @@ export function validateContactInput(field: ContactField, value: string) {
     return { valid: true, normalized, error: '' };
   }
 
-  if (!PHONE_PATTERN.test(trimmed)) {
+  const isInternational = /^\+[1-9]\d+$/.test(trimmed);
+  const isLegacyIndianNumber = /^\d{10}$/.test(trimmed);
+  const parsedPhone = isInternational
+    ? parsePhoneNumberFromString(trimmed)
+    : isLegacyIndianNumber
+      ? parsePhoneNumberFromString(trimmed, 'IN')
+      : undefined;
+
+  if (!parsedPhone?.isValid()) {
     return {
       valid: false,
       normalized: trimmed,
-      error: 'Please enter exactly 10 digits with no spaces or symbols.',
+      error: 'Select a country and enter a valid phone number.',
     };
   }
 
+  const subscriberDigits = parsedPhone.nationalNumber;
   if (
-    /^(\d)\1{9}$/.test(trimmed)
-    || /^(\d{2,5})\1+$/.test(trimmed)
-    || ASCENDING_SEQUENCE.includes(trimmed)
-    || DESCENDING_SEQUENCE.includes(trimmed)
+    /^(\d)\1+$/.test(subscriberDigits)
+    || /^(\d{2,5})\1+$/.test(subscriberDigits)
+    || ASCENDING_SEQUENCE.includes(subscriberDigits)
+    || DESCENDING_SEQUENCE.includes(subscriberDigits)
   ) {
     return {
       valid: false,
@@ -69,5 +79,9 @@ export function validateContactInput(field: ContactField, value: string) {
     };
   }
 
-  return { valid: true, normalized: trimmed, error: '' };
+  return {
+    valid: true,
+    normalized: isInternational ? parsedPhone.number : trimmed,
+    error: '',
+  };
 }

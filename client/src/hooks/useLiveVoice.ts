@@ -22,6 +22,16 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
   const playbackContextRef = useRef<AudioContext | null>(null);
   const nextPlayTimeRef = useRef<number>(0);
 
+  const resetPlaybackQueue = useCallback(() => {
+    if (playbackContextRef.current) {
+      void playbackContextRef.current.close();
+    }
+    playbackContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({
+      sampleRate: 24000,
+    });
+    nextPlayTimeRef.current = playbackContextRef.current.currentTime;
+  }, []);
+
   const disconnectMicrophone = useCallback(() => {
     if (processorRef.current) {
       processorRef.current.disconnect();
@@ -50,6 +60,7 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
     setRequestedInputType(null);
     setValidationError('');
     setIsSubmittingContact(false);
+    inputPendingRef.current = false;
     
     if (wsRef.current) {
       wsRef.current.close();
@@ -157,12 +168,7 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
         const msg = JSON.parse(event.data);
         
         if (msg.type === 'interrupted') {
-           // User interrupted the bot. We should stop playing current audio queue.
-           if (playbackContextRef.current) {
-             playbackContextRef.current.close();
-             playbackContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-             nextPlayTimeRef.current = playbackContextRef.current.currentTime;
-           }
+           resetPlaybackQueue();
            return;
         }
 
@@ -171,6 +177,7 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
         }
 
         if (msg.type === 'request_input' && msg.field) {
+          resetPlaybackQueue();
           inputPendingRef.current = true; // Mute mic immediately
           setRequestedInputType(msg.field as 'phone' | 'email');
           setValidationError('');
@@ -248,7 +255,7 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
       setIsConnecting(false);
       stopVoice();
     }
-  }, [botId, finishVoiceFromAssistant, sessionId, stopVoice]);
+  }, [botId, finishVoiceFromAssistant, resetPlaybackQueue, sessionId, stopVoice]);
 
   useEffect(() => {
     return () => {

@@ -19,8 +19,12 @@ import {
   LIVE_WRAP_WARNING_SIGNAL
 } from '../services/liveTools';
 import {
+  applyVerifiedContactDetails,
+  canForwardLiveModelOutput,
   getLiveBookingContactError,
   LiveContactCollection,
+  submitLiveContactForTool,
+  type PendingContactToolCall,
   type ContactField
 } from '../utils/contactValidation';
 
@@ -143,7 +147,7 @@ export function setupWebSocketServer(server: Server) {
     let accumulatedBotText = '';
     const inputTranscript = new LiveInputTranscriptAccumulator();
     const contactCollection = new LiveContactCollection();
-    let pendingContactToolCall: { id: string; name: string; field: ContactField } | null = null;
+    let pendingContactToolCall: PendingContactToolCall | null = null;
     let pendingFunctionResponses: any[] = [];
     let requiredContactFields: ContactField[] = [];
     let pendingAssistantHangup: { reason: string } | null = null;
@@ -311,6 +315,9 @@ CRITICAL SECURITY & CONSTRAINTS:
     geminiWs.on('message', async (data: Buffer) => {
       const response = JSON.parse(data.toString());
       inputTranscript.accept(response);
+      const responseRequestsContactInput = response.toolCall?.functionCalls?.some(
+        (call: any) => call.name === 'request_text_input'
+      ) === true;
 
       if (response.setupComplete || response.setup_complete) {
         console.log('Gemini Live API Setup Complete. Triggering initial greeting...');
@@ -328,7 +335,11 @@ CRITICAL SECURITY & CONSTRAINTS:
         return;
       }
 
-      if (response.serverContent) {
+      if (
+        response.serverContent
+        && !responseRequestsContactInput
+        && canForwardLiveModelOutput(contactCollection, pendingContactToolCall)
+      ) {
         // Forward audio chunks to the client
         const interrupted = response.serverContent.interrupted;
         if (interrupted) {
@@ -457,10 +468,7 @@ CRITICAL SECURITY & CONSTRAINTS:
                 continue;
               }
 
-              const verifiedPhone = contactCollection.getVerified('phone');
-              const bookingDetails = verifiedPhone
-                ? { ...args, visitorPhone: verifiedPhone }
-                : args;
+              const bookingDetails = applyVerifiedContactDetails(contactCollection, args);
               functionResponse = await bookCalendarAppointment({
                 db: supabase,
                 details: bookingDetails,
@@ -579,7 +587,10 @@ CRITICAL SECURITY & CONSTRAINTS:
       }
       const message = JSON.parse(data.toString());
 
-      if (contactCollection.pendingField && message.type !== 'textInput') {
+      if (
+        (contactCollection.pendingField || pendingContactToolCall)
+        && message.type !== 'textInput'
+      ) {
         return;
       }
 
@@ -596,7 +607,12 @@ CRITICAL SECURITY & CONSTRAINTS:
       } else if (message.type === 'textInput') {
         const submittedField: ContactField | null =
           message.field === 'phone' || message.field === 'email' ? message.field : null;
-        const submission = contactCollection.submit(submittedField, String(message.data || ''));
+        const submission = submitLiveContactForTool(
+          contactCollection,
+          pendingContactToolCall,
+          submittedField,
+          String(message.data || '')
+        );
         if (!submission.accepted) {
           ws.send(JSON.stringify({
             type: 'input_validation_error',
@@ -606,22 +622,7 @@ CRITICAL SECURITY & CONSTRAINTS:
           return;
         }
 
-        if (!pendingContactToolCall || pendingContactToolCall.field !== submission.field) {
-          ws.send(JSON.stringify({
-            type: 'input_validation_error',
-            field: submission.field,
-            message: 'This input request expired. Please ask the assistant to request it again.'
-          }));
-          return;
-        }
-
-        ws.send(JSON.stringify({
-          type: 'input_validation_success',
-          field: submission.field
-        }));
-
-        const completedToolCall = pendingContactToolCall;
-        pendingContactToolCall = null;
+        const completedToolCall = pendingContactToolCall!;
 
         const { error: contactSaveError } = await supabase.from('messages').insert({
           session_id: sessionId,
@@ -659,6 +660,11 @@ CRITICAL SECURITY & CONSTRAINTS:
           }
         }));
         pendingFunctionResponses = [];
+        pendingContactToolCall = null;
+        ws.send(JSON.stringify({
+          type: 'input_validation_success',
+          field: submission.field
+        }));
         return;
       }
 
