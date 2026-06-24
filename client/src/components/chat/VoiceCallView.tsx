@@ -180,11 +180,12 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
                   <p className="vpc-label">
                     Phone number <span className="vpc-required">*</span>
                   </p>
-                  <PhoneInput
+                   <PhoneInput
                     defaultCountry="IN"
                     placeholder="Enter phone number"
                     value={inputValue}
                     onChange={(val) => {
+                      if (val && val.replace(/\D/g, '').length > 12) return;
                       setInputValue(val || '');
                       if (localValidationError) setLocalValidationError('');
                       if (liveVoice.validationError) liveVoice.clearValidationError();

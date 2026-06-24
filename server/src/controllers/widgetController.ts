@@ -36,7 +36,9 @@ export const serveLoader = (req: Request, res: Response) => {
   const baseUrl = getWidgetRuntimeBaseUrl(req);
 
   res.setHeader('Content-Type', 'application/javascript');
-  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
 
   const js = `(function(){
   if (window.__aiReceptionistLoaded) return;
@@ -1035,6 +1037,14 @@ ${poweredByHtml}
         currentSelectedCountry = c;
         selectedCountryFlag.textContent = c.flag;
         selectedCountryCode.textContent = c.dial;
+        
+        // Update input maxlength dynamically
+        var maxLen = Math.max.apply(null, c.len);
+        phoneInputField.maxLength = maxLen;
+        if (phoneInputField.value.length > maxLen) {
+          phoneInputField.value = phoneInputField.value.substring(0, maxLen);
+        }
+
         countryDropdownList.style.display = 'none';
 
         // Trigger validation check on current input value
@@ -1261,6 +1271,8 @@ ${poweredByHtml}
               voiceInputForm.style.display = 'none';
               voicePhoneForm.style.display = 'block';
               phoneInputField.value = '';
+              var maxLen = Math.max.apply(null, currentSelectedCountry.len);
+              phoneInputField.maxLength = maxLen;
               phoneInputBtn.disabled = true;
               showVoiceInputError('');
               phoneInputField.focus();
@@ -1475,8 +1487,9 @@ ${poweredByHtml}
   if (phoneInputField) {
     phoneInputField.addEventListener('input', function() {
       var cleaned = phoneInputField.value.replace(/[^0-9]/g, '');
-      if (cleaned.length > 10) {
-        cleaned = cleaned.substring(0, 10);
+      var maxLen = Math.max.apply(null, currentSelectedCountry.len);
+      if (cleaned.length > maxLen) {
+        cleaned = cleaned.substring(0, maxLen);
       }
       phoneInputField.value = cleaned;
       var validation = validateContactInput('phone', cleaned);
@@ -1510,7 +1523,9 @@ ${poweredByHtml}
 </html>`;
 
   res.setHeader('Content-Type', 'text/html');
-  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   
   const frameAncestors = buildFrameAncestors(bot.allowed_domains || [], [config.clientUrl]);
   res.setHeader('Content-Security-Policy', frameAncestors ? `frame-ancestors ${frameAncestors}` : "frame-ancestors 'none'");
