@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { validateContactInput } from '@/lib/contactValidation';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
+import { parsePhoneNumberFromString } from 'libphonenumber-js/max';
 
 interface VoiceCallViewProps {
   activeBot: Bot;
@@ -32,6 +33,7 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
 }) => {
   const [voiceDetected, setVoiceDetected] = useState(false);
   const [inputValue, setInputValue] = useState('');
+  const [phoneCountry, setPhoneCountry] = useState<string>('IN');
   const [localValidationError, setLocalValidationError] = useState('');
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -183,11 +185,48 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
                    <PhoneInput
                     defaultCountry="IN"
                     placeholder="Enter phone number"
-                    limitMaxLength={true}
                     value={inputValue}
+                    onCountryChange={(c) => setPhoneCountry(c || 'IN')}
                     onChange={(val) => {
-                      if (val && val.replace(/\D/g, '').length > 12) return;
-                      setInputValue(val || '');
+                      // Allow user to keep typing, but truncate displayed value to max allowed
+                      let newVal = val || '';
+                      try {
+                        const digitsOnly = newVal.replace(/\D/g, '');
+
+                        if (phoneCountry === 'IN') {
+                          // Try to parse to get national number; fallback to digitsOnly
+                          const parsed = parsePhoneNumberFromString(newVal, 'IN');
+                          const national = parsed?.nationalNumber || (digitsOnly.startsWith('91') ? digitsOnly.slice(2) : digitsOnly);
+
+                          if (national.length > 10) {
+                            const first10 = national.slice(0, 10);
+                            // Reconstruct E.164 with +91 prefix so PhoneInput displays cleanly
+                            newVal = `+91${first10}`;
+                            // Stop listening to voice (user finished typing phone)
+                            try { liveVoice.stopVoice(); } catch (e) { /* ignore */ }
+                          }
+                        } else {
+                          // Generic guard: cap overall digits to 15 to avoid excessively long input
+                          if (digitsOnly.length > 15) {
+                            // remove extra digits (keep first 15)
+                            const kept = digitsOnly.slice(0, 15);
+                            // keep any leading + and country code if present
+                            if (newVal.startsWith('+')) newVal = '+' + kept; else newVal = kept;
+                          }
+                        }
+                      } catch (err) {
+                        // fallback: ensure not too long
+                        const digits = newVal.replace(/\D/g, '');
+                        if (phoneCountry === 'IN' && digits.length > 10) {
+                          newVal = `+91${digits.slice(0, 10)}`;
+                          try { liveVoice.stopVoice(); } catch (e) { }
+                        } else if (digits.length > 15) {
+                          const kept = digits.slice(0, 15);
+                          newVal = newVal.startsWith('+') ? `+${kept}` : kept;
+                        }
+                      }
+
+                      setInputValue(newVal);
                       if (localValidationError) setLocalValidationError('');
                       if (liveVoice.validationError) liveVoice.clearValidationError();
                     }}
