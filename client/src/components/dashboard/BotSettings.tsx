@@ -391,9 +391,9 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
           <div>
             <div className="flex justify-between items-center">
               <FieldLabel>Knowledge Base</FieldLabel>
-              <span className="text-[10px] font-mono text-brand-muted">{(activeBot.knowledgeBase || '').length}/1500</span>
+              <span className="text-[10px] font-mono text-brand-muted">{(activeBot.knowledgeBase || '').length}/3000</span>
             </div>
-            <TextArea maxLength={1500} rows={16} value={activeBot.knowledgeBase} onChange={(e) => patchActiveBot({ knowledgeBase: e.target.value })} />
+            <TextArea maxLength={3000} rows={16} value={activeBot.knowledgeBase} onChange={(e) => patchActiveBot({ knowledgeBase: e.target.value })} />
           </div>
         )}
 

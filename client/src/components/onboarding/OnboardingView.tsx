@@ -124,14 +124,14 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
               <p className="text-xs text-brand-muted leading-relaxed font-sans">
                 Enter details about courses, timetables, fees, consultation costs, location coordinates, or general rules. Our integrated Gemini LLM uses this data to respond dynamically.
               </p>
-              <span className="text-[10px] font-mono text-brand-muted shrink-0">{(newBotKB || '').length}/1500</span>
+              <span className="text-[10px] font-mono text-brand-muted shrink-0">{(newBotKB || '').length}/3000</span>
             </div>
             
             <div>
               <textarea
                 rows={6}
                 required
-                maxLength={1500}
+                maxLength={3000}
                 value={newBotKB}
                 onChange={(e) => setNewBotKB(e.target.value)}
                 placeholder="Add system details (fees, batches, rules, location, hours...)"

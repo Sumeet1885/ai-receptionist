@@ -398,10 +398,14 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
     opacity: 0.98;
     z-index: 100;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
+    overflow-y: auto;
+    padding: 16px 0;
     animation: fadeIn 0.3s ease;
   }
+  .voice-overlay::-webkit-scrollbar { width: 4px; }
+  .voice-overlay::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
   @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -414,8 +418,9 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
     gap: 12px;
     width: 100%;
     max-width: 320px;
-    padding: 24px;
+    padding: 0 24px;
     text-align: center;
+    margin: auto 0;
   }
   .overlay-mic-btn {
     width: 64px;
@@ -771,7 +776,7 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
               <span id="selectedCountryCode">+91</span>
               <span class="country-arrow"></span>
             </div>
-            <input type="tel" id="phoneInputField" placeholder="Enter phone number" autocomplete="tel-national" inputmode="numeric" maxlength="20" />
+            <input type="tel" id="phoneInputField" placeholder="Enter phone number" autocomplete="tel-national" inputmode="numeric" maxlength="10" />
             <button type="submit" id="phoneInputBtn" disabled>
               <svg viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
             </button>
@@ -1469,8 +1474,12 @@ ${poweredByHtml}
 
   if (phoneInputField) {
     phoneInputField.addEventListener('input', function() {
-      var val = phoneInputField.value.trim();
-      var validation = validateContactInput('phone', val);
+      var cleaned = phoneInputField.value.replace(/[^0-9]/g, '');
+      if (cleaned.length > 10) {
+        cleaned = cleaned.substring(0, 10);
+      }
+      phoneInputField.value = cleaned;
+      var validation = validateContactInput('phone', cleaned);
       phoneInputBtn.disabled = !validation.valid;
       showVoiceInputError('');
     });
