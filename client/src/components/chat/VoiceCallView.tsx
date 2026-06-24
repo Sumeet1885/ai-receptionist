@@ -183,6 +183,7 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
                    <PhoneInput
                     defaultCountry="IN"
                     placeholder="Enter phone number"
+                    limitMaxLength={true}
                     value={inputValue}
                     onChange={(val) => {
                       if (val && val.replace(/\D/g, '').length > 12) return;

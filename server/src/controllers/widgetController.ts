@@ -1485,6 +1485,14 @@ ${poweredByHtml}
   });
 
   if (phoneInputField) {
+    phoneInputField.addEventListener('keydown', function(e) {
+      if (e.key === 'Backspace' || e.key === 'Delete' || e.key.startsWith('Arrow') || e.metaKey || e.ctrlKey || e.altKey) return;
+      var maxLen = Math.max.apply(null, currentSelectedCountry.len);
+      var cleaned = phoneInputField.value.replace(/[^0-9]/g, '');
+      if (cleaned.length >= maxLen) {
+        e.preventDefault();
+      }
+    });
     phoneInputField.addEventListener('input', function() {
       var cleaned = phoneInputField.value.replace(/[^0-9]/g, '');
       var maxLen = Math.max.apply(null, currentSelectedCountry.len);
