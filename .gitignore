@@ -16,3 +16,5 @@ server/tests/*
 !server/tests/liveContactCollection.test.ts
 !server/tests/liveVoiceEndCall.test.ts
 .superpowers
+.mcp.json
+Call/
