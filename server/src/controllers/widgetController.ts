@@ -778,7 +778,7 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
               <span id="selectedCountryCode">+91</span>
               <span class="country-arrow"></span>
             </div>
-            <input type="text" id="phoneInputField" placeholder="Enter phone number" autocomplete="tel-national" inputmode="numeric" maxlength="10" />
+            <input type="text" id="phoneInputField" placeholder="Enter phone number" autocomplete="tel-national" inputmode="numeric" maxlength="10" oninput="var m=parseInt(this.getAttribute('maxlength')||'10',10);this.value=this.value.replace(/[^0-9]/g,'').slice(0,m);" />
             <button type="submit" id="phoneInputBtn" disabled>
               <svg viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
             </button>
@@ -1040,7 +1040,7 @@ ${poweredByHtml}
         
         // Update input maxlength dynamically
         var maxLen = Math.max.apply(null, c.len);
-        phoneInputField.maxLength = maxLen;
+        phoneInputField.setAttribute('maxlength', String(maxLen));
         if (phoneInputField.value.length > maxLen) {
           phoneInputField.value = phoneInputField.value.substring(0, maxLen);
         }
@@ -1272,7 +1272,7 @@ ${poweredByHtml}
               voicePhoneForm.style.display = 'block';
               phoneInputField.value = '';
               var maxLen = Math.max.apply(null, currentSelectedCountry.len);
-              phoneInputField.maxLength = maxLen;
+              phoneInputField.setAttribute('maxlength', String(maxLen));
               phoneInputBtn.disabled = true;
               showVoiceInputError('');
               phoneInputField.focus();
@@ -1485,14 +1485,6 @@ ${poweredByHtml}
   });
 
   if (phoneInputField) {
-    phoneInputField.addEventListener('keydown', function(e) {
-      if (e.key === 'Backspace' || e.key === 'Delete' || e.key.startsWith('Arrow') || e.metaKey || e.ctrlKey || e.altKey) return;
-      var maxLen = Math.max.apply(null, currentSelectedCountry.len);
-      var cleaned = phoneInputField.value.replace(/[^0-9]/g, '');
-      if (cleaned.length >= maxLen) {
-        e.preventDefault();
-      }
-    });
     phoneInputField.addEventListener('input', function() {
       try {
         var cleaned = phoneInputField.value.replace(/[^0-9]/g, '');
