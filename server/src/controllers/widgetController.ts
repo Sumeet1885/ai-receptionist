@@ -778,7 +778,7 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
               <span id="selectedCountryCode">+91</span>
               <span class="country-arrow"></span>
             </div>
-            <input type="text" id="phoneInputField" placeholder="Enter phone number" autocomplete="tel-national" inputmode="numeric" maxlength="10" oninput="var m=parseInt(this.getAttribute('maxlength')||'10',10);this.value=this.value.replace(/[^0-9]/g,'').slice(0,m);" />
+            <input type="text" id="phoneInputField" placeholder="Enter phone number" autocomplete="tel-national" inputmode="numeric" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10);" />
             <button type="submit" id="phoneInputBtn" disabled>
               <svg viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
             </button>
@@ -1038,11 +1038,10 @@ ${poweredByHtml}
         selectedCountryFlag.textContent = c.flag;
         selectedCountryCode.textContent = c.dial;
         
-        // Update input maxlength dynamically
-        var maxLen = Math.max.apply(null, c.len);
-        phoneInputField.setAttribute('maxlength', String(maxLen));
-        if (phoneInputField.value.length > maxLen) {
-          phoneInputField.value = phoneInputField.value.substring(0, maxLen);
+        // maxlength is fixed at 10
+        phoneInputField.setAttribute('maxlength', '10');
+        if (phoneInputField.value.length > 10) {
+          phoneInputField.value = phoneInputField.value.substring(0, 10);
         }
 
         countryDropdownList.style.display = 'none';
@@ -1271,8 +1270,8 @@ ${poweredByHtml}
               voiceInputForm.style.display = 'none';
               voicePhoneForm.style.display = 'block';
               phoneInputField.value = '';
-              var maxLen = Math.max.apply(null, currentSelectedCountry.len);
-              phoneInputField.setAttribute('maxlength', String(maxLen));
+              phoneInputField.setAttribute('maxlength', '10');
+              phoneInputField.maxLength = 10;
               phoneInputBtn.disabled = true;
               showVoiceInputError('');
               phoneInputField.focus();
@@ -1488,29 +1487,13 @@ ${poweredByHtml}
     phoneInputField.addEventListener('input', function() {
       try {
         var cleaned = phoneInputField.value.replace(/[^0-9]/g, '');
-        var maxLen = Math.max.apply(null, currentSelectedCountry.len);
-        if (cleaned.length > maxLen) {
-          cleaned = cleaned.substring(0, maxLen);
+        if (cleaned.length > 10) {
+          cleaned = cleaned.substring(0, 10);
         }
         phoneInputField.value = cleaned;
         var validation = validateContactInput('phone', cleaned);
         phoneInputBtn.disabled = !validation.valid;
         showVoiceInputError('');
-
-        // If country is India, and user has entered the maximum 10 subscriber digits,
-        // mute the mic and disconnect the audio processor to prevent further audio
-        // frames from being sent (mirrors client-side behavior).
-        if (currentSelectedCountry && currentSelectedCountry.code === 'IN' && cleaned.length >= 10) {
-          micMuted = true;
-          try {
-            if (processor) {
-              processor.disconnect();
-              processor = null;
-            }
-          } catch (e) {
-            // swallow errors to avoid breaking the widget
-          }
-        }
       } catch (e) {
         // swallow any unexpected errors in widget script
       }
