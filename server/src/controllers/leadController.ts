@@ -9,6 +9,12 @@ export interface LeadInput {
   sessionId: string;
   botId: string;
   transcript: string;
+  /** Phone number already known from telephony metadata (Dograh phone calls only - caller ID on
+   * inbound, the dialed number on outbound). Takes priority over whatever the LLM extracts from
+   * the transcript, since phone-call personas no longer ask the caller to read their number back
+   * (it's redundant - see withoutAutoKnownPhoneField in receptionistInstruction.ts) and the LLM
+   * would otherwise never see a phone number to extract. */
+  knownPhone?: string;
 }
 
 export interface LeadData {
@@ -41,7 +47,7 @@ export async function analyzeLead(
   input: LeadInput,
   supabase: any
 ): Promise<void> {
-  const { sessionId, botId, transcript } = input;
+  const { sessionId, botId, transcript, knownPhone } = input;
 
   if (!GROQ_API_KEY) return;
 
@@ -84,11 +90,14 @@ export async function analyzeLead(
     return;
   }
 
+  const phone = knownPhone?.trim() || lead.phone?.trim() || '';
+  lead.phone = phone; // single source of truth for both the upsert below and syncLeadToCrm's payload
+
   await supabase.from('leads').upsert({
     bot_id:             botId,
     session_id:         sessionId,
     name:               lead.name || 'Anonymous',
-    phone:              lead.phone || 'Not Provided',
+    phone:              phone || 'Not Provided',
     requirement:        lead.requirement || 'General Inquiry',
     budget:             lead.budget || 'N/A',
     sentiment:          lead.sentiment || 'Neutral',
@@ -100,7 +109,7 @@ export async function analyzeLead(
 
   // Only mirror leads with at least a name and phone (this app's compulsory
   // contact fields) to the owner's own CRM, if they've connected one for this bot.
-  if (lead.name?.trim() && lead.phone?.trim()) {
+  if (lead.name?.trim() && phone) {
     const { data: crmConn } = await supabase
       .from('crm_connections')
       .select('webhook_url, api_key, signing_secret, bots(business_name)')

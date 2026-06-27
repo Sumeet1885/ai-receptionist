@@ -194,6 +194,7 @@ async function ingestRun(
   // throws when fetched. This was the bug that silently failed every call that had a transcript.
   const transcriptUrl = run.transcript_public_url || run.transcript_url;
   const recordingUrl = run.recording_public_url || run.recording_url;
+  const counterpartyNumber = extractCounterpartyNumber(run);
   let transcript = '';
   if (transcriptUrl) {
     const raw = await fetchTranscript(transcriptUrl);
@@ -209,14 +210,16 @@ async function ingestRun(
   }
 
   if (transcript) {
-    await analyzeLead({ sessionId, botId: bot.id, transcript }, supabase);
+    // knownPhone: the persona no longer asks the caller to read their number back (it's
+    // redundant - telephony metadata already has it), so the transcript will rarely contain one.
+    await analyzeLead({ sessionId, botId: bot.id, transcript, knownPhone: counterpartyNumber || undefined }, supabase);
   }
 
   // 4. Finalize.
   const { error: finalizeError } = await supabase
     .from('phone_calls')
     .update({
-      caller_number: extractCounterpartyNumber(run),
+      caller_number: counterpartyNumber,
       status: run.is_completed ? 'completed' : 'in_progress',
       duration_seconds: extractDurationSeconds(run),
       recording_url: recordingUrl,
