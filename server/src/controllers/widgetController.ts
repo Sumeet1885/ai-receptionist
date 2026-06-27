@@ -1366,18 +1366,9 @@ ${poweredByHtml}
         sessionId = data.sessionId;
         if (voiceBtn) voiceBtn.disabled = false;
         
-        // Show greeting
-        if (data.isNew && GREETING) {
+        // Every call to /session creates a fresh session — always show greeting
+        if (GREETING) {
           addMessage(GREETING, 'bot');
-        } else {
-          // Load history
-          var histRes = await fetch(API + '/api/chat/history?sessionId=' + encodeURIComponent(sessionId), { method: 'GET' });
-          if (histRes.ok) {
-            var hist = await histRes.json();
-            hist.forEach(function(m) {
-              addMessage(m.content, m.sender);
-            });
-          }
         }
         renderSuggestions();
       }
@@ -1398,10 +1389,10 @@ ${poweredByHtml}
     sendBtn.disabled = true;
 
     try {
-      var response = await fetch(API + '/api/chat/message', {
+      var response = await fetch(API + '/api/chat/reply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ botId: BOT_ID, sessionId: sessionId, content: text, timezone: timezone })
+        body: JSON.stringify({ sessionId: sessionId, userMessage: text, timezone: timezone })
       });
       hideTyping();
       if (response.ok) {
