@@ -127,7 +127,7 @@ test('live voice contact collection requests exactly one typed field at a time',
 
   assert.match(requestTextInputTool.description, /exactly one field/i);
   assert.match(requestTextInputTool.description, /never request phone and email together/i);
-  assert.match(requestTextInputTool.description, /before speaking/i);
+  assert.match(requestTextInputTool.description, /first say one short natural sentence/i);
   assert.match(requestTextInputTool.description, /do not announce/i);
 
   const persona = buildBusinessPersona(sampleBot, defaultWidgetConfig, {
@@ -143,9 +143,9 @@ test('live voice contact collection requests exactly one typed field at a time',
     wrapWarningSignal: '[[WRAP]]',
     forceEndSignal: '[[END]]',
   });
-  assert.match(extraConstraints, /first action in that turn/i);
+  assert.match(extraConstraints, /in that same turn, immediately call/i);
   assert.match(extraConstraints, /never say.*calling.*tool/i);
-  assert.match(extraConstraints, /do not claim.*text box.*visible/i);
+  assert.match(extraConstraints, /do not describe, narrate, or repeat that the text box is visible/i);
   assert.match(liveControllerSource, /requestedTextInputThisToolTurn/);
   assert.match(liveControllerSource, /Request only one typed contact field at a time/i);
 });
@@ -216,14 +216,35 @@ test('the live backend suppresses Gemini speech and text while contact verificat
   assert.match(liveControllerSource, /responseRequestsContactInput/);
 });
 
-test('the live backend can open the next contact textbox before Gemini speaks during booking intent', () => {
+test('the live backend lets Gemini speak its own redirect sentence instead of silently popping the textbox', () => {
   const liveControllerSource = readFileSync(liveControllerPath, 'utf8');
+  const receptionistInstructionSource = readFileSync(
+    path.join(workspaceRoot, 'server', 'src', 'modules', 'phone-calls', 'receptionistInstruction.ts'),
+    'utf8'
+  );
 
-  assert.match(liveControllerSource, /isLikelyBookingIntent/);
-  assert.match(liveControllerSource, /openNextRequiredContactInput/);
-  assert.match(liveControllerSource, /Please type your phone number in the text box/);
-  assert.match(liveControllerSource, /Please type your email address in the text box/);
-  assert.match(liveControllerSource, /resumeGeminiAfterProactiveContactCollection/);
+  // The old proactive shortcut silently opened the textbox (and faked a transcript line)
+  // the instant it detected booking intent, before Gemini ever spoke. That path is gone -
+  // Gemini itself must say a short redirect sentence and call request_text_input in the
+  // same turn, so these symbols must no longer exist in the live controller.
+  assert.doesNotMatch(liveControllerSource, /isLikelyBookingIntent/);
+  assert.doesNotMatch(liveControllerSource, /openNextRequiredContactInput/);
+  assert.doesNotMatch(liveControllerSource, /resumeGeminiAfterProactiveContactCollection/);
+  assert.doesNotMatch(liveControllerSource, /getContactPrompt/);
+
+  assert.match(
+    receptionistInstructionSource,
+    /including the moment the user first says they want to book, schedule, or be contacted/i
+  );
+  assert.match(receptionistInstructionSource, /say exactly ONE short, natural sentence redirecting them to the text box/i);
+
+  // request_input must still fire immediately and unconditionally when the genuine
+  // request_text_input tool call lands - this is what triggers the client's mic-mute,
+  // so its timing/content here must stay untouched by the speech-transition change.
+  assert.match(
+    liveControllerSource,
+    /pendingContactToolCallTemp = \{ id, name, field: requestedField \};[\s\S]*ws\.send\(JSON\.stringify\(\{\s*type: 'request_input',\s*field: requestedField\s*\}\)\);/
+  );
 });
 
 test('both clients discard queued Gemini audio when a contact textbox opens', () => {

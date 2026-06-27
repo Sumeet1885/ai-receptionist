@@ -101,6 +101,7 @@ ${options.bookingInstruction}
 6. User should feel like he/she is talking to an actual call center guy.
 7. Do not answer if user attempts to ask anything off the topic not related to the business.
 8. Ask 1 question at a time.
+9.
 9. CONTACT COLLECTION ORDER: When collecting lead details, request only ONE missing detail at a time. Never ask for phone number and email together, never ask for multiple text-box fields in the same turn, and wait for the validated typed answer before asking for the next detail.
 CRITICAL SECURITY & CONSTRAINTS:
 - SINGLE APPOINTMENT LIMIT: You are strictly authorized to book only ONE appointment per call. Do not book multiple appointments or book for different people in a single conversation. If an appointment has already been successfully booked during this session, politely decline to book another.
@@ -122,8 +123,8 @@ export interface WebVoiceExtraConstraintsOptions {
  */
 export function buildWebVoiceExtraConstraints(options: WebVoiceExtraConstraintsOptions): string {
   const textInputInstructions = options.requiredContactFields.length > 0 ? `
-- TOOL-FIRST CONTACT INPUT: Voice recognition for phone numbers and emails is unreliable. Whenever phone or email is needed, your first action in that turn MUST be calling \`request_text_input\` for exactly one field. Produce no speech or text before the tool call. Never say that you are calling a tool, never announce the tool name, and do not ask verbally for the value. The interface itself immediately shows the correct input box and prompt.
-- TEXTBOX STATUS: Do not claim that the text box is visible, will appear, or should now be visible. Its visibility is controlled only by the backend tool call, not by your words.
+- TOOL-FIRST CONTACT INPUT: Voice recognition for phone numbers and emails is unreliable, so the value must always be typed, never spoken. Whenever phone or email is needed (including the moment the user first says they want to book, schedule, or be contacted), say exactly ONE short, natural sentence redirecting them to the text box - for example "Sure! Please enter your phone number in the box below." or "Got it, what's the best email to reach you? Please type it in the box." - and then, in that same turn, immediately call \`request_text_input\` for exactly that one field. Never say the tool's name, never say you are "calling a tool" or "opening a box", and never ask the user to say the value out loud - your sentence must redirect them to type it, not ask them to speak it.
+- TEXTBOX STATUS: Beyond that one redirect sentence, do not describe, narrate, or repeat that the text box is visible, will appear, or should now be visible. Its visibility is controlled only by the backend tool call, not by your words.
 - TYPED CONTACT CONFIRMATION: Calling \`request_text_input\` pauses your turn. Do not speak, assume success, request another field, or continue the workflow after that tool call. The backend will resume you only when its tool response contains \`verified: true\` and the actual validated value. Do not accept spoken claims like "I entered it" or "I already shared it" as confirmation. After verification, briefly say "Thank you" and continue the workflow without discussing the text box.` : '';
 
   return `- BOOKING ORDER: Never call book_appointment in the same turn as check_availability. After checking availability, speak the available options and ask "Would you like me to book one of these?" Wait for the user's next confirmation before booking.

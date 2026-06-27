@@ -156,7 +156,6 @@ export function setupWebSocketServer(server: Server) {
     let pendingContactToolCall: PendingContactToolCall | null = null;
     let pendingFunctionResponses: any[] = [];
     let requiredContactFields: ContactField[] = [];
-    let proactiveContactCollectionActive = false;
     let pendingAssistantHangup: { reason: string } | null = null;
     let assistantHangupTimeout: NodeJS.Timeout | null = null;
     let forcedShutdownTimeout: NodeJS.Timeout | null = null;
@@ -213,85 +212,6 @@ export function setupWebSocketServer(server: Server) {
       }
     };
 
-    const getLiveInputTranscriptText = (response: any) => {
-      return response?.serverContent?.inputTranscription?.text
-        ?? response?.serverContent?.input_transcription?.text
-        ?? '';
-    };
-
-    const isLikelyBookingIntent = (text: string) => {
-      return /\b(book|booking|appointment|meeting|meet|schedule|slot|consultation|call back|callback|visit)\b/i.test(text);
-    };
-
-    const getContactPrompt = (field: ContactField, isFirstRequest: boolean) => {
-      if (field === 'phone') {
-        return isFirstRequest
-          ? 'Sure, I can help book that. Please type your phone number in the text box.'
-          : 'Thanks. Please type your phone number in the text box.';
-      }
-
-      return isFirstRequest
-        ? 'Sure, I can help book that. Please type your email address in the text box.'
-        : 'Thanks. Please type your email address in the text box.';
-    };
-
-    const openNextRequiredContactInput = async (isFirstRequest = false) => {
-      if (pendingContactToolCall || contactCollection.pendingField) return false;
-
-      const nextField = contactCollection.getMissingVerified(requiredContactFields)[0];
-      if (!nextField) return false;
-
-      const requestResult = contactCollection.request(nextField);
-      if (!requestResult.accepted) return false;
-
-      proactiveContactCollectionActive = true;
-      accumulatedBotText = '';
-
-      const prompt = getContactPrompt(nextField, isFirstRequest);
-      ws.send(JSON.stringify({ type: 'interrupted' }));
-      ws.send(JSON.stringify({
-        type: 'transcript',
-        sender: 'bot',
-        text: prompt
-      }));
-      ws.send(JSON.stringify({
-        type: 'request_input',
-        field: nextField
-      }));
-
-      try {
-        await supabase.from('messages').insert({
-          session_id: sessionId,
-          sender: 'bot',
-          content: prompt
-        });
-      } catch (err) {
-        console.error('Error saving proactive contact prompt:', err);
-      }
-
-      return true;
-    };
-
-    const resumeGeminiAfterProactiveContactCollection = () => {
-      proactiveContactCollectionActive = false;
-      if (geminiWs.readyState !== WebSocket.OPEN) return;
-
-      const verifiedSummary = requiredContactFields
-        .map(field => `${field}: ${contactCollection.getVerified(field) || 'not provided'}`)
-        .join(', ');
-
-      geminiWs.send(JSON.stringify({
-        clientContent: {
-          turns: [{
-            role: 'user',
-            parts: [{
-              text: `The visitor has submitted these server-verified contact details: ${verifiedSummary}. Continue the booking naturally. Ask for the preferred date/time if it is missing, then check availability.`
-            }]
-          }],
-          turnComplete: true
-        }
-      }));
-    };
 
     geminiWs.on('open', () => {
       console.log('Connected to Gemini Live API');
@@ -353,19 +273,10 @@ export function setupWebSocketServer(server: Server) {
     // 3. Handle messages from Gemini
     geminiWs.on('message', async (data: Buffer) => {
       const response = JSON.parse(data.toString());
-      const inputText = getLiveInputTranscriptText(response);
       inputTranscript.accept(response);
       const responseRequestsContactInput = response.toolCall?.functionCalls?.some(
         (call: any) => call.name === 'request_text_input'
       ) === true;
-
-      if (
-        inputText
-        && requiredContactFields.length > 0
-        && isLikelyBookingIntent(inputText)
-      ) {
-        await openNextRequiredContactInput(true);
-      }
 
       if (response.setupComplete || response.setup_complete) {
         console.log('Gemini Live API Setup Complete. Triggering initial greeting...');
@@ -578,17 +489,10 @@ export function setupWebSocketServer(server: Server) {
 
               pendingContactToolCallTemp = { id, name, field: requestedField };
               requestedTextInputThisToolTurn = true;
-              const prompt = getContactPrompt(
-                requestedField,
-                contactCollection.getMissingVerified(requiredContactFields).length === requiredContactFields.length
-              );
-              accumulatedBotText = '';
-              ws.send(JSON.stringify({ type: 'interrupted' }));
-              ws.send(JSON.stringify({
-                type: 'transcript',
-                sender: 'bot',
-                text: prompt
-              }));
+              // Gemini is instructed to speak its own short redirect sentence in this same
+              // turn before calling this tool - don't interrupt/clear that audio or it gets
+              // cut off right as the box appears. The box (and the client's mic-mute, which
+              // fires the instant request_input is received) still open immediately.
               ws.send(JSON.stringify({
                 type: 'request_input',
                 field: requestedField
@@ -745,13 +649,6 @@ export function setupWebSocketServer(server: Server) {
           return;
         }
 
-        if (proactiveContactCollectionActive && await openNextRequiredContactInput(false)) {
-          return;
-        }
-
-        if (proactiveContactCollectionActive) {
-          resumeGeminiAfterProactiveContactCollection();
-        }
         return;
       }
 
