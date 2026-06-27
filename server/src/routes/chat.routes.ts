@@ -53,6 +53,8 @@ router.post('/reply', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
+  let botId: string | undefined;
+
   try {
     // 1. Resolve session -> get bot_id
     const { data: session, error: sessionErr } = await supabase
@@ -65,6 +67,7 @@ router.post('/reply', async (req: Request, res: Response): Promise<void> => {
       res.status(404).json({ error: 'Session not found' });
       return;
     }
+    botId = session.bot_id;
 
     // 2. Fetch bot configuration
     const { data: bot, error: botErr } = await supabase
@@ -136,6 +139,14 @@ router.post('/reply', async (req: Request, res: Response): Promise<void> => {
       ]);
     } catch (persistErr) {
       console.error('Failed to persist chat fallback messages:', persistErr);
+    }
+
+    // The visitor's message was still captured even though Gemini failed -
+    // don't let a transient AI error silently drop a lead.
+    if (botId) {
+      const transcript = `Visitor: ${userMessage}\nReceptionist: ${safeReply}`;
+      analyzeLead({ sessionId, botId, transcript }, supabase)
+        .catch(analysisErr => console.error('Background lead analysis error (fallback path):', analysisErr));
     }
 
     res.status(200).json({ reply: safeReply });

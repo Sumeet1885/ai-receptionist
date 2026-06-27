@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { config } from '../config';
+import { isCrmSyncEnabled, syncLeadToCrm } from '../services/crmSync';
 
 const GROQ_API_KEY = config.groqApiKey || '';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
@@ -96,4 +97,21 @@ export async function analyzeLead(
     appointment_status: lead.appointmentStatus || 'None',
     updated_at:         new Date().toISOString()
   }, { onConflict: 'session_id' });
+
+  // Only mirror leads with at least a name and phone (this app's compulsory
+  // contact fields) to the owner's own CRM, if they've connected one for this bot.
+  if (lead.name?.trim() && lead.phone?.trim()) {
+    const { data: crmConn } = await supabase
+      .from('crm_connections')
+      .select('webhook_url, api_key, signing_secret, bots(business_name)')
+      .eq('bot_id', botId)
+      .maybeSingle();
+
+    if (isCrmSyncEnabled(crmConn)) {
+      const businessName = Array.isArray(crmConn.bots) ? crmConn.bots[0]?.business_name : crmConn.bots?.business_name;
+      syncLeadToCrm(lead, crmConn, { sessionId, businessName }).catch((err) =>
+        console.error('[crm-sync] background sync error:', err)
+      );
+    }
+  }
 }

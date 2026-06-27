@@ -27,7 +27,7 @@ import { AgentsPage } from './components/dashboard/AgentsPage';
 import { AgentDetailPage } from './components/dashboard/AgentDetailPage';
 import { CallsWorkspace } from './modules/phone-calls/CallsWorkspace';
 
-type AgentTab = 'overview' | 'knowledge' | 'install' | 'preview';
+type AgentTab = 'overview' | 'knowledge' | 'install' | 'crm' | 'preview';
 
 type AppRoute =
   | { name: 'landing' }
@@ -42,7 +42,7 @@ type AppRoute =
   | { name: 'agent-detail'; botId: string; tab: AgentTab }
   | { name: 'public-chat'; subdomain: string };
 
-const agentTabs: AgentTab[] = ['overview', 'knowledge', 'install', 'preview'];
+const agentTabs: AgentTab[] = ['overview', 'knowledge', 'install', 'crm', 'preview'];
 
 function parseRoute(): AppRoute {
   const path = window.location.pathname;

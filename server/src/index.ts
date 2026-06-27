@@ -24,6 +24,7 @@ app.use(cors({
 app.use(express.json());
 
 import widgetRoutes from './routes/widget.routes';
+import crmRoutes from './routes/crm.routes';
 import { dograhRoutes, startCallPoller } from './modules/phone-calls';
 import { supabase } from './services/db';
 
@@ -32,6 +33,7 @@ app.use('/api/calendar', calendarRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/widget', widgetRoutes);
 app.use('/api/dograh', dograhRoutes);
+app.use('/api/crm', crmRoutes);
 
 app.get('/health', (req, res) => {
   res.json({

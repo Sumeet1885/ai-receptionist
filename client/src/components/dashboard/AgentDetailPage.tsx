@@ -2,13 +2,14 @@ import React from 'react';
 import { Bot, WidgetConfig } from '../../types';
 import { BotSettings } from './BotSettings';
 import { EmbedCodePanel } from './EmbedCodePanel';
+import { CrmConnectionPanel } from './CrmConnectionPanel';
 import { Icons } from '../common/Icons';
 
 interface AgentDetailPageProps {
   bots: Bot[];
   setBots: React.Dispatch<React.SetStateAction<Bot[]>>;
   activeBot: Bot;
-  tab: 'overview' | 'knowledge' | 'install' | 'preview';
+  tab: 'overview' | 'knowledge' | 'install' | 'crm' | 'preview';
   navigate: (path: string) => void;
   launchPublicChat: (botId: string) => void;
   showToast: (message: string, type?: 'success' | 'error') => void;
@@ -37,6 +38,7 @@ export const AgentDetailPage: React.FC<AgentDetailPageProps> = ({
     { id: 'overview', label: 'Overview' },
     { id: 'knowledge', label: 'Customize' },
     { id: 'install', label: 'Install' },
+    { id: 'crm', label: 'CRM' },
     { id: 'preview', label: 'Preview' }
   ];
 
@@ -89,6 +91,9 @@ export const AgentDetailPage: React.FC<AgentDetailPageProps> = ({
             <button onClick={() => navigate(`/agents/${activeBot.id}/install`)} className="w-full text-left px-3 py-3 bg-brand-bg hover:bg-brand-border border border-brand-border rounded-md text-sm text-brand-text transition">
               Install on website
             </button>
+            <button onClick={() => navigate(`/agents/${activeBot.id}/crm`)} className="w-full text-left px-3 py-3 bg-brand-bg hover:bg-brand-border border border-brand-border rounded-md text-sm text-brand-text transition">
+              Connect your CRM
+            </button>
             <button onClick={() => launchPublicChat(activeBot.id)} className="w-full text-left px-3 py-3 bg-brand-accent hover:bg-brand-accent-hover rounded-md text-sm font-bold text-brand-text transition">
               Preview visitor chat
             </button>
@@ -115,6 +120,10 @@ export const AgentDetailPage: React.FC<AgentDetailPageProps> = ({
             updateBot={updateBot}
           />
         </div>
+      )}
+
+      {tab === 'crm' && (
+        <CrmConnectionPanel botId={activeBot.id} showToast={showToast} />
       )}
 
       {tab === 'preview' && (
