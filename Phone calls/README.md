@@ -107,6 +107,37 @@ minting a **new** workflow id and leaving the assigned phone number's `inbound_w
 pointed at the old, now-abandoned workflow. Updating in place via `PUT` keeps the same id, so
 re-provisioning an already-assigned bot now actually changes what the live number answers with.
 
+A fresh `create/definition` call publishes the first version immediately (no separate draft);
+`PUT` always creates a new draft requiring an explicit `publish`. `dograhClient.publishWorkflow`
+calls publish unconditionally and swallows the resulting "No draft to publish" 400 on first
+creation rather than branching on which path was used — simpler and correct either way.
+
+The `startCall` node also carries a static `greeting` (TTS-only, no LLM round-trip) and
+`allow_interrupt: false`. A white-box test against a real call surfaced two real conversational
+defects that the architecture fix alone didn't catch: (1) the first LLM+TTS round-trip on a cold
+connection took 7-20s of dead air before the opening line played, which callers read as "the
+agent can't hear me"; (2) with `allow_interrupt: true` and no echo cancellation on this
+self-hosted telephony audio path, the bot's own voice bled back into the input and got misheard
+as the caller interrupting, truncating the bot's sentences mid-word. The static greeting removes
+the dead-air window; disabling interrupt stops the bot from cutting itself off (the caller can
+still always just start talking once the bot pauses between turns).
+
+## Known transcript/recording gotcha
+
+Dograh run records expose `transcript_url`/`recording_url` as **relative storage keys**
+(e.g. `"transcripts/47.txt"`), not fetchable URLs — only `transcript_public_url`/
+`recording_public_url` are absolute and downloadable. `callMirror.ts` fetches and stores the
+public ones; fetching the relative key directly throws and silently marks the whole run
+`ingest_status: 'failed'`, which is exactly what happened in production before this was caught by
+a white-box test — every call with an actual transcript failed to mirror, while only
+empty/too-short calls (no transcript) "succeeded," for 16 calls straight. The transcript text
+format is also `[ISO timestamp] role: content` per line, not a bare `role: content` — the parser
+strips the leading bracketed timestamp before matching the speaker.
+
+For outbound calls, `caller_number` is the **bot's own** Twilio caller ID, not the number dialed
+— `callMirror.ts` extracts the actual counterparty (the number the bot called, for outbound) so
+the Calls tab shows who was contacted, not the bot's own number.
+
 ## Data flow
 
 1. Owner opens **Calls**, picks a bot, clicks **Provision** →

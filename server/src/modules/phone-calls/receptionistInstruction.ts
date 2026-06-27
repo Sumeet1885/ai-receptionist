@@ -123,7 +123,7 @@ export interface WebVoiceExtraConstraintsOptions {
  */
 export function buildWebVoiceExtraConstraints(options: WebVoiceExtraConstraintsOptions): string {
   const textInputInstructions = options.requiredContactFields.length > 0 ? `
-- TOOL-FIRST CONTACT INPUT: Voice recognition for phone numbers and emails is unreliable, so the value must always be typed, never spoken. Whenever phone or email is needed (including the moment the user first says they want to book, schedule, or be contacted), say exactly ONE short, natural sentence redirecting them to the text box - for example "Sure! Please enter your phone number in the box below." or "Got it, what's the best email to reach you? Please type it in the box." - and then, in that same turn, immediately call \`request_text_input\` for exactly that one field. Never say the tool's name, never say you are "calling a tool" or "opening a box", and never ask the user to say the value out loud - your sentence must redirect them to type it, not ask them to speak it.
+- TOOL-FIRST CONTACT INPUT: Voice recognition for phone numbers and emails is unreliable, so the value must always be typed, never spoken. Whenever phone or email is needed (including the moment the user first says they want to book, schedule, or be contacted), say exactly ONE short, natural sentence redirecting them to the text box - for example "Sure! Please enter your phone number in the box below." or "Got it, what's the best email to reach you? Please type it in the box." - and then, in that same turn, immediately call \`request_text_input\` for exactly that one field. This sentence must explicitly mention the box (e.g. "in the box below" / "type it in the box"). A generic acknowledgement like "Sure, I can help with that" on its own is NOT a valid redirect sentence and the tool call will be rejected - your acknowledgement and the box redirect must be the same sentence. Never say the tool's name, never say you are "calling a tool" or "opening a box", and never ask the user to say the value out loud - your sentence must redirect them to type it, not ask them to speak it.
 - TEXTBOX STATUS: Beyond that one redirect sentence, do not describe, narrate, or repeat that the text box is visible, will appear, or should now be visible. Its visibility is controlled only by the backend tool call, not by your words.
 - TYPED CONTACT CONFIRMATION: Calling \`request_text_input\` pauses your turn. Do not speak, assume success, request another field, or continue the workflow after that tool call. The backend will resume you only when its tool response contains \`verified: true\` and the actual validated value. Do not accept spoken claims like "I entered it" or "I already shared it" as confirmation. After verification, briefly say "Thank you" and continue the workflow without discussing the text box.` : '';
 
@@ -137,6 +137,19 @@ export function buildWebVoiceExtraConstraints(options: WebVoiceExtraConstraintsO
 }
 
 /**
+ * On any Dograh phone call (either direction), the caller's/callee's number is already known
+ * from telephony metadata — Twilio's caller ID on inbound, the dialed number on outbound (see
+ * `extractCounterpartyNumber` in callMirror.ts). Asking the user to read their own phone number
+ * back is redundant at best and, on an outbound call the business itself placed, actively
+ * confusing ("why is it asking for my number, it's calling me"). Web chat/voice has no such
+ * metadata, so this only applies to the phone channel's lead-collection text and extraction.
+ */
+export function withoutAutoKnownPhoneField(widgetConfig: WidgetConfig): WidgetConfig {
+  if (!widgetConfig.requiredLeadFields.includes('phone')) return widgetConfig;
+  return { ...widgetConfig, requiredLeadFields: widgetConfig.requiredLeadFields.filter(f => f !== 'phone') };
+}
+
+/**
  * The Dograh phone persona: shared business core + a verbal-handoff booking instruction and
  * zero tool references. The phone agent never claims to use a tool it doesn't have, and
  * booking requests are routed to "collect contact details, a human will follow up" — matching
@@ -147,7 +160,7 @@ export function buildDograhPhoneInstruction(
   widgetConfig: WidgetConfig,
   options: { timezone: string }
 ): string {
-  return buildBusinessPersona(bot, widgetConfig, {
+  return buildBusinessPersona(bot, withoutAutoKnownPhoneField(widgetConfig), {
     timezone: options.timezone,
     bookingInstruction: buildVerbalHandoffBookingInstruction(),
   });
@@ -169,7 +182,7 @@ export function buildDograhOutboundInstruction(
   widgetConfig: WidgetConfig,
   options: { timezone: string }
 ): string {
-  return buildBusinessPersona(bot, widgetConfig, {
+  return buildBusinessPersona(bot, withoutAutoKnownPhoneField(widgetConfig), {
     timezone: options.timezone,
     openingInstruction: OUTBOUND_OPENING_INSTRUCTION,
     bookingInstruction: buildVerbalHandoffBookingInstruction(),

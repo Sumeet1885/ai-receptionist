@@ -34,11 +34,12 @@ function parseTranscript(raw: unknown): TranscriptTurn[] {
   }
 
   if (typeof raw === 'string' && raw.trim()) {
-    // Line-based "Speaker: utterance" format. Lines without a recognizable speaker prefix are
-    // treated as continuations of the previous turn (multi-line utterances), so nothing is lost.
+    // Line-based "[ISO timestamp] Speaker: utterance" format (confirmed against Dograh's actual
+    // public transcript download). Lines without a recognizable speaker prefix are treated as
+    // continuations of the previous turn (multi-line utterances), so nothing is lost.
     const turns: TranscriptTurn[] = [];
     for (const line of raw.split(/\r?\n/)) {
-      const trimmed = line.trim();
+      const trimmed = line.trim().replace(/^\[[^\]]*\]\s*/, '');
       if (!trimmed) continue;
       const match = trimmed.match(/^([A-Za-z][\w .'-]{0,30}?)\s*[:\-]\s*(.+)$/);
       if (match) {

@@ -79,10 +79,17 @@ export function updateWorkflowInPlace(workflowId: string, workflowDefinition: Re
   });
 }
 
-// Both create/definition and the PUT update save a draft; only a published version is what
-// actual calls execute. Always publish right after writing the definition.
-export function publishWorkflow(workflowId: string | number): Promise<unknown> {
-  return request<unknown>(`/api/v1/workflow/${workflowId}/publish`, { method: 'POST' });
+// PUT saves a draft; only a published version is what actual calls execute, so call this right
+// after updateWorkflowInPlace. (create/definition publishes the first version immediately on a
+// fresh workflow, so this 400s with "No draft to publish" right after creation - harmless, the
+// workflow is already live; only re-raise for any other failure.)
+export async function publishWorkflow(workflowId: string | number): Promise<unknown> {
+  try {
+    return await request<unknown>(`/api/v1/workflow/${workflowId}/publish`, { method: 'POST' });
+  } catch (err) {
+    if (err instanceof Error && /No draft to publish/i.test(err.message)) return undefined;
+    throw err;
+  }
 }
 
 export async function listTelephonyConfigs(): Promise<DograhTelephonyConfig[]> {

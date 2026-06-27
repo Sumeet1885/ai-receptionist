@@ -41,7 +41,7 @@ export function buildLiveFunctionDeclarations(bookAppointmentRequired: string[],
   if (bookAppointmentRequired.includes('visitorPhone') || bookAppointmentRequired.includes('visitorEmail')) {
     declarations.push({
       name: 'request_text_input',
-      description: 'Opens the text box for exactly one field. Whenever phone or email is needed, first say one short natural sentence redirecting the user to type it in the box (never ask them to say it out loud), then call this tool immediately after, in that same turn. Do not announce the tool call or say that you are calling a tool. Never request phone and email together in the same turn.',
+      description: 'Opens the text box for exactly one field. Whenever phone or email is needed, first say one short natural sentence that explicitly mentions the box and redirects the user to type the value into it (never ask them to say it out loud) - a generic acknowledgement alone is rejected - then call this tool immediately after, in that same turn. Do not announce the tool call or say that you are calling a tool. Never request phone and email together in the same turn.',
       parameters: {
         type: 'OBJECT',
         properties: {

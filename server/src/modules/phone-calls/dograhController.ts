@@ -3,7 +3,7 @@ import { AuthRequest } from '../../middleware/auth';
 import { supabase } from '../../services/db';
 import { mergeWidgetConfig } from '../../utils/widgetConfig';
 import { validateContactInput } from '../../utils/contactValidation';
-import { buildDograhOutboundInstruction, buildDograhPhoneInstruction } from './receptionistInstruction';
+import { buildDograhOutboundInstruction, buildDograhPhoneInstruction, withoutAutoKnownPhoneField } from './receptionistInstruction';
 import { syncBotCalls } from './callMirror';
 import {
   assignInboundWorkflow,
@@ -63,7 +63,9 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
 
   try {
     const widgetConfig = mergeWidgetConfig((bot as any).widget_config, bot);
-    const extractionVariables = buildLeadExtractionVariables(widgetConfig);
+    // Phone number is already known from telephony metadata on both directions - don't ask the
+    // caller to read it back, and don't generate a useless caller_phone extraction slot for it.
+    const extractionVariables = buildLeadExtractionVariables(withoutAutoKnownPhoneField(widgetConfig));
 
     // One click provisions both directions: the inbound (answering) agent and the outbound
     // (calling-out) agent. They are always provisioned together, which keeps the poller's
