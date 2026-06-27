@@ -215,8 +215,8 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
   const originCheck = checkAllowedOrigin(req, {
     allowedDomains: bot.allowed_domains || [],
     extraAllowedOrigins: [config.clientUrl],
-    allowRuntimeOrigin: false,
-    requireSource: true,
+    allowRuntimeOrigin: true,
+    requireSource: false,
   });
 
   if (!originCheck.allowed) {
