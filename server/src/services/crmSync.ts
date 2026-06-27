@@ -126,3 +126,51 @@ export async function syncLeadToCrm(
     return false;
   }
 }
+
+export interface CrmTestResult {
+  ok: boolean;
+  status?: number;
+  message: string;
+}
+
+/**
+ * Sends a single harmless test lead through the connection right after the
+ * owner pastes credentials, so a bad key/secret/URL is caught immediately
+ * instead of failing silently on the next real lead. No retries - this is
+ * an interactive check, not a background sync.
+ */
+export async function testCrmConnection(connection: CrmConnection, ctx: CrmSyncContext): Promise<CrmTestResult> {
+  if (!isCrmSyncEnabled(connection)) {
+    return { ok: false, message: 'Webhook URL and API key are required.' };
+  }
+
+  const payload = {
+    name: 'Test Lead',
+    phone: '0000000000',
+    message: 'Connection test from AI Receptionist - safe to ignore or delete.',
+    source_label: ctx.businessName || 'ai-receptionist',
+    externalId: ctx.sessionId,
+  };
+  const body = JSON.stringify(payload);
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-Api-Key': connection.api_key,
+    'X-Idempotency-Key': ctx.sessionId,
+  };
+  if (connection.signing_secret) {
+    headers['X-Signature'] =
+      'sha256=' + crypto.createHmac('sha256', connection.signing_secret).update(body).digest('hex');
+  }
+
+  try {
+    const response = await fetchWithTimeout(connection.webhook_url, { method: 'POST', headers, body }, REQUEST_TIMEOUT_MS);
+    const text = await response.text().catch(() => '');
+    if (response.ok) {
+      return { ok: true, status: response.status, message: 'Test lead delivered successfully.' };
+    }
+    return { ok: false, status: response.status, message: text || `CRM responded with status ${response.status}.` };
+  } catch (err: any) {
+    const message = err?.name === 'AbortError' ? 'Request timed out.' : (err?.message || 'Could not reach the webhook URL.');
+    return { ok: false, message };
+  }
+}

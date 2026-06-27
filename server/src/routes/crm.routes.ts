@@ -9,5 +9,6 @@ router.use(requireAuth);
 router.get('/:botId/status', crmController.getStatus);
 router.post('/:botId/connect', crmController.connect);
 router.delete('/:botId/connect', crmController.disconnect);
+router.post('/:botId/test', crmController.testConnection);
 
 export default router;

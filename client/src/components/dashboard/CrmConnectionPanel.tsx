@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Icons } from '../common/Icons';
-import { crmApi } from '../../lib/crmApi';
+import { crmApi, CrmTestResult } from '../../lib/crmApi';
 
 interface CrmConnectionPanelProps {
   botId: string;
@@ -12,6 +12,8 @@ type ConnectionState = 'loading' | 'connected' | 'disconnected' | 'error';
 export const CrmConnectionPanel: React.FC<CrmConnectionPanelProps> = ({ botId, showToast }) => {
   const [connectionState, setConnectionState] = useState<ConnectionState>('loading');
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<CrmTestResult | null>(null);
   const [webhookUrl, setWebhookUrl] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [signingSecret, setSigningSecret] = useState('');
@@ -46,6 +48,7 @@ export const CrmConnectionPanel: React.FC<CrmConnectionPanelProps> = ({ botId, s
       setWebhookUrl('');
       setApiKey('');
       setSigningSecret('');
+      setTestResult(null);
       setConnectionState('connected');
       showToast('CRM connected');
     } catch (err: any) {
@@ -59,12 +62,32 @@ export const CrmConnectionPanel: React.FC<CrmConnectionPanelProps> = ({ botId, s
     setSaving(true);
     try {
       await crmApi.disconnect(botId);
+      setTestResult(null);
       setConnectionState('disconnected');
       showToast('CRM disconnected');
     } catch (err: any) {
       showToast('Failed to disconnect CRM: ' + (err.message || err), 'error');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      // If there are unsaved values typed in the form, test those directly
+      // (catches typos before saving). Otherwise fall back to testing the
+      // already-saved connection.
+      const payload = webhookUrl.trim() && apiKey.trim()
+        ? { webhookUrl: webhookUrl.trim(), apiKey: apiKey.trim(), signingSecret: signingSecret.trim() || undefined }
+        : undefined;
+      const result = await crmApi.test(botId, payload);
+      setTestResult(result);
+    } catch (err: any) {
+      setTestResult({ ok: false, message: err?.message || 'Test failed unexpectedly.' });
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -96,11 +119,23 @@ export const CrmConnectionPanel: React.FC<CrmConnectionPanelProps> = ({ botId, s
             </div>
           </div>
           {connectionState === 'connected' && (
-            <button type="button" onClick={handleDisconnect} disabled={saving} className="h-10 px-4 rounded-lg border border-brand-border text-brand-danger hover:border-brand-danger/50 text-xs font-bold transition disabled:opacity-50">
-              Disconnect
-            </button>
+            <div className="flex gap-2">
+              <button type="button" onClick={handleTest} disabled={testing} className="h-10 px-4 rounded-lg border border-brand-border text-brand-text hover:border-brand-accent text-xs font-bold transition disabled:opacity-50">
+                {testing ? 'Testing…' : 'Test Connection'}
+              </button>
+              <button type="button" onClick={handleDisconnect} disabled={saving} className="h-10 px-4 rounded-lg border border-brand-border text-brand-danger hover:border-brand-danger/50 text-xs font-bold transition disabled:opacity-50">
+                Disconnect
+              </button>
+            </div>
           )}
         </div>
+
+        {testResult && (
+          <div className={`mx-5 mb-5 sm:mx-6 sm:mb-6 -mt-1 rounded-md border px-3 py-2.5 text-xs ${testResult.ok ? 'border-brand-success/30 bg-brand-success/10 text-brand-success' : 'border-brand-danger/30 bg-brand-danger/10 text-brand-danger'}`}>
+            <span className="font-bold">{testResult.ok ? 'Success: ' : 'Failed: '}</span>
+            {testResult.message}
+          </div>
+        )}
       </section>
 
       {connectionState !== 'connected' && connectionState !== 'loading' && (
@@ -135,7 +170,9 @@ export const CrmConnectionPanel: React.FC<CrmConnectionPanelProps> = ({ botId, s
             />
           </div>
           <div>
-            <label className="block text-[11px] font-mono font-bold uppercase tracking-wider text-brand-muted mb-1.5">Signing Secret (Optional)</label>
+            <label className="block text-[11px] font-mono font-bold uppercase tracking-wider text-brand-muted mb-1.5">
+              Signing Secret <span className="text-brand-muted/70 font-normal normal-case tracking-normal">(Optional, recommended)</span>
+            </label>
             <input
               type="password"
               className="w-full h-10 bg-brand-bg border border-brand-border rounded-md px-3 text-sm text-brand-text placeholder:text-brand-muted/60 focus:outline-none focus:border-brand-accent transition"
@@ -143,16 +180,34 @@ export const CrmConnectionPanel: React.FC<CrmConnectionPanelProps> = ({ botId, s
               value={signingSecret}
               onChange={(e) => setSigningSecret(e.target.value)}
             />
+            <p className="text-[11px] text-brand-muted mt-1">
+              Leave blank if your CRM doesn't require it. If set, every lead is signed so your CRM can verify it wasn't forged.
+            </p>
           </div>
 
-          <button
-            type="button"
-            onClick={handleConnect}
-            disabled={saving}
-            className="h-10 px-5 bg-brand-accent hover:bg-brand-accent-hover text-brand-bg font-bold rounded-md transition disabled:opacity-50"
-          >
-            Connect CRM
-          </button>
+          <p className="text-[11px] text-brand-muted">
+            Some CRMs only show the API key or signing secret once when generated, or invalidate the old one the moment you rotate it.
+            If leads stop syncing after you change something on the CRM side, come back here and re-enter the current values.
+          </p>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleConnect}
+              disabled={saving}
+              className="h-10 px-5 bg-brand-accent hover:bg-brand-accent-hover text-brand-bg font-bold rounded-md transition disabled:opacity-50"
+            >
+              Connect CRM
+            </button>
+            <button
+              type="button"
+              onClick={handleTest}
+              disabled={testing || !webhookUrl.trim() || !apiKey.trim()}
+              className="h-10 px-5 rounded-md border border-brand-border text-brand-text hover:border-brand-accent transition disabled:opacity-50"
+            >
+              {testing ? 'Testing…' : 'Test Connection'}
+            </button>
+          </div>
         </section>
       )}
     </div>

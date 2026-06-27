@@ -12,6 +12,12 @@ export interface CrmConnectPayload {
   signingSecret?: string;
 }
 
+export interface CrmTestResult {
+  ok: boolean;
+  status?: number;
+  message: string;
+}
+
 async function authedFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error('Not signed in');
@@ -41,4 +47,20 @@ export const crmApi = {
     }),
   disconnect: (botId: string) =>
     authedFetch<CrmConnectionStatus>(`/api/crm/${botId}/connect`, { method: 'DELETE' }),
+  // A failed CRM test (bad signature, wrong key, etc.) is a meaningful result, not
+  // a thrown error - reads the body regardless of status so the UI can show why it failed.
+  test: async (botId: string, payload?: Partial<CrmConnectPayload>): Promise<CrmTestResult> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('Not signed in');
+
+    const response = await fetch(`${expressUrl}/api/crm/${botId}/test`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(payload || {}),
+    });
+    return response.json();
+  },
 };
