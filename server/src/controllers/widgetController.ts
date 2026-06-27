@@ -10,6 +10,15 @@ function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, '');
 }
 
+// JSON.stringify does not escape "</script" or "<!--", so untrusted values
+// (greeting, suggested prompts) embedded into an inline <script> via
+// JSON.stringify could terminate the tag early and break the whole widget.
+function jsonForScript(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/<\/script/gi, '<\\/script')
+    .replace(/<!--/g, '<\\!--');
+}
+
 function getRequestBaseUrl(req: Request): string {
   const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
   const forwardedHost = String(req.headers['x-forwarded-host'] || '').split(',')[0].trim();
@@ -58,8 +67,8 @@ export const serveLoader = (req: Request, res: Response) => {
     return;
   }
 
-  var baseUrl = ${JSON.stringify(baseUrl)};
-  var config = ${JSON.stringify(defaultWidgetConfig)};
+  var baseUrl = ${jsonForScript(baseUrl)};
+  var config = ${jsonForScript(defaultWidgetConfig)};
   var isOpen = false;
   var iframe = null;
   var mounted = false;
@@ -230,9 +239,6 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
   const displayName = escapeHtml(widgetConfig.assistantName || bot.business_name);
   const avatarText = escapeHtml(widgetConfig.avatarText || bot.business_name.charAt(0));
   const radiusPx = widgetConfig.radius === 'sharp' ? '6px' : widgetConfig.radius === 'rounded' ? '24px' : '16px';
-  const promptButtons = widgetConfig.suggestedPrompts.map((prompt, index) => (
-    `<button type="button" class="suggestion-btn" data-prompt-index="${index}">${escapeHtml(prompt)}</button>`
-  )).join('');
   const voiceButtonHtml = widgetConfig.enableVoice ? `
   <button type="button" id="voiceBtn" class="voice-btn" title="Talk to agent" aria-label="Talk to agent">
     <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg>
@@ -814,8 +820,8 @@ ${poweredByHtml}
 (function() {
   var API = '${apiBase}';
   var BOT_ID = '${bot.id}';
-  var GREETING = ${JSON.stringify(bot.greeting)};
-  var SUGGESTED_PROMPTS = ${JSON.stringify(widgetConfig.suggestedPrompts)};
+  var GREETING = ${jsonForScript(bot.greeting)};
+  var SUGGESTED_PROMPTS = ${jsonForScript(widgetConfig.suggestedPrompts)};
   var sessionId = null;
   var isResponding = false;
 
@@ -958,14 +964,19 @@ ${poweredByHtml}
     var wrap = document.createElement('div');
     wrap.id = 'suggestions';
     wrap.className = 'suggestions';
-    wrap.innerHTML = \`${promptButtons}\`;
-    messagesEl.appendChild(wrap);
-    Array.prototype.forEach.call(wrap.querySelectorAll('.suggestion-btn'), function(button) {
+    SUGGESTED_PROMPTS.forEach(function(prompt, index) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'suggestion-btn';
+      button.setAttribute('data-prompt-index', String(index));
+      button.textContent = prompt;
       button.addEventListener('click', function() {
-        chatInput.value = SUGGESTED_PROMPTS[Number(button.getAttribute('data-prompt-index'))] || button.textContent || '';
+        chatInput.value = prompt;
         chatForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
       });
+      wrap.appendChild(button);
     });
+    messagesEl.appendChild(wrap);
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
