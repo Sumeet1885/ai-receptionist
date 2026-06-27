@@ -804,8 +804,8 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
   ${voiceButtonHtml}
   <input type="text" id="chatInput" maxlength="400" placeholder="${escapeHtml(widgetConfig.inputPlaceholder)}" autocomplete="off" />
   <button type="submit" id="sendBtn">
-    <svg viewBox="0 0 20 "><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
-  </button>20
+    <svg viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
+  </button>
 </form>
 
 ${poweredByHtml}
@@ -1124,13 +1124,8 @@ ${poweredByHtml}
     var selectedDial = currentSelectedCountry.dial;
     var fullNumber = selectedDial + subscriber;
 
-    var allowedLens = currentSelectedCountry.len;
-    if (allowedLens.indexOf(subscriber.length) === -1) {
-      if (allowedLens.length === 1) {
-        return { valid: false, normalized: fullNumber, error: 'Please enter exactly ' + allowedLens[0] + ' digits.' };
-      } else {
-        return { valid: false, normalized: fullNumber, error: 'Please enter between ' + allowedLens[0] + ' and ' + allowedLens[allowedLens.length - 1] + ' digits.' };
-      }
+    if (subscriber.length !== 10) {
+      return { valid: false, normalized: fullNumber, error: 'Please enter exactly 10 digits.' };
     }
 
     if (
