@@ -324,24 +324,6 @@ export function setupWebSocketServer(server: Server) {
           }
         }
 
-      if (response.setupComplete || response.setup_complete) {
-        console.log('Gemini Live API Setup Complete. Triggering initial greeting...');
-        if (geminiWs.readyState === WebSocket.OPEN) {
-          geminiWs.send(JSON.stringify({
-            clientContent: {
-              turns: [{
-                role: 'user',
-                parts: [{ text: "Hello! I am on the line. Please greet me and welcome me to the business." }]
-              }],
-              turnComplete: true
-            }
-          }));
-        }
-        return;
-      }
-
-
-
         if (response.serverContent.turnComplete && accumulatedBotText.trim()) {
           try {
             await supabase.from('messages').insert({

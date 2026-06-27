@@ -126,10 +126,9 @@ test('live voice contact collection requests exactly one typed field at a time',
     .find((tool: any) => tool.name === 'request_text_input');
 
   assert.match(requestTextInputTool.description, /exactly one field/i);
+  assert.match(requestTextInputTool.description, /opens the text box/i);
   assert.match(requestTextInputTool.description, /never request phone and email together/i);
-  assert.match(requestTextInputTool.description, /enter your details in the text box/i);
-  assert.match(requestTextInputTool.description, /immediately/i);
-  assert.match(requestTextInputTool.description, /do not announce/i);
+  assert.match(requestTextInputTool.description, /do not proceed until/i);
   assert.doesNotMatch(requestTextInputTool.description, /generic acknowledgement alone is rejected/i);
 
   const persona = buildBusinessPersona(sampleBot, defaultWidgetConfig, {
@@ -152,6 +151,29 @@ test('live voice contact collection requests exactly one typed field at a time',
   assert.doesNotMatch(extraConstraints, /tool call will be rejected/i);
   assert.match(liveControllerSource, /requestedTextInputThisToolTurn/);
   assert.match(liveControllerSource, /Request only one typed contact field at a time/i);
+});
+
+test('contact text input guidance does not duplicate the spoken prompt across persona and tool schema', async () => {
+  const helper = await import(pathToFileURL(helperPath).href);
+  const liveControllerSource = readFileSync(liveControllerPath, 'utf8');
+  const requestTextInputTool = helper
+    .buildLiveFunctionDeclarations(['title', 'visitorName', 'visitorPhone', 'startTime', 'endTime'])
+    .find((tool: any) => tool.name === 'request_text_input');
+
+  const extraConstraints = buildWebVoiceExtraConstraints({
+    requiredContactFields: ['phone'],
+    tzOffset: '+05:30',
+    endCallInstruction: 'end call instruction',
+    wrapWarningSignal: '[[WRAP]]',
+    forceEndSignal: '[[END]]',
+  });
+
+  assert.match(extraConstraints, /for booking a meeting/i);
+  assert.match(extraConstraints, /enter your details in the text box/i);
+  assert.match(requestTextInputTool.description, /opens the text box/i);
+  assert.doesNotMatch(requestTextInputTool.description, /for booking a meeting/i);
+  assert.doesNotMatch(requestTextInputTool.description, /enter your details in the text box/i);
+  assert.equal((liveControllerSource.match(/response\.setupComplete \|\| response\.setup_complete/g) || []).length, 1);
 });
 
 test('Gemini remains blocked until the server accepts the requested contact field', () => {
