@@ -1414,7 +1414,7 @@ ${poweredByHtml}
       }
     } catch (err) {
       hideTyping();
-      addMessage('Sorry, I\'m having trouble connecting right now.', 'bot');
+      addMessage('Sorry, I\\'m having trouble connecting right now.', 'bot');
     } finally {
       isResponding = false;
       sendBtn.disabled = false;
