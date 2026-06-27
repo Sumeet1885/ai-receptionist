@@ -186,7 +186,7 @@ export const serveLoader = (req: Request, res: Response) => {
       applyConfig(data.widget_config);
     })
     .catch(function() {});
-})();`;
+  })();`;
 
   res.send(js);
 };
@@ -778,7 +778,7 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
               <span id="selectedCountryCode">+91</span>
               <span class="country-arrow"></span>
             </div>
-            <input type="text" id="phoneInputField" placeholder="Enter phone number" autocomplete="tel-national" inputmode="numeric" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10);" />
+            <input type="text" id="phoneInputField" placeholder="Enter phone number" autocomplete="tel-national" inputmode="tel" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10);" />
             <button type="submit" id="phoneInputBtn" disabled>
               <svg viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
             </button>
@@ -804,8 +804,8 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
   ${voiceButtonHtml}
   <input type="text" id="chatInput" maxlength="400" placeholder="${escapeHtml(widgetConfig.inputPlaceholder)}" autocomplete="off" />
   <button type="submit" id="sendBtn">
-    <svg viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
-  </button>
+    <svg viewBox="0 0 20 "><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
+  </button>20
 </form>
 
 ${poweredByHtml}
@@ -958,7 +958,7 @@ ${poweredByHtml}
     var wrap = document.createElement('div');
     wrap.id = 'suggestions';
     wrap.className = 'suggestions';
-    wrap.innerHTML = ${JSON.stringify(promptButtons)};
+    wrap.innerHTML = \`${promptButtons}\`;
     messagesEl.appendChild(wrap);
     Array.prototype.forEach.call(wrap.querySelectorAll('.suggestion-btn'), function(button) {
       button.addEventListener('click', function() {
@@ -1038,13 +1038,15 @@ ${poweredByHtml}
         selectedCountryFlag.textContent = c.flag;
         selectedCountryCode.textContent = c.dial;
         
-        // maxlength is fixed at 10
-        phoneInputField.setAttribute('maxlength', '10');
-        if (phoneInputField.value.length > 10) {
-          phoneInputField.value = phoneInputField.value.substring(0, 10);
-        }
-
         countryDropdownList.style.display = 'none';
+
+        phoneInputField.setAttribute('maxlength', '10');
+        phoneInputField.maxLength = 10;
+        var sanitized = phoneInputField.value.replace(/[^0-9]/g, '');
+        if (sanitized.length > 10) {
+          sanitized = sanitized.substring(0, 10);
+        }
+        phoneInputField.value = sanitized;
 
         // Trigger validation check on current input value
         var val = phoneInputField.value.trim();
@@ -1359,57 +1361,63 @@ ${poweredByHtml}
         localStorage.setItem('air_visitor_id', visitorId);
       }
 
-      var res = await fetch(API + '/api/chat/bot/' + BOT_ID, { method: 'GET' });
-      if (!res.ok) throw new Error('Bot fetch failed');
-      var botData = await res.json();
-
-      // Create session via the session endpoint
-      var sessRes = await fetch(API + '/api/chat/session', {
+      var res = await fetch(API + '/api/chat/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ botId: BOT_ID, visitorId: visitorId })
       });
-      var sessData = await sessRes.json();
-      sessionId = sessData.sessionId;
-      setVoiceState('idle');
-
-      addMessage(GREETING, 'bot');
-      renderSuggestions();
+      if (res.ok) {
+        var data = await res.json();
+        sessionId = data.sessionId;
+        if (voiceBtn) voiceBtn.disabled = false;
+        
+        // Show greeting
+        if (data.isNew && GREETING) {
+          addMessage(GREETING, 'bot');
+        } else {
+          // Load history
+          var histRes = await fetch(API + '/api/chat/history?sessionId=' + encodeURIComponent(sessionId), { method: 'GET' });
+          if (histRes.ok) {
+            var hist = await histRes.json();
+            hist.forEach(function(m) {
+              addMessage(m.content, m.sender);
+            });
+          }
+        }
+        renderSuggestions();
+      }
     } catch (err) {
       console.error('[AI Receptionist Widget] Init error:', err);
-      addMessage('Welcome! Please try refreshing if the connection fails.', 'bot');
     }
   }
 
   chatForm.addEventListener('submit', async function(e) {
     e.preventDefault();
     var text = chatInput.value.trim();
-    if (!text || !sessionId || isResponding) return;
+    if (!text || isResponding) return;
 
-    addMessage(text, 'user');
     chatInput.value = '';
+    addMessage(text, 'user');
+    showTyping();
     isResponding = true;
     sendBtn.disabled = true;
-    showTyping();
 
     try {
-      var res = await fetch(API + '/api/chat/reply', {
+      var response = await fetch(API + '/api/chat/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: sessionId, userMessage: text, timezone: timezone })
+        body: JSON.stringify({ botId: BOT_ID, sessionId: sessionId, content: text, timezone: timezone })
       });
-      var data = await res.json();
       hideTyping();
-      if (data && typeof data.reply === 'string' && data.reply.trim()) {
-        addMessage(data.reply, 'bot');
-      } else if (!res.ok) {
-        addMessage(data.error || 'Sorry, I could not process that request right now.', 'bot');
+      if (response.ok) {
+        var data = await response.json();
+        if (data.reply) addMessage(data.reply, 'bot');
       } else {
         addMessage('I need a moment to confirm that. Please tell me your preferred date and time again.', 'bot');
       }
     } catch (err) {
       hideTyping();
-      addMessage('Sorry, I\\'m having trouble connecting right now.', 'bot');
+      addMessage('Sorry, I\'m having trouble connecting right now.', 'bot');
     } finally {
       isResponding = false;
       sendBtn.disabled = false;
