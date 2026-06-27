@@ -468,17 +468,6 @@ export function setupWebSocketServer(server: Server) {
                 continue;
               }
 
-              // Enforce the spoken redirect: a generic ack like "I can help with that" is not
-              // enough, Gemini must actually tell the user to type the value in the box, in this
-              // same (still-open) turn, before this tool call is allowed to open the box.
-              if (!/\bbox\b/i.test(accumulatedBotText)) {
-                functionResponse = {
-                  error: `Before calling this tool you must first say one short natural sentence in this same turn telling the user to type their ${requestedField} in the text box - for example "Sure! Please enter your ${requestedField} in the box below." A generic acknowledgement like "I can help with that" is not enough. Say that sentence now, then call this tool again.`
-                };
-                functionResponses.push({ id, name, response: functionResponse });
-                continue;
-              }
-
               const requestResult = contactCollection.request(requestedField);
               if (!requestResult.accepted) {
                 const verifiedValue = contactCollection.getVerified(requestedField);

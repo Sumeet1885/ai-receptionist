@@ -127,8 +127,10 @@ test('live voice contact collection requests exactly one typed field at a time',
 
   assert.match(requestTextInputTool.description, /exactly one field/i);
   assert.match(requestTextInputTool.description, /never request phone and email together/i);
-  assert.match(requestTextInputTool.description, /first say one short natural sentence/i);
+  assert.match(requestTextInputTool.description, /enter your details in the text box/i);
+  assert.match(requestTextInputTool.description, /immediately/i);
   assert.match(requestTextInputTool.description, /do not announce/i);
+  assert.doesNotMatch(requestTextInputTool.description, /generic acknowledgement alone is rejected/i);
 
   const persona = buildBusinessPersona(sampleBot, defaultWidgetConfig, {
     timezone: 'Asia/Kolkata',
@@ -143,9 +145,11 @@ test('live voice contact collection requests exactly one typed field at a time',
     wrapWarningSignal: '[[WRAP]]',
     forceEndSignal: '[[END]]',
   });
-  assert.match(extraConstraints, /in that same turn, immediately call/i);
+  assert.match(extraConstraints, /enter your details in the text box/i);
+  assert.match(extraConstraints, /immediately call/i);
   assert.match(extraConstraints, /never say.*calling.*tool/i);
   assert.match(extraConstraints, /do not describe, narrate, or repeat that the text box is visible/i);
+  assert.doesNotMatch(extraConstraints, /tool call will be rejected/i);
   assert.match(liveControllerSource, /requestedTextInputThisToolTurn/);
   assert.match(liveControllerSource, /Request only one typed contact field at a time/i);
 });
@@ -173,14 +177,14 @@ test('live booking cannot run in a tool batch that requests contact input', () =
   assert.match(liveControllerSource, /getLiveBookingContactError/);
 });
 
-test('phone clients preserve overlong input so validation rejects it instead of truncating it', () => {
+test('embedded widget phone textbox enforces the 10 digit entry cap', () => {
   const publicVoiceHookSource = readFileSync(publicVoiceHookPath, 'utf8');
   const widgetSource = readFileSync(widgetControllerPath, 'utf8');
-  const voiceCallViewSource = readFileSync(voiceCallViewPath, 'utf8');
 
-  assert.doesNotMatch(voiceCallViewSource, /slice\(0,\s*10\)/);
-  assert.doesNotMatch(widgetSource, /slice\(0,\s*10\)/);
-  assert.doesNotMatch(voiceCallViewSource, /maxLength=\{liveVoice\.requestedInputType === 'phone' \? 10/);
+  assert.match(widgetSource, /maxlength="10"/);
+  assert.match(widgetSource, /slice\(0,\s*10\)/);
+  assert.match(widgetSource, /substring\(0,\s*10\)/);
+  assert.match(widgetSource, /phoneInputField\.maxLength = 10/);
   assert.match(publicVoiceHookSource, /input_validation_error/);
 });
 
@@ -216,31 +220,30 @@ test('the live backend suppresses Gemini speech and text while contact verificat
   assert.match(liveControllerSource, /responseRequestsContactInput/);
 });
 
-test('the live backend lets Gemini speak its own redirect sentence instead of silently popping the textbox', () => {
+test('the live backend opens the contact textbox immediately without retry-looping on prompt wording', () => {
   const liveControllerSource = readFileSync(liveControllerPath, 'utf8');
   const receptionistInstructionSource = readFileSync(
     path.join(workspaceRoot, 'server', 'src', 'modules', 'phone-calls', 'receptionistInstruction.ts'),
     'utf8'
   );
 
-  // The old proactive shortcut silently opened the textbox (and faked a transcript line)
-  // the instant it detected booking intent, before Gemini ever spoke. That path is gone -
-  // Gemini itself must say a short redirect sentence and call request_text_input in the
-  // same turn, so these symbols must no longer exist in the live controller.
   assert.doesNotMatch(liveControllerSource, /isLikelyBookingIntent/);
   assert.doesNotMatch(liveControllerSource, /openNextRequiredContactInput/);
   assert.doesNotMatch(liveControllerSource, /resumeGeminiAfterProactiveContactCollection/);
   assert.doesNotMatch(liveControllerSource, /getContactPrompt/);
+  assert.doesNotMatch(liveControllerSource, /accumulatedBotText[\s\S]*\\bbox\\b/);
+  assert.doesNotMatch(liveControllerSource, /Say that sentence now, then call this tool again/);
 
   assert.match(
     receptionistInstructionSource,
     /including the moment the user first says they want to book, schedule, or be contacted/i
   );
-  assert.match(receptionistInstructionSource, /say exactly ONE short, natural sentence redirecting them to the text box/i);
+  assert.match(receptionistInstructionSource, /enter your details in the text box/i);
+  assert.doesNotMatch(receptionistInstructionSource, /tool call will be rejected/i);
 
-  // request_input must still fire immediately and unconditionally when the genuine
-  // request_text_input tool call lands - this is what triggers the client's mic-mute,
-  // so its timing/content here must stay untouched by the speech-transition change.
+  // request_input must still fire immediately when the genuine request_text_input tool
+  // call lands - this is what triggers the client's mic-mute, so its timing/content
+  // here must stay untouched by the speech-transition change.
   assert.match(
     liveControllerSource,
     /pendingContactToolCallTemp = \{ id, name, field: requestedField \};[\s\S]*ws\.send\(JSON\.stringify\(\{\s*type: 'request_input',\s*field: requestedField\s*\}\)\);/
