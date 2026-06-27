@@ -25,5 +25,11 @@ export const config = {
     clientId: process.env.MICROSOFT_CLIENT_ID || '',
     clientSecret: process.env.MICROSOFT_CLIENT_SECRET || '',
     redirectUri: process.env.MICROSOFT_REDIRECT_URI || 'http://localhost:4000/api/calendar/callback/outlook',
+  },
+  dograh: {
+    apiUrl: process.env.DOGRAH_API_URL || 'http://localhost:8000',
+    email: process.env.DOGRAH_EMAIL || '',
+    password: process.env.DOGRAH_PASSWORD || '',
+    pollIntervalMs: parseInt(process.env.DOGRAH_POLL_INTERVAL_MS || '60000', 10),
   }
 };

@@ -73,6 +73,7 @@ flowchart LR
 | Typed chat | `gemini-2.5-flash-lite` | Answers from the bot knowledge base and requests calendar tools. Configurable with `GEMINI_MODEL`. |
 | Live voice | `models/gemini-3.1-flash-live-preview` | Streams audio and performs controlled tool calls through the Express WebSocket proxy. |
 | Lead analysis | Groq `llama-3.1-8b-instant` | Extracts lead fields, sentiment, score, summary, and appointment state after conversations. |
+| Inbound phone calls | Dograh (self-hosted, separate service) | Answers real phone numbers using a voice agent provisioned from the same business persona/knowledge base; calls are mirrored into Supabase. See [Phone calls/README.md](Phone%20calls/README.md). |
 
 There is currently no embedding or vector-search layer. The complete `bots.knowledge_base` is added to the Gemini prompt. This is simple, but prompt size and cost grow with the knowledge base.
 
@@ -172,6 +173,7 @@ Lead records are upserted by session. If `GROQ_API_KEY` is absent or Groq fails,
 │   └── src/
 │       ├── components/             Auth, chat, dashboard, landing, layout, UI
 │       ├── hooks/                  Shared client behavior, including live voice
+│       ├── modules/phone-calls/    Calls tab: Dograh provisioning UI + call history
 │       ├── pages/                  Dashboard, agents, leads, inbox, calendar
 │       ├── services/               Supabase and API clients
 │       └── App.tsx                 Client route definitions
@@ -179,6 +181,7 @@ Lead records are upserted by session. If `GROQ_API_KEY` is absent or Groq fails,
 │   ├── src/
 │   │   ├── controllers/            Chat, widget, calendar, lead, live voice
 │   │   ├── middleware/             Authentication and request controls
+│   │   ├── modules/phone-calls/    Dograh client, persona builder, call mirroring/poller, routes
 │   │   ├── services/               Gemini guard/tools and calendar adapters
 │   │   ├── utils/                  Security and contact validation
 │   │   └── index.ts                Active backend entry point
@@ -189,6 +192,7 @@ Lead records are upserted by session. If `GROQ_API_KEY` is absent or Groq fails,
 ├── docs/
 │   ├── AWS_DEPLOYMENT.md           Detailed AWS deployment runbook
 │   └── superpowers/                Historical design specs and implementation plans
+├── Phone calls/                    Architecture notes for inbound phone calls (Dograh); runtime code lives under server/client modules above
 ├── package.json                    Root orchestration scripts
 └── Readme.md                       This architecture and maintenance guide
 ```
@@ -212,6 +216,8 @@ Lead records are upserted by session. If `GROQ_API_KEY` is absent or Groq fails,
 | Change lead extraction | `server/src/controllers/leadController.ts` |
 | Change schema or RLS | Add a migration under `server/supabase/migrations/` |
 | Change server routing | `server/src/index.ts` |
+| Change inbound phone call behavior (Dograh) | `server/src/modules/phone-calls/` (see [Phone calls/README.md](Phone%20calls/README.md)), `client/src/modules/phone-calls/` |
+| Change the shared receptionist persona text | `server/src/modules/phone-calls/receptionistInstruction.ts` (used by both Gemini Live and Dograh) |
 
 ## Data model
 
@@ -225,6 +231,7 @@ Lead records are upserted by session. If `GROQ_API_KEY` is absent or Groq fails,
 | `calendar_connections` | Encrypted/provider OAuth connection metadata per owner. |
 | `appointments` | Locally persisted bookings linked to bot/session/provider event. |
 | `calendar_oauth_states` | Short-lived, hashed, single-use OAuth state records. |
+| `phone_calls` | One row per Dograh inbound call run, mirrored into `chat_sessions`/`messages`/`leads`. |
 
 Anonymous visitors do not query or insert these records directly. Express uses the Supabase service role for validated public-chat operations. Owner dashboard queries use the publishable key and RLS.
 
@@ -240,6 +247,7 @@ Anonymous visitors do not query or insert these records directly. Express uses t
 | `/leads` | Authenticated | Lead pipeline. |
 | `/inbox` | Authenticated | Conversation history. |
 | `/calendar` | Authenticated | Calendar and appointments. |
+| `/calls` | Authenticated | Inbound phone agent provisioning and call history (Dograh). |
 | `/agents` | Authenticated | Receptionist list. |
 | `/agents/new` | Authenticated | Create receptionist. |
 | `/agents/:botId/:tab` | Authenticated | `overview`, `knowledge`, `install`, or `preview`. |
@@ -261,6 +269,13 @@ The active HTTP server is `server/src/index.ts`.
 | `GET /api/calendar/auth-url` | Authenticated provider OAuth start. |
 | `GET /api/calendar/callback/:provider` | Google/Microsoft OAuth callback. |
 | `GET /api/calendar/status` | Authenticated connection status. |
+| `GET /api/dograh/bots/:botId/status` | Authenticated phone-agent provisioning status. |
+| `POST /api/dograh/bots/:botId/provision` | Authenticated: create/update the Dograh inbound phone agent from the bot's persona. |
+| `GET /api/dograh/numbers` | Authenticated: list Dograh phone numbers not claimed by another bot. |
+| `POST /api/dograh/bots/:botId/assign-number` | Authenticated: bind a phone number's inbound routing to this bot's agent. |
+| `POST /api/dograh/bots/:botId/call` | Authenticated: place a single ad-hoc outbound call from the bot's assigned number. |
+| `GET /api/dograh/bots/:botId/calls` | Authenticated, read-only: mirrored phone call history (inbound and outbound) with lead outcomes. |
+| `POST /api/dograh/bots/:botId/sync` | Authenticated: on-demand pull of new Dograh call runs (the poller also runs this automatically). |
 
 Global CORS is restricted by trusted runtime origins. Widget authorization is a separate, stricter bot-specific origin check. Do not replace either layer with unrestricted `cors()`.
 
@@ -403,6 +418,8 @@ For the detailed AWS topology, secrets, load balancer settings, and rollout proc
 - The application does not send SMS or email booking confirmations.
 - Groq lead analysis is eventually consistent and optional; a successful chat does not guarantee an updated lead record when Groq is unavailable.
 - Files under `docs/superpowers/` describe decisions at a point in time. Verify them against current code before implementation.
+- Dograh phone calls do not yet support live calendar booking or sequential server-verified contact capture during the call; booking requests are routed to verbal contact capture and human follow-up. Dograh OSS exposes no run-completion webhook, so call mirroring is poll-based (default 60s) plus a manual "Sync now" action, not real-time. Tenant isolation across bots for phone numbers is enforced by this app, not by Dograh (it is a single org/service account).
+- Outbound calling supports only single ad-hoc calls with no per-call personalization (Dograh's `initiate-call` API has no field for dynamic context like a lead's name or reason for the call), and no bulk/campaign dialing.
 
 ## AI change protocol
 

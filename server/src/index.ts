@@ -24,11 +24,14 @@ app.use(cors({
 app.use(express.json());
 
 import widgetRoutes from './routes/widget.routes';
+import { dograhRoutes, startCallPoller } from './modules/phone-calls';
+import { supabase } from './services/db';
 
 // Routes
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/widget', widgetRoutes);
+app.use('/api/dograh', dograhRoutes);
 
 app.get('/health', (req, res) => {
   res.json({
@@ -48,3 +51,6 @@ const server = app.listen(config.port, () => {
 
 // Attach WebSocket server for Gemini Live API Voice
 setupWebSocketServer(server);
+
+// Start the Dograh phone-call poller (no-ops when DOGRAH_* env is unset)
+startCallPoller(supabase);

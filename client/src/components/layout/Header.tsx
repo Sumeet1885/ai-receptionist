@@ -13,6 +13,7 @@ const authedNav = [
   { label: 'Leads', path: '/leads', key: 'leads' },
   { label: 'Inbox', path: '/inbox', key: 'inbox' },
   { label: 'Calendar', path: '/calendar', key: 'calendar' },
+  { label: 'Calls', path: '/calls', key: 'calls' },
   { label: 'Agents', path: '/agents', key: 'agents' }
 ];
 

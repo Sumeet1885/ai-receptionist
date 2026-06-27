@@ -4,6 +4,10 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { validateContactInput } from '../src/utils/contactValidation';
+import { buildBusinessPersona, buildWebVoiceExtraConstraints } from '../src/modules/phone-calls/receptionistInstruction';
+import { defaultWidgetConfig } from '../src/utils/widgetConfig';
+
+const sampleBot = { business_name: 'Test Biz', industry: 'Test', knowledge_base: 'KB' };
 
 const workspaceRoot = path.resolve(import.meta.dirname, '..', '..');
 const helperPath = path.join(workspaceRoot, 'server', 'src', 'services', 'liveTools.ts');
@@ -98,7 +102,14 @@ test('live voice flow validates typed contact details in backend and both client
 
   assert.match(liveControllerSource, /input_validation_error/);
   assert.match(liveControllerSource, /LiveContactCollection/);
-  assert.match(liveControllerSource, /do not accept spoken claims/i);
+  const extraConstraints = buildWebVoiceExtraConstraints({
+    requiredContactFields: ['phone'],
+    tzOffset: '+05:30',
+    endCallInstruction: 'end call instruction',
+    wrapWarningSignal: '[[WRAP]]',
+    forceEndSignal: '[[END]]',
+  });
+  assert.match(extraConstraints, /do not accept spoken claims/i);
   assert.match(publicVoiceHookSource, /input_validation_error/);
   assert.match(widgetSource, /validateContactInput\(pendingInputField, text\)/);
   assert.match(voiceCallViewSource, /validateContactInput\(liveVoice\.requestedInputType, inputValue\)/);
@@ -118,10 +129,23 @@ test('live voice contact collection requests exactly one typed field at a time',
   assert.match(requestTextInputTool.description, /never request phone and email together/i);
   assert.match(requestTextInputTool.description, /before speaking/i);
   assert.match(requestTextInputTool.description, /do not announce/i);
-  assert.match(liveControllerSource, /request only ONE missing detail at a time/i);
-  assert.match(liveControllerSource, /first action in that turn/i);
-  assert.match(liveControllerSource, /never say.*calling.*tool/i);
-  assert.match(liveControllerSource, /do not claim.*text box.*visible/i);
+
+  const persona = buildBusinessPersona(sampleBot, defaultWidgetConfig, {
+    timezone: 'Asia/Kolkata',
+    bookingInstruction: '3. booking instruction placeholder',
+  });
+  assert.match(persona, /request only ONE missing detail at a time/i);
+
+  const extraConstraints = buildWebVoiceExtraConstraints({
+    requiredContactFields: ['phone'],
+    tzOffset: '+05:30',
+    endCallInstruction: 'end call instruction',
+    wrapWarningSignal: '[[WRAP]]',
+    forceEndSignal: '[[END]]',
+  });
+  assert.match(extraConstraints, /first action in that turn/i);
+  assert.match(extraConstraints, /never say.*calling.*tool/i);
+  assert.match(extraConstraints, /do not claim.*text box.*visible/i);
   assert.match(liveControllerSource, /requestedTextInputThisToolTurn/);
   assert.match(liveControllerSource, /Request only one typed contact field at a time/i);
 });
@@ -192,6 +216,16 @@ test('the live backend suppresses Gemini speech and text while contact verificat
   assert.match(liveControllerSource, /responseRequestsContactInput/);
 });
 
+test('the live backend can open the next contact textbox before Gemini speaks during booking intent', () => {
+  const liveControllerSource = readFileSync(liveControllerPath, 'utf8');
+
+  assert.match(liveControllerSource, /isLikelyBookingIntent/);
+  assert.match(liveControllerSource, /openNextRequiredContactInput/);
+  assert.match(liveControllerSource, /Please type your phone number in the text box/);
+  assert.match(liveControllerSource, /Please type your email address in the text box/);
+  assert.match(liveControllerSource, /resumeGeminiAfterProactiveContactCollection/);
+});
+
 test('both clients discard queued Gemini audio when a contact textbox opens', () => {
   const publicVoiceHookSource = readFileSync(publicVoiceHookPath, 'utf8');
   const widgetSource = readFileSync(widgetControllerPath, 'utf8');
@@ -211,7 +245,14 @@ test('live sessions warn at 4 minutes and hard-stop at 5 minutes', async () => {
   assert.match(liveControllerSource, /registerSessionLifecycle/);
   assert.match(liveControllerSource, /LIVE_WRAP_WARNING_SIGNAL/);
   assert.match(liveControllerSource, /LIVE_FORCE_END_SIGNAL/);
-  assert.match(liveControllerSource, /important class to attend soon/i);
+  const extraConstraints = buildWebVoiceExtraConstraints({
+    requiredContactFields: [],
+    tzOffset: '+05:30',
+    endCallInstruction: helper.LIVE_END_CALL_INSTRUCTION,
+    wrapWarningSignal: helper.LIVE_WRAP_WARNING_SIGNAL,
+    forceEndSignal: helper.LIVE_FORCE_END_SIGNAL,
+  });
+  assert.match(extraConstraints, /important class to attend soon/i);
   assert.match(helper.LIVE_WRAP_WARNING_SIGNAL, /\[\[SESSION_WRAP_WARNING\]\]/);
   assert.match(helper.LIVE_FORCE_END_SIGNAL, /\[\[SESSION_FORCE_END\]\]/);
 });

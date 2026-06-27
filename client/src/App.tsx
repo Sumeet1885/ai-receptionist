@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './lib/supabaseClient';
 
 import { Toast as ToastType } from './types';
@@ -25,6 +25,7 @@ import { ConversationList } from './components/dashboard/ConversationList';
 import { AppointmentsTab } from './components/dashboard/AppointmentsTab';
 import { AgentsPage } from './components/dashboard/AgentsPage';
 import { AgentDetailPage } from './components/dashboard/AgentDetailPage';
+import { CallsWorkspace } from './modules/phone-calls/CallsWorkspace';
 
 type AgentTab = 'overview' | 'knowledge' | 'install' | 'preview';
 
@@ -35,6 +36,7 @@ type AppRoute =
   | { name: 'leads' }
   | { name: 'inbox' }
   | { name: 'calendar' }
+  | { name: 'calls' }
   | { name: 'agents' }
   | { name: 'agent-new' }
   | { name: 'agent-detail'; botId: string; tab: AgentTab }
@@ -56,6 +58,7 @@ function parseRoute(): AppRoute {
   if (path === '/leads') return { name: 'leads' };
   if (path === '/inbox') return { name: 'inbox' };
   if (path === '/calendar') return { name: 'calendar' };
+  if (path === '/calls') return { name: 'calls' };
   if (path === '/agents/new') return { name: 'agent-new' };
   if (path === '/agents') return { name: 'agents' };
 
@@ -76,6 +79,7 @@ export default function App() {
   const [route, setRoute] = useState<AppRoute>(() => parseRoute());
   const [toast, setToast] = useState<ToastType | null>(null);
   const loadedPublicSubdomainRef = useRef<string>('');
+  const toastTimerRef = useRef<number | null>(null);
 
   const { user, signOut } = useAuth();
   const { bots, setBots, activeBotId, setActiveBotId, fetchBots, createBot, updateBot, deleteBot } = useBots();
@@ -112,10 +116,24 @@ export default function App() {
     navigate(map[view] || '/dashboard');
   };
 
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    if (toastTimerRef.current) {
+      window.clearTimeout(toastTimerRef.current);
+    }
     setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
-  };
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast(null);
+      toastTimerRef.current = null;
+    }, 4000);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        window.clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const onPopState = () => setRoute(parseRoute());
@@ -379,6 +397,20 @@ export default function App() {
             subtitle="Connect your calendar and review bookings created by the receptionist."
           >
             <AppointmentsTab />
+          </PostLoginShell>
+        )}
+
+        {route.name === 'calls' && (
+          <PostLoginShell
+            title="Calls"
+            subtitle="Provision a phone agent and review inbound calls answered by your receptionist."
+          >
+            <CallsWorkspace
+              bots={bots}
+              activeBotId={activeBotId}
+              setActiveBotId={setActiveBotId}
+              showToast={showToast}
+            />
           </PostLoginShell>
         )}
 

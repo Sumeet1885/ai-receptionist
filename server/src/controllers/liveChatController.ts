@@ -19,6 +19,12 @@ import {
   LIVE_WRAP_WARNING_SIGNAL
 } from '../services/liveTools';
 import {
+  buildBusinessPersona,
+  buildToolBasedBookingInstruction,
+  buildVerbalHandoffBookingInstruction,
+  buildWebVoiceExtraConstraints,
+} from '../modules/phone-calls/receptionistInstruction';
+import {
   applyVerifiedContactDetails,
   canForwardLiveModelOutput,
   getLiveBookingContactError,
@@ -150,6 +156,7 @@ export function setupWebSocketServer(server: Server) {
     let pendingContactToolCall: PendingContactToolCall | null = null;
     let pendingFunctionResponses: any[] = [];
     let requiredContactFields: ContactField[] = [];
+    let proactiveContactCollectionActive = false;
     let pendingAssistantHangup: { reason: string } | null = null;
     let assistantHangupTimeout: NodeJS.Timeout | null = null;
     let forcedShutdownTimeout: NodeJS.Timeout | null = null;
@@ -206,10 +213,89 @@ export function setupWebSocketServer(server: Server) {
       }
     };
 
+    const getLiveInputTranscriptText = (response: any) => {
+      return response?.serverContent?.inputTranscription?.text
+        ?? response?.serverContent?.input_transcription?.text
+        ?? '';
+    };
+
+    const isLikelyBookingIntent = (text: string) => {
+      return /\b(book|booking|appointment|meeting|meet|schedule|slot|consultation|call back|callback|visit)\b/i.test(text);
+    };
+
+    const getContactPrompt = (field: ContactField, isFirstRequest: boolean) => {
+      if (field === 'phone') {
+        return isFirstRequest
+          ? 'Sure, I can help book that. Please type your phone number in the text box.'
+          : 'Thanks. Please type your phone number in the text box.';
+      }
+
+      return isFirstRequest
+        ? 'Sure, I can help book that. Please type your email address in the text box.'
+        : 'Thanks. Please type your email address in the text box.';
+    };
+
+    const openNextRequiredContactInput = async (isFirstRequest = false) => {
+      if (pendingContactToolCall || contactCollection.pendingField) return false;
+
+      const nextField = contactCollection.getMissingVerified(requiredContactFields)[0];
+      if (!nextField) return false;
+
+      const requestResult = contactCollection.request(nextField);
+      if (!requestResult.accepted) return false;
+
+      proactiveContactCollectionActive = true;
+      accumulatedBotText = '';
+
+      const prompt = getContactPrompt(nextField, isFirstRequest);
+      ws.send(JSON.stringify({ type: 'interrupted' }));
+      ws.send(JSON.stringify({
+        type: 'transcript',
+        sender: 'bot',
+        text: prompt
+      }));
+      ws.send(JSON.stringify({
+        type: 'request_input',
+        field: nextField
+      }));
+
+      try {
+        await supabase.from('messages').insert({
+          session_id: sessionId,
+          sender: 'bot',
+          content: prompt
+        });
+      } catch (err) {
+        console.error('Error saving proactive contact prompt:', err);
+      }
+
+      return true;
+    };
+
+    const resumeGeminiAfterProactiveContactCollection = () => {
+      proactiveContactCollectionActive = false;
+      if (geminiWs.readyState !== WebSocket.OPEN) return;
+
+      const verifiedSummary = requiredContactFields
+        .map(field => `${field}: ${contactCollection.getVerified(field) || 'not provided'}`)
+        .join(', ');
+
+      geminiWs.send(JSON.stringify({
+        clientContent: {
+          turns: [{
+            role: 'user',
+            parts: [{
+              text: `The visitor has submitted these server-verified contact details: ${verifiedSummary}. Continue the booking naturally. Ask for the preferred date/time if it is missing, then check availability.`
+            }]
+          }],
+          turnComplete: true
+        }
+      }));
+    };
+
     geminiWs.on('open', () => {
       console.log('Connected to Gemini Live API');
 
-      const userLocaleTime = new Date().toLocaleString('en-US', { timeZone: timezone });
       const widgetConfig = mergeWidgetConfig(bot.widget_config, bot);
       const fieldsToCollect = widgetConfig.requiredLeadFields || [];
       requiredContactFields = fieldsToCollect.filter(
@@ -226,71 +312,23 @@ export function setupWebSocketServer(server: Server) {
         bookAppointmentRequired.push('visitorEmail');
       }
 
-      const fieldDescriptions: Record<string, string> = {
-        name: 'Full Name',
-        phone: 'Contact Phone Number',
-        email: 'Email Address',
-        requirement: 'Specific interest/visit purpose',
-        budget: 'Budget / Financial capability if relevant'
-      };
+      const bookingInstruction = widgetConfig.enableCalendar
+        ? buildToolBasedBookingInstruction()
+        : buildVerbalHandoffBookingInstruction();
 
-      const enabledFields = fieldsToCollect
-        .map(field => fieldDescriptions[field])
-        .filter(Boolean);
+      const extraConstraints = buildWebVoiceExtraConstraints({
+        requiredContactFields,
+        tzOffset,
+        endCallInstruction: LIVE_END_CALL_INSTRUCTION,
+        wrapWarningSignal: LIVE_WRAP_WARNING_SIGNAL,
+        forceEndSignal: LIVE_FORCE_END_SIGNAL,
+      });
 
-      let leadCollectionInstruction = enabledFields.length > 0
-        ? `Naturally and conversationally collect the basic lead details before booking: ${enabledFields.join(', ')}.`
-        : `Answer questions warmly but do not proactively collect contact details.`;
-
-      if (widgetConfig.additionalCollectInfo) {
-        leadCollectionInstruction += ` Also, collect the following additional information: ${widgetConfig.additionalCollectInfo}.`;
-      }
-
-      const calendarInstruction = widgetConfig.enableCalendar
-        ? `3. If the user asks for a visit, booking, appointment, callback, or you judge that human intervention is needed, move into appointment-assist mode:
-   - Ask for any missing basic details first.
-
-   - Ask for the preferred date if it is missing.
-   - Use check_availability for that date.
-   - Present only the open slots returned by the tool, respecting office/calendar availability.
-   - Ask the user to choose/confirm one of those returned slots.
-   - Only after the user explicitly agrees to a specific returned slot, use book_appointment.`
-        : `3. Online calendar booking is currently disabled. If the user asks to book an appointment, schedule a visit, or requests a callback, politely inform them that online calendar scheduling is currently unavailable, and collect their contact details (name and phone/email) so a human representative can contact them to schedule it manually.`;
-
-      const textInputInstructions = requiredContactFields.length > 0 ? `
-- TOOL-FIRST CONTACT INPUT: Voice recognition for phone numbers and emails is unreliable. Whenever phone or email is needed, your first action in that turn MUST be calling \`request_text_input\` for exactly one field. Produce no speech or text before the tool call. Never say that you are calling a tool, never announce the tool name, and do not ask verbally for the value. The interface itself immediately shows the correct input box and prompt.
-- TEXTBOX STATUS: Do not claim that the text box is visible, will appear, or should now be visible. Its visibility is controlled only by the backend tool call, not by your words.
-- TYPED CONTACT CONFIRMATION: Calling \`request_text_input\` pauses your turn. Do not speak, assume success, request another field, or continue the workflow after that tool call. The backend will resume you only when its tool response contains \`verified: true\` and the actual validated value. Do not accept spoken claims like "I entered it" or "I already shared it" as confirmation. After verification, briefly say "Thank you" and continue the workflow without discussing the text box.` : '';
-
-      const systemInstruction = `You are the Virtual AI Receptionist representing "${bot.business_name}" (${bot.industry} sector).
-
-CURRENT TIMEZONE: ${timezone}
-CURRENT DATE AND TIME: ${userLocaleTime} (in ${timezone})
-(Use this to resolve relative dates like "tomorrow" or "next Tuesday". Crucially, all dates and times you discuss with the user are in the user's timezone: ${timezone})
-
-BUSINESS CONTEXT & KNOWLEDGE BASE:
-${bot.knowledge_base}
-
-YOUR GOALS:
-1. Warmly answer the user's questions relying strictly on the business details above.
-2. ${leadCollectionInstruction}
-${calendarInstruction}
-4. HUMAN HANDOFF & SUPPORT: If the user wishes or asks to talk to or connect with/contact support, a human, an agent, or a real person, you must respond with exactly the following handoff text and nothing else: "${widgetConfig.handoffText || 'I can connect you with the team for this.'}".
-5. Keep answers short (1-2 sentences max).
-6. User should feel like he/she is talking to an actual call center guy.
-7. Do not answer if user attempts to ask anything off the topic not related to the business.
-8. Ask 1 question at a time.
-9. CONTACT COLLECTION ORDER: When collecting lead details, request only ONE missing detail at a time. Never ask for phone number and email together, never ask for multiple text-box fields in the same turn, and wait for the validated typed answer before asking for the next detail.
-CRITICAL SECURITY & CONSTRAINTS:
-- SINGLE APPOINTMENT LIMIT: You are strictly authorized to book only ONE appointment per call. Do not book multiple appointments or book for different people in a single conversation. If an appointment has already been successfully booked during this session, politely decline to book another.
-- ABSOLUTE PRIVACY: You must never disclose, reveal, or list the details (names, phone numbers, or appointment times) of other bookings or clients. If asked who booked a slot or what other bookings exist, state that you cannot share that confidential information due to privacy guidelines. Only report whether a slot is free or busy without naming other people.
-- BOOKING ORDER: Never call book_appointment in the same turn as check_availability. After checking availability, speak the available options and ask "Would you like me to book one of these?" Wait for the user's next confirmation before booking.
-- SLOT RULE: Never invent a slot and never book a time that was not returned by check_availability. If the user's requested time is not in the returned slots, offer the returned alternatives instead.${textInputInstructions}
-- INTERNAL SESSION SIGNALS:
-  - If you receive exactly ${LIVE_WRAP_WARNING_SIGNAL}, treat it as an internal system event, not as user speech. Politely tell the caller, in natural words, that you have an important class to attend soon and would like to quickly wrap up. Keep it brief and start closing the conversation gracefully.
-  - If you receive exactly ${LIVE_FORCE_END_SIGNAL}, treat it as an internal system event, not as user speech. Immediately give a short polite goodbye, then call the \`end_call\` tool.
-- TOOL TIMEZONE: When calling check_availability, pass the local date format 'YYYY-MM-DD'. When calling book_appointment, construct the startTime and endTime in ISO 8601 format using the user's local offset ${tzOffset} (e.g. if the user selects 8:30 AM on 2026-06-17, startTime must be '2026-06-17T08:30:00${tzOffset}').
-- CALL ENDING: ${LIVE_END_CALL_INSTRUCTION}`;
+      const systemInstruction = buildBusinessPersona(bot, widgetConfig, {
+        timezone,
+        bookingInstruction,
+        extraConstraints,
+      });
 
       const setupMessage = {
         setup: {
@@ -315,10 +353,19 @@ CRITICAL SECURITY & CONSTRAINTS:
     // 3. Handle messages from Gemini
     geminiWs.on('message', async (data: Buffer) => {
       const response = JSON.parse(data.toString());
+      const inputText = getLiveInputTranscriptText(response);
       inputTranscript.accept(response);
       const responseRequestsContactInput = response.toolCall?.functionCalls?.some(
         (call: any) => call.name === 'request_text_input'
       ) === true;
+
+      if (
+        inputText
+        && requiredContactFields.length > 0
+        && isLikelyBookingIntent(inputText)
+      ) {
+        await openNextRequiredContactInput(true);
+      }
 
       if (response.setupComplete || response.setup_complete) {
         console.log('Gemini Live API Setup Complete. Triggering initial greeting...');
@@ -512,6 +559,18 @@ CRITICAL SECURITY & CONSTRAINTS:
 
               const requestResult = contactCollection.request(requestedField);
               if (!requestResult.accepted) {
+                const verifiedValue = contactCollection.getVerified(requestedField);
+                if (verifiedValue) {
+                  functionResponse = {
+                    success: true,
+                    verified: true,
+                    field: requestedField,
+                    value: verifiedValue
+                  };
+                  functionResponses.push({ id, name, response: functionResponse });
+                  continue;
+                }
+
                 functionResponse = { error: requestResult.error };
                 functionResponses.push({ id, name, response: functionResponse });
                 continue;
@@ -519,6 +578,17 @@ CRITICAL SECURITY & CONSTRAINTS:
 
               pendingContactToolCallTemp = { id, name, field: requestedField };
               requestedTextInputThisToolTurn = true;
+              const prompt = getContactPrompt(
+                requestedField,
+                contactCollection.getMissingVerified(requiredContactFields).length === requiredContactFields.length
+              );
+              accumulatedBotText = '';
+              ws.send(JSON.stringify({ type: 'interrupted' }));
+              ws.send(JSON.stringify({
+                type: 'transcript',
+                sender: 'bot',
+                text: prompt
+              }));
               ws.send(JSON.stringify({
                 type: 'request_input',
                 field: requestedField
@@ -608,12 +678,16 @@ CRITICAL SECURITY & CONSTRAINTS:
       } else if (message.type === 'textInput') {
         const submittedField: ContactField | null =
           message.field === 'phone' || message.field === 'email' ? message.field : null;
-        const submission = submitLiveContactForTool(
-          contactCollection,
-          pendingContactToolCall,
-          submittedField,
-          String(message.data || '')
-        );
+
+        const submission = pendingContactToolCall
+          ? submitLiveContactForTool(
+            contactCollection,
+            pendingContactToolCall,
+            submittedField,
+            String(message.data || '')
+          )
+          : contactCollection.submit(submittedField, String(message.data || ''));
+
         if (!submission.accepted) {
           ws.send(JSON.stringify({
             type: 'input_validation_error',
@@ -622,8 +696,6 @@ CRITICAL SECURITY & CONSTRAINTS:
           }));
           return;
         }
-
-        const completedToolCall = pendingContactToolCall!;
 
         const { error: contactSaveError } = await supabase.from('messages').insert({
           session_id: sessionId,
@@ -634,38 +706,52 @@ CRITICAL SECURITY & CONSTRAINTS:
           console.error('Error saving verified contact input:', contactSaveError);
         }
 
-        const responseIdx = pendingFunctionResponses.findIndex(r => r.id === completedToolCall.id);
-        if (responseIdx !== -1) {
-            pendingFunctionResponses[responseIdx].response = {
-                success: true,
-                verified: true,
-                field: submission.field,
-                value: submission.value
-            };
-        } else {
-            pendingFunctionResponses.push({
-                id: completedToolCall.id,
-                name: completedToolCall.name,
-                response: {
-                    success: true,
-                    verified: true,
-                    field: submission.field,
-                    value: submission.value
-                }
-            });
-        }
-
-        geminiWs.send(JSON.stringify({
-          toolResponse: {
-            functionResponses: pendingFunctionResponses
-          }
-        }));
-        pendingFunctionResponses = [];
-        pendingContactToolCall = null;
         ws.send(JSON.stringify({
           type: 'input_validation_success',
           field: submission.field
         }));
+
+        if (pendingContactToolCall) {
+          const completedToolCall = pendingContactToolCall;
+
+          const responseIdx = pendingFunctionResponses.findIndex(r => r.id === completedToolCall.id);
+          if (responseIdx !== -1) {
+              pendingFunctionResponses[responseIdx].response = {
+                  success: true,
+                  verified: true,
+                  field: submission.field,
+                  value: submission.value
+              };
+          } else {
+              pendingFunctionResponses.push({
+                  id: completedToolCall.id,
+                  name: completedToolCall.name,
+                  response: {
+                      success: true,
+                      verified: true,
+                      field: submission.field,
+                      value: submission.value
+                  }
+              });
+          }
+
+          geminiWs.send(JSON.stringify({
+            toolResponse: {
+              functionResponses: pendingFunctionResponses
+            }
+          }));
+          pendingFunctionResponses = [];
+          pendingContactToolCall = null;
+          return;
+        }
+
+        if (proactiveContactCollectionActive && await openNextRequiredContactInput(false)) {
+          return;
+        }
+
+        if (proactiveContactCollectionActive) {
+          resumeGeminiAfterProactiveContactCollection();
+        }
         return;
       }
 

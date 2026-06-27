@@ -1,0 +1,151 @@
+import { config } from '../../config';
+import {
+  DograhLoginResponse,
+  DograhPhoneNumber,
+  DograhRunDetail,
+  DograhTelephonyConfig,
+  DograhWorkflow,
+} from './types';
+
+const { apiUrl, email, password } = config.dograh;
+
+export function isDograhConfigured(): boolean {
+  return Boolean(apiUrl && email && password);
+}
+
+let cachedToken: string | null = null;
+
+async function login(): Promise<string> {
+  const response = await fetch(`${apiUrl}/api/v1/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!response.ok) {
+    throw new Error(`Dograh login failed: ${response.status} ${await response.text()}`);
+  }
+  const data: DograhLoginResponse = await response.json();
+  cachedToken = data.token;
+  return cachedToken;
+}
+
+async function request<T>(path: string, init: RequestInit = {}, retrying = false): Promise<T> {
+  if (!isDograhConfigured()) {
+    throw new Error('Dograh is not configured (DOGRAH_EMAIL/DOGRAH_PASSWORD missing).');
+  }
+  const token = cachedToken ?? (await login());
+
+  const response = await fetch(`${apiUrl}${path}`, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      ...(init.headers || {}),
+    },
+  });
+
+  if (response.status === 401 && !retrying) {
+    cachedToken = null;
+    return request<T>(path, init, true);
+  }
+
+  if (!response.ok) {
+    throw new Error(`Dograh API error on ${path}: ${response.status} ${await response.text()}`);
+  }
+
+  if (response.status === 204) return undefined as T;
+  const text = await response.text();
+  return (text ? JSON.parse(text) : undefined) as T;
+}
+
+// We author the workflow graph ourselves (see workflowDefinition.ts) instead of going through
+// Dograh's create/template endpoint, which feeds free text to Dograh's own meta-LLM and
+// reinterprets it into an unpredictable node graph. That indirection was the root cause of
+// call-quality issues with small/literal models: ambiguous multi-node routing and disabled
+// variable extraction. create/definition takes our literal JSON with no reinterpretation.
+export function createWorkflowFromDefinition(name: string, workflowDefinition: Record<string, unknown>): Promise<DograhWorkflow> {
+  return request<DograhWorkflow>('/api/v1/workflow/create/definition', {
+    method: 'POST',
+    body: JSON.stringify({ name, workflow_definition: workflowDefinition }),
+  });
+}
+
+// PUT updates the same workflow id in place (as a new draft - see publishWorkflow), so
+// re-provisioning never orphans a phone number's inbound_workflow_id binding to a stale id.
+export function updateWorkflowInPlace(workflowId: string, workflowDefinition: Record<string, unknown>): Promise<DograhWorkflow> {
+  return request<DograhWorkflow>(`/api/v1/workflow/${workflowId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ workflow_definition: workflowDefinition }),
+  });
+}
+
+// Both create/definition and the PUT update save a draft; only a published version is what
+// actual calls execute. Always publish right after writing the definition.
+export function publishWorkflow(workflowId: string | number): Promise<unknown> {
+  return request<unknown>(`/api/v1/workflow/${workflowId}/publish`, { method: 'POST' });
+}
+
+export async function listTelephonyConfigs(): Promise<DograhTelephonyConfig[]> {
+  const data = await request<{ configurations: DograhTelephonyConfig[] }>('/api/v1/organizations/telephony-configs');
+  return data.configurations || [];
+}
+
+export async function listPhoneNumbers(configId: string | number): Promise<DograhPhoneNumber[]> {
+  const data = await request<{ phone_numbers: DograhPhoneNumber[] }>(
+    `/api/v1/organizations/telephony-configs/${configId}/phone-numbers`
+  );
+  return data.phone_numbers || [];
+}
+
+export async function assignInboundWorkflow(
+  configId: string | number,
+  phoneNumberId: string | number,
+  workflowId: string | number
+): Promise<DograhPhoneNumber> {
+  return request<DograhPhoneNumber>(
+    `/api/v1/organizations/telephony-configs/${configId}/phone-numbers/${phoneNumberId}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({ inbound_workflow_id: Number(workflowId) }),
+    }
+  );
+}
+
+export interface InitiateCallParams {
+  workflowId: string | number;
+  phoneNumber: string;
+  telephonyConfigId: string | number;
+  fromPhoneNumberId: string | number;
+}
+
+export async function initiateCall(params: InitiateCallParams): Promise<unknown> {
+  return request<unknown>('/api/v1/telephony/initiate-call', {
+    method: 'POST',
+    body: JSON.stringify({
+      workflow_id: Number(params.workflowId),
+      phone_number: params.phoneNumber,
+      telephony_configuration_id: Number(params.telephonyConfigId),
+      from_phone_number_id: Number(params.fromPhoneNumberId),
+    }),
+  });
+}
+
+export async function listRuns(workflowId: string, page = 1, limit = 50): Promise<DograhRunDetail[]> {
+  const data = await request<{ runs: DograhRunDetail[] }>(
+    `/api/v1/workflow/${workflowId}/runs?page=${page}&limit=${limit}`
+  );
+  return data.runs || [];
+}
+
+export async function getRun(workflowId: string, runId: string | number): Promise<DograhRunDetail> {
+  return request<DograhRunDetail>(`/api/v1/workflow/${workflowId}/runs/${runId}`);
+}
+
+export async function fetchTranscript(transcriptUrl: string): Promise<unknown> {
+  const response = await fetch(transcriptUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch transcript at ${transcriptUrl}: ${response.status}`);
+  }
+  const contentType = response.headers.get('content-type') || '';
+  return contentType.includes('application/json') ? response.json() : response.text();
+}

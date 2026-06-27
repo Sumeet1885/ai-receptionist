@@ -2,6 +2,74 @@
 
 This guide is for the AWS DevOps engineer deploying AI Receptionist to production.
 
+Repository:
+
+```txt
+https://github.com/Recrui8/ai-receptionist
+```
+
+Before using this document, complete the production credential and provider setup in:
+
+```txt
+docs/setup.md
+```
+
+That document covers Supabase setup, Google OAuth setup, and collection of the environment values referenced below.
+
+## Deployment Order
+
+For this repository, deploy in the following order:
+
+1. Complete `docs/setup.md`.
+2. Deploy the backend first.
+3. Verify the backend health endpoint and public API domain.
+4. Confirm the backend callback URLs and widget base URL are final.
+5. Build and deploy the frontend with the final backend HTTPS URL.
+6. Run the smoke tests.
+
+Backend-first deployment is recommended because:
+
+- the frontend build embeds `VITE_EXPRESS_SERVER_URL` and `VITE_WIDGET_BASE_URL`
+- the widget loader is served by the backend
+- Google Calendar backend callbacks depend on the final API domain
+- the frontend should not be built against a temporary or incorrect backend URL
+
+## AWS Services Used
+
+This deployment guide uses the following AWS services:
+
+- Route 53 for DNS
+- ACM for TLS certificates
+- S3 and CloudFront, or AWS Amplify Hosting, for the frontend
+- ECR for storing the backend container image
+- ECS Fargate for running the backend container
+- Application Load Balancer for public HTTPS ingress and WebSocket support
+- Secrets Manager or SSM Parameter Store for backend secrets
+- CloudWatch Logs for backend logs
+
+## Simplicity Assessment
+
+This AWS design is reasonable and production-capable, but it is not the simplest possible deployment.
+
+It is simple enough for an AWS-based production deployment because:
+
+- the frontend is static
+- the backend is a single containerized service
+- ALB supports the required WebSocket traffic
+- Supabase remains the managed Auth and Postgres layer
+
+However, it is still a moderate-complexity setup because it requires:
+
+- DNS and TLS configuration
+- container image build and push
+- ECS task and service setup
+- ALB listener and target group configuration
+- frontend hosting configuration
+- secret management across services
+
+If the requirement is to stay on AWS, this is a sensible approach.
+If the requirement is the absolute easiest deployment regardless of vendor, platforms such as Railway or Render would generally be simpler than ECS + ALB.
+
 ## Current Production Shape
 
 The app has two deployable parts:

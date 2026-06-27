@@ -25,6 +25,15 @@ interface BookingInput {
 }
 
 export function serializeCalendarToolError(error: any) {
+  const providerError = error?.response?.data?.error || error?.error || error?.message;
+  if (providerError === 'invalid_grant' || String(providerError || '').includes('invalid_grant')) {
+    return {
+      error: 'The business calendar connection has expired or was revoked. Please ask the business owner to reconnect Google Calendar before checking availability.',
+      actionRequired: 'reconnect_calendar',
+      ...(Array.isArray(error?.slots) ? { slots: error.slots } : {}),
+    };
+  }
+
   return {
     error: error?.message || 'Calendar operation failed',
     ...(Array.isArray(error?.slots) ? { slots: error.slots } : {}),

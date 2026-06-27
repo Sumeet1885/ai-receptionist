@@ -176,3 +176,14 @@ test('calendar tool errors retain replacement slots for the conversation', () =>
     slots: error.slots,
   });
 });
+
+test('calendar auth failures are converted into an owner action message', () => {
+  const error: any = new Error('invalid_grant');
+  error.code = 400;
+  error.response = { data: { error: 'invalid_grant' } };
+
+  assert.deepEqual(serializeCalendarToolError(error), {
+    error: 'The business calendar connection has expired or was revoked. Please ask the business owner to reconnect Google Calendar before checking availability.',
+    actionRequired: 'reconnect_calendar',
+  });
+});
