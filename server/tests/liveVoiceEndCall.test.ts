@@ -217,7 +217,11 @@ test('the live backend suppresses Gemini speech and text while contact verificat
     liveControllerSource,
     /response\.serverContent[\s\S]*canForwardLiveModelOutput\(contactCollection, pendingContactToolCall\)/
   );
-  assert.match(liveControllerSource, /responseRequestsContactInput/);
+  assert.doesNotMatch(
+    liveControllerSource,
+    /response\.serverContent\s*&&\s*!responseRequestsContactInput/,
+    'assistant audio must still be forwarded when Gemini includes request_text_input in the same turn'
+  );
 });
 
 test('the live backend opens the contact textbox immediately without retry-looping on prompt wording', () => {
@@ -241,21 +245,28 @@ test('the live backend opens the contact textbox immediately without retry-loopi
   assert.match(receptionistInstructionSource, /enter your details in the text box/i);
   assert.doesNotMatch(receptionistInstructionSource, /tool call will be rejected/i);
 
-  // request_input must still fire immediately when the genuine request_text_input tool
-  // call lands - this is what triggers the client's mic-mute, so its timing/content
-  // here must stay untouched by the speech-transition change.
+  // request_input must still be emitted when the genuine request_text_input tool
+  // call lands. The clients delay showing the box until queued assistant audio
+  // finishes, then mute the mic at the same moment the box appears.
   assert.match(
     liveControllerSource,
     /pendingContactToolCallTemp = \{ id, name, field: requestedField \};[\s\S]*ws\.send\(JSON\.stringify\(\{\s*type: 'request_input',\s*field: requestedField\s*\}\)\);/
   );
 });
 
-test('both clients discard queued Gemini audio when a contact textbox opens', () => {
+test('both clients preserve queued Gemini audio before opening and muting the contact textbox', () => {
   const publicVoiceHookSource = readFileSync(publicVoiceHookPath, 'utf8');
   const widgetSource = readFileSync(widgetControllerPath, 'utf8');
 
-  assert.match(publicVoiceHookSource, /resetPlaybackQueue\(\);[\s\S]*setRequestedInputType/);
-  assert.match(widgetSource, /resetPlaybackQueue\(\);[\s\S]*pendingInputField = msg\.field/);
+  assert.match(publicVoiceHookSource, /showRequestedInputAfterPlayback/);
+  assert.match(publicVoiceHookSource, /remainingPlaybackMs/);
+  assert.match(publicVoiceHookSource, /inputPendingRef\.current = true; \/\/ Mute mic when the textbox appears/);
+  assert.doesNotMatch(publicVoiceHookSource, /msg\.type === 'request_input'[\s\S]{0,220}resetPlaybackQueue\(\)/);
+
+  assert.match(widgetSource, /showRequestedInputAfterPlayback/);
+  assert.match(widgetSource, /remainingPlaybackMs/);
+  assert.match(widgetSource, /micMuted = true; \/\/ Mute mic when the textbox appears/);
+  assert.doesNotMatch(widgetSource, /msg\.type === 'request_input'[\s\S]{0,220}resetPlaybackQueue\(\)/);
 });
 
 test('live sessions warn at 4 minutes and hard-stop at 5 minutes', async () => {

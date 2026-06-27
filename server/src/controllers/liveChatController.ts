@@ -274,9 +274,6 @@ export function setupWebSocketServer(server: Server) {
     geminiWs.on('message', async (data: Buffer) => {
       const response = JSON.parse(data.toString());
       inputTranscript.accept(response);
-      const responseRequestsContactInput = response.toolCall?.functionCalls?.some(
-        (call: any) => call.name === 'request_text_input'
-      ) === true;
 
       if (response.setupComplete || response.setup_complete) {
         console.log('Gemini Live API Setup Complete. Triggering initial greeting...');
@@ -296,7 +293,6 @@ export function setupWebSocketServer(server: Server) {
 
       if (
         response.serverContent
-        && !responseRequestsContactInput
         && canForwardLiveModelOutput(contactCollection, pendingContactToolCall)
       ) {
         // Forward audio chunks to the client

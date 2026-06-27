@@ -17,6 +17,7 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const assistantEndTimerRef = useRef<number | null>(null);
+  const inputRequestTimerRef = useRef<number | null>(null);
   
   // For playing audio received from server
   const playbackContextRef = useRef<AudioContext | null>(null);
@@ -53,6 +54,10 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
     if (assistantEndTimerRef.current) {
       window.clearTimeout(assistantEndTimerRef.current);
       assistantEndTimerRef.current = null;
+    }
+    if (inputRequestTimerRef.current) {
+      window.clearTimeout(inputRequestTimerRef.current);
+      inputRequestTimerRef.current = null;
     }
     setIsVoiceActive(false);
     setIsConnecting(false);
@@ -92,6 +97,25 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
       stopVoice();
     }, remainingPlaybackMs + 150);
   }, [disconnectMicrophone, stopVoice]);
+
+  const showRequestedInputAfterPlayback = useCallback((field: 'phone' | 'email') => {
+    const playbackContext = playbackContextRef.current;
+    const remainingPlaybackMs = playbackContext
+      ? Math.max(0, (nextPlayTimeRef.current - playbackContext.currentTime) * 1000)
+      : 0;
+
+    if (inputRequestTimerRef.current) {
+      window.clearTimeout(inputRequestTimerRef.current);
+    }
+
+    inputRequestTimerRef.current = window.setTimeout(() => {
+      inputPendingRef.current = true; // Mute mic when the textbox appears
+      setRequestedInputType(field);
+      setValidationError('');
+      setIsSubmittingContact(false);
+      inputRequestTimerRef.current = null;
+    }, remainingPlaybackMs + 120);
+  }, []);
 
   const startVoice = useCallback(async () => {
     if (!botId || !sessionId) return;
@@ -177,11 +201,7 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
         }
 
         if (msg.type === 'request_input' && msg.field) {
-          resetPlaybackQueue();
-          inputPendingRef.current = true; // Mute mic immediately
-          setRequestedInputType(msg.field as 'phone' | 'email');
-          setValidationError('');
-          setIsSubmittingContact(false);
+          showRequestedInputAfterPlayback(msg.field as 'phone' | 'email');
         }
 
         if (msg.type === 'input_validation_error' && msg.message) {
@@ -255,7 +275,7 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
       setIsConnecting(false);
       stopVoice();
     }
-  }, [botId, finishVoiceFromAssistant, resetPlaybackQueue, sessionId, stopVoice]);
+  }, [botId, finishVoiceFromAssistant, resetPlaybackQueue, sessionId, showRequestedInputAfterPlayback, stopVoice]);
 
   useEffect(() => {
     return () => {

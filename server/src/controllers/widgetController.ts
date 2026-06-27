@@ -839,6 +839,7 @@ ${poweredByHtml}
   var nextPlayTime = 0;
   var assistantEndingCall = false;
   var assistantEndTimer = null;
+  var inputRequestTimer = null;
   var pendingInputField = null;
   var micMuted = false; // Muted while typed-input textbox is open
   var isVoiceActive = false;
@@ -847,6 +848,44 @@ ${poweredByHtml}
     if (playbackContext) playbackContext.close();
     playbackContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
     nextPlayTime = playbackContext.currentTime;
+  }
+
+  function showRequestedInputAfterPlayback(field) {
+    var remainingPlaybackMs = playbackContext
+      ? Math.max(0, (nextPlayTime - playbackContext.currentTime) * 1000)
+      : 0;
+
+    if (inputRequestTimer) clearTimeout(inputRequestTimer);
+    inputRequestTimer = setTimeout(function() {
+      pendingInputField = field;
+      micMuted = true; // Mute mic when the textbox appears
+      if (voiceInputContainer) {
+        voiceInputContainer.style.display = 'flex';
+        voiceInputLabel.textContent = 'Please enter your ' + field;
+        if (field === 'phone') {
+          voiceInputForm.style.display = 'none';
+          voicePhoneForm.style.display = 'block';
+          phoneInputField.value = '';
+          phoneInputField.setAttribute('maxlength', '10');
+          phoneInputField.maxLength = 10;
+          phoneInputBtn.disabled = true;
+          showVoiceInputError('');
+          phoneInputField.focus();
+        } else {
+          voicePhoneForm.style.display = 'none';
+          voiceInputForm.style.display = 'flex';
+          voiceInputField.type = field === 'email' ? 'email' : 'text';
+          voiceInputField.placeholder = field === 'email' ? 'name@example.com' : 'Your details';
+          voiceInputField.maxLength = field === 'email' ? 254 : 32;
+          voiceInputField.inputMode = field === 'email' ? 'email' : 'text';
+          voiceInputField.value = '';
+          voiceInputBtn.disabled = true;
+          showVoiceInputError('');
+          voiceInputField.focus();
+        }
+      }
+      inputRequestTimer = null;
+    }, remainingPlaybackMs + 120);
   }
 
   var voiceOverlay = document.getElementById('voiceOverlay');
@@ -1157,6 +1196,10 @@ ${poweredByHtml}
       clearTimeout(assistantEndTimer);
       assistantEndTimer = null;
     }
+    if (inputRequestTimer) {
+      clearTimeout(inputRequestTimer);
+      inputRequestTimer = null;
+    }
     isVoiceActive = false;
     if (ws) {
       var socket = ws;
@@ -1268,34 +1311,7 @@ ${poweredByHtml}
           addMessage(msg.text, 'bot');
         }
         if (msg.type === 'request_input' && msg.field) {
-          resetPlaybackQueue();
-          pendingInputField = msg.field;
-          micMuted = true; // Mute mic: prevent verbal bypass of typed-input validation
-          if (voiceInputContainer) {
-            voiceInputContainer.style.display = 'flex';
-            voiceInputLabel.textContent = 'Please enter your ' + msg.field;
-            if (msg.field === 'phone') {
-              voiceInputForm.style.display = 'none';
-              voicePhoneForm.style.display = 'block';
-              phoneInputField.value = '';
-              phoneInputField.setAttribute('maxlength', '10');
-              phoneInputField.maxLength = 10;
-              phoneInputBtn.disabled = true;
-              showVoiceInputError('');
-              phoneInputField.focus();
-            } else {
-              voicePhoneForm.style.display = 'none';
-              voiceInputForm.style.display = 'flex';
-              voiceInputField.type = msg.field === 'email' ? 'email' : 'text';
-              voiceInputField.placeholder = msg.field === 'email' ? 'name@example.com' : 'Your details';
-              voiceInputField.maxLength = msg.field === 'email' ? 254 : 32;
-              voiceInputField.inputMode = msg.field === 'email' ? 'email' : 'text';
-              voiceInputField.value = '';
-              voiceInputBtn.disabled = true;
-              showVoiceInputError('');
-              voiceInputField.focus();
-            }
-          }
+          showRequestedInputAfterPlayback(msg.field);
         }
         if (msg.type === 'input_validation_error' && msg.message) {
           pendingInputField = msg.field || pendingInputField;
