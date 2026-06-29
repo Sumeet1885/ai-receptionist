@@ -821,6 +821,7 @@ ${poweredByHtml}
   var API = '${apiBase}';
   var BOT_ID = '${bot.id}';
   var GREETING = ${jsonForScript(bot.greeting)};
+  var PRE_CALL_DISPLAY_NAME = ${jsonForScript(displayName)};
   var SUGGESTED_PROMPTS = ${jsonForScript(widgetConfig.suggestedPrompts)};
   var REQUIRED_VOICE_CONTACT_FIELDS = ${jsonForScript(widgetConfig.requiredLeadFields.filter(field => field === 'phone' || field === 'email'))};
   var sessionId = null;
@@ -846,6 +847,7 @@ ${poweredByHtml}
   var isVoiceActive = false;
   var preverifiedVoiceContacts = {};
   var collectingPreCallVoiceContact = false;
+  var lastSpokenPreCallPrompt = '';
 
   function resetPlaybackQueue() {
     if (playbackContext) playbackContext.close();
@@ -891,7 +893,25 @@ ${poweredByHtml}
     }, remainingPlaybackMs + 120);
   }
 
+  function buildPreCallVoicePrompt(field) {
+    var fieldLabel = field === 'phone' ? 'phone number' : 'email address';
+    return 'Hi, welcome to ' + PRE_CALL_DISPLAY_NAME + '. Please can I have your ' + fieldLabel + ' in the text box before I connect you?';
+  }
+
+  function speakPreCallVoicePrompt(field) {
+    if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) return;
+    var prompt = buildPreCallVoicePrompt(field);
+    if (lastSpokenPreCallPrompt === prompt) return;
+    lastSpokenPreCallPrompt = prompt;
+    window.speechSynthesis.cancel();
+    var utterance = new SpeechSynthesisUtterance(prompt);
+    utterance.rate = 0.95;
+    utterance.pitch = 1;
+    window.speechSynthesis.speak(utterance);
+  }
+
   function showPreCallVoiceContactField(field) {
+    var prompt = buildPreCallVoicePrompt(field);
     collectingPreCallVoiceContact = true;
     pendingInputField = field;
     micMuted = false;
@@ -899,11 +919,11 @@ ${poweredByHtml}
     if (overlayMicIcon) overlayMicIcon.style.display = 'none';
     if (overlayStopIcon) overlayStopIcon.style.display = 'block';
     if (visualizer) visualizer.classList.remove('active');
-    if (voiceStatus) voiceStatus.textContent = 'Before the call, please enter your ' + field;
+    if (voiceStatus) voiceStatus.textContent = prompt;
     if (chatInput) chatInput.disabled = true;
     if (voiceInputContainer) {
       voiceInputContainer.style.display = 'flex';
-      voiceInputLabel.textContent = 'Before the call, please enter your ' + field;
+      voiceInputLabel.textContent = prompt;
       if (field === 'phone') {
         voiceInputForm.style.display = 'none';
         voicePhoneForm.style.display = 'block';
@@ -926,6 +946,7 @@ ${poweredByHtml}
         voiceInputField.focus();
       }
     }
+    speakPreCallVoicePrompt(field);
   }
 
   function collectNextPreCallVoiceContact() {
@@ -1271,6 +1292,8 @@ ${poweredByHtml}
     }
     isVoiceActive = false;
     collectingPreCallVoiceContact = false;
+    lastSpokenPreCallPrompt = '';
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
     if (ws) {
       var socket = ws;
       ws = null;

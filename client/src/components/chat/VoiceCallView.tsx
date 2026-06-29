@@ -40,6 +40,12 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
   const [localValidationError, setLocalValidationError] = useState('');
   const [preCallContactValues, setPreCallContactValues] = useState<PreverifiedVoiceContacts>({});
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);
+  const lastSpokenPreCallPromptRef = useRef('');
+
+  const buildPreCallVoicePrompt = (field: VoiceContactField) => {
+    const fieldLabel = field === 'phone' ? 'phone number' : 'email address';
+    return `Hi, welcome to ${activeBot.businessName}. Please can I have your ${fieldLabel} in the text box before I connect you?`;
+  };
 
   const currentPreCallField = !liveVoice.isVoiceActive && !liveVoice.isConnecting
     ? requiredVoiceContactFields.find(field => !preCallContactValues[field]) ?? null
@@ -91,6 +97,20 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
     setInputValue('');
     setLocalValidationError('');
   }, [activeInputType]);
+
+  useEffect(() => {
+    if (!currentPreCallField || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    const prompt = buildPreCallVoicePrompt(currentPreCallField);
+    if (lastSpokenPreCallPromptRef.current === prompt) return;
+    lastSpokenPreCallPromptRef.current = prompt;
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(prompt);
+    utterance.rate = 0.95;
+    utterance.pitch = 1;
+    window.speechSynthesis.speak(utterance);
+  }, [activeBot.businessName, currentPreCallField]);
 
   const getColorHue = (color: string) => {
     const maps: Record<string, number> = {
@@ -190,7 +210,9 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
         <div className="w-full max-w-sm z-20 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <form onSubmit={handleSubmitInput} className="bg-brand-card/80 backdrop-blur-md border border-brand-accent/50 rounded-2xl p-4 shadow-2xl flex flex-col items-center gap-3">
             <span className="text-sm font-semibold text-white tracking-wide">
-              {isPreCallStep ? `Before the call, please type your ${activeInputType}` : `Please type your ${activeInputType}`}
+              {isPreCallStep && currentPreCallField
+                ? buildPreCallVoicePrompt(currentPreCallField)
+                : `Please type your ${activeInputType}`}
             </span>
 
             {activeInputType === 'phone' ? (

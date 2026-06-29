@@ -68,6 +68,21 @@
 - [ ] Run `git diff --check`.
 - [ ] Review diff for accidental removal of phone/email validation, mic muting, or booking guard.
 
+### Task 5: Frontend pre-call spoken greeting
+
+**Files:**
+- Modify: `client/src/components/chat/VoiceCallView.tsx`
+- Modify: `server/src/controllers/widgetController.ts`
+- Test: `server/tests/liveVoiceEndCall.test.ts`
+
+- [x] Add tests that assert the public preview and embedded widget use browser speech synthesis before opening Gemini Live.
+- [x] Implement a frontend-only pre-call message builder that says the business name and requested field.
+- [x] Trigger `window.speechSynthesis.speak(new SpeechSynthesisUtterance(...))` when the pre-call field becomes visible.
+- [x] Show the input box immediately; speech is a companion prompt, not a blocker.
+- [x] Do not request mic permission or open Gemini Live until after required details are submitted.
+- [x] Gracefully no-op if speech synthesis is unavailable.
+- [x] Run the live voice tests and client build.
+
 ### Self-review
 
 - Spec coverage: backend seeding, public preview pre-call gate, embedded widget pre-call gate, validation, booking guard, and verification are covered.

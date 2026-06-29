@@ -58,24 +58,24 @@ export function buildSingleNodeWorkflowDefinition(options: SingleNodeWorkflowOpt
   const { personaPrompt, extractionVariables, isOutbound, businessName } = options;
   const hasExtraction = extractionVariables.length > 0;
 
-  // A static, TTS-only greeting that plays immediately on connect, with no LLM round-trip.
-  // The first LLM turn (prompt + persona) on a cold STT/LLM/TTS connection measured 7-20s of
-  // dead air in testing - long enough that callers assumed the line was dead or the agent
-  // couldn't hear them. The greeting fills that gap; the prompt tells the model it already ran.
-  const greeting = isOutbound
-    ? `Hello! This is the virtual receptionist calling on behalf of ${businessName}.`
-    : `Thanks for calling ${businessName}! How can I help you today?`;
-
+  // No `greeting`/`greeting_type` here - Dograh's docs are explicit that the static TTS-only
+  // greeting field is "not supported with realtime (speech-to-speech) models" (this org runs
+  // Gemini Live - see model-configurations/v2). The earlier cascaded STT->LLM->TTS pipeline
+  // needed that field to fill 7-20s of dead air before the model's first response; a
+  // speech-to-speech model has no such cold-start gap, so the opening line goes back into the
+  // prompt itself, said directly by the model on its first turn.
   const conversationPrompt = isOutbound
-    ? 'You already greeted the caller (see greeting above) - do not greet again. This is the only ' +
-      'conversational step for the entire call. Explain why you are calling, then handle the rest ' +
-      'of the conversation across as many turns as needed: answer questions, and collect lead ' +
-      'details per the persona above. When the conversation is clearly finished, transition to ' +
-      'ending the call.'
-    : 'You already greeted the caller (see greeting above) - do not greet again. This is the only ' +
-      'conversational step for the entire call. Handle the entire conversation across as many ' +
-      'turns as needed: answer questions, and collect lead details per the persona above. When ' +
-      'the conversation is clearly finished, transition to ending the call.';
+    ? `This is the only conversational step for the entire call - you placed this call. Begin ` +
+      `immediately by introducing yourself and ${businessName} by name, and briefly explaining ` +
+      `you're following up with someone who showed interest. Then handle the rest of the ` +
+      `conversation across as many turns as needed: answer questions, and collect lead details ` +
+      `per the persona above. When the conversation is clearly finished, transition to ending ` +
+      `the call.`
+    : `This is the only conversational step for the entire call. Begin immediately by warmly ` +
+      `greeting the caller on behalf of ${businessName} and asking how you can help. Then handle ` +
+      `the entire conversation across as many turns as needed: answer questions, and collect ` +
+      `lead details per the persona above. When the conversation is clearly finished, transition ` +
+      `to ending the call.`;
 
   const nodes = [
     {
@@ -93,14 +93,15 @@ export function buildSingleNodeWorkflowDefinition(options: SingleNodeWorkflowOpt
       position: { x: 320, y: 0 },
       data: {
         name: 'Conversation',
-        greeting_type: 'text',
-        greeting,
         prompt: conversationPrompt,
         // false (Dograh's own default for startCall, which we'd overridden to true): this
-        // self-hosted telephony audio path has no echo cancellation, so the bot's own voice
-        // bleeding back into the input was getting misheard as the caller interrupting,
-        // truncating the bot's sentences mid-word. Caller can still always just start talking
-        // once the bot pauses between turns - this only stops the bot cutting itself off.
+        // self-hosted telephony audio path has no echo cancellation at the Plivo/Twilio <->
+        // Dograh audio bridge, so the bot's own voice bleeding back into the input was getting
+        // misheard as the caller interrupting, truncating the bot mid-word. That's a transport-
+        // layer issue independent of which model is on the other end (cascaded pipeline or
+        // speech-to-speech), so it stays disabled under Gemini Live too unless that's confirmed
+        // fixed. Caller can still always just start talking once the bot pauses between turns -
+        // this only stops the bot from cutting itself off on its own echo.
         allow_interrupt: false,
         add_global_prompt: true,
         delayed_start: isOutbound,

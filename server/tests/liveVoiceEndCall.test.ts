@@ -223,9 +223,14 @@ test('public preview collects required voice contact fields before opening Gemin
   assert.match(publicChatViewSource, /requiredVoiceContactFields/);
   assert.match(publicChatViewSource, /activeBot\.widgetConfig\.requiredLeadFields/);
   assert.match(voiceCallViewSource, /currentPreCallField/);
-  assert.match(voiceCallViewSource, /Before the call/i);
+  assert.match(voiceCallViewSource, /buildPreCallVoicePrompt/);
+  assert.match(voiceCallViewSource, /speechSynthesis/);
+  assert.match(voiceCallViewSource, /SpeechSynthesisUtterance/);
+  assert.match(voiceCallViewSource, /Please can I have your/);
+  assert.match(voiceCallViewSource, /before I connect you/i);
   assert.match(voiceCallViewSource, /liveVoice\.startVoice\(nextPreCallValues\)/);
   assert.match(voiceCallViewSource, /validateContactInput\(activeInputType, inputValue\)/);
+  assert.match(voiceCallViewSource, /window\.speechSynthesis\.speak\(utterance\)/);
 });
 
 test('embedded widget collects required voice contact fields before opening Gemini Live', () => {
@@ -235,6 +240,11 @@ test('embedded widget collects required voice contact fields before opening Gemi
   assert.match(widgetSource, /preverifiedVoiceContacts/);
   assert.match(widgetSource, /startVoiceWithPreCallContactGate/);
   assert.match(widgetSource, /collectNextPreCallVoiceContact/);
+  assert.match(widgetSource, /buildPreCallVoicePrompt/);
+  assert.match(widgetSource, /speakPreCallVoicePrompt/);
+  assert.match(widgetSource, /speechSynthesis/);
+  assert.match(widgetSource, /SpeechSynthesisUtterance/);
+  assert.match(widgetSource, /Please can I have your/);
   assert.match(widgetSource, /preverifiedContacts=/);
   assert.match(widgetSource, /encodeURIComponent\(JSON\.stringify\(preverifiedVoiceContacts\)\)/);
   assert.match(widgetSource, /widgetConfig\.requiredLeadFields/);
