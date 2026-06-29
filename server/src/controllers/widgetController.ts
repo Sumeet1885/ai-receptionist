@@ -236,7 +236,8 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
   const apiBase = getWidgetRuntimeBaseUrl(req);
   const widgetConfig = mergeWidgetConfig(bot.widget_config, bot);
   const onAccentColor = getContrastingTextColor(widgetConfig.primaryColor);
-  const displayName = escapeHtml(widgetConfig.assistantName || bot.business_name);
+  const displayNameText = widgetConfig.assistantName || bot.business_name;
+  const displayName = escapeHtml(displayNameText);
   const avatarText = escapeHtml(widgetConfig.avatarText || bot.business_name.charAt(0));
   const radiusPx = widgetConfig.radius === 'sharp' ? '6px' : widgetConfig.radius === 'rounded' ? '24px' : '16px';
   const voiceButtonHtml = widgetConfig.enableVoice ? `
@@ -526,6 +527,7 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
   }
   .voice-input-container p#voiceInputLabel { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--text); text-align: center; }
   .voice-input-form { display: flex; gap: 6px; width: 100%; }
+  .voice-field-label { display: none; }
   .voice-input-form input {
     flex: 1; background: var(--bg); border: 1px solid var(--border);
     border-radius: 8px; padding: 8px 12px; color: var(--text); font-size: 13px; outline: none;
@@ -554,6 +556,63 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
     font-weight: 700;
   }
   .voice-details-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+  .voice-input-container.precall-details-card {
+    margin-top: 8px;
+    gap: 10px;
+  }
+  .voice-input-container.precall-details-card p#voiceInputLabel {
+    margin: 0 0 2px;
+    font-size: 17px;
+    line-height: 1.25;
+    font-weight: 800;
+    color: var(--text);
+  }
+  .voice-input-form.precall-details-form {
+    display: block;
+  }
+  .voice-input-form.precall-details-form .voice-field-label {
+    display: block;
+    margin: 0 0 6px;
+    padding-left: 2px;
+    font-size: 11px;
+    line-height: 1;
+    font-weight: 800;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-align: left;
+  }
+  .voice-input-form.precall-details-form .voice-field-label span {
+    color: #ef4444;
+  }
+  .voice-input-form.precall-details-form input {
+    width: 100%;
+    box-sizing: border-box;
+    background: #ffffff;
+    border: 2px solid #dbe5ff;
+    border-radius: 14px;
+    padding: 14px 16px;
+    color: #111827;
+    font-size: 15px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+  }
+  .voice-input-form.precall-details-form input::placeholder {
+    color: #9ca3af;
+  }
+  .voice-phone-form.precall-details-form {
+    width: 100%;
+  }
+  .voice-input-container.precall-details-card .voice-phone-card {
+    border-color: #dbe5ff;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+  }
+  .voice-input-container.precall-details-card .voice-details-submit {
+    margin-top: 4px;
+    border-radius: 14px;
+    padding: 14px 16px;
+    font-size: 15px;
+  }
 
   /* Premium Voice Call Card Design matching inspiration */
   .voice-phone-card {
@@ -782,6 +841,7 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
 
       <!-- Standard Input Form (for Email/text) -->
       <form id="voiceInputForm" class="voice-input-form">
+        <label id="voiceEmailLabel" class="voice-field-label" for="voiceInputField">Email address <span>*</span></label>
         <input type="text" id="voiceInputField" maxlength="400" autocomplete="off" />
         <button type="submit" id="voiceInputBtn" disabled>
           <svg viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/></svg>
@@ -836,7 +896,7 @@ ${poweredByHtml}
   var API = '${apiBase}';
   var BOT_ID = '${bot.id}';
   var GREETING = ${jsonForScript(bot.greeting)};
-  var PRE_CALL_DISPLAY_NAME = ${jsonForScript(displayName)};
+  var PRE_CALL_DISPLAY_NAME = ${jsonForScript(displayNameText)};
   var SUGGESTED_PROMPTS = ${jsonForScript(widgetConfig.suggestedPrompts)};
   var REQUIRED_VOICE_CONTACT_FIELDS = ${jsonForScript(widgetConfig.requiredLeadFields.filter(field => field === 'phone' || field === 'email'))};
   var sessionId = null;
@@ -880,6 +940,9 @@ ${poweredByHtml}
       pendingInputField = field;
       micMuted = true; // Mute mic when the textbox appears
       if (voiceInputContainer) {
+        voiceInputContainer.classList.remove('precall-details-card');
+        voiceInputForm.classList.remove('precall-details-form');
+        voicePhoneForm.classList.remove('precall-details-form');
         voiceInputContainer.style.display = 'flex';
         voiceInputLabel.textContent = 'Please enter your ' + field;
         if (voiceDetailsSubmitBtn) voiceDetailsSubmitBtn.style.display = 'none';
@@ -967,7 +1030,12 @@ ${poweredByHtml}
     collectingPreCallVoiceContact = false;
     pendingInputField = null;
     showVoiceInputError('');
-    if (voiceInputContainer) voiceInputContainer.style.display = 'none';
+    if (voiceInputContainer) {
+      voiceInputContainer.classList.remove('precall-details-card');
+      voiceInputContainer.style.display = 'none';
+    }
+    if (voiceInputForm) voiceInputForm.classList.remove('precall-details-form');
+    if (voicePhoneForm) voicePhoneForm.classList.remove('precall-details-form');
     if (voiceDetailsSubmitBtn) voiceDetailsSubmitBtn.style.display = 'none';
     if (voiceInputBtn) voiceInputBtn.style.display = '';
     if (phoneInputBtn) phoneInputBtn.style.display = '';
@@ -991,12 +1059,14 @@ ${poweredByHtml}
     if (overlayMicIcon) overlayMicIcon.style.display = 'none';
     if (overlayStopIcon) overlayStopIcon.style.display = 'block';
     if (visualizer) visualizer.classList.remove('active');
-    if (voiceStatus) voiceStatus.textContent = prompt;
+    if (voiceStatus) voiceStatus.textContent = 'Before we connect';
     if (chatInput) chatInput.disabled = true;
     if (voiceInputContainer) {
+      voiceInputContainer.classList.add('precall-details-card');
       voiceInputContainer.style.display = 'flex';
-      voiceInputLabel.textContent = prompt;
+      voiceInputLabel.textContent = 'Enter your details below';
       if (needsPhone) {
+        voicePhoneForm.classList.add('precall-details-form');
         voicePhoneForm.style.display = 'block';
         phoneInputField.value = '';
         phoneInputField.setAttribute('maxlength', '10');
@@ -1004,9 +1074,11 @@ ${poweredByHtml}
         phoneInputBtn.disabled = true;
         phoneInputBtn.style.display = 'none';
       } else {
+        voicePhoneForm.classList.remove('precall-details-form');
         voicePhoneForm.style.display = 'none';
       }
       if (needsEmail) {
+        voiceInputForm.classList.add('precall-details-form');
         voiceInputForm.style.display = 'flex';
         voiceInputField.type = 'email';
         voiceInputField.placeholder = 'name@example.com';
@@ -1016,6 +1088,7 @@ ${poweredByHtml}
         voiceInputBtn.disabled = true;
         voiceInputBtn.style.display = 'none';
       } else {
+        voiceInputForm.classList.remove('precall-details-form');
         voiceInputForm.style.display = 'none';
       }
       if (voiceDetailsSubmitBtn) {
@@ -1379,7 +1452,12 @@ ${poweredByHtml}
     pendingInputField = null;
     micMuted = false;
     showVoiceInputError('');
-    if (voiceInputContainer) voiceInputContainer.style.display = 'none';
+    if (voiceInputContainer) {
+      voiceInputContainer.classList.remove('precall-details-card');
+      voiceInputContainer.style.display = 'none';
+    }
+    if (voiceInputForm) voiceInputForm.classList.remove('precall-details-form');
+    if (voicePhoneForm) voicePhoneForm.classList.remove('precall-details-form');
     if (voiceDetailsSubmitBtn) voiceDetailsSubmitBtn.style.display = 'none';
     if (voiceInputBtn) voiceInputBtn.style.display = '';
     if (phoneInputBtn) phoneInputBtn.style.display = '';

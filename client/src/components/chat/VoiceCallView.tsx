@@ -239,7 +239,7 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
         <div className="w-full max-w-sm z-20 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <form onSubmit={handleSubmitPreCallDetails} className="bg-brand-card/80 backdrop-blur-md border border-brand-accent/50 rounded-2xl p-4 shadow-2xl flex flex-col items-center gap-3">
             <span className="text-sm font-semibold text-white tracking-wide">
-              {buildPreCallVoicePrompt()}
+              Enter your details below
             </span>
 
             <div className="w-full space-y-3">

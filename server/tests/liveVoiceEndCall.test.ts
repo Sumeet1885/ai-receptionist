@@ -253,11 +253,17 @@ test('embedded widget collects required voice contact fields before opening Gemi
   assert.match(widgetSource, /speechSynthesis/);
   assert.match(widgetSource, /SpeechSynthesisUtterance/);
   assert.match(widgetSource, /Please fill in your details/);
+  assert.match(widgetSource, /displayNameText/);
+  assert.match(widgetSource, /PRE_CALL_DISPLAY_NAME = \$\{jsonForScript\(displayNameText\)\}/);
+  assert.match(widgetSource, /voiceStatus\.textContent = 'Before we connect'/);
+  assert.match(widgetSource, /voiceInputLabel\.textContent = 'Enter your details below'/);
   assert.match(widgetSource, /REQUIRED_VOICE_CONTACT_FIELDS\.forEach/);
   assert.match(widgetSource, /preverifiedContacts=/);
   assert.match(widgetSource, /encodeURIComponent\(JSON\.stringify\(preverifiedVoiceContacts\)\)/);
   assert.match(widgetSource, /widgetConfig\.requiredLeadFields/);
   assert.doesNotMatch(widgetSource, /collectNextPreCallVoiceContact/);
+  assert.doesNotMatch(widgetSource, /PRE_CALL_DISPLAY_NAME = \$\{jsonForScript\(displayName\)\}/);
+  assert.doesNotMatch(widgetSource, /voiceInputLabel\.textContent = prompt/);
 });
 
 test('live backend can infer a delayed typed contact request from the completed assistant sentence', () => {
