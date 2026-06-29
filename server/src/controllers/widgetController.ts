@@ -540,6 +540,20 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
   .voice-input-form button:hover { background: var(--accent-hover); }
   .voice-input-form button svg { width: 14px; height: 14px; fill: currentColor; }
   .voice-input-form button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .voice-details-submit {
+    display: none;
+    width: 100%;
+    margin-top: 10px;
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    color: var(--on-accent);
+    cursor: pointer;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .voice-details-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
   /* Premium Voice Call Card Design matching inspiration */
   .voice-phone-card {
@@ -799,6 +813,7 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
         </div>
       </form>
 
+      <button type="button" id="voiceDetailsSubmitBtn" class="voice-details-submit" disabled>Continue</button>
       <div id="voiceInputError" class="voice-input-error"></div>
     </div>
     
@@ -867,6 +882,7 @@ ${poweredByHtml}
       if (voiceInputContainer) {
         voiceInputContainer.style.display = 'flex';
         voiceInputLabel.textContent = 'Please enter your ' + field;
+        if (voiceDetailsSubmitBtn) voiceDetailsSubmitBtn.style.display = 'none';
         if (field === 'phone') {
           voiceInputForm.style.display = 'none';
           voicePhoneForm.style.display = 'block';
@@ -874,6 +890,7 @@ ${poweredByHtml}
           phoneInputField.setAttribute('maxlength', '10');
           phoneInputField.maxLength = 10;
           phoneInputBtn.disabled = true;
+          phoneInputBtn.style.display = '';
           showVoiceInputError('');
           phoneInputField.focus();
         } else {
@@ -885,6 +902,7 @@ ${poweredByHtml}
           voiceInputField.inputMode = field === 'email' ? 'email' : 'text';
           voiceInputField.value = '';
           voiceInputBtn.disabled = true;
+          voiceInputBtn.style.display = '';
           showVoiceInputError('');
           voiceInputField.focus();
         }
@@ -893,14 +911,13 @@ ${poweredByHtml}
     }, remainingPlaybackMs + 120);
   }
 
-  function buildPreCallVoicePrompt(field) {
-    var fieldLabel = field === 'phone' ? 'phone number' : 'email address';
-    return 'Hi, welcome to ' + PRE_CALL_DISPLAY_NAME + '. Please can I have your ' + fieldLabel + ' in the text box before I connect you?';
+  function buildPreCallVoicePrompt() {
+    return 'Hi, welcome to ' + PRE_CALL_DISPLAY_NAME + '. Please fill in your details in the text boxes before I connect you.';
   }
 
-  function speakPreCallVoicePrompt(field) {
+  function speakPreCallVoicePrompt() {
     if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) return;
-    var prompt = buildPreCallVoicePrompt(field);
+    var prompt = buildPreCallVoicePrompt();
     if (lastSpokenPreCallPrompt === prompt) return;
     lastSpokenPreCallPrompt = prompt;
     window.speechSynthesis.cancel();
@@ -910,10 +927,65 @@ ${poweredByHtml}
     window.speechSynthesis.speak(utterance);
   }
 
-  function showPreCallVoiceContactField(field) {
-    var prompt = buildPreCallVoicePrompt(field);
+  function updatePreCallDetailsButton() {
+    if (!voiceDetailsSubmitBtn || !collectingPreCallVoiceContact) return;
+    var ready = true;
+    REQUIRED_VOICE_CONTACT_FIELDS.forEach(function(field) {
+      if (field === 'phone' && !preverifiedVoiceContacts.phone) {
+        ready = ready && validateContactInput('phone', phoneInputField ? phoneInputField.value.trim() : '').valid;
+      }
+      if (field === 'email' && !preverifiedVoiceContacts.email) {
+        ready = ready && validateContactInput('email', voiceInputField ? voiceInputField.value.trim() : '').valid;
+      }
+    });
+    voiceDetailsSubmitBtn.disabled = !ready;
+  }
+
+  function handlePreCallVoiceContactSubmit() {
+    var nextContacts = {};
+    var firstError = '';
+
+    REQUIRED_VOICE_CONTACT_FIELDS.forEach(function(field) {
+      if (field === 'phone' && !preverifiedVoiceContacts.phone) {
+        var phoneValidation = validateContactInput('phone', phoneInputField ? phoneInputField.value.trim() : '');
+        if (!phoneValidation.valid && !firstError) firstError = phoneValidation.error;
+        if (phoneValidation.valid) nextContacts.phone = phoneValidation.normalized;
+      }
+      if (field === 'email' && !preverifiedVoiceContacts.email) {
+        var emailValidation = validateContactInput('email', voiceInputField ? voiceInputField.value.trim() : '');
+        if (!emailValidation.valid && !firstError) firstError = emailValidation.error;
+        if (emailValidation.valid) nextContacts.email = emailValidation.normalized;
+      }
+    });
+
+    if (firstError) {
+      showVoiceInputError(firstError);
+      return;
+    }
+
+    Object.assign(preverifiedVoiceContacts, nextContacts);
+    collectingPreCallVoiceContact = false;
+    pendingInputField = null;
+    showVoiceInputError('');
+    if (voiceInputContainer) voiceInputContainer.style.display = 'none';
+    if (voiceDetailsSubmitBtn) voiceDetailsSubmitBtn.style.display = 'none';
+    if (voiceInputBtn) voiceInputBtn.style.display = '';
+    if (phoneInputBtn) phoneInputBtn.style.display = '';
+    startVoice();
+  }
+
+  function showPreCallVoiceContactFields() {
+    var prompt = buildPreCallVoicePrompt();
+    var needsPhone = REQUIRED_VOICE_CONTACT_FIELDS.indexOf('phone') >= 0 && !preverifiedVoiceContacts.phone;
+    var needsEmail = REQUIRED_VOICE_CONTACT_FIELDS.indexOf('email') >= 0 && !preverifiedVoiceContacts.email;
+
+    if (!needsPhone && !needsEmail) {
+      startVoice();
+      return;
+    }
+
     collectingPreCallVoiceContact = true;
-    pendingInputField = field;
+    pendingInputField = null;
     micMuted = false;
     if (voiceOverlay) voiceOverlay.style.display = 'flex';
     if (overlayMicIcon) overlayMicIcon.style.display = 'none';
@@ -924,17 +996,17 @@ ${poweredByHtml}
     if (voiceInputContainer) {
       voiceInputContainer.style.display = 'flex';
       voiceInputLabel.textContent = prompt;
-      if (field === 'phone') {
-        voiceInputForm.style.display = 'none';
+      if (needsPhone) {
         voicePhoneForm.style.display = 'block';
         phoneInputField.value = '';
         phoneInputField.setAttribute('maxlength', '10');
         phoneInputField.maxLength = 10;
         phoneInputBtn.disabled = true;
-        showVoiceInputError('');
-        phoneInputField.focus();
+        phoneInputBtn.style.display = 'none';
       } else {
         voicePhoneForm.style.display = 'none';
+      }
+      if (needsEmail) {
         voiceInputForm.style.display = 'flex';
         voiceInputField.type = 'email';
         voiceInputField.placeholder = 'name@example.com';
@@ -942,37 +1014,24 @@ ${poweredByHtml}
         voiceInputField.inputMode = 'email';
         voiceInputField.value = '';
         voiceInputBtn.disabled = true;
-        showVoiceInputError('');
-        voiceInputField.focus();
+        voiceInputBtn.style.display = 'none';
+      } else {
+        voiceInputForm.style.display = 'none';
       }
-    }
-    speakPreCallVoicePrompt(field);
-  }
-
-  function collectNextPreCallVoiceContact() {
-    var nextField = null;
-    for (var i = 0; i < REQUIRED_VOICE_CONTACT_FIELDS.length; i++) {
-      var field = REQUIRED_VOICE_CONTACT_FIELDS[i];
-      if ((field === 'phone' || field === 'email') && !preverifiedVoiceContacts[field]) {
-        nextField = field;
-        break;
+      if (voiceDetailsSubmitBtn) {
+        voiceDetailsSubmitBtn.style.display = 'block';
+        voiceDetailsSubmitBtn.disabled = true;
       }
+      showVoiceInputError('');
+      if (needsPhone) phoneInputField.focus();
+      else if (needsEmail) voiceInputField.focus();
     }
-
-    if (nextField) {
-      showPreCallVoiceContactField(nextField);
-      return;
-    }
-
-    collectingPreCallVoiceContact = false;
-    pendingInputField = null;
-    if (voiceInputContainer) voiceInputContainer.style.display = 'none';
-    startVoice();
+    speakPreCallVoicePrompt();
   }
 
   function startVoiceWithPreCallContactGate() {
     if (REQUIRED_VOICE_CONTACT_FIELDS.length > 0) {
-      collectNextPreCallVoiceContact();
+      showPreCallVoiceContactFields();
       return;
     }
     startVoice();
@@ -993,6 +1052,7 @@ ${poweredByHtml}
   var voiceInputField = document.getElementById('voiceInputField');
   var voiceInputBtn = document.getElementById('voiceInputBtn');
   var voiceInputError = document.getElementById('voiceInputError');
+  var voiceDetailsSubmitBtn = document.getElementById('voiceDetailsSubmitBtn');
 
   var voicePhoneForm = document.getElementById('voicePhoneForm');
   var phoneCountrySelector = document.getElementById('phoneCountrySelector');
@@ -1320,6 +1380,9 @@ ${poweredByHtml}
     micMuted = false;
     showVoiceInputError('');
     if (voiceInputContainer) voiceInputContainer.style.display = 'none';
+    if (voiceDetailsSubmitBtn) voiceDetailsSubmitBtn.style.display = 'none';
+    if (voiceInputBtn) voiceInputBtn.style.display = '';
+    if (phoneInputBtn) phoneInputBtn.style.display = '';
     setVoiceState('idle');
   }
 
@@ -1556,21 +1619,14 @@ ${poweredByHtml}
   if (voiceInputForm) {
     voiceInputField.addEventListener('input', function() {
       voiceInputBtn.disabled = !voiceInputField.value.trim();
+      updatePreCallDetailsButton();
       showVoiceInputError('');
     });
     voiceInputForm.addEventListener('submit', function(e) {
       e.preventDefault();
       var text = voiceInputField.value.trim();
-      if (collectingPreCallVoiceContact && pendingInputField) {
-        var preCallValidation = validateContactInput(pendingInputField, text);
-        if (!preCallValidation.valid) {
-          showVoiceInputError(preCallValidation.error);
-          return;
-        }
-        preverifiedVoiceContacts[pendingInputField] = preCallValidation.normalized;
-        voiceInputBtn.disabled = true;
-        showVoiceInputError('');
-        collectNextPreCallVoiceContact();
+      if (collectingPreCallVoiceContact) {
+        handlePreCallVoiceContactSubmit();
         return;
       }
       if (!text || !ws || ws.readyState !== WebSocket.OPEN || !pendingInputField) return;
@@ -1622,6 +1678,7 @@ ${poweredByHtml}
         phoneInputField.value = cleaned;
         var validation = validateContactInput('phone', cleaned);
         phoneInputBtn.disabled = !validation.valid;
+        updatePreCallDetailsButton();
         showVoiceInputError('');
       } catch (e) {
         // swallow any unexpected errors in widget script
@@ -1633,16 +1690,8 @@ ${poweredByHtml}
     voicePhoneForm.addEventListener('submit', function(e) {
       e.preventDefault();
       var text = phoneInputField.value.trim();
-      if (collectingPreCallVoiceContact && pendingInputField === 'phone') {
-        var preCallValidation = validateContactInput('phone', text);
-        if (!preCallValidation.valid) {
-          showVoiceInputError(preCallValidation.error);
-          return;
-        }
-        preverifiedVoiceContacts.phone = preCallValidation.normalized;
-        phoneInputBtn.disabled = true;
-        showVoiceInputError('');
-        collectNextPreCallVoiceContact();
+      if (collectingPreCallVoiceContact) {
+        handlePreCallVoiceContactSubmit();
         return;
       }
       if (!text || !ws || ws.readyState !== WebSocket.OPEN || !pendingInputField) return;
@@ -1654,6 +1703,12 @@ ${poweredByHtml}
       ws.send(JSON.stringify({ type: 'textInput', data: validation.normalized, field: 'phone' }));
       phoneInputBtn.disabled = true;
       showVoiceInputError('');
+    });
+  }
+
+  if (voiceDetailsSubmitBtn) {
+    voiceDetailsSubmitBtn.addEventListener('click', function() {
+      handlePreCallVoiceContactSubmit();
     });
   }
 

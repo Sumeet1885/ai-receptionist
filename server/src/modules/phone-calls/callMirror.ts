@@ -169,17 +169,32 @@ async function ingestRun(
 
   if (callRow.ingest_status === 'done') return false;
 
+  // Fetch the run before binding a session: a bot with calendar tools attached creates the
+  // session pre-call (see phoneToolsController.preCall) and threads its id through as
+  // initial_context.session_id precisely so it can be reused here instead of creating a second,
+  // orphaned session for the same call.
+  const run = await getRun(workflowId, runId);
+
   // 2. Bind the session immediately — before inserting messages — so a crash after this point
   // resumes onto the same session instead of creating a duplicate.
   let sessionId: string = callRow.session_id;
   if (!sessionId) {
-    const { data: session, error: sessionError } = await supabase
-      .from('chat_sessions')
-      .insert({ bot_id: bot.id, channel: 'phone' })
-      .select()
-      .single();
-    if (sessionError || !session) throw sessionError || new Error('Failed to create chat session for phone call');
-    sessionId = session.id;
+    const preCallSessionId = (run.initial_context as Record<string, any> | null)?.session_id;
+    const { data: existingSession } = preCallSessionId
+      ? await supabase.from('chat_sessions').select('id').eq('id', preCallSessionId).eq('bot_id', bot.id).maybeSingle()
+      : { data: null };
+
+    if (existingSession) {
+      sessionId = existingSession.id;
+    } else {
+      const { data: session, error: sessionError } = await supabase
+        .from('chat_sessions')
+        .insert({ bot_id: bot.id, channel: 'phone' })
+        .select()
+        .single();
+      if (sessionError || !session) throw sessionError || new Error('Failed to create chat session for phone call');
+      sessionId = session.id;
+    }
 
     const { error: bindError } = await supabase
       .from('phone_calls')
@@ -189,7 +204,6 @@ async function ingestRun(
   }
 
   // 3. Populate transcript + lead analysis.
-  const run = await getRun(workflowId, runId);
   // Use the absolute, downloadable URL — run.transcript_url is a relative storage key that
   // throws when fetched. This was the bug that silently failed every call that had a transcript.
   const transcriptUrl = run.transcript_public_url || run.transcript_url;

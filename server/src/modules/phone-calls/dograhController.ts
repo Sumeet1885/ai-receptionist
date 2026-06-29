@@ -1,25 +1,30 @@
 import { Response } from 'express';
 import { AuthRequest } from '../../middleware/auth';
 import { supabase } from '../../services/db';
+import { config } from '../../config';
 import { mergeWidgetConfig } from '../../utils/widgetConfig';
 import { validateContactInput } from '../../utils/contactValidation';
 import { buildDograhOutboundInstruction, buildDograhPhoneInstruction, withoutAutoKnownPhoneField } from './receptionistInstruction';
 import { syncBotCalls } from './callMirror';
 import {
   assignInboundWorkflow,
+  createHttpTool,
   createWorkflowFromDefinition,
   initiateCall,
   listPhoneNumbers,
   listTelephonyConfigs,
   publishWorkflow,
+  updateHttpTool,
   updateWorkflowInPlace,
 } from './dograhClient';
 import { DograhProvisionableBot } from './types';
-import { buildLeadExtractionVariables, buildSingleNodeWorkflowDefinition } from './workflowDefinition';
+import { buildLeadExtractionVariables, buildSingleNodeWorkflowDefinition, MAX_CALL_DURATION_SECONDS } from './workflowDefinition';
 
 // Dograh has no per-bot timezone input on a phone call (no browser to read it from), so the
 // phone persona uses a fixed default. Matches the IST-leaning default used elsewhere in the app.
 const PHONE_DEFAULT_TIMEZONE = 'Asia/Kolkata';
+
+const WORKFLOW_CONFIGURATIONS = { max_call_duration: MAX_CALL_DURATION_SECONDS };
 
 function maskPhoneNumber(phoneNumber: string): string {
   if (phoneNumber.length <= 4) return '****';
@@ -29,13 +34,83 @@ function maskPhoneNumber(phoneNumber: string): string {
 async function loadOwnedBot(botId: string, ownerId: string): Promise<DograhProvisionableBot | null> {
   const { data, error } = await supabase
     .from('bots')
-    .select('id, owner_id, business_name, industry, knowledge_base, widget_config, primary_color, dograh_workflow_id, dograh_outbound_workflow_id, dograh_telephony_config_id, dograh_phone_number_id, dograh_phone_number')
+    .select(
+      'id, owner_id, business_name, industry, knowledge_base, widget_config, primary_color, dograh_workflow_id, dograh_outbound_workflow_id, dograh_telephony_config_id, dograh_phone_number_id, dograh_phone_number, dograh_check_availability_tool_uuid, dograh_book_appointment_tool_uuid'
+    )
     .eq('id', botId)
     .eq('owner_id', ownerId)
     .single();
 
   if (error || !data) return null;
   return data;
+}
+
+async function isCalendarConnected(ownerId: string): Promise<boolean> {
+  const { data } = await supabase.from('calendar_connections').select('provider').eq('owner_id', ownerId).maybeSingle();
+  return Boolean(data?.provider);
+}
+
+interface PhoneToolUuids {
+  checkAvailabilityToolUuid: string;
+  bookAppointmentToolUuid: string;
+}
+
+/**
+ * Creates (first provision) or updates (every re-provision after that) the two Dograh tools that
+ * let the phone agent call back into this server for live calendar booking - check_availability
+ * and book_appointment, mirroring the Gemini Live web-voice tool contract (liveTools.ts) so the
+ * persona instruction (buildToolBasedBookingInstruction) describes the same two tools regardless
+ * of channel. The bot's own id is baked into each tool's URL; session_id is injected by Dograh at
+ * call time from initial_context (populated by the pre-call-fetch hit on phoneToolsController.preCall).
+ */
+async function ensurePhoneTools(bot: DograhProvisionableBot): Promise<PhoneToolUuids> {
+  const apiKeyHeader = { 'X-API-Key': config.phoneTools.apiKey };
+  const base = `${config.phoneTools.callbackBaseUrl}/api/phone-tools/${bot.id}`;
+
+  const checkAvailabilityParams = {
+    name: `Check Availability - ${bot.business_name}`,
+    description: 'Check available appointment slots for a given date. Returns start and end times of free slots.',
+    url: `${base}/check-availability`,
+    method: 'POST' as const,
+    headers: apiKeyHeader,
+    parameters: [
+      { name: 'date', type: 'string' as const, description: 'Date in YYYY-MM-DD format', required: true },
+    ],
+  };
+  const bookAppointmentParams = {
+    name: `Book Appointment - ${bot.business_name}`,
+    description: 'Book an appointment slot. Ensure availability was checked first and the caller has agreed to the specific slot.',
+    url: `${base}/book-appointment`,
+    method: 'POST' as const,
+    headers: apiKeyHeader,
+    parameters: [
+      { name: 'title', type: 'string' as const, description: 'Title of the appointment', required: true },
+      { name: 'visitorName', type: 'string' as const, description: 'Caller full name', required: false },
+      { name: 'visitorPhone', type: 'string' as const, description: 'Caller phone number', required: false },
+      { name: 'visitorEmail', type: 'string' as const, description: 'Caller email address', required: false },
+      { name: 'startTime', type: 'string' as const, description: 'Start time in ISO 8601 format', required: true },
+      { name: 'endTime', type: 'string' as const, description: 'End time in ISO 8601 format', required: true },
+    ],
+    presetParameters: [
+      { name: 'session_id', type: 'string' as const, value_template: '{{initial_context.session_id}}' },
+    ],
+  };
+
+  let checkAvailabilityToolUuid = bot.dograh_check_availability_tool_uuid;
+  if (checkAvailabilityToolUuid) {
+    await updateHttpTool(checkAvailabilityToolUuid, checkAvailabilityParams);
+  } else {
+    checkAvailabilityToolUuid = (await createHttpTool(checkAvailabilityParams)).tool_uuid;
+  }
+
+  let bookAppointmentToolUuid = bot.dograh_book_appointment_tool_uuid;
+  if (bookAppointmentToolUuid) {
+    await updateHttpTool(bookAppointmentToolUuid, bookAppointmentParams);
+  } else {
+    bookAppointmentToolUuid = (await createHttpTool(bookAppointmentParams)).tool_uuid;
+  }
+
+  return { checkAvailabilityToolUuid, bookAppointmentToolUuid };
 }
 
 export async function getStatus(req: AuthRequest, res: Response): Promise<void> {
@@ -67,33 +142,55 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
     // caller to read it back, and don't generate a useless caller_phone extraction slot for it.
     const extractionVariables = buildLeadExtractionVariables(withoutAutoKnownPhoneField(widgetConfig));
 
+    // Tool-driven booking (real-time check_availability/book_appointment against the owner's
+    // connected Google Calendar) only when a calendar is actually connected and the bot has
+    // calendar booking enabled - otherwise the persona falls back to the verbal-handoff
+    // instruction exactly as before, and no tools/pre-call-fetch are attached at all.
+    const useTools = widgetConfig.enableCalendar && (await isCalendarConnected(bot.owner_id));
+    let toolUuids: string[] | undefined;
+    let checkAvailabilityToolUuid = bot.dograh_check_availability_tool_uuid;
+    let bookAppointmentToolUuid = bot.dograh_book_appointment_tool_uuid;
+    if (useTools) {
+      const tools = await ensurePhoneTools(bot);
+      checkAvailabilityToolUuid = tools.checkAvailabilityToolUuid;
+      bookAppointmentToolUuid = tools.bookAppointmentToolUuid;
+      toolUuids = [checkAvailabilityToolUuid, bookAppointmentToolUuid];
+    }
+    const preCallFetchUrl = useTools
+      ? `${config.phoneTools.callbackBaseUrl}/api/phone-tools/${botId}/pre-call?key=${config.phoneTools.apiKey}`
+      : undefined;
+
     // One click provisions both directions: the inbound (answering) agent and the outbound
     // (calling-out) agent. They are always provisioned together, which keeps the poller's
     // "has a workflow" eligibility check simple — see callPoller.ts. Each is a hand-authored
     // single-conversation-node graph (workflowDefinition.ts), not Dograh's AI-generated
     // create/template graph — see "Phone calls/README.md" for why.
-    const inboundInstruction = buildDograhPhoneInstruction(bot, widgetConfig, { timezone: PHONE_DEFAULT_TIMEZONE });
+    const inboundInstruction = buildDograhPhoneInstruction(bot, widgetConfig, { timezone: PHONE_DEFAULT_TIMEZONE, useToolBasedBooking: useTools });
     const inboundDefinition = buildSingleNodeWorkflowDefinition({
       personaPrompt: inboundInstruction,
       extractionVariables,
       isOutbound: false,
       businessName: bot.business_name,
+      toolUuids,
+      preCallFetchUrl,
     });
     const inboundWorkflow = bot.dograh_workflow_id
-      ? await updateWorkflowInPlace(bot.dograh_workflow_id, inboundDefinition)
-      : await createWorkflowFromDefinition(`AI receptionist for ${bot.business_name}`, inboundDefinition);
+      ? await updateWorkflowInPlace(bot.dograh_workflow_id, inboundDefinition, WORKFLOW_CONFIGURATIONS)
+      : await createWorkflowFromDefinition(`AI receptionist for ${bot.business_name}`, inboundDefinition, WORKFLOW_CONFIGURATIONS);
     await publishWorkflow(inboundWorkflow.id);
 
-    const outboundInstruction = buildDograhOutboundInstruction(bot, widgetConfig, { timezone: PHONE_DEFAULT_TIMEZONE });
+    const outboundInstruction = buildDograhOutboundInstruction(bot, widgetConfig, { timezone: PHONE_DEFAULT_TIMEZONE, useToolBasedBooking: useTools });
     const outboundDefinition = buildSingleNodeWorkflowDefinition({
       personaPrompt: outboundInstruction,
       extractionVariables,
       isOutbound: true,
       businessName: bot.business_name,
+      toolUuids,
+      preCallFetchUrl,
     });
     const outboundWorkflow = bot.dograh_outbound_workflow_id
-      ? await updateWorkflowInPlace(bot.dograh_outbound_workflow_id, outboundDefinition)
-      : await createWorkflowFromDefinition(`AI outbound caller for ${bot.business_name}`, outboundDefinition);
+      ? await updateWorkflowInPlace(bot.dograh_outbound_workflow_id, outboundDefinition, WORKFLOW_CONFIGURATIONS)
+      : await createWorkflowFromDefinition(`AI outbound caller for ${bot.business_name}`, outboundDefinition, WORKFLOW_CONFIGURATIONS);
     await publishWorkflow(outboundWorkflow.id);
 
     const { error } = await supabase
@@ -101,6 +198,8 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
       .update({
         dograh_workflow_id: String(inboundWorkflow.id),
         dograh_outbound_workflow_id: String(outboundWorkflow.id),
+        dograh_check_availability_tool_uuid: checkAvailabilityToolUuid,
+        dograh_book_appointment_tool_uuid: bookAppointmentToolUuid,
       })
       .eq('id', botId);
     if (error) throw error;
@@ -244,6 +343,35 @@ export async function listCalls(req: AuthRequest, res: Response): Promise<void> 
   });
 }
 
+// In-memory, single-process rate limiting on outbound dialing - same constraint as the poller
+// (process-local/single-replica), acceptable for a single deliberate dial action by the bot's
+// own owner. Caps a runaway loop (buggy client retry, compromised owner session) from dialing
+// the same number or burning through the org's outbound minutes unbounded.
+const OUTBOUND_COOLDOWN_MS = 10_000;
+const OUTBOUND_HOURLY_CAP = 20;
+const lastCallAtByBot = new Map<string, number>();
+const callTimestampsByBot = new Map<string, number[]>();
+
+function checkOutboundRateLimit(botId: string): string | null {
+  const now = Date.now();
+
+  const lastCallAt = lastCallAtByBot.get(botId);
+  if (lastCallAt && now - lastCallAt < OUTBOUND_COOLDOWN_MS) {
+    return `Please wait a few seconds between outbound calls.`;
+  }
+
+  const hourAgo = now - 60 * 60 * 1000;
+  const recent = (callTimestampsByBot.get(botId) || []).filter(ts => ts > hourAgo);
+  if (recent.length >= OUTBOUND_HOURLY_CAP) {
+    return `This receptionist has reached its limit of ${OUTBOUND_HOURLY_CAP} outbound calls per hour.`;
+  }
+
+  recent.push(now);
+  callTimestampsByBot.set(botId, recent);
+  lastCallAtByBot.set(botId, now);
+  return null;
+}
+
 export async function callOut(req: AuthRequest, res: Response): Promise<void> {
   const botId = req.params.botId;
   const { phoneNumber } = req.body || {};
@@ -265,6 +393,12 @@ export async function callOut(req: AuthRequest, res: Response): Promise<void> {
   }
   if (!bot.dograh_telephony_config_id || !bot.dograh_phone_number_id) {
     res.status(400).json({ error: 'Assign a phone number to this receptionist before placing outbound calls' });
+    return;
+  }
+
+  const rateLimitError = checkOutboundRateLimit(botId);
+  if (rateLimitError) {
+    res.status(429).json({ error: rateLimitError });
     return;
   }
 

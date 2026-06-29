@@ -61,4 +61,6 @@ export interface DograhProvisionableBot {
   dograh_telephony_config_id?: string | null;
   dograh_phone_number_id?: string | null;
   dograh_phone_number?: string | null;
+  dograh_check_availability_tool_uuid?: string | null;
+  dograh_book_appointment_tool_uuid?: string | null;
 }

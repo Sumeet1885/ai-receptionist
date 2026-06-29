@@ -333,7 +333,7 @@ export function setupWebSocketServer(server: Server) {
         console.log('Gemini Live API Setup Complete. Triggering initial greeting...');
         if (geminiWs.readyState === WebSocket.OPEN) {
           const preverifiedContext = seededContactFields.length > 0
-            ? `Server-verified visitor contact fields already collected before this call: ${seededContactFields.join(', ')}. Do not ask for these fields again; the backend will attach them when booking.`
+            ? `Server-verified visitor contact fields already collected before this call: ${seededContactFields.join(', ')}. Do not ask for these fields again; the backend will attach them when booking. Start by briefly acknowledging that the details were received, for example: "Great, I have your details. I can help with that."`
             : '';
           geminiWs.send(JSON.stringify({
             clientContent: {

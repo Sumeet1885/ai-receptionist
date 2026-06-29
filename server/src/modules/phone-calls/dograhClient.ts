@@ -63,19 +63,27 @@ async function request<T>(path: string, init: RequestInit = {}, retrying = false
 // reinterprets it into an unpredictable node graph. That indirection was the root cause of
 // call-quality issues with small/literal models: ambiguous multi-node routing and disabled
 // variable extraction. create/definition takes our literal JSON with no reinterpretation.
-export function createWorkflowFromDefinition(name: string, workflowDefinition: Record<string, unknown>): Promise<DograhWorkflow> {
+export function createWorkflowFromDefinition(
+  name: string,
+  workflowDefinition: Record<string, unknown>,
+  workflowConfigurations?: Record<string, unknown>
+): Promise<DograhWorkflow> {
   return request<DograhWorkflow>('/api/v1/workflow/create/definition', {
     method: 'POST',
-    body: JSON.stringify({ name, workflow_definition: workflowDefinition }),
+    body: JSON.stringify({ name, workflow_definition: workflowDefinition, workflow_configurations: workflowConfigurations }),
   });
 }
 
 // PUT updates the same workflow id in place (as a new draft - see publishWorkflow), so
 // re-provisioning never orphans a phone number's inbound_workflow_id binding to a stale id.
-export function updateWorkflowInPlace(workflowId: string, workflowDefinition: Record<string, unknown>): Promise<DograhWorkflow> {
+export function updateWorkflowInPlace(
+  workflowId: string,
+  workflowDefinition: Record<string, unknown>,
+  workflowConfigurations?: Record<string, unknown>
+): Promise<DograhWorkflow> {
   return request<DograhWorkflow>(`/api/v1/workflow/${workflowId}`, {
     method: 'PUT',
-    body: JSON.stringify({ workflow_definition: workflowDefinition }),
+    body: JSON.stringify({ workflow_definition: workflowDefinition, workflow_configurations: workflowConfigurations }),
   });
 }
 
@@ -90,6 +98,66 @@ export async function publishWorkflow(workflowId: string | number): Promise<unkn
     if (err instanceof Error && /No draft to publish/i.test(err.message)) return undefined;
     throw err;
   }
+}
+
+export interface HttpToolParam {
+  name: string;
+  type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+  description: string;
+  required?: boolean;
+}
+
+export interface HttpToolPresetParam {
+  name: string;
+  type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+  /** Fixed value or a `{{initial_context.*}}` / `{{gathered_context.*}}` template. */
+  value_template: string;
+}
+
+export interface CreateHttpToolParams {
+  name: string;
+  description: string;
+  url: string;
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  headers?: Record<string, string>;
+  parameters?: HttpToolParam[];
+  presetParameters?: HttpToolPresetParam[];
+}
+
+function httpToolBody(params: CreateHttpToolParams) {
+  return {
+    name: params.name,
+    category: 'http_api',
+    description: params.description,
+    definition: {
+      type: 'http_api',
+      config: {
+        method: params.method,
+        url: params.url,
+        headers: params.headers,
+        parameters: params.parameters,
+        preset_parameters: params.presetParameters,
+      },
+    },
+  };
+}
+
+// Tools are organization-wide objects in Dograh, but the URL/preset_parameters baked into ours
+// are per-bot (bot id in the path, the X-API-Key header). createTool on first provision,
+// updateTool (PUT, same tool_uuid) on every re-provision after that - see dograhController.ts,
+// which persists the returned tool_uuid on the bot row precisely so it can tell which case it's in.
+export function createHttpTool(params: CreateHttpToolParams): Promise<{ tool_uuid: string }> {
+  return request<{ tool_uuid: string }>('/api/v1/tools/', {
+    method: 'POST',
+    body: JSON.stringify(httpToolBody(params)),
+  });
+}
+
+export function updateHttpTool(toolUuid: string, params: CreateHttpToolParams): Promise<unknown> {
+  return request<unknown>(`/api/v1/tools/${toolUuid}`, {
+    method: 'PUT',
+    body: JSON.stringify(httpToolBody(params)),
+  });
 }
 
 export async function listTelephonyConfigs(): Promise<DograhTelephonyConfig[]> {

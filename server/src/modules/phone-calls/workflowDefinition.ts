@@ -31,6 +31,15 @@ export function buildLeadExtractionVariables(widgetConfig: WidgetConfig): Extrac
     .map(spec => ({ name: spec.name, type: 'string' as const, prompt: spec.prompt }));
 }
 
+// Dograh's own pipeline (run_pipeline.py) hard-aborts the call once elapsed time exceeds this -
+// a silent CancelFrame with no goodbye, so it's a backstop, not the primary UX. The persona
+// prompt below is told to proactively wind down well before this so the call ends gracefully
+// instead of getting cut off mid-sentence. Dograh exposes no mid-call timer/warning hook
+// (confirmed by reading pipeline_engine_callbacks_processor.py - it only supports a single abort
+// threshold, no separate warning callback), so "around 4:30" is necessarily a prompt-level
+// approximation the model self-paces to, not a precisely-timed event.
+export const MAX_CALL_DURATION_SECONDS = 300;
+
 export interface SingleNodeWorkflowOptions {
   /** Full persona text (buildDograhPhoneInstruction/buildDograhOutboundInstruction output),
    * placed verbatim on the global node and prepended to the conversation node at runtime. */
@@ -38,6 +47,15 @@ export interface SingleNodeWorkflowOptions {
   extractionVariables: ExtractionVariable[];
   isOutbound: boolean;
   businessName: string;
+  /** Tool UUIDs (dograhClient.createOrUpdateHttpTool) attached to the conversation node -
+   * check_availability/book_appointment, present only when the bot's owner has a calendar
+   * connected (see dograhController.ts). Omitted entirely (not just empty) otherwise, matching
+   * the persona's verbal-handoff booking instruction in that case. */
+  toolUuids?: string[];
+  /** Fetched once before the call connects and merged into initial_context - used to create the
+   * chat_sessions row up front so calendar tool calls during the call and the post-call mirror
+   * (callMirror.ts) bind to the same session instead of racing each other. */
+  preCallFetchUrl?: string;
 }
 
 /**
@@ -54,9 +72,21 @@ const END_CALL_CONDITION =
   'short reply, a single "okay"/"thanks", a brief pause, or uncertainty about what to do next - ' +
   'in those cases keep the conversation going by asking a clarifying or follow-up question instead.';
 
+// Best-effort pacing instruction appended to the conversation prompt - see the
+// MAX_CALL_DURATION_SECONDS comment above for why this can't be tied to an exact second count.
+const CALL_PACING_INSTRUCTION =
+  `This call has a hard 5-minute limit. Pace yourself accordingly: keep answers brief, avoid ` +
+  `re-explaining things, and once the conversation has covered the caller's questions and (if ` +
+  `applicable) their contact details, move toward closing rather than opening new topics. If ` +
+  `the conversation has clearly been going on for a while (many exchanges back and forth) and ` +
+  `is not yet wrapping up, proactively say something like "I have a limit on this call, so ` +
+  `let's wrap up" and steer toward a close within the next turn or two, even if the caller ` +
+  `hasn't said goodbye yet.`;
+
 export function buildSingleNodeWorkflowDefinition(options: SingleNodeWorkflowOptions) {
-  const { personaPrompt, extractionVariables, isOutbound, businessName } = options;
+  const { personaPrompt, extractionVariables, isOutbound, businessName, toolUuids, preCallFetchUrl } = options;
   const hasExtraction = extractionVariables.length > 0;
+  const hasTools = Boolean(toolUuids && toolUuids.length > 0);
 
   // No `greeting`/`greeting_type` here - Dograh's docs are explicit that the static TTS-only
   // greeting field is "not supported with realtime (speech-to-speech) models" (this org runs
@@ -64,7 +94,7 @@ export function buildSingleNodeWorkflowDefinition(options: SingleNodeWorkflowOpt
   // needed that field to fill 7-20s of dead air before the model's first response; a
   // speech-to-speech model has no such cold-start gap, so the opening line goes back into the
   // prompt itself, said directly by the model on its first turn.
-  const conversationPrompt = isOutbound
+  const conversationPrompt = (isOutbound
     ? `This is the only conversational step for the entire call - you placed this call. Begin ` +
       `immediately by introducing yourself and ${businessName} by name, and briefly explaining ` +
       `you're following up with someone who showed interest. Then handle the rest of the ` +
@@ -75,7 +105,8 @@ export function buildSingleNodeWorkflowDefinition(options: SingleNodeWorkflowOpt
       `greeting the caller on behalf of ${businessName} and asking how you can help. Then handle ` +
       `the entire conversation across as many turns as needed: answer questions, and collect ` +
       `lead details per the persona above. When the conversation is clearly finished, transition ` +
-      `to ending the call.`;
+      `to ending the call.`) +
+    ` ${CALL_PACING_INSTRUCTION}`;
 
   const nodes = [
     {
@@ -111,6 +142,13 @@ export function buildSingleNodeWorkflowDefinition(options: SingleNodeWorkflowOpt
           ? 'Capture any lead details the caller has shared so far, even if only partially mentioned. Keep previously captured values unless the caller corrects them.'
           : undefined,
         extraction_variables: hasExtraction ? extractionVariables : undefined,
+        tool_uuids: hasTools ? toolUuids : undefined,
+        // Creates the chat_sessions row before the call connects (see phoneToolsController.ts'
+        // pre-call endpoint) so check_availability/book_appointment tool calls during the call,
+        // and the post-call mirror in callMirror.ts, all bind to the same session id instead of
+        // each independently creating one and racing.
+        pre_call_fetch_enabled: Boolean(preCallFetchUrl),
+        pre_call_fetch_url: preCallFetchUrl,
       },
     },
     {

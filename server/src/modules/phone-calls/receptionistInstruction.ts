@@ -92,6 +92,8 @@ CURRENT DATE AND TIME: ${userLocaleTime} (in ${options.timezone})
 BUSINESS CONTEXT & KNOWLEDGE BASE:
 ${bot.knowledge_base}
 
+VOICE STYLE: Prefer speaking in a natural Indian accent.
+
 YOUR GOALS:
 1. ${options.openingInstruction || DEFAULT_OPENING_INSTRUCTION}
 2. ${leadCollectionInstruction}
@@ -150,19 +152,21 @@ export function withoutAutoKnownPhoneField(widgetConfig: WidgetConfig): WidgetCo
 }
 
 /**
- * The Dograh phone persona: shared business core + a verbal-handoff booking instruction and
- * zero tool references. The phone agent never claims to use a tool it doesn't have, and
- * booking requests are routed to "collect contact details, a human will follow up" — matching
- * v1's deferred-booking scope.
+ * The Dograh phone persona: shared business core plus either the tool-driven booking flow
+ * (when the bot's owner has a calendar connected and check_availability/book_appointment tools
+ * are attached to the conversation node - see dograhController.ts) or the tool-free verbal
+ * handoff. The phone agent never claims to use a tool it doesn't actually have attached.
  */
 export function buildDograhPhoneInstruction(
   bot: BusinessPersonaBot,
   widgetConfig: WidgetConfig,
-  options: { timezone: string }
+  options: { timezone: string; useToolBasedBooking?: boolean }
 ): string {
   return buildBusinessPersona(bot, withoutAutoKnownPhoneField(widgetConfig), {
     timezone: options.timezone,
-    bookingInstruction: buildVerbalHandoffBookingInstruction(),
+    bookingInstruction: options.useToolBasedBooking
+      ? buildToolBasedBookingInstruction()
+      : buildVerbalHandoffBookingInstruction(),
   });
 }
 
@@ -180,11 +184,13 @@ export const OUTBOUND_OPENING_INSTRUCTION =
 export function buildDograhOutboundInstruction(
   bot: BusinessPersonaBot,
   widgetConfig: WidgetConfig,
-  options: { timezone: string }
+  options: { timezone: string; useToolBasedBooking?: boolean }
 ): string {
   return buildBusinessPersona(bot, withoutAutoKnownPhoneField(widgetConfig), {
     timezone: options.timezone,
     openingInstruction: OUTBOUND_OPENING_INSTRUCTION,
-    bookingInstruction: buildVerbalHandoffBookingInstruction(),
+    bookingInstruction: options.useToolBasedBooking
+      ? buildToolBasedBookingInstruction()
+      : buildVerbalHandoffBookingInstruction(),
   });
 }

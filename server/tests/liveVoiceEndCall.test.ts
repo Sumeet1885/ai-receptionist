@@ -210,6 +210,8 @@ test('live backend seeds pre-collected contact fields before Gemini setup', asyn
   assert.match(liveControllerSource, /seedVerifiedContactInputs/);
   assert.match(liveControllerSource, /missingContactFields/);
   assert.match(liveControllerSource, /Server-verified visitor contact fields already collected before this call/);
+  assert.match(liveControllerSource, /Start by briefly acknowledging that the details were received/);
+  assert.match(liveControllerSource, /Great/);
 });
 
 test('public preview collects required voice contact fields before opening Gemini Live', () => {
@@ -222,15 +224,20 @@ test('public preview collects required voice contact fields before opening Gemin
   assert.match(publicChatViewSource, /showVoiceGate/);
   assert.match(publicChatViewSource, /requiredVoiceContactFields/);
   assert.match(publicChatViewSource, /activeBot\.widgetConfig\.requiredLeadFields/);
-  assert.match(voiceCallViewSource, /currentPreCallField/);
+  assert.match(voiceCallViewSource, /currentPreCallFields/);
+  assert.match(voiceCallViewSource, /preCallInputValues/);
+  assert.match(voiceCallViewSource, /handleSubmitPreCallDetails/);
   assert.match(voiceCallViewSource, /buildPreCallVoicePrompt/);
   assert.match(voiceCallViewSource, /speechSynthesis/);
   assert.match(voiceCallViewSource, /SpeechSynthesisUtterance/);
-  assert.match(voiceCallViewSource, /Please can I have your/);
+  assert.match(voiceCallViewSource, /Please fill in your details/);
   assert.match(voiceCallViewSource, /before I connect you/i);
+  assert.match(voiceCallViewSource, /currentPreCallFields\.map/);
+  assert.match(voiceCallViewSource, /currentPreCallFields\.every/);
   assert.match(voiceCallViewSource, /liveVoice\.startVoice\(nextPreCallValues\)/);
   assert.match(voiceCallViewSource, /validateContactInput\(activeInputType, inputValue\)/);
   assert.match(voiceCallViewSource, /window\.speechSynthesis\.speak\(utterance\)/);
+  assert.doesNotMatch(voiceCallViewSource, /requiredVoiceContactFields\.find/);
 });
 
 test('embedded widget collects required voice contact fields before opening Gemini Live', () => {
@@ -239,15 +246,18 @@ test('embedded widget collects required voice contact fields before opening Gemi
   assert.match(widgetSource, /REQUIRED_VOICE_CONTACT_FIELDS/);
   assert.match(widgetSource, /preverifiedVoiceContacts/);
   assert.match(widgetSource, /startVoiceWithPreCallContactGate/);
-  assert.match(widgetSource, /collectNextPreCallVoiceContact/);
+  assert.match(widgetSource, /showPreCallVoiceContactFields/);
+  assert.match(widgetSource, /handlePreCallVoiceContactSubmit/);
   assert.match(widgetSource, /buildPreCallVoicePrompt/);
   assert.match(widgetSource, /speakPreCallVoicePrompt/);
   assert.match(widgetSource, /speechSynthesis/);
   assert.match(widgetSource, /SpeechSynthesisUtterance/);
-  assert.match(widgetSource, /Please can I have your/);
+  assert.match(widgetSource, /Please fill in your details/);
+  assert.match(widgetSource, /REQUIRED_VOICE_CONTACT_FIELDS\.forEach/);
   assert.match(widgetSource, /preverifiedContacts=/);
   assert.match(widgetSource, /encodeURIComponent\(JSON\.stringify\(preverifiedVoiceContacts\)\)/);
   assert.match(widgetSource, /widgetConfig\.requiredLeadFields/);
+  assert.doesNotMatch(widgetSource, /collectNextPreCallVoiceContact/);
 });
 
 test('live backend can infer a delayed typed contact request from the completed assistant sentence', () => {

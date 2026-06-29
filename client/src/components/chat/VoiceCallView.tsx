@@ -39,23 +39,70 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
   const [inputValue, setInputValue] = useState('');
   const [localValidationError, setLocalValidationError] = useState('');
   const [preCallContactValues, setPreCallContactValues] = useState<PreverifiedVoiceContacts>({});
+  const [preCallInputValues, setPreCallInputValues] = useState<PreverifiedVoiceContacts>({});
+  const [preCallValidationErrors, setPreCallValidationErrors] = useState<Partial<Record<VoiceContactField, string>>>({});
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);
   const lastSpokenPreCallPromptRef = useRef('');
 
-  const buildPreCallVoicePrompt = (field: VoiceContactField) => {
-    const fieldLabel = field === 'phone' ? 'phone number' : 'email address';
-    return `Hi, welcome to ${activeBot.businessName}. Please can I have your ${fieldLabel} in the text box before I connect you?`;
+  const buildPreCallVoicePrompt = () => {
+    return `Hi, welcome to ${activeBot.businessName}. Please fill in your details in the text boxes before I connect you.`;
   };
 
-  const currentPreCallField = !liveVoice.isVoiceActive && !liveVoice.isConnecting
-    ? requiredVoiceContactFields.find(field => !preCallContactValues[field]) ?? null
-    : null;
-  const activeInputType = liveVoice.requestedInputType ?? currentPreCallField;
+  const currentPreCallFields = !liveVoice.isVoiceActive && !liveVoice.isConnecting
+    ? requiredVoiceContactFields.filter(field => !preCallContactValues[field])
+    : [];
+  const currentPreCallFieldKey = currentPreCallFields.join(',');
+  const activeInputType = liveVoice.requestedInputType;
   const currentValidation = activeInputType
     ? validateContactInput(activeInputType, inputValue)
     : { valid: false, normalized: '', error: '' };
   const phoneReady = activeInputType === 'phone' ? currentValidation.valid : true;
   const emailReady = activeInputType === 'email' ? currentValidation.valid : true;
+  const isPreCallStep = currentPreCallFields.length > 0;
+  const hasContactInput = Boolean(activeInputType);
+  const preCallFieldValidations = currentPreCallFields.map(field => ({
+    field,
+    validation: validateContactInput(field, preCallInputValues[field] || ''),
+  }));
+  const canSubmitPreCallDetails = currentPreCallFields.length > 0
+    && currentPreCallFields.every(field => validateContactInput(field, preCallInputValues[field] || '').valid);
+
+  const handlePreCallInputChange = (field: VoiceContactField, value: string) => {
+    setPreCallInputValues(prev => ({ ...prev, [field]: value }));
+    if (preCallValidationErrors[field]) {
+      setPreCallValidationErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  const handleSubmitPreCallDetails = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const nextContactValues: PreverifiedVoiceContacts = {};
+    const nextErrors: Partial<Record<VoiceContactField, string>> = {};
+
+    for (const field of currentPreCallFields) {
+      const validation = validateContactInput(field, preCallInputValues[field] || '');
+      if (!validation.valid) {
+        nextErrors[field] = validation.error;
+        continue;
+      }
+      nextContactValues[field] = validation.normalized;
+    }
+
+    if (Object.values(nextErrors).some(Boolean)) {
+      setPreCallValidationErrors(nextErrors);
+      return;
+    }
+
+    const nextPreCallValues = {
+      ...preCallContactValues,
+      ...nextContactValues,
+    };
+    setPreCallContactValues(nextPreCallValues);
+    setPreCallInputValues({});
+    setPreCallValidationErrors({});
+    void liveVoice.startVoice(nextPreCallValues);
+  };
 
   const handleSubmitInput = (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,22 +110,6 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
 
     if (!currentValidation.valid) {
       setLocalValidationError(currentValidation.error);
-      return;
-    }
-
-    if (currentPreCallField) {
-      const nextPreCallValues = {
-        ...preCallContactValues,
-        [currentPreCallField]: currentValidation.normalized,
-      };
-      setPreCallContactValues(nextPreCallValues);
-      setInputValue('');
-      setLocalValidationError('');
-
-      const allRequiredFieldsCollected = requiredVoiceContactFields.every(field => nextPreCallValues[field]);
-      if (allRequiredFieldsCollected) {
-        void liveVoice.startVoice(nextPreCallValues);
-      }
       return;
     }
 
@@ -99,9 +130,9 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
   }, [activeInputType]);
 
   useEffect(() => {
-    if (!currentPreCallField || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    if (!isPreCallStep || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
-    const prompt = buildPreCallVoicePrompt(currentPreCallField);
+    const prompt = buildPreCallVoicePrompt();
     if (lastSpokenPreCallPromptRef.current === prompt) return;
     lastSpokenPreCallPromptRef.current = prompt;
 
@@ -110,7 +141,7 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
     utterance.rate = 0.95;
     utterance.pitch = 1;
     window.speechSynthesis.speak(utterance);
-  }, [activeBot.businessName, currentPreCallField]);
+  }, [activeBot.businessName, currentPreCallFieldKey, isPreCallStep]);
 
   const getColorHue = (color: string) => {
     const maps: Record<string, number> = {
@@ -123,8 +154,6 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
   };
 
   const hue = getColorHue(activeBot.primaryColor);
-  const isPreCallStep = Boolean(currentPreCallField);
-  const hasContactInput = Boolean(activeInputType);
 
   return (
     <div className="flex-1 bg-black text-white flex flex-col items-center justify-between p-6 relative overflow-y-auto min-h-screen w-full font-sans select-none">
@@ -206,13 +235,81 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
         </div>
       )}
 
-      {hasContactInput && (
+      {isPreCallStep && (
+        <div className="w-full max-w-sm z-20 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <form onSubmit={handleSubmitPreCallDetails} className="bg-brand-card/80 backdrop-blur-md border border-brand-accent/50 rounded-2xl p-4 shadow-2xl flex flex-col items-center gap-3">
+            <span className="text-sm font-semibold text-white tracking-wide">
+              {buildPreCallVoicePrompt()}
+            </span>
+
+            <div className="w-full space-y-3">
+              {preCallFieldValidations.map(({ field, validation }) => (
+                field === 'phone' ? (
+                  <div className="voice-phone-card" key="phone">
+                    <p className="vpc-label">
+                      Phone number <span className="vpc-required">*</span>
+                    </p>
+                    <PhoneInput
+                      defaultCountry="IN"
+                      placeholder="Enter phone number"
+                      value={preCallInputValues.phone || ''}
+                      onChange={(val) => handlePreCallInputChange('phone', val || '')}
+                      disabled={liveVoice.isSubmittingContact}
+                    />
+                    {preCallInputValues.phone && !validation.valid && (
+                      <p className="vpc-hint">Incomplete or invalid phone number</p>
+                    )}
+                    {preCallValidationErrors.phone && (
+                      <p className="text-xs text-red-300 text-left mt-2">
+                        {preCallValidationErrors.phone}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="w-full space-y-2" key="email">
+                    <label className="text-xs text-white/70 font-semibold">
+                      Email address <span className="text-brand-accent">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      maxLength={254}
+                      inputMode="email"
+                      disabled={liveVoice.isSubmittingContact}
+                      className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-brand-accent focus:ring-1 focus:ring-brand-accent transition-all"
+                      placeholder="name@example.com"
+                      value={preCallInputValues.email || ''}
+                      onChange={(e) => handlePreCallInputChange('email', e.target.value)}
+                    />
+                    {preCallValidationErrors.email && (
+                      <p className="text-xs text-red-300 text-left">
+                        {preCallValidationErrors.email}
+                      </p>
+                    )}
+                  </div>
+                )
+              ))}
+
+              <button
+                type="submit"
+                disabled={!canSubmitPreCallDetails || liveVoice.isSubmittingContact}
+                className="w-full bg-brand-accent hover:bg-brand-accent-hover disabled:opacity-40 text-white rounded-xl py-3 font-bold transition-all duration-200 text-sm tracking-wide"
+              >
+                {liveVoice.isSubmittingContact ? 'Verifying…' : 'Continue'}
+              </button>
+            </div>
+
+            <p className="text-[10px] text-white/30 text-center">
+              We will start the voice call after this.
+            </p>
+          </form>
+        </div>
+      )}
+
+      {!isPreCallStep && hasContactInput && (
         <div className="w-full max-w-sm z-20 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <form onSubmit={handleSubmitInput} className="bg-brand-card/80 backdrop-blur-md border border-brand-accent/50 rounded-2xl p-4 shadow-2xl flex flex-col items-center gap-3">
             <span className="text-sm font-semibold text-white tracking-wide">
-              {isPreCallStep && currentPreCallField
-                ? buildPreCallVoicePrompt(currentPreCallField)
-                : `Please type your ${activeInputType}`}
+              Please type your {activeInputType}
             </span>
 
             {activeInputType === 'phone' ? (
