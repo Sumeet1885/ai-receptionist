@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 
+export type PreverifiedVoiceContacts = Partial<Record<'phone' | 'email', string>>;
+
 export function useLiveVoice(botId: string | undefined, sessionId: string | undefined) {
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -117,7 +119,7 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
     }, remainingPlaybackMs + 120);
   }, []);
 
-  const startVoice = useCallback(async () => {
+  const startVoice = useCallback(async (preverifiedContacts: PreverifiedVoiceContacts = {}) => {
     if (!botId || !sessionId) return;
     
     setLiveTranscript('');
@@ -135,7 +137,10 @@ export function useLiveVoice(botId: string | undefined, sessionId: string | unde
       const expressUrl = import.meta.env.VITE_EXPRESS_SERVER_URL || 'http://localhost:4000';
       const wsUrlBase = expressUrl.replace(/^http/, 'ws');
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const wsUrl = `${wsUrlBase}/api/chat/live?botId=${botId}&sessionId=${sessionId}&timezone=${encodeURIComponent(timezone)}`;
+      const contactQuery = Object.keys(preverifiedContacts).length > 0
+        ? `&preverifiedContacts=${encodeURIComponent(JSON.stringify(preverifiedContacts))}`
+        : '';
+      const wsUrl = `${wsUrlBase}/api/chat/live?botId=${botId}&sessionId=${sessionId}&timezone=${encodeURIComponent(timezone)}${contactQuery}`;
       
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;

@@ -3,7 +3,12 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { validateContactInput } from '../src/utils/contactValidation';
+import {
+  LiveContactCollection,
+  inferContactFieldRequestedByAssistantText,
+  seedVerifiedContactInputs,
+  validateContactInput
+} from '../src/utils/contactValidation';
 import { buildBusinessPersona, buildWebVoiceExtraConstraints } from '../src/modules/phone-calls/receptionistInstruction';
 import { defaultWidgetConfig } from '../src/utils/widgetConfig';
 
@@ -13,6 +18,7 @@ const workspaceRoot = path.resolve(import.meta.dirname, '..', '..');
 const helperPath = path.join(workspaceRoot, 'server', 'src', 'services', 'liveTools.ts');
 const liveControllerPath = path.join(workspaceRoot, 'server', 'src', 'controllers', 'liveChatController.ts');
 const publicVoiceHookPath = path.join(workspaceRoot, 'client', 'src', 'hooks', 'useLiveVoice.ts');
+const publicChatViewPath = path.join(workspaceRoot, 'client', 'src', 'components', 'chat', 'PublicChatView.tsx');
 const widgetControllerPath = path.join(workspaceRoot, 'server', 'src', 'controllers', 'widgetController.ts');
 const voiceCallViewPath = path.join(workspaceRoot, 'client', 'src', 'components', 'chat', 'VoiceCallView.tsx');
 const clientContactValidationPath = path.join(workspaceRoot, 'client', 'src', 'lib', 'contactValidation.ts');
@@ -112,7 +118,7 @@ test('live voice flow validates typed contact details in backend and both client
   assert.match(extraConstraints, /do not accept spoken claims/i);
   assert.match(publicVoiceHookSource, /input_validation_error/);
   assert.match(widgetSource, /validateContactInput\(pendingInputField, text\)/);
-  assert.match(voiceCallViewSource, /validateContactInput\(liveVoice\.requestedInputType, inputValue\)/);
+  assert.match(voiceCallViewSource, /validateContactInput\(activeInputType, inputValue\)/);
   assert.doesNotMatch(widgetSource, /\(555\) 000-0000/);
   assert.doesNotMatch(voiceCallViewSource, /\(555\) 000-0000/);
 });
@@ -174,6 +180,107 @@ test('contact text input guidance does not duplicate the spoken prompt across pe
   assert.doesNotMatch(requestTextInputTool.description, /for booking a meeting/i);
   assert.doesNotMatch(requestTextInputTool.description, /enter your details in the text box/i);
   assert.equal((liveControllerSource.match(/response\.setupComplete \|\| response\.setup_complete/g) || []).length, 1);
+});
+
+test('live backend seeds pre-collected contact fields before Gemini setup', async () => {
+  const helper = await import(pathToFileURL(helperPath).href);
+  const liveControllerSource = readFileSync(liveControllerPath, 'utf8');
+  const collection = new LiveContactCollection();
+
+  const result = seedVerifiedContactInputs(collection, {
+    phone: '+919812345670',
+    email: 'Owner@Example.COM',
+  });
+
+  assert.deepEqual(result.seeded, {
+    phone: '+919812345670',
+    email: 'owner@example.com',
+  });
+  assert.equal(collection.getVerified('phone'), '+919812345670');
+  assert.equal(collection.getVerified('email'), 'owner@example.com');
+
+  const seededTools = helper.buildLiveFunctionDeclarations(['title', 'visitorName', 'startTime', 'endTime']);
+  assert.equal(
+    seededTools.some((tool: any) => tool.name === 'request_text_input'),
+    false,
+    'pre-collected phone/email should remove the normal mid-call contact input tool'
+  );
+
+  assert.match(liveControllerSource, /preverifiedContacts/);
+  assert.match(liveControllerSource, /seedVerifiedContactInputs/);
+  assert.match(liveControllerSource, /missingContactFields/);
+  assert.match(liveControllerSource, /Server-verified visitor contact fields already collected before this call/);
+});
+
+test('public preview collects required voice contact fields before opening Gemini Live', () => {
+  const publicVoiceHookSource = readFileSync(publicVoiceHookPath, 'utf8');
+  const publicChatViewSource = readFileSync(publicChatViewPath, 'utf8');
+  const voiceCallViewSource = readFileSync(voiceCallViewPath, 'utf8');
+
+  assert.match(publicVoiceHookSource, /preverifiedContacts/);
+  assert.match(publicVoiceHookSource, /encodeURIComponent\(JSON\.stringify\(preverifiedContacts\)\)/);
+  assert.match(publicChatViewSource, /showVoiceGate/);
+  assert.match(publicChatViewSource, /requiredVoiceContactFields/);
+  assert.match(publicChatViewSource, /activeBot\.widgetConfig\.requiredLeadFields/);
+  assert.match(voiceCallViewSource, /currentPreCallField/);
+  assert.match(voiceCallViewSource, /Before the call/i);
+  assert.match(voiceCallViewSource, /liveVoice\.startVoice\(nextPreCallValues\)/);
+  assert.match(voiceCallViewSource, /validateContactInput\(activeInputType, inputValue\)/);
+});
+
+test('embedded widget collects required voice contact fields before opening Gemini Live', () => {
+  const widgetSource = readFileSync(widgetControllerPath, 'utf8');
+
+  assert.match(widgetSource, /REQUIRED_VOICE_CONTACT_FIELDS/);
+  assert.match(widgetSource, /preverifiedVoiceContacts/);
+  assert.match(widgetSource, /startVoiceWithPreCallContactGate/);
+  assert.match(widgetSource, /collectNextPreCallVoiceContact/);
+  assert.match(widgetSource, /preverifiedContacts=/);
+  assert.match(widgetSource, /encodeURIComponent\(JSON\.stringify\(preverifiedVoiceContacts\)\)/);
+  assert.match(widgetSource, /widgetConfig\.requiredLeadFields/);
+});
+
+test('live backend can infer a delayed typed contact request from the completed assistant sentence', () => {
+  const collection = new LiveContactCollection();
+  const liveControllerSource = readFileSync(liveControllerPath, 'utf8');
+
+  assert.equal(
+    inferContactFieldRequestedByAssistantText(
+      'Yes, please input your phone number in the text box.',
+      ['phone', 'email'],
+      collection
+    ),
+    'phone'
+  );
+  assert.equal(
+    inferContactFieldRequestedByAssistantText(
+      'Please type your email address in the box.',
+      ['phone', 'email'],
+      collection
+    ),
+    'email'
+  );
+  assert.equal(
+    inferContactFieldRequestedByAssistantText(
+      'For booking a meeting, I would like you to enter your details in the text box.',
+      ['phone', 'email'],
+      collection
+    ),
+    'phone'
+  );
+  assert.equal(
+    inferContactFieldRequestedByAssistantText(
+      'Here are the available meeting slots for tomorrow.',
+      ['phone', 'email'],
+      collection
+    ),
+    null
+  );
+
+  assert.match(liveControllerSource, /scheduleContactInputAfterAssistantPrompt/);
+  assert.match(liveControllerSource, /PROACTIVE_CONTACT_TOOL_GRACE_MS/);
+  assert.match(liveControllerSource, /inferContactFieldRequestedByAssistantText/);
+  assert.match(liveControllerSource, /Server-verified typed \${submission\.field}/);
 });
 
 test('Gemini remains blocked until the server accepts the requested contact field', () => {

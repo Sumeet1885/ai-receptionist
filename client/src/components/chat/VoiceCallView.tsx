@@ -7,6 +7,9 @@ import { validateContactInput } from '@/lib/contactValidation';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 
+type VoiceContactField = 'phone' | 'email';
+type PreverifiedVoiceContacts = Partial<Record<VoiceContactField, string>>;
+
 interface VoiceCallViewProps {
   activeBot: Bot;
   liveVoice: {
@@ -14,48 +17,70 @@ interface VoiceCallViewProps {
     isConnecting: boolean;
     liveTranscript: string;
     bookingDetails: any;
-    requestedInputType: 'phone' | 'email' | null;
+    requestedInputType: VoiceContactField | null;
     validationError: string;
     isSubmittingContact: boolean;
     clearValidationError: () => void;
-    sendTextData: (text: string, field: 'phone' | 'email') => void;
-    startVoice: () => Promise<void>;
+    sendTextData: (text: string, field: VoiceContactField) => void;
+    startVoice: (preverifiedContacts?: PreverifiedVoiceContacts) => Promise<void>;
     stopVoice: () => void;
   };
+  requiredVoiceContactFields?: VoiceContactField[];
   onBack: () => void;
 }
 
 export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
   activeBot,
   liveVoice,
+  requiredVoiceContactFields = [],
   onBack
 }) => {
   const [voiceDetected, setVoiceDetected] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [localValidationError, setLocalValidationError] = useState('');
+  const [preCallContactValues, setPreCallContactValues] = useState<PreverifiedVoiceContacts>({});
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);
 
-  const currentValidation = liveVoice.requestedInputType
-    ? validateContactInput(liveVoice.requestedInputType, inputValue)
+  const currentPreCallField = !liveVoice.isVoiceActive && !liveVoice.isConnecting
+    ? requiredVoiceContactFields.find(field => !preCallContactValues[field]) ?? null
+    : null;
+  const activeInputType = liveVoice.requestedInputType ?? currentPreCallField;
+  const currentValidation = activeInputType
+    ? validateContactInput(activeInputType, inputValue)
     : { valid: false, normalized: '', error: '' };
-  const phoneReady = liveVoice.requestedInputType === 'phone' ? currentValidation.valid : true;
-  const emailReady = liveVoice.requestedInputType === 'email' ? currentValidation.valid : true;
+  const phoneReady = activeInputType === 'phone' ? currentValidation.valid : true;
+  const emailReady = activeInputType === 'email' ? currentValidation.valid : true;
 
   const handleSubmitInput = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!liveVoice.requestedInputType) return;
+    if (!activeInputType) return;
 
     if (!currentValidation.valid) {
       setLocalValidationError(currentValidation.error);
       return;
     }
 
-    liveVoice.sendTextData(currentValidation.normalized, liveVoice.requestedInputType);
+    if (currentPreCallField) {
+      const nextPreCallValues = {
+        ...preCallContactValues,
+        [currentPreCallField]: currentValidation.normalized,
+      };
+      setPreCallContactValues(nextPreCallValues);
+      setInputValue('');
+      setLocalValidationError('');
+
+      const allRequiredFieldsCollected = requiredVoiceContactFields.every(field => nextPreCallValues[field]);
+      if (allRequiredFieldsCollected) {
+        void liveVoice.startVoice(nextPreCallValues);
+      }
+      return;
+    }
+
+    liveVoice.sendTextData(currentValidation.normalized, activeInputType);
     setInputValue('');
     setLocalValidationError('');
   };
 
-  // Auto-scroll the transcripts to keep the latest bot reply visible
   useEffect(() => {
     if (transcriptEndRef.current) {
       transcriptEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -65,26 +90,26 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
   useEffect(() => {
     setInputValue('');
     setLocalValidationError('');
-  }, [liveVoice.requestedInputType]);
+  }, [activeInputType]);
 
   const getColorHue = (color: string) => {
     const maps: Record<string, number> = {
-      indigo: 0,     // Purple/Indigo (Default)
-      emerald: 140,  // Green
-      rose: 340,     // Red/Pink
-      amber: 40,     // Orange/Yellow
+      indigo: 0,
+      emerald: 140,
+      rose: 340,
+      amber: 40,
     };
     return maps[color] || 0;
   };
 
   const hue = getColorHue(activeBot.primaryColor);
+  const isPreCallStep = Boolean(currentPreCallField);
+  const hasContactInput = Boolean(activeInputType);
 
   return (
     <div className="flex-1 bg-black text-white flex flex-col items-center justify-between p-6 relative overflow-y-auto min-h-screen w-full font-sans select-none">
-      {/* Background radial glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-brand-accent/5 blur-[120px] rounded-full pointer-events-none" />
 
-      {/* Header bar */}
       <div className="w-full max-w-lg flex items-center justify-between z-10 border-b border-white/5 pb-4">
         <div className="flex items-center space-x-3">
           <div className="w-9 h-9 bg-brand-accent/15 border border-brand-accent/30 rounded-full flex items-center justify-center font-display text-brand-accent font-bold text-sm">
@@ -100,26 +125,24 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
           </div>
         </div>
 
-        {/* Live Call Duration / Status */}
         <div className="flex items-center space-x-2 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full text-[10px] font-bold font-mono">
           <span className={cn(
             "w-2 h-2 rounded-full",
-            liveVoice.isConnecting ? "bg-brand-warning animate-pulse" : "bg-brand-success animate-ping"
+            liveVoice.isConnecting ? "bg-brand-warning animate-pulse" : isPreCallStep ? "bg-brand-accent" : "bg-brand-success animate-ping"
           )} />
           <span className="text-brand-text/90 tracking-wide uppercase">
-            {liveVoice.isConnecting ? "Connecting" : "Voice Live"}
+            {liveVoice.isConnecting ? "Connecting" : isPreCallStep ? "Details first" : "Voice Live"}
           </span>
         </div>
       </div>
 
-      {/* Center WebGL Orb container */}
       <div className="flex-1 flex flex-col items-center justify-center z-10 my-4 relative w-full max-w-sm">
         <div className={cn(
           "relative flex items-center justify-center transition-all duration-500",
           liveVoice.bookingDetails ? "w-32 h-32 md:w-40 md:h-40" : "w-64 h-64 md:w-80 md:h-80"
         )}>
           <VoicePoweredOrb
-            enableVoiceControl={!liveVoice.isConnecting && liveVoice.isVoiceActive}
+            enableVoiceControl={!isPreCallStep && !liveVoice.isConnecting && liveVoice.isVoiceActive}
             className="w-full h-full"
             hue={hue}
             onVoiceDetected={setVoiceDetected}
@@ -132,20 +155,18 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
           )}
         </div>
 
-        {/* Pulsing indicator under the orb */}
         <div className="text-center mt-2 h-6 flex items-center justify-center">
           {!liveVoice.isConnecting && (
             <span className={cn(
               "text-xs font-semibold tracking-widest uppercase transition duration-300 font-mono",
               voiceDetected ? "text-brand-success drop-shadow-[0_0_8px_rgba(34,197,94,0.5)]" : "text-brand-muted"
             )}>
-              {voiceDetected ? "Speaking..." : "Listening..."}
+              {isPreCallStep ? "Enter details to start" : voiceDetected ? "Speaking..." : "Listening..."}
             </span>
           )}
         </div>
       </div>
 
-      {/* Booking Success Message */}
       {liveVoice.bookingDetails && (
         <div className="w-full max-w-lg z-10 bg-brand-success/10 border border-brand-success/30 rounded-2xl p-6 flex flex-col items-center justify-center mb-6 shadow-inner relative overflow-hidden backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
           <Icons.CheckCircle className="w-12 h-12 text-brand-success mb-3" />
@@ -165,22 +186,20 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
         </div>
       )}
 
-      {/* Conditional Text Input */}
-      {liveVoice.requestedInputType && (
+      {hasContactInput && (
         <div className="w-full max-w-sm z-20 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <form onSubmit={handleSubmitInput} className="bg-brand-card/80 backdrop-blur-md border border-brand-accent/50 rounded-2xl p-4 shadow-2xl flex flex-col items-center gap-3">
             <span className="text-sm font-semibold text-white tracking-wide">
-              Please type your {liveVoice.requestedInputType}
+              {isPreCallStep ? `Before the call, please type your ${activeInputType}` : `Please type your ${activeInputType}`}
             </span>
 
-            {/* ── Phone input ── */}
-            {liveVoice.requestedInputType === 'phone' ? (
+            {activeInputType === 'phone' ? (
               <div className="w-full space-y-2.5">
                 <div className="voice-phone-card">
                   <p className="vpc-label">
                     Phone number <span className="vpc-required">*</span>
                   </p>
-                   <PhoneInput
+                  <PhoneInput
                     defaultCountry="IN"
                     placeholder="Enter phone number"
                     value={inputValue}
@@ -207,11 +226,10 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
                   disabled={!inputValue.trim() || !phoneReady || liveVoice.isSubmittingContact}
                   className="w-full bg-brand-accent hover:bg-brand-accent-hover disabled:opacity-40 text-white rounded-xl py-3 font-bold transition-all duration-200 text-sm tracking-wide"
                 >
-                  {liveVoice.isSubmittingContact ? 'Verifying…' : 'Submit Phone Number'}
+                  {liveVoice.isSubmittingContact ? 'Verifying…' : isPreCallStep ? 'Continue' : 'Submit Phone Number'}
                 </button>
               </div>
             ) : (
-              /* ── Email input ── */
               <div className="w-full space-y-2">
                 <div className="flex w-full gap-2">
                   <input
@@ -234,7 +252,7 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
                     disabled={!inputValue.trim() || !emailReady || liveVoice.isSubmittingContact}
                     className="bg-brand-accent hover:bg-brand-accent-hover disabled:opacity-50 text-white rounded-xl px-5 py-3 font-semibold transition-colors flex items-center justify-center"
                   >
-                    {liveVoice.isSubmittingContact ? 'Checking…' : <Icons.Send className="w-4 h-4" />}
+                    {liveVoice.isSubmittingContact ? 'Checking…' : isPreCallStep ? 'Continue' : <Icons.Send className="w-4 h-4" />}
                   </button>
                 </div>
                 {(localValidationError || liveVoice.validationError) && (
@@ -246,13 +264,14 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
             )}
 
             <p className="text-[10px] text-white/30 text-center">
-              🎙️ Microphone is muted — please type your {liveVoice.requestedInputType} above
+              {isPreCallStep
+                ? 'We will start the voice call after this.'
+                : `🎙️ Microphone is muted — please type your ${activeInputType} above`}
             </p>
           </form>
         </div>
       )}
 
-      {/* Bottom control buttons */}
       <div className="w-full max-w-lg z-10 flex items-center justify-center pb-6 gap-4">
         <button
           onClick={onBack}

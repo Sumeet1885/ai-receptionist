@@ -28,7 +28,9 @@ import {
   applyVerifiedContactDetails,
   canForwardLiveModelOutput,
   getLiveBookingContactError,
+  inferContactFieldRequestedByAssistantText,
   LiveContactCollection,
+  seedVerifiedContactInputs,
   submitLiveContactForTool,
   type PendingContactToolCall,
   type ContactField
@@ -41,6 +43,7 @@ const GEMINI_API_KEY = config.geminiApiKey ?? '';
 
 // We use the Gemini Live API model which supports bidirectional WebSockets
 const LIVE_API_URL = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${process.env.GEMINI_API_KEY || config.geminiApiKey}`;
+const PROACTIVE_CONTACT_TOOL_GRACE_MS = 350;
 
 export function setupWebSocketServer(server: Server) {
   const wss = new WebSocketServer({ server, path: '/api/chat/live' });
@@ -52,8 +55,23 @@ export function setupWebSocketServer(server: Server) {
     const url = new URL(req.url || '', `http://${req.headers.host}`);
     const botId = url.searchParams.get('botId');
     const sessionId = url.searchParams.get('sessionId');
+    const preverifiedContactsParam = url.searchParams.get('preverifiedContacts');
 
     const timezone = url.searchParams.get('timezone') || 'IST';
+    let preverifiedContacts: Partial<Record<ContactField, unknown>> = {};
+    if (preverifiedContactsParam) {
+      try {
+        const parsed = JSON.parse(preverifiedContactsParam);
+        if (parsed && typeof parsed === 'object') {
+          preverifiedContacts = {
+            phone: (parsed as Record<string, unknown>).phone,
+            email: (parsed as Record<string, unknown>).email,
+          };
+        }
+      } catch {
+        preverifiedContacts = {};
+      }
+    }
 
     if (!botId || !sessionId) {
       ws.close(1008, 'Missing botId or sessionId');
@@ -156,9 +174,11 @@ export function setupWebSocketServer(server: Server) {
     let pendingContactToolCall: PendingContactToolCall | null = null;
     let pendingFunctionResponses: any[] = [];
     let requiredContactFields: ContactField[] = [];
+    let seededContactFields: ContactField[] = [];
     let pendingAssistantHangup: { reason: string } | null = null;
     let assistantHangupTimeout: NodeJS.Timeout | null = null;
     let forcedShutdownTimeout: NodeJS.Timeout | null = null;
+    let proactiveContactInputTimer: NodeJS.Timeout | null = null;
 
     const clearAssistantHangupTimeout = () => {
       if (assistantHangupTimeout) {
@@ -172,6 +192,37 @@ export function setupWebSocketServer(server: Server) {
         clearTimeout(forcedShutdownTimeout);
         forcedShutdownTimeout = null;
       }
+    };
+
+    const clearProactiveContactInputTimer = () => {
+      if (proactiveContactInputTimer) {
+        clearTimeout(proactiveContactInputTimer);
+        proactiveContactInputTimer = null;
+      }
+    };
+
+    const scheduleContactInputAfterAssistantPrompt = (assistantText: string) => {
+      const requestedField = inferContactFieldRequestedByAssistantText(
+        assistantText,
+        requiredContactFields,
+        contactCollection
+      );
+      if (!requestedField || pendingContactToolCall || contactCollection.pendingField) return;
+
+      clearProactiveContactInputTimer();
+      proactiveContactInputTimer = setTimeout(() => {
+        proactiveContactInputTimer = null;
+        if (pendingContactToolCall || contactCollection.pendingField) return;
+
+        const requestResult = contactCollection.request(requestedField);
+        if (!requestResult.accepted) return;
+        if (ws.readyState !== WebSocket.OPEN) return;
+
+        ws.send(JSON.stringify({
+          type: 'request_input',
+          field: requestedField
+        }));
+      }, PROACTIVE_CONTACT_TOOL_GRACE_MS);
     };
 
     const sendInternalSignal = (signal: string) => {
@@ -221,14 +272,17 @@ export function setupWebSocketServer(server: Server) {
       requiredContactFields = fieldsToCollect.filter(
         (field): field is ContactField => field === 'phone' || field === 'email'
       );
+      const seededContacts = seedVerifiedContactInputs(contactCollection, preverifiedContacts);
+      seededContactFields = Object.keys(seededContacts.seeded) as ContactField[];
+      const missingContactFields = requiredContactFields.filter(field => !contactCollection.getVerified(field));
       const bookAppointmentRequired = ['title', 'startTime', 'endTime'];
       if (fieldsToCollect.includes('name')) {
         bookAppointmentRequired.push('visitorName');
       }
-      if (requiredContactFields.includes('phone')) {
+      if (missingContactFields.includes('phone')) {
         bookAppointmentRequired.push('visitorPhone');
       }
-      if (requiredContactFields.includes('email')) {
+      if (missingContactFields.includes('email')) {
         bookAppointmentRequired.push('visitorEmail');
       }
 
@@ -237,7 +291,7 @@ export function setupWebSocketServer(server: Server) {
         : buildVerbalHandoffBookingInstruction();
 
       const extraConstraints = buildWebVoiceExtraConstraints({
-        requiredContactFields,
+        requiredContactFields: missingContactFields,
         tzOffset,
         endCallInstruction: LIVE_END_CALL_INSTRUCTION,
         wrapWarningSignal: LIVE_WRAP_WARNING_SIGNAL,
@@ -278,11 +332,17 @@ export function setupWebSocketServer(server: Server) {
       if (response.setupComplete || response.setup_complete) {
         console.log('Gemini Live API Setup Complete. Triggering initial greeting...');
         if (geminiWs.readyState === WebSocket.OPEN) {
+          const preverifiedContext = seededContactFields.length > 0
+            ? `Server-verified visitor contact fields already collected before this call: ${seededContactFields.join(', ')}. Do not ask for these fields again; the backend will attach them when booking.`
+            : '';
           geminiWs.send(JSON.stringify({
             clientContent: {
               turns: [{
                 role: 'user',
-                parts: [{ text: "Hello! I am on the line. Please greet me and welcome me to the business." }]
+                parts: [
+                  ...(preverifiedContext ? [{ text: preverifiedContext }] : []),
+                  { text: "Hello! I am on the line. Please greet me and welcome me to the business." }
+                ]
               }],
               turnComplete: true
             }
@@ -325,15 +385,17 @@ export function setupWebSocketServer(server: Server) {
         }
 
         if (response.serverContent.turnComplete && accumulatedBotText.trim()) {
+          const completedAssistantText = accumulatedBotText.trim();
           try {
             await supabase.from('messages').insert({
               session_id: sessionId,
               sender: 'bot',
-              content: accumulatedBotText.trim()
+              content: completedAssistantText
             });
           } catch (err) {
             console.error('Error saving bot message:', err);
           }
+          scheduleContactInputAfterAssistantPrompt(completedAssistantText);
           accumulatedBotText = '';
         }
 
@@ -352,6 +414,9 @@ export function setupWebSocketServer(server: Server) {
         const batchRequestsContactInput = response.toolCall.functionCalls.some(
           (call: any) => call.name === 'request_text_input'
         );
+        if (batchRequestsContactInput) {
+          clearProactiveContactInputTimer();
+        }
         let deferEntireBatch = false;
         let pendingContactToolCallTemp: any = null;
 
@@ -448,6 +513,17 @@ export function setupWebSocketServer(server: Server) {
 
               const requestResult = contactCollection.request(requestedField);
               if (!requestResult.accepted) {
+                if (
+                  contactCollection.pendingField === requestedField
+                  && !pendingContactToolCall
+                ) {
+                  pendingContactToolCallTemp = { id, name, field: requestedField };
+                  requestedTextInputThisToolTurn = true;
+                  deferEntireBatch = true;
+                  deferFunctionResponse = true;
+                  continue;
+                }
+
                 const verifiedValue = contactCollection.getVerified(requestedField);
                 if (verifiedValue) {
                   functionResponse = {
@@ -522,6 +598,7 @@ export function setupWebSocketServer(server: Server) {
       console.error('Gemini WS Error:', err);
       clearAssistantHangupTimeout();
       clearForcedShutdownTimeout();
+      clearProactiveContactInputTimer();
       ws.close(1011, 'Gemini WS Error');
     });
 
@@ -530,6 +607,7 @@ export function setupWebSocketServer(server: Server) {
       console.log(`Gemini WS Closed. Code: ${code}, Reason: ${reasonStr}`);
       clearAssistantHangupTimeout();
       clearForcedShutdownTimeout();
+      clearProactiveContactInputTimer();
       ws.close(1000, `Gemini WS Closed: ${reasonStr}`.slice(0, 100));
     });
 
@@ -627,6 +705,18 @@ export function setupWebSocketServer(server: Server) {
           return;
         }
 
+        geminiWs.send(JSON.stringify({
+          clientContent: {
+            turns: [{
+              role: 'user',
+              parts: [{
+                text: `Server-verified typed ${submission.field}: ${submission.value}. Continue the booking flow without asking for that field again.`
+              }]
+            }],
+            turnComplete: true
+          }
+        }));
+
         return;
       }
 
@@ -667,6 +757,7 @@ export function setupWebSocketServer(server: Server) {
       console.log('Client disconnected from Live API proxy');
       clearAssistantHangupTimeout();
       clearForcedShutdownTimeout();
+      clearProactiveContactInputTimer();
       // ── GeminiGuard: release slot → wakes next queued caller ─────────────
       geminiGuard.releaseSession(sessionId);
 

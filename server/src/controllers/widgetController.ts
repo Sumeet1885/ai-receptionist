@@ -822,6 +822,7 @@ ${poweredByHtml}
   var BOT_ID = '${bot.id}';
   var GREETING = ${jsonForScript(bot.greeting)};
   var SUGGESTED_PROMPTS = ${jsonForScript(widgetConfig.suggestedPrompts)};
+  var REQUIRED_VOICE_CONTACT_FIELDS = ${jsonForScript(widgetConfig.requiredLeadFields.filter(field => field === 'phone' || field === 'email'))};
   var sessionId = null;
   var isResponding = false;
 
@@ -843,6 +844,8 @@ ${poweredByHtml}
   var pendingInputField = null;
   var micMuted = false; // Muted while typed-input textbox is open
   var isVoiceActive = false;
+  var preverifiedVoiceContacts = {};
+  var collectingPreCallVoiceContact = false;
 
   function resetPlaybackQueue() {
     if (playbackContext) playbackContext.close();
@@ -886,6 +889,72 @@ ${poweredByHtml}
       }
       inputRequestTimer = null;
     }, remainingPlaybackMs + 120);
+  }
+
+  function showPreCallVoiceContactField(field) {
+    collectingPreCallVoiceContact = true;
+    pendingInputField = field;
+    micMuted = false;
+    if (voiceOverlay) voiceOverlay.style.display = 'flex';
+    if (overlayMicIcon) overlayMicIcon.style.display = 'none';
+    if (overlayStopIcon) overlayStopIcon.style.display = 'block';
+    if (visualizer) visualizer.classList.remove('active');
+    if (voiceStatus) voiceStatus.textContent = 'Before the call, please enter your ' + field;
+    if (chatInput) chatInput.disabled = true;
+    if (voiceInputContainer) {
+      voiceInputContainer.style.display = 'flex';
+      voiceInputLabel.textContent = 'Before the call, please enter your ' + field;
+      if (field === 'phone') {
+        voiceInputForm.style.display = 'none';
+        voicePhoneForm.style.display = 'block';
+        phoneInputField.value = '';
+        phoneInputField.setAttribute('maxlength', '10');
+        phoneInputField.maxLength = 10;
+        phoneInputBtn.disabled = true;
+        showVoiceInputError('');
+        phoneInputField.focus();
+      } else {
+        voicePhoneForm.style.display = 'none';
+        voiceInputForm.style.display = 'flex';
+        voiceInputField.type = 'email';
+        voiceInputField.placeholder = 'name@example.com';
+        voiceInputField.maxLength = 254;
+        voiceInputField.inputMode = 'email';
+        voiceInputField.value = '';
+        voiceInputBtn.disabled = true;
+        showVoiceInputError('');
+        voiceInputField.focus();
+      }
+    }
+  }
+
+  function collectNextPreCallVoiceContact() {
+    var nextField = null;
+    for (var i = 0; i < REQUIRED_VOICE_CONTACT_FIELDS.length; i++) {
+      var field = REQUIRED_VOICE_CONTACT_FIELDS[i];
+      if ((field === 'phone' || field === 'email') && !preverifiedVoiceContacts[field]) {
+        nextField = field;
+        break;
+      }
+    }
+
+    if (nextField) {
+      showPreCallVoiceContactField(nextField);
+      return;
+    }
+
+    collectingPreCallVoiceContact = false;
+    pendingInputField = null;
+    if (voiceInputContainer) voiceInputContainer.style.display = 'none';
+    startVoice();
+  }
+
+  function startVoiceWithPreCallContactGate() {
+    if (REQUIRED_VOICE_CONTACT_FIELDS.length > 0) {
+      collectNextPreCallVoiceContact();
+      return;
+    }
+    startVoice();
   }
 
   var voiceOverlay = document.getElementById('voiceOverlay');
@@ -1201,6 +1270,7 @@ ${poweredByHtml}
       inputRequestTimer = null;
     }
     isVoiceActive = false;
+    collectingPreCallVoiceContact = false;
     if (ws) {
       var socket = ws;
       ws = null;
@@ -1267,7 +1337,10 @@ ${poweredByHtml}
       });
 
       var wsBase = API.replace(/^http/, 'ws');
-      ws = new WebSocket(wsBase + '/api/chat/live?botId=' + encodeURIComponent(BOT_ID) + '&sessionId=' + encodeURIComponent(sessionId) + '&timezone=' + encodeURIComponent(timezone));
+      var contactQuery = Object.keys(preverifiedVoiceContacts).length > 0
+        ? '&preverifiedContacts=' + encodeURIComponent(JSON.stringify(preverifiedVoiceContacts))
+        : '';
+      ws = new WebSocket(wsBase + '/api/chat/live?botId=' + encodeURIComponent(BOT_ID) + '&sessionId=' + encodeURIComponent(sessionId) + '&timezone=' + encodeURIComponent(timezone) + contactQuery);
       playbackContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
       nextPlayTime = playbackContext.currentTime;
 
@@ -1441,13 +1514,13 @@ ${poweredByHtml}
   if (voiceBtn) {
     voiceBtn.addEventListener('click', function() {
       if (isVoiceActive) stopVoice();
-      else startVoice();
+      else startVoiceWithPreCallContactGate();
     });
   }
 
   if (overlayMicBtn) {
     overlayMicBtn.addEventListener('click', function() {
-      if (isVoiceActive) stopVoice();
+      if (isVoiceActive || collectingPreCallVoiceContact) stopVoice();
     });
   }
 
@@ -1465,6 +1538,18 @@ ${poweredByHtml}
     voiceInputForm.addEventListener('submit', function(e) {
       e.preventDefault();
       var text = voiceInputField.value.trim();
+      if (collectingPreCallVoiceContact && pendingInputField) {
+        var preCallValidation = validateContactInput(pendingInputField, text);
+        if (!preCallValidation.valid) {
+          showVoiceInputError(preCallValidation.error);
+          return;
+        }
+        preverifiedVoiceContacts[pendingInputField] = preCallValidation.normalized;
+        voiceInputBtn.disabled = true;
+        showVoiceInputError('');
+        collectNextPreCallVoiceContact();
+        return;
+      }
       if (!text || !ws || ws.readyState !== WebSocket.OPEN || !pendingInputField) return;
       var validation = validateContactInput(pendingInputField, text);
       if (!validation.valid) {
@@ -1525,6 +1610,18 @@ ${poweredByHtml}
     voicePhoneForm.addEventListener('submit', function(e) {
       e.preventDefault();
       var text = phoneInputField.value.trim();
+      if (collectingPreCallVoiceContact && pendingInputField === 'phone') {
+        var preCallValidation = validateContactInput('phone', text);
+        if (!preCallValidation.valid) {
+          showVoiceInputError(preCallValidation.error);
+          return;
+        }
+        preverifiedVoiceContacts.phone = preCallValidation.normalized;
+        phoneInputBtn.disabled = true;
+        showVoiceInputError('');
+        collectNextPreCallVoiceContact();
+        return;
+      }
       if (!text || !ws || ws.readyState !== WebSocket.OPEN || !pendingInputField) return;
       var validation = validateContactInput('phone', text);
       if (!validation.valid) {

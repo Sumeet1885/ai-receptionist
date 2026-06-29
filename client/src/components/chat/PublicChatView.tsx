@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Bot, Message } from '../../types';
 import { Icons } from '../common/Icons';
 
@@ -44,6 +44,9 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
 }: PublicChatViewProps) => {
   const liveVoice = useLiveVoice(activeBot.id, sessionId);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const [showVoiceGate, setShowVoiceGate] = useState(false);
+  const requiredVoiceContactFields = activeBot.widgetConfig.requiredLeadFields
+    .filter((field): field is 'phone' | 'email' => field === 'phone' || field === 'email');
 
   useEffect(() => {
     const messagesContainer = messagesContainerRef.current;
@@ -58,18 +61,28 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
     });
   }, [chatMessages, isBotResponding]);
 
+  useEffect(() => {
+    if (showVoiceGate && (liveVoice.isConnecting || liveVoice.isVoiceActive)) {
+      setShowVoiceGate(false);
+    }
+  }, [liveVoice.isConnecting, liveVoice.isVoiceActive, showVoiceGate]);
+
   const normalizeMessageText = (text: string) =>
     text
       .replace(/\r\n/g, '\n')
       .replace(/\*{2,3}([^*]+?)\*{2,3}/g, '$1');
 
   // If a voice call is active or connecting, redirect to the VoiceCallView
-  if (liveVoice.isVoiceActive || liveVoice.isConnecting) {
+  if (showVoiceGate || liveVoice.isVoiceActive || liveVoice.isConnecting) {
     return (
       <VoiceCallView
         activeBot={activeBot}
         liveVoice={liveVoice}
-        onBack={liveVoice.stopVoice}
+        requiredVoiceContactFields={requiredVoiceContactFields}
+        onBack={() => {
+          liveVoice.stopVoice();
+          setShowVoiceGate(false);
+        }}
       />
     );
   }
@@ -203,7 +216,18 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
             <form onSubmit={handleSendChatMessage} className="flex-shrink-0 p-3.5 bg-brand-card border-t border-brand-border flex items-center space-x-2">
               <VoiceInput
                 listening={liveVoice.isVoiceActive}
-                setListening={(val) => val ? liveVoice.startVoice() : liveVoice.stopVoice()}
+                setListening={(val) => {
+                  if (!val) {
+                    liveVoice.stopVoice();
+                    setShowVoiceGate(false);
+                    return;
+                  }
+                  if (requiredVoiceContactFields.length > 0) {
+                    setShowVoiceGate(true);
+                    return;
+                  }
+                  void liveVoice.startVoice();
+                }}
                 className={liveVoice.isConnecting ? 'opacity-50 pointer-events-none cursor-wait' : ''}
                 title={liveVoice.isVoiceActive ? "Stop Voice Call" : "Talk to Agent"}
               />
