@@ -19,6 +19,10 @@ export interface WidgetConfig {
   requiredLeadFields: string[];
   handoffText: string;
   additionalCollectInfo?: string;
+  /** Max number of days ahead a booking/availability date may fall on, counted from "today" in
+   * the caller's timezone. `undefined` means no limit (today's behavior, unchanged for existing
+   * bots). Enforced server-side in calendarOperations.ts - never trust the AI to self-limit. */
+  maxBookingDaysAhead?: number;
 }
 
 const colorMap: Record<string, string> = {
@@ -48,7 +52,8 @@ export const defaultWidgetConfig: WidgetConfig = {
   showPoweredBy: true,
   requiredLeadFields: ['name', 'phone'],
   handoffText: 'I can connect you with the team for this.',
-  additionalCollectInfo: ''
+  additionalCollectInfo: '',
+  maxBookingDaysAhead: undefined
 };
 
 function cleanHex(value: unknown, fallback: string) {
@@ -89,6 +94,12 @@ function pick<T extends string>(value: unknown, allowed: T[], fallback: T): T {
   return allowed.includes(value as T) ? value as T : fallback;
 }
 
+function cleanMaxBookingDaysAhead(value: unknown): number | undefined {
+  const num = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(num) || num <= 0) return undefined;
+  return Math.min(Math.round(num), 365);
+}
+
 export function mergeWidgetConfig(value: any, bot?: { business_name?: string; primary_color?: string }): WidgetConfig {
   const input = value && typeof value === 'object' ? value : {};
   const primaryFallback = cleanHex(bot?.primary_color, defaultWidgetConfig.primaryColor);
@@ -118,7 +129,8 @@ export function mergeWidgetConfig(value: any, bot?: { business_name?: string; pr
       ? input.requiredLeadFields.filter((item: unknown) => typeof item === 'string').slice(0, 6)
       : defaultWidgetConfig.requiredLeadFields,
     handoffText: cleanText(input.handoffText, defaultWidgetConfig.handoffText, 180),
-    additionalCollectInfo: cleanText(input.additionalCollectInfo, '', 500)
+    additionalCollectInfo: cleanText(input.additionalCollectInfo, '', 500),
+    maxBookingDaysAhead: cleanMaxBookingDaysAhead(input.maxBookingDaysAhead)
   };
 }
 

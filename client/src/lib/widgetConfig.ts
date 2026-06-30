@@ -20,15 +20,20 @@ export const defaultWidgetConfig: WidgetConfig = {
   showPoweredBy: true,
   requiredLeadFields: ['name', 'phone'],
   handoffText: 'I can connect you with the team for this.',
-  additionalCollectInfo: ''
+  additionalCollectInfo: '',
+  maxBookingDaysAhead: undefined
 };
 
 export function mergeWidgetConfig(value: Partial<WidgetConfig> | null | undefined): WidgetConfig {
   const config = { ...defaultWidgetConfig, ...(value || {}) };
+  const maxBookingDaysAhead = Number(config.maxBookingDaysAhead);
   return {
     ...config,
     suggestedPrompts: Array.isArray(config.suggestedPrompts) ? config.suggestedPrompts : [],
     requiredLeadFields: Array.isArray(config.requiredLeadFields) ? config.requiredLeadFields : defaultWidgetConfig.requiredLeadFields,
-    additionalCollectInfo: config.additionalCollectInfo || ''
+    additionalCollectInfo: config.additionalCollectInfo || '',
+    maxBookingDaysAhead: Number.isFinite(maxBookingDaysAhead) && maxBookingDaysAhead > 0
+      ? Math.min(Math.round(maxBookingDaysAhead), 365)
+      : undefined
   };
 }

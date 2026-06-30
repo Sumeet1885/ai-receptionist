@@ -22,6 +22,9 @@ Use this document for:
 - preparing backend runtime variables
 - handing the correct values into the AWS deployment process
 
+This is one step in a larger sequence - see `docs/README.md` for the full order
+(Dograh first if phone calls are in scope, this document second, infra deployment third).
+
 For AWS infrastructure and runtime deployment details, use:
 
 ```txt
@@ -39,10 +42,11 @@ Perform the deployment setup in this order:
 5. Configure Google sign-in inside Supabase.
 6. Configure the Google OAuth consent screen and OAuth web client in Google Cloud.
 7. Collect the Gemini API key.
-8. Prepare the frontend and backend production environment values.
-9. Apply the Supabase migrations.
-10. Hand the values into the AWS deployment described in `docs/AWS_DEPLOYMENT.md`.
-11. Run the post-deployment smoke test.
+8. If phone calls are in scope, collect the Dograh and Groq values (Section 11).
+9. Prepare the frontend and backend production environment values.
+10. Apply the Supabase migrations.
+11. Hand the values into the AWS deployment described in `docs/AWS_DEPLOYMENT.md`.
+12. Run the post-deployment smoke test (`docs/05_VERIFY.md`).
 
 ## 1. Clone the Repository
 
@@ -395,7 +399,70 @@ GEMINI_API_KEY
 
 Store it as a backend secret.
 
-## 11. Collect All Production Variables
+## 11. Configure Dograh Phone Calls (Optional)
+
+Skip this section entirely if the deployment does not include phone calls. The backend starts
+fine without these values - the phone-calls module (`server/src/modules/phone-calls/`) stays
+inert (no routes registered, no poller started) when `DOGRAH_EMAIL`/`DOGRAH_PASSWORD` are unset.
+
+If phone calls are in scope, Dograh must already be deployed and configured - see
+`docs/README.md`, steps 1-2, before continuing here.
+
+### Step 11.1: Collect the Dograh Service Account
+
+The backend logs into Dograh with a service account (not a per-user login) to manage workflows,
+tools, and calls on behalf of every bot. Use the same email/password used to configure Dograh in
+`docs/01_CONFIGURE_DOGRAH.md`.
+
+This becomes:
+
+```txt
+DOGRAH_API_URL=http://<DOGRAH_PUBLIC_IP>:8000
+DOGRAH_EMAIL=...
+DOGRAH_PASSWORD=...
+```
+
+### Step 11.2: Get the Groq API Key
+
+Groq powers lead analysis (extracting name/phone/email/requirement from a transcript after a
+call or chat ends) and, separately, is the LLM Dograh itself uses for in-call variable
+extraction (configured directly in the Dograh UI, not here).
+
+In the Groq console:
+
+1. Open the Groq console.
+2. Open `API Keys`.
+3. Create a new key.
+4. Copy it.
+
+This value becomes:
+
+```txt
+GROQ_API_KEY
+```
+
+### Step 11.3: Generate the Phone Tools API Key
+
+This is not collected from anywhere - generate it yourself. It is the shared secret Dograh's
+backend presents (`X-API-Key` header) when it calls back into this server mid-call, for the
+calendar tools and pre-call session creation (see `server/src/middleware/phoneToolsAuth.ts`).
+
+```bash
+openssl rand -hex 24
+```
+
+This becomes:
+
+```txt
+PHONE_TOOLS_API_KEY=<the generated value>
+PHONE_TOOLS_CALLBACK_BASE_URL=https://api.yourdomain.com
+```
+
+`PHONE_TOOLS_CALLBACK_BASE_URL` must be this app's own public API domain - the same one in
+`EXPRESS_SERVER_URL` below - because that's the address Dograh's server (on a different EC2
+instance) needs to reach over the public internet, not a local/internal address.
+
+## 12. Collect All Production Variables
 
 The application uses two groups of deployment variables:
 
@@ -405,7 +472,7 @@ The application uses two groups of deployment variables:
 The frontend values are injected during the frontend build.
 The backend values are supplied to the running container or runtime service.
 
-## 12. Frontend Production Variables
+## 13. Frontend Production Variables
 
 Set these values in the frontend hosting platform or build pipeline.
 
@@ -443,7 +510,7 @@ Important:
 - `VITE_WIDGET_BASE_URL` must point to the deployed backend, not the frontend site
 - the widget script is served by the backend
 
-## 13. Backend Production Variables
+## 14. Backend Production Variables
 
 Set these values in the backend runtime secret store and task definition.
 
@@ -473,6 +540,13 @@ GOOGLE_REDIRECT_URI=https://api.yourdomain.com/api/calendar/callback/google
 MICROSOFT_CLIENT_ID=YOUR_MICROSOFT_CLIENT_ID
 MICROSOFT_CLIENT_SECRET=YOUR_MICROSOFT_CLIENT_SECRET
 MICROSOFT_REDIRECT_URI=https://api.yourdomain.com/api/calendar/callback/outlook
+
+# Optional - only if phone calls are in scope. See Section 11.
+DOGRAH_API_URL=http://YOUR_DOGRAH_EC2_PUBLIC_IP:8000
+DOGRAH_EMAIL=YOUR_DOGRAH_SERVICE_ACCOUNT_EMAIL
+DOGRAH_PASSWORD=YOUR_DOGRAH_SERVICE_ACCOUNT_PASSWORD
+PHONE_TOOLS_API_KEY=YOUR_GENERATED_PHONE_TOOLS_KEY
+PHONE_TOOLS_CALLBACK_BASE_URL=https://api.yourdomain.com
 ```
 
 ### Where Each Backend Variable Comes From
@@ -532,7 +606,7 @@ Important:
 - do not publish backend secrets into frontend build settings
 - do not use `http://` values in production
 
-## 14. Apply Supabase Migrations
+## 15. Apply Supabase Migrations
 
 The production database must receive the schema in `server/supabase/migrations/`.
 
@@ -558,7 +632,7 @@ If the organization does not allow Supabase CLI deployment:
 
 Do not skip later hardening migrations.
 
-## 15. Prepare the AWS Deployment
+## 16. Prepare the AWS Deployment
 
 Once all credentials are collected and the Supabase project is ready, hand off to the AWS deployment process in:
 
@@ -568,15 +642,15 @@ docs/AWS_DEPLOYMENT.md
 
 That file covers:
 
-- frontend hosting
-- backend container image
-- ECS / Fargate deployment
-- Application Load Balancer setup
-- DNS and TLS
+- launching a single EC2 instance
+- Docker + Docker Compose setup
+- DNS and automatic TLS (Caddy)
 - production environment injection
-- deployment smoke testing
+- starting the containers
 
-## 16. Production Readiness Warnings
+After that, run the full functional check in `docs/05_VERIFY.md`.
+
+## 17. Production Readiness Warnings
 
 ### Google Verification
 
@@ -595,9 +669,9 @@ Ensure the following exist before asking for verification:
 
 This application uses live voice over WebSockets.
 
-The backend must be deployed behind infrastructure that supports WebSockets. The AWS deployment guide already recommends Application Load Balancer with ECS Fargate, which is appropriate for this repository.
+The backend must be deployed behind infrastructure that supports WebSocket upgrades. The AWS deployment guide uses Caddy as a reverse proxy, which handles this automatically - no special configuration needed.
 
-## 17. Final Pre-Deploy Checklist
+## 18. Final Pre-Deploy Checklist
 
 Before the first production deploy, confirm all of the following:
 
@@ -615,7 +689,7 @@ Before the first production deploy, confirm all of the following:
 12. the Supabase migrations have been applied
 13. the AWS deployment values match the same domains and callback URIs
 
-## 18. Handoff Summary
+## 19. Handoff Summary
 
 The DevOps engineer should leave this setup phase with:
 

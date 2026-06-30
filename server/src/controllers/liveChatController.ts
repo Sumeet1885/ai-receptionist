@@ -88,6 +88,7 @@ export function setupWebSocketServer(server: Server) {
     // Blocks (queues) if all 3 slots are occupied; rejects after 30 s.
     // 1. Fetch Bot Configuration
     let bot: any;
+    let widgetConfig: ReturnType<typeof mergeWidgetConfig>;
     try {
       ({ bot } = await loadLiveSessionContext(supabase, botId, sessionId));
     } catch (error: any) {
@@ -267,7 +268,7 @@ export function setupWebSocketServer(server: Server) {
     geminiWs.on('open', () => {
       console.log('Connected to Gemini Live API');
 
-      const widgetConfig = mergeWidgetConfig(bot.widget_config, bot);
+      widgetConfig = mergeWidgetConfig(bot.widget_config, bot);
       const fieldsToCollect = widgetConfig.requiredLeadFields || [];
       requiredContactFields = fieldsToCollect.filter(
         (field): field is ContactField => field === 'phone' || field === 'email'
@@ -287,7 +288,7 @@ export function setupWebSocketServer(server: Server) {
       }
 
       const bookingInstruction = widgetConfig.enableCalendar
-        ? buildToolBasedBookingInstruction()
+        ? buildToolBasedBookingInstruction(widgetConfig.maxBookingDaysAhead)
         : buildVerbalHandoffBookingInstruction();
 
       const extraConstraints = buildWebVoiceExtraConstraints({
@@ -432,6 +433,7 @@ export function setupWebSocketServer(server: Server) {
                 ownerId: bot.owner_id,
                 date: args.date,
                 timezone,
+                maxBookingDaysAhead: widgetConfig.maxBookingDaysAhead,
               });
               functionResponse = { slots };
               checkedAvailabilityThisToolTurn = true;
@@ -478,6 +480,7 @@ export function setupWebSocketServer(server: Server) {
                 botId: bot.id,
                 sessionId,
                 timezone,
+                maxBookingDaysAhead: widgetConfig.maxBookingDaysAhead,
               });
               if (functionResponse.success) {
                 await supabase.from('messages').insert([

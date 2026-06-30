@@ -56,8 +56,11 @@ export function buildVerbalHandoffBookingInstruction(): string {
   return `3. Online calendar booking is currently disabled. If the user asks to book an appointment, schedule a visit, or requests a callback, politely inform them that online calendar scheduling is currently unavailable, and collect their contact details (name and phone/email) so a human representative can contact them to schedule it manually.`;
 }
 
-/** Tool-driven booking instruction for channels with check_availability/book_appointment tools. */
-export function buildToolBasedBookingInstruction(): string {
+/** Tool-driven booking instruction for channels with check_availability/book_appointment tools.
+ * `maxBookingDaysAhead` mirrors the server-side window enforced in calendarOperations.ts - the
+ * AI is told the limit so it can set expectations, but the actual rejection always happens
+ * server-side regardless of what's said here. */
+export function buildToolBasedBookingInstruction(maxBookingDaysAhead?: number): string {
   return `3. If the user asks for a visit, booking, appointment, callback, or you judge that human intervention is needed, move into appointment-assist mode:
    - Ask for any missing basic details first.
 
@@ -65,7 +68,7 @@ export function buildToolBasedBookingInstruction(): string {
    - Use check_availability for that date.
    - Present only the open slots returned by the tool, respecting office/calendar availability.
    - Ask the user to choose/confirm one of those returned slots.
-   - Only after the user explicitly agrees to a specific returned slot, use book_appointment.`;
+   - Only after the user explicitly agrees to a specific returned slot, use book_appointment.${maxBookingDaysAhead ? ` Appointments can only be booked within the next ${maxBookingDaysAhead} day(s) from today - if the user requests a date beyond that, politely tell them booking is only available within that window.` : ''}`;
 }
 
 /**
@@ -165,7 +168,7 @@ export function buildDograhPhoneInstruction(
   return buildBusinessPersona(bot, withoutAutoKnownPhoneField(widgetConfig), {
     timezone: options.timezone,
     bookingInstruction: options.useToolBasedBooking
-      ? buildToolBasedBookingInstruction()
+      ? buildToolBasedBookingInstruction(widgetConfig.maxBookingDaysAhead)
       : buildVerbalHandoffBookingInstruction(),
   });
 }
@@ -190,7 +193,7 @@ export function buildDograhOutboundInstruction(
     timezone: options.timezone,
     openingInstruction: OUTBOUND_OPENING_INSTRUCTION,
     bookingInstruction: options.useToolBasedBooking
-      ? buildToolBasedBookingInstruction()
+      ? buildToolBasedBookingInstruction(widgetConfig.maxBookingDaysAhead)
       : buildVerbalHandoffBookingInstruction(),
   });
 }

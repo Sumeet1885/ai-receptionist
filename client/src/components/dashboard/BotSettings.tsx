@@ -326,6 +326,24 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
               <Toggle checked={activeBot.widgetConfig.enableCalendar} label="Calendar booking" onChange={(enableCalendar) => patchConfig({ enableCalendar })} />
               <Toggle checked={activeBot.widgetConfig.showPoweredBy} label="Powered by label" onChange={(showPoweredBy) => patchConfig({ showPoweredBy })} />
             </div>
+            {activeBot.widgetConfig.enableCalendar && (
+              <div>
+                <FieldLabel>Max Booking Window</FieldLabel>
+                <SelectControl<string>
+                  value={activeBot.widgetConfig.maxBookingDaysAhead ? String(activeBot.widgetConfig.maxBookingDaysAhead) : 'none'}
+                  onChange={(value) => patchConfig({ maxBookingDaysAhead: value === 'none' ? undefined : Number(value) })}
+                  options={[
+                    { value: 'none', label: 'No limit' },
+                    { value: '7', label: 'Next 7 days' },
+                    { value: '14', label: 'Next 14 days' },
+                    { value: '30', label: 'Next 30 days' },
+                    { value: '60', label: 'Next 60 days' },
+                    { value: '90', label: 'Next 90 days' },
+                  ]}
+                />
+                <p className="text-[11px] text-brand-muted mt-1">How far ahead visitors can book an appointment. Applies to phone calls, chat, and voice calls alike.</p>
+              </div>
+            )}
             <div>
               <div className="flex justify-between items-center">
                 <FieldLabel>Input Placeholder</FieldLabel>

@@ -20,9 +20,12 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
   const [dialNumber, setDialNumber] = useState('');
   const [dialTouched, setDialTouched] = useState(false);
   const [calling, setCalling] = useState(false);
-  const [cooldownInput, setCooldownInput] = useState('');
-  const [hourlyCapInput, setHourlyCapInput] = useState('');
-  const [savingRateLimit, setSavingRateLimit] = useState(false);
+  const [outboundCooldownInput, setOutboundCooldownInput] = useState('');
+  const [outboundHourlyCapInput, setOutboundHourlyCapInput] = useState('');
+  const [savingOutboundRateLimit, setSavingOutboundRateLimit] = useState(false);
+  const [inboundCooldownInput, setInboundCooldownInput] = useState('');
+  const [inboundHourlyCapInput, setInboundHourlyCapInput] = useState('');
+  const [savingInboundRateLimit, setSavingInboundRateLimit] = useState(false);
 
   const dialValidation = validateContactInput('phone', dialNumber);
 
@@ -31,8 +34,10 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
     try {
       const data = await dograhApi.getStatus(botId);
       setStatus(data);
-      setCooldownInput(String(data.outboundCooldownSeconds));
-      setHourlyCapInput(String(data.outboundHourlyCap));
+      setOutboundCooldownInput(String(data.outboundCooldownSeconds));
+      setOutboundHourlyCapInput(String(data.outboundHourlyCap));
+      setInboundCooldownInput(String(data.inboundCooldownSeconds));
+      setInboundHourlyCapInput(String(data.inboundHourlyCap));
     } catch (err: any) {
       showToast(err.message || 'Could not load phone agent status', 'error');
     } finally {
@@ -88,22 +93,41 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
     }
   };
 
-  const handleSaveRateLimit = async () => {
-    const cooldownSeconds = Number(cooldownInput);
-    const hourlyCap = Number(hourlyCapInput);
+  const handleSaveOutboundRateLimit = async () => {
+    const cooldownSeconds = Number(outboundCooldownInput);
+    const hourlyCap = Number(outboundHourlyCapInput);
     if (!Number.isFinite(cooldownSeconds) || cooldownSeconds < 0 || !Number.isFinite(hourlyCap) || hourlyCap < 1) {
       showToast('Enter a valid cooldown (0+ seconds) and hourly cap (1+).', 'error');
       return;
     }
-    setSavingRateLimit(true);
+    setSavingOutboundRateLimit(true);
     try {
       const result = await dograhApi.updateOutboundRateLimit(botId, cooldownSeconds, hourlyCap);
       setStatus(prev => prev ? { ...prev, outboundCooldownSeconds: result.outboundCooldownSeconds, outboundHourlyCap: result.outboundHourlyCap } : prev);
-      showToast('Outbound rate limit updated.', 'success');
+      showToast('Outbound call limit updated.', 'success');
     } catch (err: any) {
       showToast(err.message || 'Failed to update the rate limit', 'error');
     } finally {
-      setSavingRateLimit(false);
+      setSavingOutboundRateLimit(false);
+    }
+  };
+
+  const handleSaveInboundRateLimit = async () => {
+    const cooldownSeconds = Number(inboundCooldownInput);
+    const hourlyCap = Number(inboundHourlyCapInput);
+    if (!Number.isFinite(cooldownSeconds) || cooldownSeconds < 0 || !Number.isFinite(hourlyCap) || hourlyCap < 1) {
+      showToast('Enter a valid cooldown (0+ seconds) and hourly cap (1+).', 'error');
+      return;
+    }
+    setSavingInboundRateLimit(true);
+    try {
+      const result = await dograhApi.updateInboundRateLimit(botId, cooldownSeconds, hourlyCap);
+      setStatus(prev => prev ? { ...prev, inboundCooldownSeconds: result.inboundCooldownSeconds, inboundHourlyCap: result.inboundHourlyCap } : prev);
+      showToast('Inbound call limit updated.', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to update the rate limit', 'error');
+    } finally {
+      setSavingInboundRateLimit(false);
     }
   };
 
@@ -218,6 +242,48 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
               </div>
             )}
 
+            {status?.provisioned && status?.phoneNumber && (
+              <div className="pt-4 border-t border-brand-border space-y-2">
+                <p className="text-xs text-brand-muted">
+                  Limit how often this number can receive inbound calls. Once the limit is hit, calls still
+                  connect briefly, but the agent immediately says the line is at capacity and ends the call
+                  rather than a normal conversation (there's no way to refuse a call before it rings).
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+                  <label className="flex-1 flex items-center gap-2 text-xs text-brand-muted">
+                    Cooldown (seconds)
+                    <input
+                      type="number"
+                      min={0}
+                      max={300}
+                      value={inboundCooldownInput}
+                      onChange={e => setInboundCooldownInput(e.target.value)}
+                      className="h-10 px-3 rounded-lg bg-brand-bg border border-brand-border text-sm text-brand-text w-24"
+                    />
+                  </label>
+                  <label className="flex-1 flex items-center gap-2 text-xs text-brand-muted">
+                    Max calls / hour
+                    <input
+                      type="number"
+                      min={1}
+                      max={200}
+                      value={inboundHourlyCapInput}
+                      onChange={e => setInboundHourlyCapInput(e.target.value)}
+                      className="h-10 px-3 rounded-lg bg-brand-bg border border-brand-border text-sm text-brand-text w-24"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleSaveInboundRateLimit}
+                    disabled={savingInboundRateLimit}
+                    className="h-10 px-4 rounded-lg bg-brand-card border border-brand-border hover:border-brand-accent/60 text-brand-text text-xs font-bold disabled:opacity-50 shrink-0"
+                  >
+                    {savingInboundRateLimit ? 'Saving…' : 'Save limit'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {status?.outboundProvisioned && status?.phoneNumber && (
               <div className="pt-4 border-t border-brand-border space-y-2">
                 <p className="text-xs text-brand-muted">Limit how often this number can place outbound calls.</p>
@@ -228,8 +294,8 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                       type="number"
                       min={0}
                       max={300}
-                      value={cooldownInput}
-                      onChange={e => setCooldownInput(e.target.value)}
+                      value={outboundCooldownInput}
+                      onChange={e => setOutboundCooldownInput(e.target.value)}
                       className="h-10 px-3 rounded-lg bg-brand-bg border border-brand-border text-sm text-brand-text w-24"
                     />
                   </label>
@@ -239,18 +305,18 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                       type="number"
                       min={1}
                       max={200}
-                      value={hourlyCapInput}
-                      onChange={e => setHourlyCapInput(e.target.value)}
+                      value={outboundHourlyCapInput}
+                      onChange={e => setOutboundHourlyCapInput(e.target.value)}
                       className="h-10 px-3 rounded-lg bg-brand-bg border border-brand-border text-sm text-brand-text w-24"
                     />
                   </label>
                   <button
                     type="button"
-                    onClick={handleSaveRateLimit}
-                    disabled={savingRateLimit}
+                    onClick={handleSaveOutboundRateLimit}
+                    disabled={savingOutboundRateLimit}
                     className="h-10 px-4 rounded-lg bg-brand-card border border-brand-border hover:border-brand-accent/60 text-brand-text text-xs font-bold disabled:opacity-50 shrink-0"
                   >
-                    {savingRateLimit ? 'Saving…' : 'Save limit'}
+                    {savingOutboundRateLimit ? 'Saving…' : 'Save limit'}
                   </button>
                 </div>
               </div>

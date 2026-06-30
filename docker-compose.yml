@@ -1,0 +1,35 @@
+services:
+  api:
+    build: ./server
+    # All backend secrets/config (Supabase, Gemini, Groq, Google OAuth, Dograh, phone tools)
+    # live in server/.env - same file format as local dev, nothing AWS-specific to learn.
+    env_file:
+      - ./server/.env
+    expose:
+      - "4000"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./client
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+        VITE_EXPRESS_SERVER_URL: ${VITE_EXPRESS_SERVER_URL}
+        VITE_WIDGET_BASE_URL: ${VITE_WIDGET_BASE_URL}
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

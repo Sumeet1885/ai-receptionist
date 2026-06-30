@@ -190,7 +190,11 @@ Lead records are upserted by session. If `GROQ_API_KEY` is absent or Groq fails,
 │   │   └── functions/              Legacy/optional Edge Functions
 │   └── tests/                      Backend integration and regression tests
 ├── docs/
-│   ├── AWS_DEPLOYMENT.md           Detailed AWS deployment runbook
+│   ├── README.md                   Start here - the full deployment sequence across Dograh + this app
+│   ├── 01_CONFIGURE_DOGRAH.md      Dograh UI setup: speech-to-speech model, Plivo telephony
+│   ├── setup.md                    Supabase project, Google OAuth, credential collection
+│   ├── AWS_DEPLOYMENT.md           Single-EC2 Docker Compose deployment for this app
+│   ├── 05_VERIFY.md                Post-deployment smoke test, including phone calls
 │   └── superpowers/                Historical design specs and implementation plans
 ├── Phone calls/                    Architecture notes for inbound phone calls (Dograh); runtime code lives under server/client modules above
 ├── package.json                    Root orchestration scripts
@@ -389,13 +393,12 @@ For changes to public chat, voice, contact collection, or booking, test both sur
 
 ### Supported shape
 
-- Deploy `client/` as a static SPA on Vercel, S3/CloudFront, Amplify, or an equivalent host.
-- Deploy `server/` on a long-lived Node.js platform with WebSocket support, such as Railway or ECS/Fargate behind an Application Load Balancer.
+- Deploy `client/` and `server/` together on a single host via the root `docker-compose.yml` (Caddy serves the built SPA and reverse-proxies the API, with automatic HTTPS) - or deploy `client/` as a static SPA on Vercel/S3+CloudFront/Amplify and `server/` separately on any long-lived Node.js platform with WebSocket support, such as Railway.
 - Keep Supabase as the managed Auth/Postgres service.
 
 The backend cannot be deployed as a short-lived serverless HTTP function because live voice requires persistent WebSocket connections. The server Dockerfile uses Node 20 Alpine, runs as a non-root user, and exposes port 4000.
 
-For the detailed AWS topology, secrets, load balancer settings, and rollout procedure, read [docs/AWS_DEPLOYMENT.md](docs/AWS_DEPLOYMENT.md).
+For the full production deployment sequence (including the Dograh phone-calls deployment), start at [docs/README.md](docs/README.md). For just this app's AWS topology and rollout procedure, read [docs/AWS_DEPLOYMENT.md](docs/AWS_DEPLOYMENT.md).
 
 ### Production checklist
 

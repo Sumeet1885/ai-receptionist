@@ -81,7 +81,7 @@ export default function App() {
   const loadedPublicSubdomainRef = useRef<string>('');
   const toastTimerRef = useRef<number | null>(null);
 
-  const { user, signOut } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const { bots, setBots, activeBotId, setActiveBotId, fetchBots, createBot, updateBot, deleteBot } = useBots();
   const { leads, setLeads, fetchLeads } = useLeads();
   const chat = useChat();
@@ -142,13 +142,19 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    // Wait for the initial session restore to settle before deciding anything -
+    // `user` starts out null on every hard reload even for a signed-in visitor,
+    // so acting on it too early both bounces protected routes to landing and
+    // fetches bots/leads with no user id.
+    if (authLoading) return;
+
     if (user) {
-      fetchBots();
+      fetchBots(user.id);
       fetchLeads();
       if (route.name === 'auth' || route.name === 'landing') {
-        const justSignedUp = localStorage.getItem('just_signed_up') === 'true' || 
+        const justSignedUp = localStorage.getItem('just_signed_up') === 'true' ||
           (user.last_sign_in_at && user.created_at && Math.abs(new Date(user.last_sign_in_at).getTime() - new Date(user.created_at).getTime()) < 30000);
-        
+
         if (justSignedUp) {
           localStorage.removeItem('just_signed_up');
           navigate('/agents/new', true);
@@ -159,7 +165,7 @@ export default function App() {
     } else if (isProtectedRoute(route)) {
       navigate('/', true);
     }
-  }, [user, route.name]);
+  }, [user, authLoading, route.name]);
 
   useEffect(() => {
     if (!user) return;
@@ -313,6 +319,9 @@ export default function App() {
       )}
 
       <main className="flex-1 flex flex-col min-h-0">
+        {authLoading && isProtectedRoute(route) ? (
+          <div className="flex-1 flex items-center justify-center text-brand-muted text-sm">Loading…</div>
+        ) : <>
         {route.name === 'landing' && (
           <LandingView
             setView={legacySetView}
@@ -486,6 +495,7 @@ export default function App() {
             isStandalone={isStandaloneChat}
           />
         )}
+        </>}
       </main>
 
       {!isStandaloneChat && route.name !== 'landing' && <Footer showToast={(msg) => showToast(msg, 'success')} />}

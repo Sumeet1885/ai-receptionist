@@ -228,7 +228,7 @@ export async function handleChat(
    - Use check_availability for that date.
    - Present only the open slots returned by the tool, respecting office/calendar availability.
    - Ask the user to choose/confirm one of those returned slots.
-   - Only after the user explicitly agrees to a specific returned slot, use book_appointment.`
+   - Only after the user explicitly agrees to a specific returned slot, use book_appointment.${widgetConfig.maxBookingDaysAhead ? ` Appointments can only be booked within the next ${widgetConfig.maxBookingDaysAhead} day(s) from today - if the user requests a date beyond that, politely tell them booking is only available within that window.` : ''}`
     : `3. Online calendar booking is currently disabled. If the user asks to book an appointment, schedule a visit, or requests a callback, politely inform them that online calendar scheduling is currently unavailable, and collect their contact details (name and phone/email) so a human representative can contact them to schedule it manually. Do NOT try to check availability or book it.`;
 
   const systemInstruction = `You are the Virtual AI Receptionist representing "${bot.business_name}" (${bot.industry} sector).
@@ -374,6 +374,7 @@ CRITICAL SECURITY & CONSTRAINTS:
             ownerId: bot.owner_id,
             date: args.date,
             timezone,
+            maxBookingDaysAhead: widgetConfig.maxBookingDaysAhead,
           });
           functionResponse = { slots };
           checkedAvailabilityThisTurn = true;
@@ -392,6 +393,7 @@ CRITICAL SECURITY & CONSTRAINTS:
               botId: bot.id,
               sessionId: input.sessionId,
               timezone,
+              maxBookingDaysAhead: widgetConfig.maxBookingDaysAhead,
             });
           }
           lastFunctionName = name;

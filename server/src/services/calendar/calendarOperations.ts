@@ -11,6 +11,9 @@ interface AvailabilityInput {
   date: string;
   timezone?: string;
   getAdapter?: AdapterFactory;
+  /** Owner-configured cap on how far ahead a date may be, from `widgetConfig.maxBookingDaysAhead`.
+   * Undefined means no limit. */
+  maxBookingDaysAhead?: number;
 }
 
 interface BookingInput {
@@ -22,6 +25,30 @@ interface BookingInput {
   timezone?: string;
   details: BookingDetails;
   getAdapter?: AdapterFactory;
+  maxBookingDaysAhead?: number;
+}
+
+/** Enforced server-side (never trust the AI agent to self-limit) so it applies identically across
+ * phone, text chat, and live voice - all three funnel through checkCalendarAvailability/
+ * bookCalendarAppointment. `dateStr` is a local 'YYYY-MM-DD' date in the caller's timezone. */
+function assertWithinBookingWindow(dateStr: string, timezone: string | undefined, maxBookingDaysAhead: number | undefined) {
+  const requested = new Date(`${dateStr}T00:00:00`);
+  if (Number.isNaN(requested.getTime())) return;
+
+  const todayInTz = new Date(new Date().toLocaleString('en-US', { timeZone: timezone || 'UTC' }));
+  const todayMidnight = new Date(todayInTz.getFullYear(), todayInTz.getMonth(), todayInTz.getDate());
+
+  if (requested.getTime() < todayMidnight.getTime()) {
+    throw new Error('That date is in the past. Please choose a date from today onward.');
+  }
+
+  if (!maxBookingDaysAhead || maxBookingDaysAhead <= 0) return;
+
+  const maxDate = new Date(todayMidnight);
+  maxDate.setDate(maxDate.getDate() + maxBookingDaysAhead);
+  if (requested.getTime() > maxDate.getTime()) {
+    throw new Error(`Appointments can only be booked up to ${maxBookingDaysAhead} day(s) ahead. Please choose a date on or before ${maxDate.toISOString().slice(0, 10)}.`);
+  }
 }
 
 export function serializeCalendarToolError(error: any) {
@@ -55,6 +82,7 @@ async function getConnectedAdapter(db: any, ownerId: string, factory: AdapterFac
 
 export async function checkCalendarAvailability(input: AvailabilityInput): Promise<TimeSlot[]> {
   if (!input.date) throw new Error('A date is required to check availability');
+  assertWithinBookingWindow(input.date, input.timezone, input.maxBookingDaysAhead);
   const adapter = await getConnectedAdapter(input.db, input.ownerId, input.getAdapter || getCalendarAdapter);
   return adapter.checkAvailability(input.date, input.ownerId, input.timezone);
 }
@@ -106,8 +134,10 @@ export async function bookCalendarAppointment(input: BookingInput) {
       throw new Error('An appointment has already been booked for this session.');
     }
 
-    const adapter = await getConnectedAdapter(db, input.ownerId, input.getAdapter || getCalendarAdapter);
     const requestedLocalDate = details.startTime.slice(0, 10);
+    assertWithinBookingWindow(requestedLocalDate, input.timezone, input.maxBookingDaysAhead);
+
+    const adapter = await getConnectedAdapter(db, input.ownerId, input.getAdapter || getCalendarAdapter);
     const availableSlots = await adapter.checkAvailability(requestedLocalDate, input.ownerId, input.timezone);
     const exactAvailableSlot = availableSlots.some(slot =>
       new Date(slot.start).getTime() === requestedStart.getTime()

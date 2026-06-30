@@ -24,9 +24,7 @@ export function useBots() {
   const [bots, setBots] = useState<Bot[]>([]);
   const [activeBotId, setActiveBotId] = useState<string>('');
 
-  const fetchBots = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const userId = session?.user?.id;
+  const fetchBots = useCallback(async (userId: string | undefined) => {
     if (!userId) {
       setBots([]);
       return;
@@ -64,7 +62,7 @@ export function useBots() {
 
     if (error || !data) throw error;
 
-    await fetchBots();
+    await fetchBots(payload.owner_id);
     setActiveBotId(data.id);
     return data.id;
   };

@@ -66,4 +66,6 @@ export interface DograhProvisionableBot {
   dograh_call_time_tool_uuid?: string | null;
   dograh_outbound_cooldown_seconds?: number;
   dograh_outbound_hourly_cap?: number;
+  dograh_inbound_cooldown_seconds?: number;
+  dograh_inbound_hourly_cap?: number;
 }

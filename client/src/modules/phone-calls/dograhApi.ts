@@ -8,6 +8,8 @@ export interface PhoneAgentStatus {
   phoneNumber: string | null;
   outboundCooldownSeconds: number;
   outboundHourlyCap: number;
+  inboundCooldownSeconds: number;
+  inboundHourlyCap: number;
 }
 
 export interface DograhNumber {
@@ -69,6 +71,11 @@ export const dograhApi = {
     }),
   updateOutboundRateLimit: (botId: string, cooldownSeconds: number, hourlyCap: number) =>
     authedFetch<{ outboundCooldownSeconds: number; outboundHourlyCap: number }>(`/api/dograh/bots/${botId}/outbound-rate-limit`, {
+      method: 'PUT',
+      body: JSON.stringify({ cooldownSeconds, hourlyCap }),
+    }),
+  updateInboundRateLimit: (botId: string, cooldownSeconds: number, hourlyCap: number) =>
+    authedFetch<{ inboundCooldownSeconds: number; inboundHourlyCap: number }>(`/api/dograh/bots/${botId}/inbound-rate-limit`, {
       method: 'PUT',
       body: JSON.stringify({ cooldownSeconds, hourlyCap }),
     }),

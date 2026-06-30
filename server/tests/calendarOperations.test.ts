@@ -11,6 +11,15 @@ function queryResult(data: any) {
   return builder;
 }
 
+// Relative to "today" rather than a hardcoded literal, so these fixtures never silently drift
+// into the past as real time passes (which is exactly what broke the old hardcoded 2026-06-20
+// fixture once that date rolled by - see the maxBookingDaysAhead window guard below).
+function isoDateDaysFromNow(daysFromNow: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + daysFromNow);
+  return d.toISOString().slice(0, 10);
+}
+
 test('availability uses the trusted owner id with the connected provider adapter', async () => {
   const calls: any[] = [];
   const db = {
@@ -19,7 +28,8 @@ test('availability uses the trusted owner id with the connected provider adapter
       return queryResult({ provider: 'google' });
     },
   };
-  const slots = [{ start: '2026-06-20T10:00:00Z', end: '2026-06-20T10:30:00Z' }];
+  const date = isoDateDaysFromNow(7);
+  const slots = [{ start: `${date}T10:00:00Z`, end: `${date}T10:30:00Z` }];
   const adapter = {
     async checkAvailability(date: string, ownerId: string, timezone?: string) {
       calls.push([date, ownerId, timezone]);
@@ -30,13 +40,13 @@ test('availability uses the trusted owner id with the connected provider adapter
   const result = await checkCalendarAvailability({
     db,
     ownerId: 'owner-1',
-    date: '2026-06-20',
+    date,
     timezone: 'Asia/Kolkata',
     getAdapter: () => adapter as any,
   });
 
   assert.deepEqual(result, slots);
-  assert.deepEqual(calls, [['2026-06-20', 'owner-1', 'Asia/Kolkata']]);
+  assert.deepEqual(calls, [[date, 'owner-1', 'Asia/Kolkata']]);
 });
 
 test('booking rejects a second appointment for the same session', async () => {
@@ -62,8 +72,8 @@ test('booking rejects a second appointment for the same session', async () => {
         title: 'Consultation',
         visitorName: 'Visitor',
         visitorPhone: '+919415072638',
-        startTime: '2026-06-20T10:00:00Z',
-        endTime: '2026-06-20T10:30:00Z',
+        startTime: `${isoDateDaysFromNow(7)}T10:00:00Z`,
+        endTime: `${isoDateDaysFromNow(7)}T10:30:00Z`,
       },
       getAdapter: () => { throw new Error('adapter must not be called'); },
     }),
@@ -87,12 +97,13 @@ test('booking rechecks the exact slot before creating and persisting an event', 
       throw new Error(`Unexpected table ${table}`);
     },
   };
+  const bookingDate = isoDateDaysFromNow(7);
   const details = {
     title: 'Consultation',
     visitorName: 'Visitor',
     visitorPhone: '+919415072638',
-    startTime: '2026-06-20T10:00:00Z',
-    endTime: '2026-06-20T10:30:00Z',
+    startTime: `${bookingDate}T10:00:00Z`,
+    endTime: `${bookingDate}T10:30:00Z`,
   };
   const adapter = {
     async checkAvailability() {
@@ -121,12 +132,13 @@ test('booking rechecks the exact slot before creating and persisting an event', 
 test('booking serializes simultaneous requests for the same session', async () => {
   let releaseBooking!: () => void;
   const bookingGate = new Promise<void>(resolve => { releaseBooking = resolve; });
+  const bookingDate = isoDateDaysFromNow(7);
   const details = {
     title: 'Consultation',
     visitorName: 'Visitor',
     visitorPhone: '+919415072638',
-    startTime: '2026-06-20T10:00:00Z',
-    endTime: '2026-06-20T10:30:00Z',
+    startTime: `${bookingDate}T10:00:00Z`,
+    endTime: `${bookingDate}T10:30:00Z`,
   };
   const db = {
     from(table: string) {
@@ -186,4 +198,96 @@ test('calendar auth failures are converted into an owner action message', () => 
     error: 'The business calendar connection has expired or was revoked. Please ask the business owner to reconnect Google Calendar before checking availability.',
     actionRequired: 'reconnect_calendar',
   });
+});
+
+test('checkCalendarAvailability rejects a date past the owner-configured booking window', async () => {
+  const db = { from: () => queryResult({ provider: 'google' }) };
+  const adapter = { checkAvailability: async () => { throw new Error('adapter must not be called'); } };
+
+  await assert.rejects(
+    checkCalendarAvailability({
+      db,
+      ownerId: 'owner-1',
+      date: isoDateDaysFromNow(31),
+      timezone: 'UTC',
+      maxBookingDaysAhead: 30,
+      getAdapter: () => adapter as any,
+    }),
+    /can only be booked up to 30 day\(s\) ahead/,
+  );
+});
+
+test('checkCalendarAvailability rejects a date in the past regardless of any configured window', async () => {
+  const db = { from: () => queryResult({ provider: 'google' }) };
+  const adapter = { checkAvailability: async () => { throw new Error('adapter must not be called'); } };
+
+  await assert.rejects(
+    checkCalendarAvailability({
+      db,
+      ownerId: 'owner-1',
+      date: isoDateDaysFromNow(-1),
+      timezone: 'UTC',
+      getAdapter: () => adapter as any,
+    }),
+    /in the past/,
+  );
+});
+
+test('checkCalendarAvailability allows a date inside the configured window and an unlimited window by default', async () => {
+  const db = { from: () => queryResult({ provider: 'google' }) };
+  const slots = [{ start: 'x', end: 'y' }];
+  const adapter = { checkAvailability: async () => slots };
+
+  const withinWindow = await checkCalendarAvailability({
+    db,
+    ownerId: 'owner-1',
+    date: isoDateDaysFromNow(10),
+    timezone: 'UTC',
+    maxBookingDaysAhead: 30,
+    getAdapter: () => adapter as any,
+  });
+  assert.deepEqual(withinWindow, slots);
+
+  const farOutWithNoLimit = await checkCalendarAvailability({
+    db,
+    ownerId: 'owner-1',
+    date: isoDateDaysFromNow(400),
+    timezone: 'UTC',
+    getAdapter: () => adapter as any,
+  });
+  assert.deepEqual(farOutWithNoLimit, slots);
+});
+
+test('bookCalendarAppointment rejects a startTime past the owner-configured booking window', async () => {
+  const db = {
+    from(table: string) {
+      if (table === 'appointments') {
+        const builder: any = { select: () => builder, eq: async () => ({ data: [], error: null }) };
+        return builder;
+      }
+      if (table === 'calendar_connections') return queryResult({ provider: 'google' });
+      throw new Error(`Unexpected table ${table}`);
+    },
+  };
+  const farDate = isoDateDaysFromNow(31);
+
+  await assert.rejects(
+    bookCalendarAppointment({
+      db,
+      ownerId: 'owner-1',
+      botId: 'bot-1',
+      sessionId: 'session-window',
+      timezone: 'UTC',
+      maxBookingDaysAhead: 30,
+      details: {
+        title: 'Consultation',
+        visitorName: 'Visitor',
+        visitorPhone: '+919415072638',
+        startTime: `${farDate}T10:00:00Z`,
+        endTime: `${farDate}T10:30:00Z`,
+      },
+      getAdapter: () => { throw new Error('adapter must not be called'); },
+    }),
+    /can only be booked up to 30 day\(s\) ahead/,
+  );
 });

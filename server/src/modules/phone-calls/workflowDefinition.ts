@@ -70,10 +70,23 @@ const END_CALL_CONDITION =
   'they say goodbye, "that\'s all", "no more questions", or explicitly ask to end/hang up the ' +
   'call, OR all of their questions have been answered AND (if the persona above asks for contact ' +
   'details) those details have already been collected, OR get_call_time_remaining has reported ' +
-  '"shouldWrapUp": true and you have already said your wrap-up line and a brief goodbye. Do NOT ' +
-  'transition merely because of a short reply, a single "okay"/"thanks", a brief pause, or ' +
-  'uncertainty about what to do next - in those cases keep the conversation going by asking a ' +
-  'clarifying or follow-up question instead.';
+  '"shouldWrapUp": true and you have already said your wrap-up line and a brief goodbye, OR the ' +
+  'call was declined for being at capacity (RATE_LIMITED was true) and you have already said the ' +
+  'capacity message. Do NOT transition merely because of a short reply, a single "okay"/"thanks", ' +
+  'a brief pause, or uncertainty about what to do next - in those cases keep the conversation ' +
+  'going by asking a clarifying or follow-up question instead.';
+
+// Inbound-only: there's no way to refuse an inbound call before it rings (Plivo calls Dograh
+// directly, not this server), so the rate limit instead gets enforced here, on the answered
+// side - see phoneToolsController.ts's preCall handler for where RATE_LIMITED is computed and
+// the cooldown/hourly-cap logic itself. {{initial_context.*}} is Dograh's own template syntax
+// (supported directly in node prompts), substituted before the model ever sees this text.
+const INBOUND_RATE_LIMIT_INSTRUCTION =
+  `Before anything else, check this value: RATE_LIMITED={{initial_context.rate_limited}}. If it ` +
+  `reads "true", ignore the rest of this conversational step entirely - immediately and ` +
+  `politely say the line is currently at capacity and ask the caller to try again shortly, then ` +
+  `transition to ending the call. Only proceed with the normal greeting and conversation below ` +
+  `if RATE_LIMITED reads "false".\n\n`;
 
 // Drives the graceful wrap-up via the deterministic get_call_time_remaining tool (always
 // attached - see dograhController.ts) instead of having the model guess elapsed time from
@@ -105,7 +118,8 @@ export function buildSingleNodeWorkflowDefinition(options: SingleNodeWorkflowOpt
       `conversation across as many turns as needed: answer questions, and collect lead details ` +
       `per the persona above. When the conversation is clearly finished, transition to ending ` +
       `the call.`
-    : `This is the only conversational step for the entire call. Begin immediately by warmly ` +
+    : INBOUND_RATE_LIMIT_INSTRUCTION +
+      `This is the only conversational step for the entire call. Begin immediately by warmly ` +
       `greeting the caller on behalf of ${businessName} and asking how you can help. Then handle ` +
       `the entire conversation across as many turns as needed: answer questions, and collect ` +
       `lead details per the persona above. When the conversation is clearly finished, transition ` +

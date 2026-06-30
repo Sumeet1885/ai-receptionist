@@ -1,0 +1,17 @@
+# Two domains, one EC2 instance, one Caddy process - Caddy auto-provisions and
+# renews a Let's Encrypt TLS cert for each domain (no certbot/nginx config needed).
+# APP_DOMAIN and API_DOMAIN come from the root .env file (docker-compose.yml
+# passes them through as environment variables on the web service).
+
+{$APP_DOMAIN} {
+	root * /srv
+	encode gzip
+	try_files {path} /index.html
+	file_server
+}
+
+{$API_DOMAIN} {
+	# Handles REST, the widget loader, and the live-voice WebSocket the same way -
+	# Caddy upgrades WebSocket connections automatically, no special directive needed.
+	reverse_proxy api:4000
+}

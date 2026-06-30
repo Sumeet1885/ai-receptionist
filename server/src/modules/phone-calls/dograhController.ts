@@ -35,7 +35,7 @@ async function loadOwnedBot(botId: string, ownerId: string): Promise<DograhProvi
   const { data, error } = await supabase
     .from('bots')
     .select(
-      'id, owner_id, business_name, industry, knowledge_base, widget_config, primary_color, dograh_workflow_id, dograh_outbound_workflow_id, dograh_telephony_config_id, dograh_phone_number_id, dograh_phone_number, dograh_check_availability_tool_uuid, dograh_book_appointment_tool_uuid, dograh_call_time_tool_uuid, dograh_outbound_cooldown_seconds, dograh_outbound_hourly_cap'
+      'id, owner_id, business_name, industry, knowledge_base, widget_config, primary_color, dograh_workflow_id, dograh_outbound_workflow_id, dograh_telephony_config_id, dograh_phone_number_id, dograh_phone_number, dograh_check_availability_tool_uuid, dograh_book_appointment_tool_uuid, dograh_call_time_tool_uuid, dograh_outbound_cooldown_seconds, dograh_outbound_hourly_cap, dograh_inbound_cooldown_seconds, dograh_inbound_hourly_cap'
     )
     .eq('id', botId)
     .eq('owner_id', ownerId)
@@ -153,6 +153,8 @@ export async function getStatus(req: AuthRequest, res: Response): Promise<void> 
     phoneNumber: bot.dograh_phone_number || null,
     outboundCooldownSeconds: bot.dograh_outbound_cooldown_seconds ?? 10,
     outboundHourlyCap: bot.dograh_outbound_hourly_cap ?? 20,
+    inboundCooldownSeconds: bot.dograh_inbound_cooldown_seconds ?? 10,
+    inboundHourlyCap: bot.dograh_inbound_hourly_cap ?? 20,
   });
 }
 
@@ -172,9 +174,14 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
 
     // get_call_time_remaining is always attached (drives the graceful 4:30 wrap-up regardless of
     // calendar booking - see workflowDefinition.ts), so pre-call-fetch (which creates the
-    // chat_sessions row every tool reads session_id from) is always enabled now too.
+    // chat_sessions row every tool reads session_id from) is always enabled now too. The
+    // `direction` query param tells phoneToolsController.preCall which one this is, since the
+    // inbound rate limit only applies to calls Dograh answers, never ones we ourselves placed
+    // (those are already gated before dialing - see checkOutboundRateLimit/callOut below).
     const callTimeToolUuid = await ensureCallTimeTool(bot);
-    const preCallFetchUrl = `${config.phoneTools.callbackBaseUrl}/api/phone-tools/${botId}/pre-call?key=${config.phoneTools.apiKey}`;
+    const preCallFetchBase = `${config.phoneTools.callbackBaseUrl}/api/phone-tools/${botId}/pre-call?key=${config.phoneTools.apiKey}`;
+    const inboundPreCallFetchUrl = `${preCallFetchBase}&direction=inbound`;
+    const outboundPreCallFetchUrl = `${preCallFetchBase}&direction=outbound`;
 
     // Tool-driven booking (real-time check_availability/book_appointment against the owner's
     // connected Google Calendar) only when a calendar is actually connected and the bot has
@@ -204,7 +211,7 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
       isOutbound: false,
       businessName: bot.business_name,
       toolUuids,
-      preCallFetchUrl,
+      preCallFetchUrl: inboundPreCallFetchUrl,
     });
     const inboundWorkflow = bot.dograh_workflow_id
       ? await updateWorkflowInPlace(bot.dograh_workflow_id, inboundDefinition, WORKFLOW_CONFIGURATIONS)
@@ -218,7 +225,7 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
       isOutbound: true,
       businessName: bot.business_name,
       toolUuids,
-      preCallFetchUrl,
+      preCallFetchUrl: outboundPreCallFetchUrl,
     });
     const outboundWorkflow = bot.dograh_outbound_workflow_id
       ? await updateWorkflowInPlace(bot.dograh_outbound_workflow_id, outboundDefinition, WORKFLOW_CONFIGURATIONS)
@@ -440,6 +447,40 @@ export async function updateOutboundRateLimit(req: AuthRequest, res: Response): 
   }
 
   res.json({ outboundCooldownSeconds: Math.round(cooldownSeconds), outboundHourlyCap: Math.round(hourlyCap) });
+}
+
+// The inbound limit itself is enforced over in phoneToolsController.ts's preCall handler (Dograh
+// calls that, not this server, before an inbound call connects - see the comment there for why).
+// This endpoint only persists the owner's chosen thresholds; reuses the same bounds as outbound.
+export async function updateInboundRateLimit(req: AuthRequest, res: Response): Promise<void> {
+  const botId = req.params.botId;
+  const bot = await loadOwnedBot(botId, req.user!.id);
+  if (!bot) {
+    res.status(404).json({ error: 'Bot not found' });
+    return;
+  }
+
+  const cooldownSeconds = Number(req.body?.cooldownSeconds);
+  const hourlyCap = Number(req.body?.hourlyCap);
+  if (!Number.isFinite(cooldownSeconds) || cooldownSeconds < 0 || cooldownSeconds > MAX_OUTBOUND_COOLDOWN_SECONDS) {
+    res.status(400).json({ error: `cooldownSeconds must be between 0 and ${MAX_OUTBOUND_COOLDOWN_SECONDS}` });
+    return;
+  }
+  if (!Number.isFinite(hourlyCap) || hourlyCap < 1 || hourlyCap > MAX_OUTBOUND_HOURLY_CAP) {
+    res.status(400).json({ error: `hourlyCap must be between 1 and ${MAX_OUTBOUND_HOURLY_CAP}` });
+    return;
+  }
+
+  const { error } = await supabase
+    .from('bots')
+    .update({ dograh_inbound_cooldown_seconds: Math.round(cooldownSeconds), dograh_inbound_hourly_cap: Math.round(hourlyCap) })
+    .eq('id', botId);
+  if (error) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+
+  res.json({ inboundCooldownSeconds: Math.round(cooldownSeconds), inboundHourlyCap: Math.round(hourlyCap) });
 }
 
 export async function callOut(req: AuthRequest, res: Response): Promise<void> {

@@ -26,6 +26,8 @@ export interface WidgetConfig {
   requiredLeadFields: LeadField[];
   handoffText: string;
   additionalCollectInfo?: string;
+  /** Max number of days ahead a booking date may fall on. Undefined means no limit. */
+  maxBookingDaysAhead?: number;
 }
 
 export interface Bot {
