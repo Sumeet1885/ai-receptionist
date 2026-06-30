@@ -64,6 +64,7 @@ export interface DograhProvisionableBot {
   dograh_check_availability_tool_uuid?: string | null;
   dograh_book_appointment_tool_uuid?: string | null;
   dograh_call_time_tool_uuid?: string | null;
+  dograh_rate_limit_tool_uuid?: string | null;
   dograh_outbound_cooldown_seconds?: number;
   dograh_outbound_hourly_cap?: number;
   dograh_inbound_cooldown_seconds?: number;

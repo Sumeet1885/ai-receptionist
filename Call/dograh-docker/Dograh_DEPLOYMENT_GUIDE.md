@@ -21,6 +21,29 @@ Get the dograh-docker folder with all source files ready on your machine.
    - HTTPS (443) — 0.0.0.0/0
    - Custom TCP (8000) — 0.0.0.0/0
    - Custom TCP (38080) — 0.0.0.0/0
+   - Custom TCP (9000) — 0.0.0.0/0 — **MinIO** (`MINIO_PUBLIC_ENDPOINT` in Step 7). Easy to
+     miss since nothing in this guide calls it out separately, but without it transcripts and
+     recordings are unreachable from outside the instance - call ingestion in the AI Receptionist
+     app (or any external consumer) fails with a connect timeout on every single call, even
+     though the call itself completes fine on the Dograh side.
+
+     **This security group rule alone is not enough.** The `minio` service in
+     `docker-compose.yaml` binds its port to `127.0.0.1` explicitly:
+
+     ```yaml
+     ports:
+       - "127.0.0.1:9000:9000"  # <- blocks ALL external traffic, security group or not
+       - "127.0.0.1:9001:9001"
+     ```
+
+     Docker's own port binding is enforced before traffic ever reaches AWS's firewall layer, so
+     even a perfectly correct security group does nothing here - it's a different failure mode
+     entirely (the security group's silent timeout vs. Docker's own immediate connection
+     refusal, both of which look identical from the outside: every call ingests/syncs fine on
+     the Dograh UI, but fails everywhere else). Change the first line to `"9000:9000"` (binds
+     `0.0.0.0`) and leave `9001` (the admin console - nothing external needs it) on
+     `127.0.0.1`. Then `docker compose up -d minio` to apply it. See Step 9 for how to verify
+     this actually worked before moving on.
 
 ---
 
@@ -148,6 +171,23 @@ Should return:
 ```json
 {"status":"ok","version":"1.39.0",...}
 ```
+
+**Also verify MinIO is actually externally reachable, not just running.** This is the step
+that's easy to skip because everything above will report healthy either way -
+`docker compose ps` shows MinIO as `Up (healthy)` regardless of which interface it's bound to,
+and Dograh's own UI/API never need to reach MinIO from outside the Docker network, so calls
+will look completely fine from inside Dograh while every external consumer (the AI Receptionist
+app, anything else fetching transcripts/recordings) gets connect failures on 100% of calls.
+
+From a machine OUTSIDE the EC2 instance (your laptop, not an SSH session into the box):
+
+```bash
+curl http://<PUBLIC_IP>:9000/minio/health/live
+```
+
+Should return `200`. If it times out or refuses, check `docker compose ps` for the `minio`
+line - it must show `0.0.0.0:9000->9000/tcp`, not `127.0.0.1:9000->9000/tcp`. See the Step 2
+note above for the fix.
 
 ---
 

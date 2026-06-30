@@ -41,6 +41,13 @@ export function buildLeadExtractionVariables(widgetConfig: WidgetConfig): Extrac
 // separate warning callback), which is why the warning is implemented as a tool call instead.
 export const MAX_CALL_DURATION_SECONDS = 330;
 
+// Dograh recording_id for the shared "too many requests, please try again later" audio, uploaded
+// once via scripts/upload-rate-limit-recording.ts (a Gemini TTS synthesis, not a system-prompt
+// instruction - see dograhController.ts's ensureRateLimitTool). Empty until that script has been
+// run against the target Dograh instance; dograhController.ts falls back to no gate node at all
+// when this is unset, rather than wiring a tool with an invalid/missing recording reference.
+export const RATE_LIMITED_RECORDING_ID = 'qjow4ajs';
+
 export interface SingleNodeWorkflowOptions {
   /** Full persona text (buildDograhPhoneInstruction/buildDograhOutboundInstruction output),
    * placed verbatim on the global node and prepended to the conversation node at runtime. */
@@ -57,6 +64,10 @@ export interface SingleNodeWorkflowOptions {
    * and the post-call mirror (callMirror.ts) bind to the same session instead of racing. Always
    * set now, not just when calendar tools are attached. */
   preCallFetchUrl: string;
+  /** Inbound only. The end_call tool (dograhClient.createEndCallTool, messageType "audio") that
+   * plays the rate-limit decline recording and hangs up - see the gate-node comment below for
+   * why this exists as a tool/separate node instead of a system-prompt instruction. */
+  rateLimitEndCallToolUuid?: string;
 }
 
 /**
@@ -70,23 +81,30 @@ const END_CALL_CONDITION =
   'they say goodbye, "that\'s all", "no more questions", or explicitly ask to end/hang up the ' +
   'call, OR all of their questions have been answered AND (if the persona above asks for contact ' +
   'details) those details have already been collected, OR get_call_time_remaining has reported ' +
-  '"shouldWrapUp": true and you have already said your wrap-up line and a brief goodbye, OR the ' +
-  'call was declined for being at capacity (RATE_LIMITED was true) and you have already said the ' +
-  'capacity message. Do NOT transition merely because of a short reply, a single "okay"/"thanks", ' +
-  'a brief pause, or uncertainty about what to do next - in those cases keep the conversation ' +
-  'going by asking a clarifying or follow-up question instead.';
+  '"shouldWrapUp": true and you have already said your wrap-up line and a brief goodbye. Do NOT ' +
+  'transition merely because of a short reply, a single "okay"/"thanks", a brief pause, or ' +
+  'uncertainty about what to do next - in those cases keep the conversation going by asking a ' +
+  'clarifying or follow-up question instead.';
 
-// Inbound-only: there's no way to refuse an inbound call before it rings (Plivo calls Dograh
-// directly, not this server), so the rate limit instead gets enforced here, on the answered
-// side - see phoneToolsController.ts's preCall handler for where RATE_LIMITED is computed and
-// the cooldown/hourly-cap logic itself. {{initial_context.*}} is Dograh's own template syntax
-// (supported directly in node prompts), substituted before the model ever sees this text.
-const INBOUND_RATE_LIMIT_INSTRUCTION =
-  `Before anything else, check this value: RATE_LIMITED={{initial_context.rate_limited}}. If it ` +
-  `reads "true", ignore the rest of this conversational step entirely - immediately and ` +
-  `politely say the line is currently at capacity and ask the caller to try again shortly, then ` +
-  `transition to ending the call. Only proceed with the normal greeting and conversation below ` +
-  `if RATE_LIMITED reads "false".\n\n`;
+// Inbound-only gate node, entirely separate from the conversation node and its persona/knowledge
+// base. There's no way to refuse an inbound call before it rings (Plivo calls Dograh directly,
+// not this server), so the rate limit gets enforced as the very first thing Dograh does on
+// pickup - but as a one-line tool-call decision, not a prose instruction competing for space in
+// the main system prompt. RATE_LIMITED itself is computed by phoneToolsController.ts's preCall
+// handler (the cooldown/hourly-cap logic lives there); {{initial_context.*}} is Dograh's own
+// template syntax, substituted before the model ever sees this text. When true, the gate calls
+// the rate-limit end_call tool, which plays a fixed pre-recorded "try again later" recording and
+// hangs up directly - no TTS, no LLM-generated speech, and the call never reaches the persona/
+// knowledge-base-loaded conversation node at all.
+const RATE_LIMIT_GATE_PROMPT =
+  `Check this value: RATE_LIMITED={{initial_context.rate_limited}}. If it reads "true", ` +
+  `immediately call the rate-limit end-call tool and say nothing - do not speak at all. If it ` +
+  `reads "false", say nothing and just wait; the call will move to the next step automatically.`;
+
+const RATE_LIMIT_GATE_EDGE_CONDITION =
+  'Transition the moment RATE_LIMITED reads "false" - this should happen immediately, with no ' +
+  'caller input needed. Never transition if RATE_LIMITED reads "true"; that case ends the call ' +
+  'via the rate-limit tool instead and should never reach this edge.';
 
 // Drives the graceful wrap-up via the deterministic get_call_time_remaining tool (always
 // attached - see dograhController.ts) instead of having the model guess elapsed time from
@@ -101,9 +119,10 @@ const CALL_PACING_INSTRUCTION =
   `line of conversation after that point.`;
 
 export function buildSingleNodeWorkflowDefinition(options: SingleNodeWorkflowOptions) {
-  const { personaPrompt, extractionVariables, isOutbound, businessName, toolUuids, preCallFetchUrl } = options;
+  const { personaPrompt, extractionVariables, isOutbound, businessName, toolUuids, preCallFetchUrl, rateLimitEndCallToolUuid } = options;
   const hasExtraction = extractionVariables.length > 0;
   const hasTools = Boolean(toolUuids && toolUuids.length > 0);
+  const hasGate = !isOutbound && Boolean(rateLimitEndCallToolUuid);
 
   // No `greeting`/`greeting_type` here - Dograh's docs are explicit that the static TTS-only
   // greeting field is "not supported with realtime (speech-to-speech) models" (this org runs
@@ -118,13 +137,64 @@ export function buildSingleNodeWorkflowDefinition(options: SingleNodeWorkflowOpt
       `conversation across as many turns as needed: answer questions, and collect lead details ` +
       `per the persona above. When the conversation is clearly finished, transition to ending ` +
       `the call.`
-    : INBOUND_RATE_LIMIT_INSTRUCTION +
-      `This is the only conversational step for the entire call. Begin immediately by warmly ` +
-      `greeting the caller on behalf of ${businessName} and asking how you can help. Then handle ` +
-      `the entire conversation across as many turns as needed: answer questions, and collect ` +
-      `lead details per the persona above. When the conversation is clearly finished, transition ` +
-      `to ending the call.`) +
+    : `Begin immediately by warmly greeting the caller on behalf of ${businessName} and asking ` +
+      `how you can help. Then handle the entire conversation across as many turns as needed: ` +
+      `answer questions, and collect lead details per the persona above. When the conversation ` +
+      `is clearly finished, transition to ending the call.`) +
     ` ${CALL_PACING_INSTRUCTION}`;
+
+  // The conversation node is startCall (the graph's entry point) when there's no gate node ahead
+  // of it - outbound always, inbound whenever rate limiting isn't configured. With a gate, the
+  // gate becomes startCall instead and the conversation becomes a plain agentNode one step later;
+  // everything else about it (prompt, tools, extraction) is identical either way.
+  const conversationNode = {
+    id: hasGate ? '2' : '1',
+    type: hasGate ? 'agentNode' : 'startCall',
+    position: { x: hasGate ? 640 : 320, y: 0 },
+    data: {
+      name: 'Conversation',
+      prompt: conversationPrompt,
+      // false (Dograh's own default for startCall, which we'd overridden to true): this
+      // self-hosted telephony audio path has no echo cancellation at the Plivo/Twilio <->
+      // Dograh audio bridge, so the bot's own voice bleeding back into the input was getting
+      // misheard as the caller interrupting, truncating the bot mid-word. That's a transport-
+      // layer issue independent of which model is on the other end (cascaded pipeline or
+      // speech-to-speech), so it stays disabled under Gemini Live too unless that's confirmed
+      // fixed. Caller can still always just start talking once the bot pauses between turns -
+      // this only stops the bot from cutting itself off on its own echo.
+      allow_interrupt: false,
+      add_global_prompt: true,
+      ...(hasGate ? {} : {
+        delayed_start: isOutbound,
+        delayed_start_duration: isOutbound ? 1.5 : undefined,
+        // Pre-call-fetch only goes on whichever node is startCall - an agentNode can't carry it,
+        // it's a startCall-only field. With a gate, the gate node (below) carries it instead.
+        pre_call_fetch_enabled: Boolean(preCallFetchUrl),
+        pre_call_fetch_url: preCallFetchUrl,
+      }),
+      extraction_enabled: hasExtraction,
+      extraction_prompt: hasExtraction
+        ? 'Capture any lead details the caller has shared so far, even if only partially mentioned. Keep previously captured values unless the caller corrects them.'
+        : undefined,
+      extraction_variables: hasExtraction ? extractionVariables : undefined,
+      tool_uuids: hasTools ? toolUuids : undefined,
+      // Creates the chat_sessions row before the call connects (see phoneToolsController.ts'
+      // pre-call endpoint) so check_availability/book_appointment tool calls during the call,
+      // and the post-call mirror in callMirror.ts, all bind to the same session id instead of
+      // each independently creating one and racing.
+    },
+  };
+
+  const endCallNode = {
+    id: hasGate ? '3' : '2',
+    type: 'endCall',
+    position: { x: hasGate ? 960 : 640, y: 0 },
+    data: {
+      name: 'End Call',
+      prompt: 'Give a brief, warm closing (one short sentence) thanking the caller, then end the call.',
+      add_global_prompt: false,
+    },
+  };
 
   const nodes = [
     {
@@ -136,57 +206,48 @@ export function buildSingleNodeWorkflowDefinition(options: SingleNodeWorkflowOpt
         prompt: personaPrompt,
       },
     },
-    {
+    // Rate-limit gate, inbound only - see RATE_LIMIT_GATE_PROMPT above for why this is a
+    // dedicated node with no persona/knowledge base attached (add_global_prompt: false) rather
+    // than a prompt instruction tacked onto the real conversation node.
+    ...(hasGate ? [{
       id: '1',
       type: 'startCall',
       position: { x: 320, y: 0 },
       data: {
-        name: 'Conversation',
-        prompt: conversationPrompt,
-        // false (Dograh's own default for startCall, which we'd overridden to true): this
-        // self-hosted telephony audio path has no echo cancellation at the Plivo/Twilio <->
-        // Dograh audio bridge, so the bot's own voice bleeding back into the input was getting
-        // misheard as the caller interrupting, truncating the bot mid-word. That's a transport-
-        // layer issue independent of which model is on the other end (cascaded pipeline or
-        // speech-to-speech), so it stays disabled under Gemini Live too unless that's confirmed
-        // fixed. Caller can still always just start talking once the bot pauses between turns -
-        // this only stops the bot from cutting itself off on its own echo.
+        name: 'Rate Limit Gate',
+        prompt: RATE_LIMIT_GATE_PROMPT,
         allow_interrupt: false,
-        add_global_prompt: true,
-        delayed_start: isOutbound,
-        delayed_start_duration: isOutbound ? 1.5 : undefined,
-        extraction_enabled: hasExtraction,
-        extraction_prompt: hasExtraction
-          ? 'Capture any lead details the caller has shared so far, even if only partially mentioned. Keep previously captured values unless the caller corrects them.'
-          : undefined,
-        extraction_variables: hasExtraction ? extractionVariables : undefined,
-        tool_uuids: hasTools ? toolUuids : undefined,
-        // Creates the chat_sessions row before the call connects (see phoneToolsController.ts'
-        // pre-call endpoint) so check_availability/book_appointment tool calls during the call,
-        // and the post-call mirror in callMirror.ts, all bind to the same session id instead of
-        // each independently creating one and racing.
+        add_global_prompt: false,
+        delayed_start: false,
         pre_call_fetch_enabled: Boolean(preCallFetchUrl),
         pre_call_fetch_url: preCallFetchUrl,
+        tool_uuids: [rateLimitEndCallToolUuid],
       },
-    },
-    {
-      id: '2',
-      type: 'endCall',
-      position: { x: 640, y: 0 },
-      data: {
-        name: 'End Call',
-        prompt: 'Give a brief, warm closing (one short sentence) thanking the caller, then end the call.',
-        add_global_prompt: false,
-      },
-    },
+    }] : []),
+    conversationNode,
+    endCallNode,
   ];
 
   const edges = [
-    {
+    ...(hasGate ? [{
       id: '1-2',
       type: 'custom',
       source: '1',
       target: '2',
+      data: {
+        condition: RATE_LIMIT_GATE_EDGE_CONDITION,
+        label: 'Not rate limited',
+        invalid: false,
+        validationMessage: null,
+      },
+      animated: false,
+      selected: false,
+    }] : []),
+    {
+      id: `${conversationNode.id}-${endCallNode.id}`,
+      type: 'custom',
+      source: conversationNode.id,
+      target: endCallNode.id,
       data: {
         condition: END_CALL_CONDITION,
         label: 'End call',

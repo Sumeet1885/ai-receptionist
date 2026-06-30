@@ -8,17 +8,19 @@ import { buildDograhOutboundInstruction, buildDograhPhoneInstruction, withoutAut
 import { syncBotCalls } from './callMirror';
 import {
   assignInboundWorkflow,
+  createEndCallTool,
   createHttpTool,
   createWorkflowFromDefinition,
   initiateCall,
   listPhoneNumbers,
   listTelephonyConfigs,
   publishWorkflow,
+  updateEndCallTool,
   updateHttpTool,
   updateWorkflowInPlace,
 } from './dograhClient';
 import { DograhProvisionableBot } from './types';
-import { buildLeadExtractionVariables, buildSingleNodeWorkflowDefinition, MAX_CALL_DURATION_SECONDS } from './workflowDefinition';
+import { buildLeadExtractionVariables, buildSingleNodeWorkflowDefinition, MAX_CALL_DURATION_SECONDS, RATE_LIMITED_RECORDING_ID } from './workflowDefinition';
 
 // Dograh has no per-bot timezone input on a phone call (no browser to read it from), so the
 // phone persona uses a fixed default. Matches the IST-leaning default used elsewhere in the app.
@@ -35,7 +37,7 @@ async function loadOwnedBot(botId: string, ownerId: string): Promise<DograhProvi
   const { data, error } = await supabase
     .from('bots')
     .select(
-      'id, owner_id, business_name, industry, knowledge_base, widget_config, primary_color, dograh_workflow_id, dograh_outbound_workflow_id, dograh_telephony_config_id, dograh_phone_number_id, dograh_phone_number, dograh_check_availability_tool_uuid, dograh_book_appointment_tool_uuid, dograh_call_time_tool_uuid, dograh_outbound_cooldown_seconds, dograh_outbound_hourly_cap, dograh_inbound_cooldown_seconds, dograh_inbound_hourly_cap'
+      'id, owner_id, business_name, industry, knowledge_base, widget_config, primary_color, dograh_workflow_id, dograh_outbound_workflow_id, dograh_telephony_config_id, dograh_phone_number_id, dograh_phone_number, dograh_check_availability_tool_uuid, dograh_book_appointment_tool_uuid, dograh_call_time_tool_uuid, dograh_rate_limit_tool_uuid, dograh_outbound_cooldown_seconds, dograh_outbound_hourly_cap, dograh_inbound_cooldown_seconds, dograh_inbound_hourly_cap'
     )
     .eq('id', botId)
     .eq('owner_id', ownerId)
@@ -139,6 +141,29 @@ async function ensureCallTimeTool(bot: DograhProvisionableBot): Promise<string> 
   return (await createHttpTool(params)).tool_uuid;
 }
 
+/**
+ * Creates/updates the inbound rate-limit end_call tool - plays the shared "too many requests"
+ * recording and hangs up directly, no LLM/TTS involved. Returns undefined (not an empty string)
+ * when RATE_LIMITED_RECORDING_ID hasn't been set yet, so provisionBot can fall back to the
+ * gate-less single-node inbound graph instead of wiring a tool with a bad recording reference -
+ * see scripts/upload-rate-limit-recording.ts for the one-time setup step this depends on.
+ */
+async function ensureRateLimitTool(bot: DograhProvisionableBot): Promise<string | undefined> {
+  if (!RATE_LIMITED_RECORDING_ID) return undefined;
+
+  const params = {
+    name: `Rate Limit Decline - ${bot.business_name}`,
+    description: 'Call this immediately, and only this, when RATE_LIMITED reads true. Ends the call after playing the capacity message - say nothing yourself.',
+    audioRecordingId: RATE_LIMITED_RECORDING_ID,
+  };
+
+  if (bot.dograh_rate_limit_tool_uuid) {
+    await updateEndCallTool(bot.dograh_rate_limit_tool_uuid, params);
+    return bot.dograh_rate_limit_tool_uuid;
+  }
+  return (await createEndCallTool(params)).tool_uuid;
+}
+
 export async function getStatus(req: AuthRequest, res: Response): Promise<void> {
   const botId = req.params.botId;
   const bot = await loadOwnedBot(botId, req.user!.id);
@@ -179,6 +204,7 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
     // inbound rate limit only applies to calls Dograh answers, never ones we ourselves placed
     // (those are already gated before dialing - see checkOutboundRateLimit/callOut below).
     const callTimeToolUuid = await ensureCallTimeTool(bot);
+    const rateLimitToolUuid = await ensureRateLimitTool(bot);
     const preCallFetchBase = `${config.phoneTools.callbackBaseUrl}/api/phone-tools/${botId}/pre-call?key=${config.phoneTools.apiKey}`;
     const inboundPreCallFetchUrl = `${preCallFetchBase}&direction=inbound`;
     const outboundPreCallFetchUrl = `${preCallFetchBase}&direction=outbound`;
@@ -212,6 +238,7 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
       businessName: bot.business_name,
       toolUuids,
       preCallFetchUrl: inboundPreCallFetchUrl,
+      rateLimitEndCallToolUuid: rateLimitToolUuid,
     });
     const inboundWorkflow = bot.dograh_workflow_id
       ? await updateWorkflowInPlace(bot.dograh_workflow_id, inboundDefinition, WORKFLOW_CONFIGURATIONS)
@@ -240,6 +267,7 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
         dograh_check_availability_tool_uuid: checkAvailabilityToolUuid,
         dograh_book_appointment_tool_uuid: bookAppointmentToolUuid,
         dograh_call_time_tool_uuid: callTimeToolUuid,
+        dograh_rate_limit_tool_uuid: rateLimitToolUuid,
       })
       .eq('id', botId);
     if (error) throw error;

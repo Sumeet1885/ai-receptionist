@@ -57,3 +57,20 @@ Only run this section if Dograh was deployed (`docs/01_CONFIGURE_DOGRAH.md`).
 - **Google sign-in fails**: double check the Supabase callback URL is in the Google OAuth
   client's authorized redirect URIs, and that `https://app.yourdomain.com` is in Supabase Auth's
   redirect URL allowlist (`docs/setup.md`, step 5).
+- **Calls show as "Unknown caller / FAILED" with no transcript, leads/emails never appear even
+  though the call itself worked fine on the phone**: check this server's logs for
+  `Failed to ingest Dograh run N: ... fetch failed` pointing at port `9000` - that's Dograh's
+  MinIO storage. Two independent things both have to be right before transcripts/recordings are
+  reachable from outside the Dograh EC2 instance, and either one alone being wrong produces the
+  exact same symptom:
+  1. The EC2 **security group** needs a `Custom TCP 9000` inbound rule (see
+     `Call/dograh-docker/Dograh_DEPLOYMENT_GUIDE.md`, Step 2).
+  2. The `minio` service in `docker-compose.yaml` needs to actually publish that port to all
+     interfaces - `docker compose ps` should show `0.0.0.0:9000->9000/tcp`, not
+     `127.0.0.1:9000->9000/tcp`. A correct security group does nothing if Docker itself never
+     lets the traffic past localhost (see the Step 2 note in the same guide for the fix).
+
+  Check both with `curl http://<DOGRAH_PUBLIC_IP>:9000/minio/health/live` from a machine outside
+  the EC2 instance - it must return `200`. Already-failed calls don't retry on their own *during*
+  the outage, but once the fix lands, the next poller cycle (~60s) retries every call still
+  marked `failed` and they resolve automatically - no manual cleanup needed.

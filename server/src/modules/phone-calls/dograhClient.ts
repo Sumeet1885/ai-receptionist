@@ -160,6 +160,62 @@ export function updateHttpTool(toolUuid: string, params: CreateHttpToolParams): 
   });
 }
 
+export interface CreateEndCallToolParams {
+  name: string;
+  description: string;
+  /** Recording id returned by createRecording - the audio is played verbatim, no TTS/LLM
+   * involved, which is the whole point of using an end_call tool over a prompt instruction. */
+  audioRecordingId: string;
+}
+
+function endCallToolBody(params: CreateEndCallToolParams) {
+  return {
+    name: params.name,
+    category: 'end_call',
+    description: params.description,
+    definition: {
+      type: 'end_call',
+      config: {
+        messageType: 'audio',
+        audioRecordingId: params.audioRecordingId,
+      },
+    },
+  };
+}
+
+export function createEndCallTool(params: CreateEndCallToolParams): Promise<{ tool_uuid: string }> {
+  return request<{ tool_uuid: string }>('/api/v1/tools/', {
+    method: 'POST',
+    body: JSON.stringify(endCallToolBody(params)),
+  });
+}
+
+export function updateEndCallTool(toolUuid: string, params: CreateEndCallToolParams): Promise<unknown> {
+  return request<unknown>(`/api/v1/tools/${toolUuid}`, {
+    method: 'PUT',
+    body: JSON.stringify(endCallToolBody(params)),
+  });
+}
+
+// One-time asset upload (recordings are organization-wide, not re-uploaded per bot) - see
+// scripts/upload-rate-limit-recording.ts. Not used in the regular provisioning path; the
+// resulting recording_id gets hardcoded as RATE_LIMITED_RECORDING_ID in workflowDefinition.ts.
+export async function getRecordingUploadUrl(filename: string, mimeType: string, fileSizeBytes: number) {
+  const data = await request<{ items: Array<{ upload_url: string; recording_id: string; storage_key: string }> }>(
+    '/api/v1/workflow-recordings/upload-url',
+    { method: 'POST', body: JSON.stringify({ files: [{ filename, mime_type: mimeType, file_size: fileSizeBytes }] }) }
+  );
+  return data.items[0];
+}
+
+export async function createRecording(recordingId: string, storageKey: string, transcript: string) {
+  const data = await request<{ recordings: Array<{ recording_id: string }> }>('/api/v1/workflow-recordings/', {
+    method: 'POST',
+    body: JSON.stringify({ recordings: [{ recording_id: recordingId, storage_key: storageKey, transcript }] }),
+  });
+  return data.recordings[0];
+}
+
 export async function listTelephonyConfigs(): Promise<DograhTelephonyConfig[]> {
   const data = await request<{ configurations: DograhTelephonyConfig[] }>('/api/v1/organizations/telephony-configs');
   return data.configurations || [];
