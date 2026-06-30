@@ -20,13 +20,14 @@ import {
   updateWorkflowInPlace,
 } from './dograhClient';
 import { DograhProvisionableBot } from './types';
-import { buildLeadExtractionVariables, buildSingleNodeWorkflowDefinition, MAX_CALL_DURATION_SECONDS, RATE_LIMITED_RECORDING_ID } from './workflowDefinition';
+import { buildCapacityWorkflowDefinition, buildLeadExtractionVariables, buildSingleNodeWorkflowDefinition, MAX_CALL_DURATION_SECONDS } from './workflowDefinition';
 
 // Dograh has no per-bot timezone input on a phone call (no browser to read it from), so the
 // phone persona uses a fixed default. Matches the IST-leaning default used elsewhere in the app.
 const PHONE_DEFAULT_TIMEZONE = 'Asia/Kolkata';
 
 const WORKFLOW_CONFIGURATIONS = { max_call_duration: MAX_CALL_DURATION_SECONDS };
+const CAPACITY_WORKFLOW_CONFIGURATIONS = { max_call_duration: 15 };
 
 function maskPhoneNumber(phoneNumber: string): string {
   if (phoneNumber.length <= 4) return '****';
@@ -37,7 +38,7 @@ async function loadOwnedBot(botId: string, ownerId: string): Promise<DograhProvi
   const { data, error } = await supabase
     .from('bots')
     .select(
-      'id, owner_id, business_name, industry, knowledge_base, widget_config, primary_color, dograh_workflow_id, dograh_outbound_workflow_id, dograh_telephony_config_id, dograh_phone_number_id, dograh_phone_number, dograh_check_availability_tool_uuid, dograh_book_appointment_tool_uuid, dograh_call_time_tool_uuid, dograh_rate_limit_tool_uuid, dograh_outbound_cooldown_seconds, dograh_outbound_hourly_cap, dograh_inbound_cooldown_seconds, dograh_inbound_hourly_cap'
+      'id, owner_id, business_name, industry, knowledge_base, widget_config, primary_color, dograh_workflow_id, dograh_outbound_workflow_id, dograh_capacity_workflow_id, dograh_telephony_config_id, dograh_phone_number_id, dograh_phone_number, dograh_check_availability_tool_uuid, dograh_book_appointment_tool_uuid, dograh_call_time_tool_uuid, dograh_rate_limit_tool_uuid, dograh_outbound_cooldown_seconds, dograh_outbound_hourly_cap, dograh_inbound_cooldown_seconds, dograh_inbound_hourly_cap, dograh_inbound_active_workflow, dograh_inbound_rate_limited_until'
     )
     .eq('id', botId)
     .eq('owner_id', ownerId)
@@ -142,19 +143,13 @@ async function ensureCallTimeTool(bot: DograhProvisionableBot): Promise<string> 
 }
 
 /**
- * Creates/updates the inbound rate-limit end_call tool - plays the shared "too many requests"
- * recording and hangs up directly, no LLM/TTS involved. Returns undefined (not an empty string)
- * when RATE_LIMITED_RECORDING_ID hasn't been set yet, so provisionBot can fall back to the
- * gate-less single-node inbound graph instead of wiring a tool with a bad recording reference -
- * see scripts/upload-rate-limit-recording.ts for the one-time setup step this depends on.
+ * Creates/updates the inbound capacity end_call tool. No recording or generated speech is used:
+ * the at-capacity workflow calls this tool with messageType "none" and the call disconnects.
  */
-async function ensureRateLimitTool(bot: DograhProvisionableBot): Promise<string | undefined> {
-  if (!RATE_LIMITED_RECORDING_ID) return undefined;
-
+async function ensureRateLimitTool(bot: DograhProvisionableBot): Promise<string> {
   const params = {
-    name: `Rate Limit Decline - ${bot.business_name}`,
-    description: 'Call this immediately, and only this, when RATE_LIMITED reads true. Ends the call after playing the capacity message - say nothing yourself.',
-    audioRecordingId: RATE_LIMITED_RECORDING_ID,
+    name: `Capacity Hangup - ${bot.business_name}`,
+    description: 'Call this immediately when this inbound number is at capacity. End the call silently; say nothing.',
   };
 
   if (bot.dograh_rate_limit_tool_uuid) {
@@ -162,6 +157,15 @@ async function ensureRateLimitTool(bot: DograhProvisionableBot): Promise<string 
     return bot.dograh_rate_limit_tool_uuid;
   }
   return (await createEndCallTool(params)).tool_uuid;
+}
+
+async function ensureCapacityWorkflow(bot: DograhProvisionableBot, endCallToolUuid: string) {
+  const definition = buildCapacityWorkflowDefinition(endCallToolUuid);
+  const workflow = bot.dograh_capacity_workflow_id
+    ? await updateWorkflowInPlace(bot.dograh_capacity_workflow_id, definition, CAPACITY_WORKFLOW_CONFIGURATIONS)
+    : await createWorkflowFromDefinition(`AI receptionist capacity hangup for ${bot.business_name}`, definition, CAPACITY_WORKFLOW_CONFIGURATIONS);
+  await publishWorkflow(workflow.id);
+  return workflow;
 }
 
 export async function getStatus(req: AuthRequest, res: Response): Promise<void> {
@@ -176,6 +180,8 @@ export async function getStatus(req: AuthRequest, res: Response): Promise<void> 
     provisioned: Boolean(bot.dograh_workflow_id),
     outboundProvisioned: Boolean(bot.dograh_outbound_workflow_id),
     phoneNumber: bot.dograh_phone_number || null,
+    inboundActiveWorkflow: bot.dograh_inbound_active_workflow || 'normal',
+    inboundRateLimitedUntil: bot.dograh_inbound_rate_limited_until || null,
     outboundCooldownSeconds: bot.dograh_outbound_cooldown_seconds ?? 10,
     outboundHourlyCap: bot.dograh_outbound_hourly_cap ?? 20,
     inboundCooldownSeconds: bot.dograh_inbound_cooldown_seconds ?? 10,
@@ -238,7 +244,6 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
       businessName: bot.business_name,
       toolUuids,
       preCallFetchUrl: inboundPreCallFetchUrl,
-      rateLimitEndCallToolUuid: rateLimitToolUuid,
     });
     const inboundWorkflow = bot.dograh_workflow_id
       ? await updateWorkflowInPlace(bot.dograh_workflow_id, inboundDefinition, WORKFLOW_CONFIGURATIONS)
@@ -259,11 +264,14 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
       : await createWorkflowFromDefinition(`AI outbound caller for ${bot.business_name}`, outboundDefinition, WORKFLOW_CONFIGURATIONS);
     await publishWorkflow(outboundWorkflow.id);
 
+    const capacityWorkflow = await ensureCapacityWorkflow(bot, rateLimitToolUuid);
+
     const { error } = await supabase
       .from('bots')
       .update({
         dograh_workflow_id: String(inboundWorkflow.id),
         dograh_outbound_workflow_id: String(outboundWorkflow.id),
+        dograh_capacity_workflow_id: String(capacityWorkflow.id),
         dograh_check_availability_tool_uuid: checkAvailabilityToolUuid,
         dograh_book_appointment_tool_uuid: bookAppointmentToolUuid,
         dograh_call_time_tool_uuid: callTimeToolUuid,
@@ -275,6 +283,7 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
     res.json({
       dograhWorkflowId: String(inboundWorkflow.id),
       dograhOutboundWorkflowId: String(outboundWorkflow.id),
+      dograhCapacityWorkflowId: String(capacityWorkflow.id),
     });
   } catch (err: any) {
     console.error('[phone-calls] Provisioning failed:', err);
@@ -359,7 +368,14 @@ export async function assignNumber(req: AuthRequest, res: Response): Promise<voi
   }
 
   try {
-    const number = await assignInboundWorkflow(telephonyConfigId, phoneNumberId, bot.dograh_workflow_id);
+    const rateLimitedUntil = bot.dograh_inbound_rate_limited_until ? new Date(bot.dograh_inbound_rate_limited_until) : null;
+    const shouldKeepCapacity =
+      bot.dograh_inbound_active_workflow === 'capacity' &&
+      bot.dograh_capacity_workflow_id &&
+      rateLimitedUntil &&
+      rateLimitedUntil.getTime() > Date.now();
+    const workflowId = shouldKeepCapacity ? bot.dograh_capacity_workflow_id! : bot.dograh_workflow_id;
+    const number = await assignInboundWorkflow(telephonyConfigId, phoneNumberId, workflowId);
 
     const { error } = await supabase
       .from('bots')
@@ -367,6 +383,8 @@ export async function assignNumber(req: AuthRequest, res: Response): Promise<voi
         dograh_telephony_config_id: String(telephonyConfigId),
         dograh_phone_number_id: String(phoneNumberId),
         dograh_phone_number: number.address,
+        dograh_inbound_active_workflow: shouldKeepCapacity ? 'capacity' : 'normal',
+        dograh_inbound_rate_limited_until: shouldKeepCapacity ? bot.dograh_inbound_rate_limited_until : null,
       })
       .eq('id', botId);
     if (error) throw error;

@@ -164,8 +164,9 @@ export interface CreateEndCallToolParams {
   name: string;
   description: string;
   /** Recording id returned by createRecording - the audio is played verbatim, no TTS/LLM
-   * involved, which is the whole point of using an end_call tool over a prompt instruction. */
-  audioRecordingId: string;
+   * involved. Omit for a silent immediate hangup (messageType "none") - e.g. the at-capacity
+   * workflow, where there's no message to play at all, just an unconditional disconnect. */
+  audioRecordingId?: string;
 }
 
 function endCallToolBody(params: CreateEndCallToolParams) {
@@ -175,10 +176,9 @@ function endCallToolBody(params: CreateEndCallToolParams) {
     description: params.description,
     definition: {
       type: 'end_call',
-      config: {
-        messageType: 'audio',
-        audioRecordingId: params.audioRecordingId,
-      },
+      config: params.audioRecordingId
+        ? { messageType: 'audio', audioRecordingId: params.audioRecordingId }
+        : { messageType: 'none' },
     },
   };
 }
@@ -197,9 +197,9 @@ export function updateEndCallTool(toolUuid: string, params: CreateEndCallToolPar
   });
 }
 
-// One-time asset upload (recordings are organization-wide, not re-uploaded per bot) - see
-// scripts/upload-rate-limit-recording.ts. Not used in the regular provisioning path; the
-// resulting recording_id gets hardcoded as RATE_LIMITED_RECORDING_ID in workflowDefinition.ts.
+// One-time recording upload helper (recordings are organization-wide, not re-uploaded per bot).
+// The current inbound rate-limit flow uses a silent end_call tool instead of a recording, but
+// this helper is kept for future recorded greetings/decline messages.
 export async function getRecordingUploadUrl(filename: string, mimeType: string, fileSizeBytes: number) {
   const data = await request<{ items: Array<{ upload_url: string; recording_id: string; storage_key: string }> }>(
     '/api/v1/workflow-recordings/upload-url',

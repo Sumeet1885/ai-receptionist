@@ -58,6 +58,7 @@ export interface DograhProvisionableBot {
   knowledge_base: string;
   dograh_workflow_id?: string | null;
   dograh_outbound_workflow_id?: string | null;
+  dograh_capacity_workflow_id?: string | null;
   dograh_telephony_config_id?: string | null;
   dograh_phone_number_id?: string | null;
   dograh_phone_number?: string | null;
@@ -69,4 +70,6 @@ export interface DograhProvisionableBot {
   dograh_outbound_hourly_cap?: number;
   dograh_inbound_cooldown_seconds?: number;
   dograh_inbound_hourly_cap?: number;
+  dograh_inbound_active_workflow?: 'normal' | 'capacity' | string | null;
+  dograh_inbound_rate_limited_until?: string | null;
 }

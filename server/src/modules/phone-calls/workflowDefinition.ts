@@ -41,13 +41,6 @@ export function buildLeadExtractionVariables(widgetConfig: WidgetConfig): Extrac
 // separate warning callback), which is why the warning is implemented as a tool call instead.
 export const MAX_CALL_DURATION_SECONDS = 330;
 
-// Dograh recording_id for the shared "too many requests, please try again later" audio, uploaded
-// once via scripts/upload-rate-limit-recording.ts (a Gemini TTS synthesis, not a system-prompt
-// instruction - see dograhController.ts's ensureRateLimitTool). Empty until that script has been
-// run against the target Dograh instance; dograhController.ts falls back to no gate node at all
-// when this is unset, rather than wiring a tool with an invalid/missing recording reference.
-export const RATE_LIMITED_RECORDING_ID = 'qjow4ajs';
-
 export interface SingleNodeWorkflowOptions {
   /** Full persona text (buildDograhPhoneInstruction/buildDograhOutboundInstruction output),
    * placed verbatim on the global node and prepended to the conversation node at runtime. */
@@ -64,10 +57,6 @@ export interface SingleNodeWorkflowOptions {
    * and the post-call mirror (callMirror.ts) bind to the same session instead of racing. Always
    * set now, not just when calendar tools are attached. */
   preCallFetchUrl: string;
-  /** Inbound only. The end_call tool (dograhClient.createEndCallTool, messageType "audio") that
-   * plays the rate-limit decline recording and hangs up - see the gate-node comment below for
-   * why this exists as a tool/separate node instead of a system-prompt instruction. */
-  rateLimitEndCallToolUuid?: string;
 }
 
 /**
@@ -86,33 +75,6 @@ const END_CALL_CONDITION =
   'uncertainty about what to do next - in those cases keep the conversation going by asking a ' +
   'clarifying or follow-up question instead.';
 
-// Inbound-only gate node, entirely separate from the conversation node and its persona/knowledge
-// base. There's no way to refuse an inbound call before it rings (Plivo calls Dograh directly,
-// not this server), so the rate limit gets enforced as the very first thing Dograh does on
-// pickup - but as a one-line tool-call decision, not a prose instruction competing for space in
-// the main system prompt. RATE_LIMITED itself is computed by phoneToolsController.ts's preCall
-// handler (the cooldown/hourly-cap logic lives there); {{initial_context.*}} is Dograh's own
-// template syntax, substituted before the model ever sees this text. When true, the gate calls
-// the rate-limit end_call tool, which plays a fixed pre-recorded "try again later" recording and
-// hangs up directly - no TTS, no LLM-generated speech, and the call never reaches the persona/
-// knowledge-base-loaded conversation node at all.
-// Defense-in-depth: if the pre-call-fetch request to phoneToolsController.ts ever fails for any
-// reason (network blip, the callback URL misconfigured, etc.), Dograh's own pre_call_fetch never
-// raises - it just merges an empty object, so the template below renders as a blank/unresolved
-// value instead of the literal string "true" or "false". Defaulting an unclear read to "false"
-// (proceed normally) is the safe failure direction: a missed rate-limit check costs nothing, a
-// falsely-declined real caller costs a lead.
-const RATE_LIMIT_GATE_PROMPT =
-  `Check this value: RATE_LIMITED={{initial_context.rate_limited}}. Call the rate-limit ` +
-  `end-call tool, and say nothing else, ONLY if that value reads exactly "true". For any other ` +
-  `value - "false", empty, missing, or anything unclear - say nothing and just wait; the call ` +
-  `will move to the next step automatically. When genuinely unsure, treat it as not rate limited.`;
-
-const RATE_LIMIT_GATE_EDGE_CONDITION =
-  'Transition immediately unless RATE_LIMITED reads exactly "true" - this should happen with no ' +
-  'caller input needed. Only stay on this node if RATE_LIMITED reads "true"; that case ends the ' +
-  'call via the rate-limit tool instead and should never reach this edge.';
-
 // Drives the graceful wrap-up via the deterministic get_call_time_remaining tool (always
 // attached - see dograhController.ts) instead of having the model guess elapsed time from
 // exchange count. See the MAX_CALL_DURATION_SECONDS comment above for the full mechanism.
@@ -126,10 +88,9 @@ const CALL_PACING_INSTRUCTION =
   `line of conversation after that point.`;
 
 export function buildSingleNodeWorkflowDefinition(options: SingleNodeWorkflowOptions) {
-  const { personaPrompt, extractionVariables, isOutbound, businessName, toolUuids, preCallFetchUrl, rateLimitEndCallToolUuid } = options;
+  const { personaPrompt, extractionVariables, isOutbound, businessName, toolUuids, preCallFetchUrl } = options;
   const hasExtraction = extractionVariables.length > 0;
   const hasTools = Boolean(toolUuids && toolUuids.length > 0);
-  const hasGate = !isOutbound && Boolean(rateLimitEndCallToolUuid);
 
   // No `greeting`/`greeting_type` here - Dograh's docs are explicit that the static TTS-only
   // greeting field is "not supported with realtime (speech-to-speech) models" (this org runs
@@ -150,14 +111,10 @@ export function buildSingleNodeWorkflowDefinition(options: SingleNodeWorkflowOpt
       `is clearly finished, transition to ending the call.`) +
     ` ${CALL_PACING_INSTRUCTION}`;
 
-  // The conversation node is startCall (the graph's entry point) when there's no gate node ahead
-  // of it - outbound always, inbound whenever rate limiting isn't configured. With a gate, the
-  // gate becomes startCall instead and the conversation becomes a plain agentNode one step later;
-  // everything else about it (prompt, tools, extraction) is identical either way.
   const conversationNode = {
-    id: hasGate ? '2' : '1',
-    type: hasGate ? 'agentNode' : 'startCall',
-    position: { x: hasGate ? 640 : 320, y: 0 },
+    id: '1',
+    type: 'startCall',
+    position: { x: 320, y: 0 },
     data: {
       name: 'Conversation',
       prompt: conversationPrompt,
@@ -171,14 +128,10 @@ export function buildSingleNodeWorkflowDefinition(options: SingleNodeWorkflowOpt
       // this only stops the bot from cutting itself off on its own echo.
       allow_interrupt: false,
       add_global_prompt: true,
-      ...(hasGate ? {} : {
-        delayed_start: isOutbound,
-        delayed_start_duration: isOutbound ? 1.5 : undefined,
-        // Pre-call-fetch only goes on whichever node is startCall - an agentNode can't carry it,
-        // it's a startCall-only field. With a gate, the gate node (below) carries it instead.
-        pre_call_fetch_enabled: Boolean(preCallFetchUrl),
-        pre_call_fetch_url: preCallFetchUrl,
-      }),
+      delayed_start: isOutbound,
+      delayed_start_duration: isOutbound ? 1.5 : undefined,
+      pre_call_fetch_enabled: Boolean(preCallFetchUrl),
+      pre_call_fetch_url: preCallFetchUrl,
       extraction_enabled: hasExtraction,
       extraction_prompt: hasExtraction
         ? 'Capture any lead details the caller has shared so far, even if only partially mentioned. Keep previously captured values unless the caller corrects them.'
@@ -193,9 +146,9 @@ export function buildSingleNodeWorkflowDefinition(options: SingleNodeWorkflowOpt
   };
 
   const endCallNode = {
-    id: hasGate ? '3' : '2',
+    id: '2',
     type: 'endCall',
-    position: { x: hasGate ? 960 : 640, y: 0 },
+    position: { x: 640, y: 0 },
     data: {
       name: 'End Call',
       prompt: 'Give a brief, warm closing (one short sentence) thanking the caller, then end the call.',
@@ -213,43 +166,11 @@ export function buildSingleNodeWorkflowDefinition(options: SingleNodeWorkflowOpt
         prompt: personaPrompt,
       },
     },
-    // Rate-limit gate, inbound only - see RATE_LIMIT_GATE_PROMPT above for why this is a
-    // dedicated node with no persona/knowledge base attached (add_global_prompt: false) rather
-    // than a prompt instruction tacked onto the real conversation node.
-    ...(hasGate ? [{
-      id: '1',
-      type: 'startCall',
-      position: { x: 320, y: 0 },
-      data: {
-        name: 'Rate Limit Gate',
-        prompt: RATE_LIMIT_GATE_PROMPT,
-        allow_interrupt: false,
-        add_global_prompt: false,
-        delayed_start: false,
-        pre_call_fetch_enabled: Boolean(preCallFetchUrl),
-        pre_call_fetch_url: preCallFetchUrl,
-        tool_uuids: [rateLimitEndCallToolUuid],
-      },
-    }] : []),
     conversationNode,
     endCallNode,
   ];
 
   const edges = [
-    ...(hasGate ? [{
-      id: '1-2',
-      type: 'custom',
-      source: '1',
-      target: '2',
-      data: {
-        condition: RATE_LIMIT_GATE_EDGE_CONDITION,
-        label: 'Not rate limited',
-        invalid: false,
-        validationMessage: null,
-      },
-      animated: false,
-      selected: false,
-    }] : []),
     {
       id: `${conversationNode.id}-${endCallNode.id}`,
       type: 'custom',
@@ -269,6 +190,37 @@ export function buildSingleNodeWorkflowDefinition(options: SingleNodeWorkflowOpt
   return {
     nodes,
     edges,
+    viewport: { x: 0, y: 0, zoom: 1 },
+  };
+}
+
+/**
+ * Inbound rate limiting is enforced by swapping the phone number to this workflow before the
+ * next call arrives. It intentionally does not load the business persona, knowledge base,
+ * extraction variables, pre-call fetch, or calendar tools. The only attached tool is a silent
+ * end_call tool, so rate-limited calls terminate with the least possible Dograh/LLM work.
+ */
+export function buildCapacityWorkflowDefinition(endCallToolUuid: string) {
+  return {
+    nodes: [
+      {
+        id: '1',
+        type: 'startCall',
+        position: { x: 320, y: 0 },
+        data: {
+          name: 'Capacity Hangup',
+          prompt:
+            'This number is temporarily at capacity. Immediately call the attached end-call tool. ' +
+            'Say nothing, do not greet, do not answer questions, and do not continue the conversation.',
+          allow_interrupt: false,
+          add_global_prompt: false,
+          delayed_start: false,
+          extraction_enabled: false,
+          tool_uuids: [endCallToolUuid],
+        },
+      },
+    ],
+    edges: [],
     viewport: { x: 0, y: 0, zoom: 1 },
   };
 }
