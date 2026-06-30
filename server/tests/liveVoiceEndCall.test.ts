@@ -257,6 +257,9 @@ test('embedded widget collects required voice contact fields before opening Gemi
   assert.match(widgetSource, /PRE_CALL_DISPLAY_NAME = \$\{jsonForScript\(displayNameText\)\}/);
   assert.match(widgetSource, /voiceStatus\.textContent = 'Before we connect'/);
   assert.match(widgetSource, /voiceInputLabel\.textContent = 'Enter your details below'/);
+  assert.match(widgetSource, /voiceInputForm\.classList\.add\('precall-details-form'\)/);
+  assert.match(widgetSource, /voicePhoneForm\.classList\.add\('precall-details-form'\)/);
+  assert.match(widgetSource, /voiceInputForm\.style\.display = 'block'/);
   assert.match(widgetSource, /REQUIRED_VOICE_CONTACT_FIELDS\.forEach/);
   assert.match(widgetSource, /preverifiedContacts=/);
   assert.match(widgetSource, /encodeURIComponent\(JSON\.stringify\(preverifiedVoiceContacts\)\)/);

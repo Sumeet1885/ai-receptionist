@@ -47,6 +47,7 @@ export interface Lead {
   botId: string;
   name: string;
   phone: string;
+  email: string | null;
   requirement: string;
   budget: string;
   sentiment: string;

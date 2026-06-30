@@ -46,6 +46,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, selectedB
                 <div className="flex flex-wrap items-center gap-3">
                   <h4 className="text-lg font-display font-bold text-brand-text">{lead.name}</h4>
                   <span className="text-xs text-brand-muted font-mono">📞 {lead.phone}</span>
+                  {lead.email && <span className="text-xs text-brand-muted font-mono">✉️ {lead.email}</span>}
                   <span className="text-xs text-brand-muted font-mono">{lead.date}</span>
                 </div>
 

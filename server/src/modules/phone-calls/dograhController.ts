@@ -35,7 +35,7 @@ async function loadOwnedBot(botId: string, ownerId: string): Promise<DograhProvi
   const { data, error } = await supabase
     .from('bots')
     .select(
-      'id, owner_id, business_name, industry, knowledge_base, widget_config, primary_color, dograh_workflow_id, dograh_outbound_workflow_id, dograh_telephony_config_id, dograh_phone_number_id, dograh_phone_number, dograh_check_availability_tool_uuid, dograh_book_appointment_tool_uuid'
+      'id, owner_id, business_name, industry, knowledge_base, widget_config, primary_color, dograh_workflow_id, dograh_outbound_workflow_id, dograh_telephony_config_id, dograh_phone_number_id, dograh_phone_number, dograh_check_availability_tool_uuid, dograh_book_appointment_tool_uuid, dograh_call_time_tool_uuid, dograh_outbound_cooldown_seconds, dograh_outbound_hourly_cap'
     )
     .eq('id', botId)
     .eq('owner_id', ownerId)
@@ -113,6 +113,32 @@ async function ensurePhoneTools(bot: DograhProvisionableBot): Promise<PhoneToolU
   return { checkAvailabilityToolUuid, bookAppointmentToolUuid };
 }
 
+/**
+ * Creates/updates the get_call_time_remaining tool - always attached, regardless of calendar
+ * connection, since it's what lets the persona end the call gracefully near
+ * MAX_CALL_DURATION_SECONDS instead of either guessing elapsed time from exchange count or
+ * relying solely on Dograh's silent hard abort. See workflowDefinition.ts and
+ * phoneToolsController.ts for the full mechanism.
+ */
+async function ensureCallTimeTool(bot: DograhProvisionableBot): Promise<string> {
+  const params = {
+    name: `Check Call Time Remaining - ${bot.business_name}`,
+    description: 'Check how much time is left on this call before it should wrap up. Call this periodically, more often as the call goes on, to know when to start closing the conversation.',
+    url: `${config.phoneTools.callbackBaseUrl}/api/phone-tools/${bot.id}/call-time-remaining`,
+    method: 'POST' as const,
+    headers: { 'X-API-Key': config.phoneTools.apiKey },
+    presetParameters: [
+      { name: 'session_id', type: 'string' as const, value_template: '{{initial_context.session_id}}' },
+    ],
+  };
+
+  if (bot.dograh_call_time_tool_uuid) {
+    await updateHttpTool(bot.dograh_call_time_tool_uuid, params);
+    return bot.dograh_call_time_tool_uuid;
+  }
+  return (await createHttpTool(params)).tool_uuid;
+}
+
 export async function getStatus(req: AuthRequest, res: Response): Promise<void> {
   const botId = req.params.botId;
   const bot = await loadOwnedBot(botId, req.user!.id);
@@ -125,6 +151,8 @@ export async function getStatus(req: AuthRequest, res: Response): Promise<void> 
     provisioned: Boolean(bot.dograh_workflow_id),
     outboundProvisioned: Boolean(bot.dograh_outbound_workflow_id),
     phoneNumber: bot.dograh_phone_number || null,
+    outboundCooldownSeconds: bot.dograh_outbound_cooldown_seconds ?? 10,
+    outboundHourlyCap: bot.dograh_outbound_hourly_cap ?? 20,
   });
 }
 
@@ -142,23 +170,27 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
     // caller to read it back, and don't generate a useless caller_phone extraction slot for it.
     const extractionVariables = buildLeadExtractionVariables(withoutAutoKnownPhoneField(widgetConfig));
 
+    // get_call_time_remaining is always attached (drives the graceful 4:30 wrap-up regardless of
+    // calendar booking - see workflowDefinition.ts), so pre-call-fetch (which creates the
+    // chat_sessions row every tool reads session_id from) is always enabled now too.
+    const callTimeToolUuid = await ensureCallTimeTool(bot);
+    const preCallFetchUrl = `${config.phoneTools.callbackBaseUrl}/api/phone-tools/${botId}/pre-call?key=${config.phoneTools.apiKey}`;
+
     // Tool-driven booking (real-time check_availability/book_appointment against the owner's
     // connected Google Calendar) only when a calendar is actually connected and the bot has
     // calendar booking enabled - otherwise the persona falls back to the verbal-handoff
-    // instruction exactly as before, and no tools/pre-call-fetch are attached at all.
+    // instruction exactly as before, and no calendar tools are attached.
     const useTools = widgetConfig.enableCalendar && (await isCalendarConnected(bot.owner_id));
-    let toolUuids: string[] | undefined;
     let checkAvailabilityToolUuid = bot.dograh_check_availability_tool_uuid;
     let bookAppointmentToolUuid = bot.dograh_book_appointment_tool_uuid;
     if (useTools) {
       const tools = await ensurePhoneTools(bot);
       checkAvailabilityToolUuid = tools.checkAvailabilityToolUuid;
       bookAppointmentToolUuid = tools.bookAppointmentToolUuid;
-      toolUuids = [checkAvailabilityToolUuid, bookAppointmentToolUuid];
     }
-    const preCallFetchUrl = useTools
-      ? `${config.phoneTools.callbackBaseUrl}/api/phone-tools/${botId}/pre-call?key=${config.phoneTools.apiKey}`
-      : undefined;
+    const toolUuids = useTools && checkAvailabilityToolUuid && bookAppointmentToolUuid
+      ? [callTimeToolUuid, checkAvailabilityToolUuid, bookAppointmentToolUuid]
+      : [callTimeToolUuid];
 
     // One click provisions both directions: the inbound (answering) agent and the outbound
     // (calling-out) agent. They are always provisioned together, which keeps the poller's
@@ -200,6 +232,7 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
         dograh_outbound_workflow_id: String(outboundWorkflow.id),
         dograh_check_availability_tool_uuid: checkAvailabilityToolUuid,
         dograh_book_appointment_tool_uuid: bookAppointmentToolUuid,
+        dograh_call_time_tool_uuid: callTimeToolUuid,
       })
       .eq('id', botId);
     if (error) throw error;
@@ -346,30 +379,67 @@ export async function listCalls(req: AuthRequest, res: Response): Promise<void> 
 // In-memory, single-process rate limiting on outbound dialing - same constraint as the poller
 // (process-local/single-replica), acceptable for a single deliberate dial action by the bot's
 // own owner. Caps a runaway loop (buggy client retry, compromised owner session) from dialing
-// the same number or burning through the org's outbound minutes unbounded.
-const OUTBOUND_COOLDOWN_MS = 10_000;
-const OUTBOUND_HOURLY_CAP = 20;
+// the same number or burning through the org's outbound minutes unbounded. Thresholds are
+// per-bot and owner-configurable (dograh_outbound_cooldown_seconds/dograh_outbound_hourly_cap -
+// see updateOutboundRateLimit), defaulting to 10s/20-per-hour for bots that haven't set their own.
+const DEFAULT_OUTBOUND_COOLDOWN_SECONDS = 10;
+const DEFAULT_OUTBOUND_HOURLY_CAP = 20;
+const MAX_OUTBOUND_COOLDOWN_SECONDS = 300;
+const MAX_OUTBOUND_HOURLY_CAP = 200;
 const lastCallAtByBot = new Map<string, number>();
 const callTimestampsByBot = new Map<string, number[]>();
 
-function checkOutboundRateLimit(botId: string): string | null {
+function checkOutboundRateLimit(bot: DograhProvisionableBot): string | null {
   const now = Date.now();
+  const cooldownMs = (bot.dograh_outbound_cooldown_seconds ?? DEFAULT_OUTBOUND_COOLDOWN_SECONDS) * 1000;
+  const hourlyCap = bot.dograh_outbound_hourly_cap ?? DEFAULT_OUTBOUND_HOURLY_CAP;
 
-  const lastCallAt = lastCallAtByBot.get(botId);
-  if (lastCallAt && now - lastCallAt < OUTBOUND_COOLDOWN_MS) {
+  const lastCallAt = lastCallAtByBot.get(bot.id);
+  if (lastCallAt && now - lastCallAt < cooldownMs) {
     return `Please wait a few seconds between outbound calls.`;
   }
 
   const hourAgo = now - 60 * 60 * 1000;
-  const recent = (callTimestampsByBot.get(botId) || []).filter(ts => ts > hourAgo);
-  if (recent.length >= OUTBOUND_HOURLY_CAP) {
-    return `This receptionist has reached its limit of ${OUTBOUND_HOURLY_CAP} outbound calls per hour.`;
+  const recent = (callTimestampsByBot.get(bot.id) || []).filter(ts => ts > hourAgo);
+  if (recent.length >= hourlyCap) {
+    return `This receptionist has reached its limit of ${hourlyCap} outbound calls per hour.`;
   }
 
   recent.push(now);
-  callTimestampsByBot.set(botId, recent);
-  lastCallAtByBot.set(botId, now);
+  callTimestampsByBot.set(bot.id, recent);
+  lastCallAtByBot.set(bot.id, now);
   return null;
+}
+
+export async function updateOutboundRateLimit(req: AuthRequest, res: Response): Promise<void> {
+  const botId = req.params.botId;
+  const bot = await loadOwnedBot(botId, req.user!.id);
+  if (!bot) {
+    res.status(404).json({ error: 'Bot not found' });
+    return;
+  }
+
+  const cooldownSeconds = Number(req.body?.cooldownSeconds);
+  const hourlyCap = Number(req.body?.hourlyCap);
+  if (!Number.isFinite(cooldownSeconds) || cooldownSeconds < 0 || cooldownSeconds > MAX_OUTBOUND_COOLDOWN_SECONDS) {
+    res.status(400).json({ error: `cooldownSeconds must be between 0 and ${MAX_OUTBOUND_COOLDOWN_SECONDS}` });
+    return;
+  }
+  if (!Number.isFinite(hourlyCap) || hourlyCap < 1 || hourlyCap > MAX_OUTBOUND_HOURLY_CAP) {
+    res.status(400).json({ error: `hourlyCap must be between 1 and ${MAX_OUTBOUND_HOURLY_CAP}` });
+    return;
+  }
+
+  const { error } = await supabase
+    .from('bots')
+    .update({ dograh_outbound_cooldown_seconds: Math.round(cooldownSeconds), dograh_outbound_hourly_cap: Math.round(hourlyCap) })
+    .eq('id', botId);
+  if (error) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+
+  res.json({ outboundCooldownSeconds: Math.round(cooldownSeconds), outboundHourlyCap: Math.round(hourlyCap) });
 }
 
 export async function callOut(req: AuthRequest, res: Response): Promise<void> {
@@ -396,7 +466,7 @@ export async function callOut(req: AuthRequest, res: Response): Promise<void> {
     return;
   }
 
-  const rateLimitError = checkOutboundRateLimit(botId);
+  const rateLimitError = checkOutboundRateLimit(bot);
   if (rateLimitError) {
     res.status(429).json({ error: rateLimitError });
     return;

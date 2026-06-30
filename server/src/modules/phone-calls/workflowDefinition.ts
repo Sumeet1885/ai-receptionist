@@ -32,13 +32,14 @@ export function buildLeadExtractionVariables(widgetConfig: WidgetConfig): Extrac
 }
 
 // Dograh's own pipeline (run_pipeline.py) hard-aborts the call once elapsed time exceeds this -
-// a silent CancelFrame with no goodbye, so it's a backstop, not the primary UX. The persona
-// prompt below is told to proactively wind down well before this so the call ends gracefully
-// instead of getting cut off mid-sentence. Dograh exposes no mid-call timer/warning hook
-// (confirmed by reading pipeline_engine_callbacks_processor.py - it only supports a single abort
-// threshold, no separate warning callback), so "around 4:30" is necessarily a prompt-level
-// approximation the model self-paces to, not a precisely-timed event.
-export const MAX_CALL_DURATION_SECONDS = 300;
+// a silent CancelFrame with no goodbye, so this is a backstop, not the primary UX. It's set
+// ~30s above phoneToolsController.ts' SOFT_LIMIT_SECONDS (270s/4:30) specifically so a graceful
+// goodbye - driven by the get_call_time_remaining tool plus the persona prompt below - has room
+// to land before this silent abort would ever need to fire under normal operation. Dograh
+// exposes no mid-call timer/warning hook of its own (confirmed by reading
+// pipeline_engine_callbacks_processor.py - it only supports this single abort threshold, no
+// separate warning callback), which is why the warning is implemented as a tool call instead.
+export const MAX_CALL_DURATION_SECONDS = 330;
 
 export interface SingleNodeWorkflowOptions {
   /** Full persona text (buildDograhPhoneInstruction/buildDograhOutboundInstruction output),
@@ -47,15 +48,15 @@ export interface SingleNodeWorkflowOptions {
   extractionVariables: ExtractionVariable[];
   isOutbound: boolean;
   businessName: string;
-  /** Tool UUIDs (dograhClient.createOrUpdateHttpTool) attached to the conversation node -
-   * check_availability/book_appointment, present only when the bot's owner has a calendar
-   * connected (see dograhController.ts). Omitted entirely (not just empty) otherwise, matching
-   * the persona's verbal-handoff booking instruction in that case. */
-  toolUuids?: string[];
-  /** Fetched once before the call connects and merged into initial_context - used to create the
-   * chat_sessions row up front so calendar tool calls during the call and the post-call mirror
-   * (callMirror.ts) bind to the same session instead of racing each other. */
-  preCallFetchUrl?: string;
+  /** Tool UUIDs (dograhClient.createOrUpdateHttpTool) attached to the conversation node. Always
+   * includes get_call_time_remaining; check_availability/book_appointment are appended only
+   * when the bot's owner has a calendar connected (see dograhController.ts). */
+  toolUuids: string[];
+  /** Fetched once before the call connects and merged into initial_context - creates the
+   * chat_sessions row up front so every tool call during the call (including the time check)
+   * and the post-call mirror (callMirror.ts) bind to the same session instead of racing. Always
+   * set now, not just when calendar tools are attached. */
+  preCallFetchUrl: string;
 }
 
 /**
@@ -68,20 +69,23 @@ const END_CALL_CONDITION =
   'Transition ONLY when the caller has clearly indicated the conversation is over - for example ' +
   'they say goodbye, "that\'s all", "no more questions", or explicitly ask to end/hang up the ' +
   'call, OR all of their questions have been answered AND (if the persona above asks for contact ' +
-  'details) those details have already been collected. Do NOT transition merely because of a ' +
-  'short reply, a single "okay"/"thanks", a brief pause, or uncertainty about what to do next - ' +
-  'in those cases keep the conversation going by asking a clarifying or follow-up question instead.';
+  'details) those details have already been collected, OR get_call_time_remaining has reported ' +
+  '"shouldWrapUp": true and you have already said your wrap-up line and a brief goodbye. Do NOT ' +
+  'transition merely because of a short reply, a single "okay"/"thanks", a brief pause, or ' +
+  'uncertainty about what to do next - in those cases keep the conversation going by asking a ' +
+  'clarifying or follow-up question instead.';
 
-// Best-effort pacing instruction appended to the conversation prompt - see the
-// MAX_CALL_DURATION_SECONDS comment above for why this can't be tied to an exact second count.
+// Drives the graceful wrap-up via the deterministic get_call_time_remaining tool (always
+// attached - see dograhController.ts) instead of having the model guess elapsed time from
+// exchange count. See the MAX_CALL_DURATION_SECONDS comment above for the full mechanism.
 const CALL_PACING_INSTRUCTION =
-  `This call has a hard 5-minute limit. Pace yourself accordingly: keep answers brief, avoid ` +
-  `re-explaining things, and once the conversation has covered the caller's questions and (if ` +
-  `applicable) their contact details, move toward closing rather than opening new topics. If ` +
-  `the conversation has clearly been going on for a while (many exchanges back and forth) and ` +
-  `is not yet wrapping up, proactively say something like "I have a limit on this call, so ` +
-  `let's wrap up" and steer toward a close within the next turn or two, even if the caller ` +
-  `hasn't said goodbye yet.`;
+  `This call has a soft time limit. Call the get_call_time_remaining tool once after the first ` +
+  `couple of exchanges, and again periodically (every few exchanges) if the conversation is ` +
+  `continuing - more often once remainingSeconds is getting low. The moment a call to that tool ` +
+  `returns "shouldWrapUp": true, say something like "I have a limit on this call, so let's wrap ` +
+  `up" in your very next turn, give the caller a brief chance to say anything final, then give a ` +
+  `short goodbye and transition to ending the call - do not open new topics or start a fresh ` +
+  `line of conversation after that point.`;
 
 export function buildSingleNodeWorkflowDefinition(options: SingleNodeWorkflowOptions) {
   const { personaPrompt, extractionVariables, isOutbound, businessName, toolUuids, preCallFetchUrl } = options;

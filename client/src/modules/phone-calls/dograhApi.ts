@@ -6,6 +6,8 @@ export interface PhoneAgentStatus {
   provisioned: boolean;
   outboundProvisioned: boolean;
   phoneNumber: string | null;
+  outboundCooldownSeconds: number;
+  outboundHourlyCap: number;
 }
 
 export interface DograhNumber {
@@ -64,6 +66,11 @@ export const dograhApi = {
     authedFetch<{ success: boolean }>(`/api/dograh/bots/${botId}/call`, {
       method: 'POST',
       body: JSON.stringify({ phoneNumber }),
+    }),
+  updateOutboundRateLimit: (botId: string, cooldownSeconds: number, hourlyCap: number) =>
+    authedFetch<{ outboundCooldownSeconds: number; outboundHourlyCap: number }>(`/api/dograh/bots/${botId}/outbound-rate-limit`, {
+      method: 'PUT',
+      body: JSON.stringify({ cooldownSeconds, hourlyCap }),
     }),
   listCalls: (botId: string) => authedFetch<{ calls: PhoneCallRecord[] }>(`/api/dograh/bots/${botId}/calls`),
   syncNow: (botId: string) => authedFetch<{ ingested: number; failed: number }>(`/api/dograh/bots/${botId}/sync`, { method: 'POST' }),

@@ -78,6 +78,14 @@ function extractCounterpartyNumber(run: DograhRunDetail): string | null {
   );
 }
 
+/** Dograh's own extraction_variables (see EXTRACTION_FIELD_SPECS in workflowDefinition.ts)
+ * already captures the caller's email as a structured field during the call - more reliable than
+ * re-deriving it from the transcript text via Groq, the same reasoning as extractCounterpartyNumber. */
+function extractCallerEmail(run: DograhRunDetail): string | null {
+  const gathered = run.gathered_context as Record<string, any> | null;
+  return gathered?.caller_email || gathered?.extracted_variables?.caller_email || null;
+}
+
 function extractDurationSeconds(run: DograhRunDetail): number | null {
   const usage = run.usage_info as Record<string, any> | null;
   const cost = run.cost_info as Record<string, any> | null;
@@ -209,6 +217,7 @@ async function ingestRun(
   const transcriptUrl = run.transcript_public_url || run.transcript_url;
   const recordingUrl = run.recording_public_url || run.recording_url;
   const counterpartyNumber = extractCounterpartyNumber(run);
+  const callerEmail = extractCallerEmail(run);
   let transcript = '';
   if (transcriptUrl) {
     const raw = await fetchTranscript(transcriptUrl);
@@ -226,7 +235,7 @@ async function ingestRun(
   if (transcript) {
     // knownPhone: the persona no longer asks the caller to read their number back (it's
     // redundant - telephony metadata already has it), so the transcript will rarely contain one.
-    await analyzeLead({ sessionId, botId: bot.id, transcript, knownPhone: counterpartyNumber || undefined }, supabase);
+    await analyzeLead({ sessionId, botId: bot.id, transcript, knownPhone: counterpartyNumber || undefined, knownEmail: callerEmail || undefined }, supabase);
   }
 
   // 4. Finalize.

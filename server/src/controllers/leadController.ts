@@ -15,11 +15,16 @@ export interface LeadInput {
    * (it's redundant - see withoutAutoKnownPhoneField in receptionistInstruction.ts) and the LLM
    * would otherwise never see a phone number to extract. */
   knownPhone?: string;
+  /** Server-verified email from the web voice channel's contactCollection state machine
+   * (request_text_input), when available. Takes priority over the LLM's transcript guess for the
+   * same reason knownPhone does - it's the actual validated value, not a spoken/typed guess. */
+  knownEmail?: string;
 }
 
 export interface LeadData {
   name: string;
   phone: string;
+  email: string;
   requirement: string;
   budget: string;
   leadScore: 'HOT' | 'WARM' | 'COLD';
@@ -31,6 +36,7 @@ export interface LeadData {
 const SYSTEM_PROMPT = `You are an advanced business backend analyst. Analyze the conversation between a website visitor and an AI receptionist. Extract lead and requirement information and return valid JSON with these exact fields:
 - name: First and last name if mentioned, otherwise empty string
 - phone: Mobile or contact number if mentioned, otherwise empty string
+- email: Email address if mentioned, otherwise empty string
 - requirement: Specific course, property, treatment, or role they are looking for
 - budget: Financial capability or investment budget if mentioned
 - leadScore: One of "HOT", "WARM", or "COLD"
@@ -47,7 +53,7 @@ export async function analyzeLead(
   input: LeadInput,
   supabase: any
 ): Promise<void> {
-  const { sessionId, botId, transcript, knownPhone } = input;
+  const { sessionId, botId, transcript, knownPhone, knownEmail } = input;
 
   if (!GROQ_API_KEY) return;
 
@@ -92,12 +98,15 @@ export async function analyzeLead(
 
   const phone = knownPhone?.trim() || lead.phone?.trim() || '';
   lead.phone = phone; // single source of truth for both the upsert below and syncLeadToCrm's payload
+  const email = knownEmail?.trim() || lead.email?.trim() || '';
+  lead.email = email; // same pattern as phone, for the same reason
 
   await supabase.from('leads').upsert({
     bot_id:             botId,
     session_id:         sessionId,
     name:               lead.name || 'Anonymous',
     phone:              phone || 'Not Provided',
+    email:              email || null,
     requirement:        lead.requirement || 'General Inquiry',
     budget:             lead.budget || 'N/A',
     sentiment:          lead.sentiment || 'Neutral',

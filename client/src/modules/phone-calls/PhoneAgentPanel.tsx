@@ -20,6 +20,9 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
   const [dialNumber, setDialNumber] = useState('');
   const [dialTouched, setDialTouched] = useState(false);
   const [calling, setCalling] = useState(false);
+  const [cooldownInput, setCooldownInput] = useState('');
+  const [hourlyCapInput, setHourlyCapInput] = useState('');
+  const [savingRateLimit, setSavingRateLimit] = useState(false);
 
   const dialValidation = validateContactInput('phone', dialNumber);
 
@@ -28,6 +31,8 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
     try {
       const data = await dograhApi.getStatus(botId);
       setStatus(data);
+      setCooldownInput(String(data.outboundCooldownSeconds));
+      setHourlyCapInput(String(data.outboundHourlyCap));
     } catch (err: any) {
       showToast(err.message || 'Could not load phone agent status', 'error');
     } finally {
@@ -80,6 +85,25 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
       showToast(err.message || 'Failed to assign the phone number', 'error');
     } finally {
       setAssigning(false);
+    }
+  };
+
+  const handleSaveRateLimit = async () => {
+    const cooldownSeconds = Number(cooldownInput);
+    const hourlyCap = Number(hourlyCapInput);
+    if (!Number.isFinite(cooldownSeconds) || cooldownSeconds < 0 || !Number.isFinite(hourlyCap) || hourlyCap < 1) {
+      showToast('Enter a valid cooldown (0+ seconds) and hourly cap (1+).', 'error');
+      return;
+    }
+    setSavingRateLimit(true);
+    try {
+      const result = await dograhApi.updateOutboundRateLimit(botId, cooldownSeconds, hourlyCap);
+      setStatus(prev => prev ? { ...prev, outboundCooldownSeconds: result.outboundCooldownSeconds, outboundHourlyCap: result.outboundHourlyCap } : prev);
+      showToast('Outbound rate limit updated.', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to update the rate limit', 'error');
+    } finally {
+      setSavingRateLimit(false);
     }
   };
 
@@ -191,6 +215,44 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                 {dialTouched && !dialValidation.valid && dialNumber && (
                   <p className="text-xs text-brand-danger">{dialValidation.error}</p>
                 )}
+              </div>
+            )}
+
+            {status?.outboundProvisioned && status?.phoneNumber && (
+              <div className="pt-4 border-t border-brand-border space-y-2">
+                <p className="text-xs text-brand-muted">Limit how often this number can place outbound calls.</p>
+                <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+                  <label className="flex-1 flex items-center gap-2 text-xs text-brand-muted">
+                    Cooldown (seconds)
+                    <input
+                      type="number"
+                      min={0}
+                      max={300}
+                      value={cooldownInput}
+                      onChange={e => setCooldownInput(e.target.value)}
+                      className="h-10 px-3 rounded-lg bg-brand-bg border border-brand-border text-sm text-brand-text w-24"
+                    />
+                  </label>
+                  <label className="flex-1 flex items-center gap-2 text-xs text-brand-muted">
+                    Max calls / hour
+                    <input
+                      type="number"
+                      min={1}
+                      max={200}
+                      value={hourlyCapInput}
+                      onChange={e => setHourlyCapInput(e.target.value)}
+                      className="h-10 px-3 rounded-lg bg-brand-bg border border-brand-border text-sm text-brand-text w-24"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleSaveRateLimit}
+                    disabled={savingRateLimit}
+                    className="h-10 px-4 rounded-lg bg-brand-card border border-brand-border hover:border-brand-accent/60 text-brand-text text-xs font-bold disabled:opacity-50 shrink-0"
+                  >
+                    {savingRateLimit ? 'Saving…' : 'Save limit'}
+                  </button>
+                </div>
               </div>
             )}
           </>

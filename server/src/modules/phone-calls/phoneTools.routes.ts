@@ -7,6 +7,7 @@ const router = Router();
 router.use(requirePhoneToolsApiKey);
 
 router.post('/:botId/pre-call', phoneToolsController.preCall);
+router.post('/:botId/call-time-remaining', phoneToolsController.callTimeRemaining);
 router.post('/:botId/check-availability', phoneToolsController.checkAvailability);
 router.post('/:botId/book-appointment', phoneToolsController.bookAppointment);
 

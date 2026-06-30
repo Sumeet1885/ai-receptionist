@@ -794,7 +794,7 @@ export function setupWebSocketServer(server: Server) {
             .map((m: any) => `${m.sender === 'user' ? 'Visitor' : 'Receptionist'}: ${m.content}`)
             .join('\n');
 
-          await analyzeLead({ sessionId, botId: bot.id, transcript }, supabase);
+          await analyzeLead({ sessionId, botId: bot.id, transcript, knownEmail: contactCollection.getVerified('email') || undefined }, supabase);
           console.log(`Lead analysis completed successfully for session ${sessionId}`);
         }
       } catch (err) {

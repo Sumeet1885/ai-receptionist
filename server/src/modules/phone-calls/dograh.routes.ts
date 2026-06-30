@@ -11,6 +11,7 @@ router.get('/bots/:botId/status', dograhController.getStatus);
 router.post('/bots/:botId/provision', dograhController.provisionBot);
 router.post('/bots/:botId/assign-number', dograhController.assignNumber);
 router.post('/bots/:botId/call', dograhController.callOut);
+router.put('/bots/:botId/outbound-rate-limit', dograhController.updateOutboundRateLimit);
 router.get('/bots/:botId/calls', dograhController.listCalls);
 router.post('/bots/:botId/sync', dograhController.syncCalls);
 

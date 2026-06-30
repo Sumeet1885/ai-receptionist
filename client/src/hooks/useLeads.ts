@@ -9,6 +9,7 @@ function mapLeadFromDb(l: any): Lead {
     botId: l.bot_id,
     name: l.name,
     phone: l.phone,
+    email: l.email,
     requirement: l.requirement,
     budget: l.budget,
     sentiment: l.sentiment,

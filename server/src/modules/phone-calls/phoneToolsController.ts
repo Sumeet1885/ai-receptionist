@@ -43,6 +43,37 @@ export async function preCall(req: Request, res: Response): Promise<void> {
   res.json({ initial_context: { session_id: session.id } });
 }
 
+/** Deterministic alternative to the model guessing elapsed time: Dograh has no mid-call clock
+ * signal of its own (see MAX_CALL_DURATION_SECONDS comment in workflowDefinition.ts), so the
+ * persona is instructed to call this tool to find out exactly how long is left before the call's
+ * soft limit, instead of estimating from "how many exchanges have happened so far". */
+// Soft wrap-up target: ~30s ahead of MAX_CALL_DURATION_SECONDS's hard backstop in
+// workflowDefinition.ts, so a graceful goodbye (driven by this tool + the persona prompt) lands
+// before the silent native abort would ever need to fire.
+const SOFT_LIMIT_SECONDS = 270;
+
+export async function callTimeRemaining(req: Request, res: Response): Promise<void> {
+  const { session_id } = req.body || {};
+  if (!session_id) {
+    res.json({ error: 'No active call session.' });
+    return;
+  }
+
+  const { data: session, error } = await supabase.from('chat_sessions').select('started_at').eq('id', session_id).maybeSingle();
+  if (error || !session?.started_at) {
+    res.json({ error: 'Could not determine call start time.' });
+    return;
+  }
+
+  const elapsedSeconds = Math.max(0, Math.round((Date.now() - new Date(session.started_at).getTime()) / 1000));
+  const remainingSeconds = SOFT_LIMIT_SECONDS - elapsedSeconds;
+  res.json({
+    elapsedSeconds,
+    remainingSeconds,
+    shouldWrapUp: remainingSeconds <= 0,
+  });
+}
+
 export async function checkAvailability(req: Request, res: Response): Promise<void> {
   const botId = req.params.botId;
   const bot = await loadBotOwner(botId);

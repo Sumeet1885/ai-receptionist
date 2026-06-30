@@ -558,7 +558,8 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
   .voice-details-submit:disabled { opacity: 0.5; cursor: not-allowed; }
   .voice-input-container.precall-details-card {
     margin-top: 8px;
-    gap: 10px;
+    gap: 12px;
+    width: min(100%, 408px);
   }
   .voice-input-container.precall-details-card p#voiceInputLabel {
     margin: 0 0 2px;
@@ -569,6 +570,7 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
   }
   .voice-input-form.precall-details-form {
     display: block;
+    width: 100%;
   }
   .voice-input-form.precall-details-form .voice-field-label {
     display: block;
@@ -590,10 +592,11 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
     box-sizing: border-box;
     background: #ffffff;
     border: 2px solid #dbe5ff;
-    border-radius: 14px;
-    padding: 14px 16px;
+    border-radius: 16px;
+    padding: 16px 18px;
     color: #111827;
-    font-size: 15px;
+    font-size: 16px;
+    line-height: 1.2;
     box-shadow: 0 4px 12px rgba(0,0,0,0.04);
   }
   .voice-input-form.precall-details-form input::placeholder {
@@ -607,11 +610,18 @@ export const serveWidgetPage = async (req: Request, res: Response) => {
     border-radius: 16px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.04);
   }
+  .voice-input-container.precall-details-card .phone-input-row {
+    padding: 8px 12px 12px;
+  }
+  .voice-input-container.precall-details-card .phone-input-row input {
+    font-size: 16px;
+  }
   .voice-input-container.precall-details-card .voice-details-submit {
-    margin-top: 4px;
+    margin-top: 8px;
     border-radius: 14px;
     padding: 14px 16px;
     font-size: 15px;
+    box-shadow: 0 8px 20px rgba(91, 140, 255, 0.22);
   }
 
   /* Premium Voice Call Card Design matching inspiration */
@@ -1079,7 +1089,7 @@ ${poweredByHtml}
       }
       if (needsEmail) {
         voiceInputForm.classList.add('precall-details-form');
-        voiceInputForm.style.display = 'flex';
+        voiceInputForm.style.display = 'block';
         voiceInputField.type = 'email';
         voiceInputField.placeholder = 'name@example.com';
         voiceInputField.maxLength = 254;

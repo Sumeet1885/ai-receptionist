@@ -1,5 +1,5 @@
 export const LEAD_SELECT_FIELDS =
-  'id,bot_id,name,phone,requirement,budget,sentiment,lead_score,summary,appointment_status,updated_at';
+  'id,bot_id,name,phone,email,requirement,budget,sentiment,lead_score,summary,appointment_status,updated_at';
 
 export function getLeadRefreshInterval(routeName: string): number | null {
   if (routeName === 'leads') return 15000;
