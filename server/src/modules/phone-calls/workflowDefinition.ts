@@ -96,15 +96,22 @@ const END_CALL_CONDITION =
 // the rate-limit end_call tool, which plays a fixed pre-recorded "try again later" recording and
 // hangs up directly - no TTS, no LLM-generated speech, and the call never reaches the persona/
 // knowledge-base-loaded conversation node at all.
+// Defense-in-depth: if the pre-call-fetch request to phoneToolsController.ts ever fails for any
+// reason (network blip, the callback URL misconfigured, etc.), Dograh's own pre_call_fetch never
+// raises - it just merges an empty object, so the template below renders as a blank/unresolved
+// value instead of the literal string "true" or "false". Defaulting an unclear read to "false"
+// (proceed normally) is the safe failure direction: a missed rate-limit check costs nothing, a
+// falsely-declined real caller costs a lead.
 const RATE_LIMIT_GATE_PROMPT =
-  `Check this value: RATE_LIMITED={{initial_context.rate_limited}}. If it reads "true", ` +
-  `immediately call the rate-limit end-call tool and say nothing - do not speak at all. If it ` +
-  `reads "false", say nothing and just wait; the call will move to the next step automatically.`;
+  `Check this value: RATE_LIMITED={{initial_context.rate_limited}}. Call the rate-limit ` +
+  `end-call tool, and say nothing else, ONLY if that value reads exactly "true". For any other ` +
+  `value - "false", empty, missing, or anything unclear - say nothing and just wait; the call ` +
+  `will move to the next step automatically. When genuinely unsure, treat it as not rate limited.`;
 
 const RATE_LIMIT_GATE_EDGE_CONDITION =
-  'Transition the moment RATE_LIMITED reads "false" - this should happen immediately, with no ' +
-  'caller input needed. Never transition if RATE_LIMITED reads "true"; that case ends the call ' +
-  'via the rate-limit tool instead and should never reach this edge.';
+  'Transition immediately unless RATE_LIMITED reads exactly "true" - this should happen with no ' +
+  'caller input needed. Only stay on this node if RATE_LIMITED reads "true"; that case ends the ' +
+  'call via the rate-limit tool instead and should never reach this edge.';
 
 // Drives the graceful wrap-up via the deterministic get_call_time_remaining tool (always
 // attached - see dograhController.ts) instead of having the model guess elapsed time from
