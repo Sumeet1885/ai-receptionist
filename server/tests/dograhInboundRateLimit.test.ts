@@ -55,6 +55,31 @@ test('inbound capacity window covers cooldown and hourly cap using durable attem
     }),
     null
   );
+
+  assert.equal(
+    computeInboundCapacityUntil({
+      now,
+      cooldownSeconds: 1,
+      hourlyCap: 100,
+      recentAttemptTimes: [new Date('2026-06-30T09:59:00.000Z')],
+    }),
+    null,
+    'an old call should not keep extending cooldown just because it is still inside the hourly window'
+  );
+
+  assert.equal(
+    computeInboundCapacityUntil({
+      now,
+      cooldownSeconds: 1,
+      hourlyCap: 100,
+      recentAttemptTimes: [
+        new Date('2026-06-30T09:55:00.000Z'),
+        new Date('2026-06-30T09:59:59.500Z'),
+      ],
+    })?.toISOString(),
+    '2026-06-30T10:00:00.500Z',
+    'cooldown reset time is based on the latest call time, not on when the settings are saved'
+  );
 });
 
 test('Dograh inbound rate limiting has durable schema for attempts and workflow swapping', async () => {

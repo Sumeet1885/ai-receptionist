@@ -21,6 +21,7 @@ import {
 } from './dograhClient';
 import { DograhProvisionableBot } from './types';
 import { buildCapacityWorkflowDefinition, buildLeadExtractionVariables, buildSingleNodeWorkflowDefinition, MAX_CALL_DURATION_SECONDS } from './workflowDefinition';
+import { syncInboundRateLimitWorkflow } from './inboundRateLimiter';
 
 // Dograh has no per-bot timezone input on a phone call (no browser to read it from), so the
 // phone persona uses a fixed default. Matches the IST-leaning default used elsewhere in the app.
@@ -495,9 +496,10 @@ export async function updateOutboundRateLimit(req: AuthRequest, res: Response): 
   res.json({ outboundCooldownSeconds: Math.round(cooldownSeconds), outboundHourlyCap: Math.round(hourlyCap) });
 }
 
-// The inbound limit itself is enforced over in phoneToolsController.ts's preCall handler (Dograh
-// calls that, not this server, before an inbound call connects - see the comment there for why).
-// This endpoint only persists the owner's chosen thresholds; reuses the same bounds as outbound.
+// The inbound limit is enforced by preCall recording accepted attempts and swapping the assigned
+// number to a capacity workflow. This endpoint persists the owner's chosen thresholds and then
+// immediately re-evaluates the current window, so raising the cap/cooldown can restore the
+// normal workflow without waiting for the previously stored expiry.
 export async function updateInboundRateLimit(req: AuthRequest, res: Response): Promise<void> {
   const botId = req.params.botId;
   const bot = await loadOwnedBot(botId, req.user!.id);
@@ -526,7 +528,23 @@ export async function updateInboundRateLimit(req: AuthRequest, res: Response): P
     return;
   }
 
-  res.json({ inboundCooldownSeconds: Math.round(cooldownSeconds), inboundHourlyCap: Math.round(hourlyCap) });
+  try {
+    const syncResult = await syncInboundRateLimitWorkflow(supabase, {
+      ...bot,
+      dograh_inbound_cooldown_seconds: Math.round(cooldownSeconds),
+      dograh_inbound_hourly_cap: Math.round(hourlyCap),
+    });
+
+    res.json({
+      inboundCooldownSeconds: Math.round(cooldownSeconds),
+      inboundHourlyCap: Math.round(hourlyCap),
+      inboundActiveWorkflow: syncResult.activeWorkflow,
+      inboundRateLimitedUntil: syncResult.capacityUntil ? syncResult.capacityUntil.toISOString() : null,
+    });
+  } catch (err: any) {
+    console.error('[phone-calls] Failed to sync inbound workflow after rate-limit update:', err);
+    res.status(502).json({ error: err.message || 'Saved limit, but failed to sync the Dograh inbound workflow' });
+  }
 }
 
 export async function callOut(req: AuthRequest, res: Response): Promise<void> {

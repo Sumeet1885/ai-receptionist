@@ -6,6 +6,8 @@ export interface PhoneAgentStatus {
   provisioned: boolean;
   outboundProvisioned: boolean;
   phoneNumber: string | null;
+  inboundActiveWorkflow?: 'normal' | 'capacity' | string | null;
+  inboundRateLimitedUntil?: string | null;
   outboundCooldownSeconds: number;
   outboundHourlyCap: number;
   inboundCooldownSeconds: number;

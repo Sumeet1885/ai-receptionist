@@ -28,17 +28,19 @@ export interface InboundRateLimitBot {
 export function computeInboundCapacityUntil(options: ComputeInboundCapacityUntilOptions): Date | null {
   const { now, cooldownSeconds, hourlyCap } = options;
   const candidates: number[] = [];
+  const recentTimestamps = options.recentAttemptTimes
+    .map(date => date.getTime())
+    .filter(timestamp => timestamp <= now.getTime())
+    .sort((a, b) => a - b);
 
-  if (cooldownSeconds > 0 && options.recentAttemptTimes.length > 0) {
-    candidates.push(now.getTime() + cooldownSeconds * 1000);
+  if (cooldownSeconds > 0 && recentTimestamps.length > 0) {
+    const cooldownUntil = recentTimestamps[recentTimestamps.length - 1] + cooldownSeconds * 1000;
+    if (cooldownUntil > now.getTime()) candidates.push(cooldownUntil);
   }
 
   if (hourlyCap > 0) {
     const hourAgo = now.getTime() - ONE_HOUR_MS;
-    const recent = options.recentAttemptTimes
-      .map(date => date.getTime())
-      .filter(timestamp => timestamp > hourAgo && timestamp <= now.getTime())
-      .sort((a, b) => a - b);
+    const recent = recentTimestamps.filter(timestamp => timestamp > hourAgo);
 
     if (recent.length >= hourlyCap) {
       candidates.push(recent[recent.length - hourlyCap] + ONE_HOUR_MS);
@@ -95,34 +97,37 @@ function scheduleRestore(supabase: SupabaseClient, botId: string, until: Date): 
   restoreTimers.set(botId, timer);
 }
 
-export async function markInboundAttemptAndApplyLimit(
+async function loadRecentInboundAttemptTimes(
   supabase: SupabaseClient,
-  bot: InboundRateLimitBot,
+  botId: string,
   now = new Date()
-): Promise<{ capacityUntil: Date | null; switchedToCapacity: boolean }> {
-  const cooldownSeconds = bot.dograh_inbound_cooldown_seconds ?? DEFAULT_INBOUND_COOLDOWN_SECONDS;
-  const hourlyCap = bot.dograh_inbound_hourly_cap ?? DEFAULT_INBOUND_HOURLY_CAP;
-
-  const { error: insertError } = await supabase
-    .from('phone_call_attempts')
-    .insert({ bot_id: bot.id, direction: 'inbound', created_at: now.toISOString() });
-  if (insertError) throw insertError;
-
+): Promise<Date[]> {
   const hourAgo = new Date(now.getTime() - ONE_HOUR_MS).toISOString();
   const { data, error: selectError } = await supabase
     .from('phone_call_attempts')
     .select('created_at')
-    .eq('bot_id', bot.id)
+    .eq('bot_id', botId)
     .eq('direction', 'inbound')
     .gte('created_at', hourAgo)
     .order('created_at', { ascending: true });
   if (selectError) throw selectError;
+  return (data || []).map((row: any) => new Date(row.created_at));
+}
+
+export async function syncInboundRateLimitWorkflow(
+  supabase: SupabaseClient,
+  bot: InboundRateLimitBot,
+  now = new Date()
+): Promise<{ capacityUntil: Date | null; activeWorkflow: 'normal' | 'capacity'; changed: boolean }> {
+  const cooldownSeconds = bot.dograh_inbound_cooldown_seconds ?? DEFAULT_INBOUND_COOLDOWN_SECONDS;
+  const hourlyCap = bot.dograh_inbound_hourly_cap ?? DEFAULT_INBOUND_HOURLY_CAP;
+  const recentAttemptTimes = await loadRecentInboundAttemptTimes(supabase, bot.id, now);
 
   const capacityUntil = computeInboundCapacityUntil({
     now,
     cooldownSeconds,
     hourlyCap,
-    recentAttemptTimes: (data || []).map((row: any) => new Date(row.created_at)),
+    recentAttemptTimes,
   });
 
   if (shouldUseCapacityWorkflow(bot, capacityUntil)) {
@@ -134,10 +139,43 @@ export async function markInboundAttemptAndApplyLimit(
       capacityUntil
     );
     scheduleRestore(supabase, bot.id, capacityUntil!);
-    return { capacityUntil, switchedToCapacity: true };
+    return { capacityUntil, activeWorkflow: 'capacity', changed: bot.dograh_inbound_active_workflow !== 'capacity' };
   }
 
-  return { capacityUntil, switchedToCapacity: false };
+  if (bot.dograh_inbound_active_workflow === 'capacity' && bot.dograh_workflow_id) {
+    await setInboundWorkflow(supabase, bot, bot.dograh_workflow_id, 'normal', null);
+    const timer = restoreTimers.get(bot.id);
+    if (timer) {
+      clearTimeout(timer);
+      restoreTimers.delete(bot.id);
+    }
+    return { capacityUntil: null, activeWorkflow: 'normal', changed: true };
+  }
+
+  if (bot.dograh_inbound_rate_limited_until) {
+    const { error } = await supabase
+      .from('bots')
+      .update({ dograh_inbound_rate_limited_until: null })
+      .eq('id', bot.id);
+    if (error) throw error;
+    return { capacityUntil: null, activeWorkflow: 'normal', changed: true };
+  }
+
+  return { capacityUntil: null, activeWorkflow: 'normal', changed: false };
+}
+
+export async function markInboundAttemptAndApplyLimit(
+  supabase: SupabaseClient,
+  bot: InboundRateLimitBot,
+  now = new Date()
+): Promise<{ capacityUntil: Date | null; switchedToCapacity: boolean }> {
+  const { error: insertError } = await supabase
+    .from('phone_call_attempts')
+    .insert({ bot_id: bot.id, direction: 'inbound', created_at: now.toISOString() });
+  if (insertError) throw insertError;
+
+  const result = await syncInboundRateLimitWorkflow(supabase, bot, now);
+  return { capacityUntil: result.capacityUntil, switchedToCapacity: result.activeWorkflow === 'capacity' };
 }
 
 export async function restoreExpiredInboundCapacityWorkflows(
