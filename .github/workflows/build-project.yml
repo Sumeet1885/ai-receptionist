@@ -1,19 +1,16 @@
-name: Build project
+name: STAGING - Build project
 
 on:
-  push:
-    branches:
-      - staging
-  pull_request:
-    branches:
-      - staging
-  schedule:
-    - cron: '0 0 * * *' # Every day at midnight UTC
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: "Full Commit SHA to build and verify"
+        required: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment: dev
+    environment: staging
 
     strategy:
       matrix:
@@ -24,8 +21,10 @@ jobs:
             build_cmd: npm run typecheck
 
     steps:
-      - name: Checkout code
+      - name: Checkout code at specified commit
         uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.commit_sha }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -46,3 +45,9 @@ jobs:
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
           VITE_EXPRESS_SERVER_URL: ${{ vars.VITE_EXPRESS_SERVER_URL }}
           VITE_WIDGET_BASE_URL: ${{ vars.VITE_WIDGET_BASE_URL }}
+
+      - name: Summary
+        run: |
+          echo "### ✅ Build Verified" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ github.event.inputs.commit_sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Jobs:** client (build) + server (typecheck)" >> $GITHUB_STEP_SUMMARY
