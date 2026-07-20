@@ -177,14 +177,9 @@ async function ingestRun(
 
   if (callRow.ingest_status === 'done') return false;
 
-  // Fetch the run before binding a session: a bot with calendar tools attached creates the
-  // session pre-call (see phoneToolsController.preCall) and threads its id through as
-  // initial_context.session_id precisely so it can be reused here instead of creating a second,
-  // orphaned session for the same call.
+
   const run = await getRun(workflowId, runId);
 
-  // 2. Bind the session immediately — before inserting messages — so a crash after this point
-  // resumes onto the same session instead of creating a duplicate.
   let sessionId: string = callRow.session_id;
   if (!sessionId) {
     const preCallSessionId = (run.initial_context as Record<string, any> | null)?.session_id;
@@ -211,9 +206,6 @@ async function ingestRun(
     if (bindError) throw bindError;
   }
 
-  // 3. Populate transcript + lead analysis.
-  // Use the absolute, downloadable URL — run.transcript_url is a relative storage key that
-  // throws when fetched. This was the bug that silently failed every call that had a transcript.
   const transcriptUrl = run.transcript_public_url || run.transcript_url;
   const recordingUrl = run.recording_public_url || run.recording_url;
   const counterpartyNumber = extractCounterpartyNumber(run);
@@ -233,12 +225,9 @@ async function ingestRun(
   }
 
   if (transcript) {
-    // knownPhone: the persona no longer asks the caller to read their number back (it's
-    // redundant - telephony metadata already has it), so the transcript will rarely contain one.
     await analyzeLead({ sessionId, botId: bot.id, transcript, knownPhone: counterpartyNumber || undefined, knownEmail: callerEmail || undefined }, supabase);
   }
 
-  // 4. Finalize.
   const { error: finalizeError } = await supabase
     .from('phone_calls')
     .update({
@@ -253,6 +242,22 @@ async function ingestRun(
     })
     .eq('id', callRow.id);
   if (finalizeError) throw finalizeError;
+
+  const campaignContactId = (run.initial_context as Record<string, any> | null)?.campaign_contact_id;
+  if (campaignContactId) {
+    const { error: linkError } = await supabase
+      .from('campaign_contacts')
+      .update({
+        phone_call_id: callRow.id,
+        session_id: sessionId,
+      })
+      .eq('id', campaignContactId);
+    if (linkError) {
+      console.error(`[phone-calls] Failed to link campaign contact ${campaignContactId} to phone call ${callRow.id}:`, linkError);
+    } else {
+      console.log(`[phone-calls] Successfully linked campaign contact ${campaignContactId} to phone call ${callRow.id}`);
+    }
+  }
 
   return true;
 }

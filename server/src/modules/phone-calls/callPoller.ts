@@ -4,6 +4,7 @@ import { isDograhConfigured } from './dograhClient';
 import { syncBotCalls } from './callMirror';
 import { DograhProvisionableBot } from './types';
 import { restoreExpiredInboundCapacityWorkflows } from './inboundRateLimiter';
+import { syncCampaignResults } from './campaignSync';
 
 let pollTimer: NodeJS.Timeout | null = null;
 
@@ -27,14 +28,15 @@ async function pollOnce(supabase: SupabaseClient): Promise<void> {
       console.error(`[phone-calls] Poller sync failed for bot ${bot.id}:`, err);
     }
   }
+
+  try {
+    await syncCampaignResults(supabase);
+  } catch (err) {
+    console.error('[phone-calls] Campaign result sync failed:', err);
+  }
 }
 
-/**
- * Process-local interval that drives call mirroring. Dograh OSS exposes no run-completion
- * webhook to our server, so this — plus the manual "Sync now" action — is the only ingestion
- * path. No-ops entirely when Dograh credentials are not configured, so the rest of the app is
- * unaffected. Single-replica/process-local, same constraint as the Gemini guard.
- */
+
 export function startCallPoller(supabase: SupabaseClient): void {
   if (!isDograhConfigured()) {
     console.log('[phone-calls] Dograh not configured; call poller not started.');

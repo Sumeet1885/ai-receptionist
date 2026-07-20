@@ -23,8 +23,7 @@ import { DograhProvisionableBot } from './types';
 import { buildCapacityWorkflowDefinition, buildLeadExtractionVariables, buildSingleNodeWorkflowDefinition, MAX_CALL_DURATION_SECONDS } from './workflowDefinition';
 import { syncInboundRateLimitWorkflow } from './inboundRateLimiter';
 
-// Dograh has no per-bot timezone input on a phone call (no browser to read it from), so the
-// phone persona uses a fixed default. Matches the IST-leaning default used elsewhere in the app.
+
 const PHONE_DEFAULT_TIMEZONE = 'Asia/Kolkata';
 
 const WORKFLOW_CONFIGURATIONS = { max_call_duration: MAX_CALL_DURATION_SECONDS };
@@ -59,14 +58,6 @@ interface PhoneToolUuids {
   bookAppointmentToolUuid: string;
 }
 
-/**
- * Creates (first provision) or updates (every re-provision after that) the two Dograh tools that
- * let the phone agent call back into this server for live calendar booking - check_availability
- * and book_appointment, mirroring the Gemini Live web-voice tool contract (liveTools.ts) so the
- * persona instruction (buildToolBasedBookingInstruction) describes the same two tools regardless
- * of channel. The bot's own id is baked into each tool's URL; session_id is injected by Dograh at
- * call time from initial_context (populated by the pre-call-fetch hit on phoneToolsController.preCall).
- */
 async function ensurePhoneTools(bot: DograhProvisionableBot): Promise<PhoneToolUuids> {
   const apiKeyHeader = { 'X-API-Key': config.phoneTools.apiKey };
   const base = `${config.phoneTools.callbackBaseUrl}/api/phone-tools/${bot.id}`;
@@ -117,13 +108,7 @@ async function ensurePhoneTools(bot: DograhProvisionableBot): Promise<PhoneToolU
   return { checkAvailabilityToolUuid, bookAppointmentToolUuid };
 }
 
-/**
- * Creates/updates the get_call_time_remaining tool - always attached, regardless of calendar
- * connection, since it's what lets the persona end the call gracefully near
- * MAX_CALL_DURATION_SECONDS instead of either guessing elapsed time from exchange count or
- * relying solely on Dograh's silent hard abort. See workflowDefinition.ts and
- * phoneToolsController.ts for the full mechanism.
- */
+
 async function ensureCallTimeTool(bot: DograhProvisionableBot): Promise<string> {
   const params = {
     name: `Check Call Time Remaining - ${bot.business_name}`,
@@ -143,10 +128,7 @@ async function ensureCallTimeTool(bot: DograhProvisionableBot): Promise<string> 
   return (await createHttpTool(params)).tool_uuid;
 }
 
-/**
- * Creates/updates the inbound capacity end_call tool. No recording or generated speech is used:
- * the at-capacity workflow calls this tool with messageType "none" and the call disconnects.
- */
+
 async function ensureRateLimitTool(bot: DograhProvisionableBot): Promise<string> {
   const params = {
     name: `Capacity Hangup - ${bot.business_name}`,
@@ -200,26 +182,13 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
 
   try {
     const widgetConfig = mergeWidgetConfig((bot as any).widget_config, bot);
-    // Phone number is already known from telephony metadata on both directions - don't ask the
-    // caller to read it back, and don't generate a useless caller_phone extraction slot for it.
     const extractionVariables = buildLeadExtractionVariables(withoutAutoKnownPhoneField(widgetConfig));
-
-    // get_call_time_remaining is always attached (drives the graceful 4:30 wrap-up regardless of
-    // calendar booking - see workflowDefinition.ts), so pre-call-fetch (which creates the
-    // chat_sessions row every tool reads session_id from) is always enabled now too. The
-    // `direction` query param tells phoneToolsController.preCall which one this is, since the
-    // inbound rate limit only applies to calls Dograh answers, never ones we ourselves placed
-    // (those are already gated before dialing - see checkOutboundRateLimit/callOut below).
     const callTimeToolUuid = await ensureCallTimeTool(bot);
     const rateLimitToolUuid = await ensureRateLimitTool(bot);
     const preCallFetchBase = `${config.phoneTools.callbackBaseUrl}/api/phone-tools/${botId}/pre-call?key=${config.phoneTools.apiKey}`;
     const inboundPreCallFetchUrl = `${preCallFetchBase}&direction=inbound`;
     const outboundPreCallFetchUrl = `${preCallFetchBase}&direction=outbound`;
 
-    // Tool-driven booking (real-time check_availability/book_appointment against the owner's
-    // connected Google Calendar) only when a calendar is actually connected and the bot has
-    // calendar booking enabled - otherwise the persona falls back to the verbal-handoff
-    // instruction exactly as before, and no calendar tools are attached.
     const useTools = widgetConfig.enableCalendar && (await isCalendarConnected(bot.owner_id));
     let checkAvailabilityToolUuid = bot.dograh_check_availability_tool_uuid;
     let bookAppointmentToolUuid = bot.dograh_book_appointment_tool_uuid;
@@ -232,11 +201,6 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
       ? [callTimeToolUuid, checkAvailabilityToolUuid, bookAppointmentToolUuid]
       : [callTimeToolUuid];
 
-    // One click provisions both directions: the inbound (answering) agent and the outbound
-    // (calling-out) agent. They are always provisioned together, which keeps the poller's
-    // "has a workflow" eligibility check simple — see callPoller.ts. Each is a hand-authored
-    // single-conversation-node graph (workflowDefinition.ts), not Dograh's AI-generated
-    // create/template graph — see "Phone calls/README.md" for why.
     const inboundInstruction = buildDograhPhoneInstruction(bot, widgetConfig, { timezone: PHONE_DEFAULT_TIMEZONE, useToolBasedBooking: useTools });
     const inboundDefinition = buildSingleNodeWorkflowDefinition({
       personaPrompt: inboundInstruction,
@@ -301,8 +265,6 @@ export async function listNumbers(req: AuthRequest, res: Response): Promise<void
   }
 
   try {
-    // Numbers claimed by any OTHER bot are hidden from the picker. Dograh is a single
-    // org/service account, so this app-level filter is what gives us tenant isolation.
     const { data: claimedRows } = await supabase
       .from('bots')
       .select('id, dograh_phone_number_id')
@@ -355,8 +317,6 @@ export async function assignNumber(req: AuthRequest, res: Response): Promise<voi
     return;
   }
 
-  // Re-check the number is not claimed by a different bot. The DB unique index on
-  // dograh_phone_number_id is the hard backstop; this is the friendly pre-check.
   const { data: claimant } = await supabase
     .from('bots')
     .select('id')
@@ -430,12 +390,6 @@ export async function listCalls(req: AuthRequest, res: Response): Promise<void> 
   });
 }
 
-// In-memory, single-process rate limiting on outbound dialing - same constraint as the poller
-// (process-local/single-replica), acceptable for a single deliberate dial action by the bot's
-// own owner. Caps a runaway loop (buggy client retry, compromised owner session) from dialing
-// the same number or burning through the org's outbound minutes unbounded. Thresholds are
-// per-bot and owner-configurable (dograh_outbound_cooldown_seconds/dograh_outbound_hourly_cap -
-// see updateOutboundRateLimit), defaulting to 10s/20-per-hour for bots that haven't set their own.
 const DEFAULT_OUTBOUND_COOLDOWN_SECONDS = 10;
 const DEFAULT_OUTBOUND_HOURLY_CAP = 20;
 const MAX_OUTBOUND_COOLDOWN_SECONDS = 300;
@@ -496,10 +450,6 @@ export async function updateOutboundRateLimit(req: AuthRequest, res: Response): 
   res.json({ outboundCooldownSeconds: Math.round(cooldownSeconds), outboundHourlyCap: Math.round(hourlyCap) });
 }
 
-// The inbound limit is enforced by preCall recording accepted attempts and swapping the assigned
-// number to a capacity workflow. This endpoint persists the owner's chosen thresholds and then
-// immediately re-evaluates the current window, so raising the cap/cooldown can restore the
-// normal workflow without waiting for the previously stored expiry.
 export async function updateInboundRateLimit(req: AuthRequest, res: Response): Promise<void> {
   const botId = req.params.botId;
   const bot = await loadOwnedBot(botId, req.user!.id);
