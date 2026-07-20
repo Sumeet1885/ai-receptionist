@@ -8,7 +8,6 @@ import { dograhApi, DograhNumber, PhoneAgentStatus } from './dograhApi';
 interface PhoneAgentPanelProps {
   botId: string;
   showToast: (message: string, type?: 'success' | 'error') => void;
-  /** Called whenever the provisioned+assigned state changes so siblings can react. */
   onProvisionedChange?: (isReady: boolean) => void;
 }
 

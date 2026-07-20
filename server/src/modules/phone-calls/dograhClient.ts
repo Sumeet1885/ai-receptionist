@@ -58,11 +58,7 @@ async function request<T>(path: string, init: RequestInit = {}, retrying = false
   return (text ? JSON.parse(text) : undefined) as T;
 }
 
-// We author the workflow graph ourselves (see workflowDefinition.ts) instead of going through
-// Dograh's create/template endpoint, which feeds free text to Dograh's own meta-LLM and
-// reinterprets it into an unpredictable node graph. That indirection was the root cause of
-// call-quality issues with small/literal models: ambiguous multi-node routing and disabled
-// variable extraction. create/definition takes our literal JSON with no reinterpretation.
+
 export function createWorkflowFromDefinition(
   name: string,
   workflowDefinition: Record<string, unknown>,
@@ -74,8 +70,6 @@ export function createWorkflowFromDefinition(
   });
 }
 
-// PUT updates the same workflow id in place (as a new draft - see publishWorkflow), so
-// re-provisioning never orphans a phone number's inbound_workflow_id binding to a stale id.
 export function updateWorkflowInPlace(
   workflowId: string,
   workflowDefinition: Record<string, unknown>,
@@ -87,10 +81,6 @@ export function updateWorkflowInPlace(
   });
 }
 
-// PUT saves a draft; only a published version is what actual calls execute, so call this right
-// after updateWorkflowInPlace. (create/definition publishes the first version immediately on a
-// fresh workflow, so this 400s with "No draft to publish" right after creation - harmless, the
-// workflow is already live; only re-raise for any other failure.)
 export async function publishWorkflow(workflowId: string | number): Promise<unknown> {
   try {
     return await request<unknown>(`/api/v1/workflow/${workflowId}/publish`, { method: 'POST' });
@@ -110,7 +100,6 @@ export interface HttpToolParam {
 export interface HttpToolPresetParam {
   name: string;
   type: 'string' | 'number' | 'boolean' | 'object' | 'array';
-  /** Fixed value or a `{{initial_context.*}}` / `{{gathered_context.*}}` template. */
   value_template: string;
 }
 
@@ -142,10 +131,7 @@ function httpToolBody(params: CreateHttpToolParams) {
   };
 }
 
-// Tools are organization-wide objects in Dograh, but the URL/preset_parameters baked into ours
-// are per-bot (bot id in the path, the X-API-Key header). createTool on first provision,
-// updateTool (PUT, same tool_uuid) on every re-provision after that - see dograhController.ts,
-// which persists the returned tool_uuid on the bot row precisely so it can tell which case it's in.
+
 export function createHttpTool(params: CreateHttpToolParams): Promise<{ tool_uuid: string }> {
   return request<{ tool_uuid: string }>('/api/v1/tools/', {
     method: 'POST',
@@ -163,9 +149,7 @@ export function updateHttpTool(toolUuid: string, params: CreateHttpToolParams): 
 export interface CreateEndCallToolParams {
   name: string;
   description: string;
-  /** Recording id returned by createRecording - the audio is played verbatim, no TTS/LLM
-   * involved. Omit for a silent immediate hangup (messageType "none") - e.g. the at-capacity
-   * workflow, where there's no message to play at all, just an unconditional disconnect. */
+
   audioRecordingId?: string;
 }
 
@@ -197,9 +181,7 @@ export function updateEndCallTool(toolUuid: string, params: CreateEndCallToolPar
   });
 }
 
-// One-time recording upload helper (recordings are organization-wide, not re-uploaded per bot).
-// The current inbound rate-limit flow uses a silent end_call tool instead of a recording, but
-// this helper is kept for future recorded greetings/decline messages.
+
 export async function getRecordingUploadUrl(filename: string, mimeType: string, fileSizeBytes: number) {
   const data = await request<{ items: Array<{ upload_url: string; recording_id: string; storage_key: string }> }>(
     '/api/v1/workflow-recordings/upload-url',
@@ -247,9 +229,7 @@ export interface InitiateCallParams {
   phoneNumber: string;
   telephonyConfigId: string | number;
   fromPhoneNumberId: string | number;
-  /** Optional key-value map injected as Dograh's initial_context on the call.
-   *  Use this to embed campaign metadata (e.g. campaign_contact_id) so the poller
-   *  can reliably match the completed Dograh run back to the campaign contact row. */
+
   initialContext?: Record<string, unknown>;
 }
 

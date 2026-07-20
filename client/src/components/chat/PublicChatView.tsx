@@ -72,7 +72,6 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
       .replace(/\r\n/g, '\n')
       .replace(/\*{2,3}([^*]+?)\*{2,3}/g, '$1');
 
-  // If a voice call is active or connecting, redirect to the VoiceCallView
   if (showVoiceGate || liveVoice.isVoiceActive || liveVoice.isConnecting) {
     return (
       <VoiceCallView
@@ -89,10 +88,8 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
 
   return (
     <div className={cn("flex-1 bg-brand-bg flex flex-col font-sans", isStandalone ? "w-full min-h-0 overflow-hidden" : "items-center justify-center p-4")}>
-      {/* Header Address Bar simulator */}
       <div className={cn("w-full bg-brand-card flex flex-col overflow-hidden", isStandalone ? "flex-1 min-h-0" : "max-w-4xl rounded-2xl border border-brand-border shadow-xl")}>
         
-        {/* Fake browser bar */}
         {!isStandalone && (
           <div className="bg-brand-bg px-4 py-3 flex items-center justify-between border-b border-brand-border">
             <div className="flex items-center space-x-2">
@@ -107,7 +104,6 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
             </div>
 
             <div className="flex items-center space-x-2">
-              {/* View layout Switcher */}
               <button 
                 onClick={() => setPreviewMode(previewMode === 'desktop' ? 'mobile' : 'desktop')}
                 className="p-2 hover:bg-brand-bg border border-transparent hover:border-brand-border rounded text-brand-text/70 hover:text-brand-text text-xs font-semibold transition duration-200"
@@ -127,10 +123,8 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
           </div>
         )}
 
-        {/* Chat Simulator Content Layout */}
         <div className={cn("flex-1 flex flex-col md:flex-row bg-brand-card overflow-hidden", isStandalone ? "min-h-0" : "h-[500px]")}>
           
-          {/* Left side widget helper info (Simulating informational landing space of the academy/business) */}
           {((previewMode === 'desktop' && !isStandalone) || isStandalone) && (
             <div className={cn("w-full md:w-80 bg-brand-card border-r border-brand-border p-6 flex flex-col justify-between flex-shrink-0", isStandalone ? "hidden md:flex" : "flex")}>
               <div className="space-y-6">
@@ -152,10 +146,8 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
             </div>
           )}
 
-           {/* Simulated interactive chat viewport */}
            <div className={cn("flex-1 flex flex-col bg-brand-bg overflow-hidden", isStandalone ? "min-h-0" : "h-[500px]", !isStandalone && previewMode === 'mobile' ? 'max-w-md mx-auto border-x border-brand-border rounded-2xl' : '')}>
             
-            {/* Chat interface custom banner */}
             <div className="flex-shrink-0 p-4 bg-brand-card border-b border-brand-border text-brand-text flex items-center justify-between shadow-sm">
               <div className="flex items-center space-x-3">
                 <div className="w-9 h-9 bg-brand-bg border border-brand-border rounded-full flex items-center justify-center font-display text-brand-accent font-bold">
@@ -172,7 +164,6 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
 
             </div>
 
-            {/* Chat message streams */}
             <div
               ref={messagesContainerRef}
               className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 font-sans text-sm bg-brand-bg/50 chat-messages-scroll"
@@ -205,14 +196,11 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
               <div ref={messageEndRef} />
             </div>
 
-            {/* Simulated Dynamic CRM Leads Sync Banner (Noticeboard) */}
             {!isStandalone && (
               <div className="bg-brand-accent/5 border-y border-brand-border/60 p-2.5 text-center text-xs text-brand-accent font-sans font-semibold">
                 Lead details are captured dynamically in the owner console as you converse.
               </div>
             )}
-
-            {/* Input form */}
             <form onSubmit={handleSendChatMessage} className="flex-shrink-0 p-3.5 bg-brand-card border-t border-brand-border flex items-center space-x-2">
               <VoiceInput
                 listening={liveVoice.isVoiceActive}

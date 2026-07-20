@@ -29,7 +29,6 @@ async function pollOnce(supabase: SupabaseClient): Promise<void> {
     }
   }
 
-  // Back-fill campaign contact summaries for any contacts whose Dograh runs have completed.
   try {
     await syncCampaignResults(supabase);
   } catch (err) {
@@ -37,12 +36,7 @@ async function pollOnce(supabase: SupabaseClient): Promise<void> {
   }
 }
 
-/**
- * Process-local interval that drives call mirroring. Dograh OSS exposes no run-completion
- * webhook to our server, so this — plus the manual "Sync now" action — is the only ingestion
- * path. No-ops entirely when Dograh credentials are not configured, so the rest of the app is
- * unaffected. Single-replica/process-local, same constraint as the Gemini guard.
- */
+
 export function startCallPoller(supabase: SupabaseClient): void {
   if (!isDograhConfigured()) {
     console.log('[phone-calls] Dograh not configured; call poller not started.');

@@ -1,7 +1,4 @@
--- ── 15. Bulk Call Campaigns ─────────────────────────────────────────
--- Run this in your Supabase Dashboard SQL Editor.
 
--- Campaign batches
 CREATE TABLE IF NOT EXISTS public.call_campaigns (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   bot_id           UUID NOT NULL REFERENCES public.bots(id) ON DELETE CASCADE,
@@ -11,8 +8,7 @@ CREATE TABLE IF NOT EXISTS public.call_campaigns (
                      CHECK (status IN ('pending', 'running', 'paused', 'completed', 'failed')),
   total_contacts   INTEGER NOT NULL DEFAULT 0,
   called_count     INTEGER NOT NULL DEFAULT 0,
-  -- Per-campaign hourly cap override. NULL = use the bot-level dograh_outbound_hourly_cap.
-  -- This allows campaigns to run at a higher throughput than single-dial mode.
+
   hourly_cap_override INTEGER CHECK (hourly_cap_override BETWEEN 1 AND 500),
   created_at       TIMESTAMPTZ DEFAULT NOW(),
   completed_at     TIMESTAMPTZ

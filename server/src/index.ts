@@ -28,7 +28,6 @@ import crmRoutes from './routes/crm.routes';
 import { dograhRoutes, phoneToolsRoutes, campaignRoutes, startCallPoller } from './modules/phone-calls';
 import { supabase } from './services/db';
 
-// Routes
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/widget', widgetRoutes);
@@ -44,7 +43,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Global Error Handler
 app.use(errorHandler);
 
 import { setupWebSocketServer } from './controllers/liveChatController';
@@ -53,8 +51,6 @@ const server = app.listen(config.port, () => {
   console.log(`🧠 AI Receptionist Brain API running on http://localhost:${config.port}`);
 });
 
-// Attach WebSocket server for Gemini Live API Voice
 setupWebSocketServer(server);
 
-// Start the Dograh phone-call poller (no-ops when DOGRAH_* env is unset)
 startCallPoller(supabase);

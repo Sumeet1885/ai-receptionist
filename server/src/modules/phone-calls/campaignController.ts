@@ -4,7 +4,6 @@ import { AuthRequest } from '../../middleware/auth';
 import { supabase } from '../../services/db';
 import { startCampaign, stopCampaign, isCampaignRunning } from './campaignRunner';
 
-// ── Column header detection ──────────────────────────────────────────────────
 
 const PHONE_PATTERNS = ['phone', 'mobile', 'number', 'tel', 'telephone', 'contact number', 'ph', 'cell', 'contact'];
 const NAME_PATTERNS = ['name', 'full name', 'contact', 'customer name', 'client', 'person'];
@@ -17,7 +16,6 @@ function detectColumn(headers: string[], patterns: string[]): string | null {
   return null;
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
 
 async function loadOwnedCampaign(campaignId: string, ownerId: string) {
   const { data, error } = await supabase
@@ -44,20 +42,11 @@ async function loadCampaignBot(campaignId: string, ownerId: string) {
   return bot ? { campaign, bot } : null;
 }
 
-// ── Handlers ─────────────────────────────────────────────────────────────────
 
-/**
- * POST /api/campaigns/bots/:botId/upload
- * Accepts multipart/form-data with fields:
- *   - file: the Excel file (.xlsx / .xls / .csv)
- *   - name: campaign name (optional, defaults to filename)
- *   - hourlyCap: optional integer override for this campaign's hourly call cap
- */
 export async function uploadCampaign(req: AuthRequest, res: Response): Promise<void> {
   const botId = req.params.botId;
   const ownerId = req.user!.id;
 
-  // Verify bot ownership + outbound provisioning
   const { data: bot } = await supabase
     .from('bots')
     .select('id, owner_id, dograh_outbound_workflow_id, dograh_telephony_config_id, dograh_phone_number_id, business_name')
@@ -80,7 +69,6 @@ export async function uploadCampaign(req: AuthRequest, res: Response): Promise<v
     return;
   }
 
-  // Parse Excel
   let workbook: XLSX.WorkBook;
   try {
     workbook = XLSX.read(file.buffer, { type: 'buffer', cellDates: true });
@@ -114,7 +102,6 @@ export async function uploadCampaign(req: AuthRequest, res: Response): Promise<v
     return;
   }
 
-  // Parse campaign metadata
   const campaignName = (req.body?.name as string)?.trim() || file.originalname.replace(/\.[^.]+$/, '') || 'Campaign';
   const hourlyCap = req.body?.hourlyCap ? Number(req.body.hourlyCap) : null;
   if (hourlyCap !== null && (!Number.isFinite(hourlyCap) || hourlyCap < 1 || hourlyCap > 500)) {
@@ -122,7 +109,6 @@ export async function uploadCampaign(req: AuthRequest, res: Response): Promise<v
     return;
   }
 
-  // Create campaign row
   const { data: campaign, error: campaignErr } = await supabase
     .from('call_campaigns')
     .insert({
@@ -142,14 +128,11 @@ export async function uploadCampaign(req: AuthRequest, res: Response): Promise<v
     return;
   }
 
-  // Build contact rows
   const contactRows = rows.map((row, index) => {
     const phoneRaw = String(row[phoneCol] ?? '').trim();
-    // Remove common spreadsheet phone formatting
     const phone = phoneRaw.replace(/[\s\-().]/g, '');
     const name = nameCol ? String(row[nameCol] ?? '').trim() || null : null;
 
-    // extra_data: everything except the phone and name columns
     const extra: Record<string, unknown> = {};
     for (const h of headers) {
       if (h === phoneCol || h === nameCol) continue;
@@ -167,11 +150,9 @@ export async function uploadCampaign(req: AuthRequest, res: Response): Promise<v
     };
   });
 
-  // Filter out rows with no phone number
   const validContacts = contactRows.filter(r => r.phone_number.length >= 7);
   const skipped = contactRows.length - validContacts.length;
 
-  // Batch insert contacts (chunks of 500)
   const CHUNK = 500;
   for (let i = 0; i < validContacts.length; i += CHUNK) {
     const { error: insertErr } = await supabase
@@ -179,20 +160,17 @@ export async function uploadCampaign(req: AuthRequest, res: Response): Promise<v
       .insert(validContacts.slice(i, i + CHUNK));
 
     if (insertErr) {
-      // Cleanup partial campaign
       await supabase.from('call_campaigns').delete().eq('id', campaign.id);
       res.status(500).json({ error: 'Failed to save contacts: ' + insertErr.message });
       return;
     }
   }
 
-  // Update total_contacts to reflect validated count
   await supabase
     .from('call_campaigns')
     .update({ total_contacts: validContacts.length })
     .eq('id', campaign.id);
 
-  // Return preview (first 5 rows)
   const preview = validContacts.slice(0, 5).map(c => ({
     name: c.name,
     phone_number: c.phone_number,
@@ -208,10 +186,7 @@ export async function uploadCampaign(req: AuthRequest, res: Response): Promise<v
   });
 }
 
-/**
- * GET /api/campaigns/bots/:botId
- * Lists all campaigns for a bot, newest first.
- */
+
 export async function listCampaigns(req: AuthRequest, res: Response): Promise<void> {
   const botId = req.params.botId;
   const ownerId = req.user!.id;
@@ -228,7 +203,6 @@ export async function listCampaigns(req: AuthRequest, res: Response): Promise<vo
     return;
   }
 
-  // Annotate running status from in-memory runner
   const campaigns = (data || []).map(c => ({
     ...c,
     isRunningLocally: isCampaignRunning(c.id),
@@ -237,10 +211,6 @@ export async function listCampaigns(req: AuthRequest, res: Response): Promise<vo
   res.json({ campaigns });
 }
 
-/**
- * GET /api/campaigns/:campaignId
- * Returns campaign details + all contacts (with their call results).
- */
 export async function getCampaign(req: AuthRequest, res: Response): Promise<void> {
   const { campaignId } = req.params;
   const ownerId = req.user!.id;
@@ -268,10 +238,6 @@ export async function getCampaign(req: AuthRequest, res: Response): Promise<void
   });
 }
 
-/**
- * POST /api/campaigns/:campaignId/start
- * Starts or resumes the campaign runner.
- */
 export async function startCampaignRoute(req: AuthRequest, res: Response): Promise<void> {
   const { campaignId } = req.params;
   const ownerId = req.user!.id;
@@ -297,7 +263,6 @@ export async function startCampaignRoute(req: AuthRequest, res: Response): Promi
     return;
   }
 
-  // Set status to running in DB
   const { error: updateErr } = await supabase
     .from('call_campaigns')
     .update({ status: 'running' })
@@ -308,16 +273,12 @@ export async function startCampaignRoute(req: AuthRequest, res: Response): Promi
     return;
   }
 
-  // Start the in-memory loop
   startCampaign(campaignId, bot as any, campaign.hourly_cap_override ?? null, supabase);
 
   res.json({ success: true, status: 'running' });
 }
 
-/**
- * POST /api/campaigns/:campaignId/pause
- * Pauses the campaign runner (stops scheduling new calls).
- */
+
 export async function pauseCampaignRoute(req: AuthRequest, res: Response): Promise<void> {
   const { campaignId } = req.params;
   const ownerId = req.user!.id;
@@ -338,10 +299,7 @@ export async function pauseCampaignRoute(req: AuthRequest, res: Response): Promi
   res.json({ success: true, status: 'paused' });
 }
 
-/**
- * DELETE /api/campaigns/:campaignId
- * Stops the runner and deletes the campaign + all contacts.
- */
+
 export async function deleteCampaignRoute(req: AuthRequest, res: Response): Promise<void> {
   const { campaignId } = req.params;
   const ownerId = req.user!.id;
@@ -367,10 +325,7 @@ export async function deleteCampaignRoute(req: AuthRequest, res: Response): Prom
   res.json({ success: true });
 }
 
-/**
- * GET /api/campaigns/:campaignId/export
- * Streams an Excel file with all campaign contacts + call summary data.
- */
+
 export async function exportCampaign(req: AuthRequest, res: Response): Promise<void> {
   const { campaignId } = req.params;
   const ownerId = req.user!.id;
@@ -392,7 +347,6 @@ export async function exportCampaign(req: AuthRequest, res: Response): Promise<v
     return;
   }
 
-  // Collect all unique extra_data keys for dynamic columns
   const extraKeys = new Set<string>();
   for (const c of contacts) {
     if (c.extra_data && typeof c.extra_data === 'object') {
@@ -400,7 +354,6 @@ export async function exportCampaign(req: AuthRequest, res: Response): Promise<v
     }
   }
 
-  // Build worksheet rows
   const wsRows = contacts.map((c, i) => {
     const base: Record<string, unknown> = {
       '#': i + 1,

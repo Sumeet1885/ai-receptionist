@@ -21,7 +21,6 @@ async function authedFetch<T>(path: string, init: RequestInit = {}): Promise<T> 
   return response.json();
 }
 
-// ── Types ────────────────────────────────────────────────────────────────────
 
 export interface Campaign {
   id: string;
@@ -57,7 +56,6 @@ export interface UploadResult {
   detectedColumns: { phone: string; name: string | null };
 }
 
-// ── API ──────────────────────────────────────────────────────────────────────
 
 export const campaignApi = {
   upload: async (
