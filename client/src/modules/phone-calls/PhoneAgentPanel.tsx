@@ -8,9 +8,11 @@ import { dograhApi, DograhNumber, PhoneAgentStatus } from './dograhApi';
 interface PhoneAgentPanelProps {
   botId: string;
   showToast: (message: string, type?: 'success' | 'error') => void;
+  /** Called whenever the provisioned+assigned state changes so siblings can react. */
+  onProvisionedChange?: (isReady: boolean) => void;
 }
 
-export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToast }) => {
+export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToast, onProvisionedChange }) => {
   const [status, setStatus] = useState<PhoneAgentStatus | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [provisioning, setProvisioning] = useState(false);
@@ -38,12 +40,13 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
       setOutboundHourlyCapInput(String(data.outboundHourlyCap));
       setInboundCooldownInput(String(data.inboundCooldownSeconds));
       setInboundHourlyCapInput(String(data.inboundHourlyCap));
+      onProvisionedChange?.(Boolean(data.outboundProvisioned && data.phoneNumber));
     } catch (err: any) {
       showToast(err.message || 'Could not load phone agent status', 'error');
     } finally {
       setLoadingStatus(false);
     }
-  }, [botId, showToast]);
+  }, [botId, showToast, onProvisionedChange]);
 
   const loadNumbers = useCallback(async () => {
     try {
@@ -213,6 +216,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
 
             {status?.outboundProvisioned && status?.phoneNumber && (
               <div className="pt-4 border-t border-brand-border space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-brand-muted">Single Call</p>
                 <p className="text-xs text-brand-muted">Place an outbound call from {status.phoneNumber}. The agent introduces itself generically — it doesn't yet know who it's calling or why.</p>
                 <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
                   <div className="voice-phone-card flex-1">

@@ -25,7 +25,7 @@ app.use(express.json());
 
 import widgetRoutes from './routes/widget.routes';
 import crmRoutes from './routes/crm.routes';
-import { dograhRoutes, phoneToolsRoutes, startCallPoller } from './modules/phone-calls';
+import { dograhRoutes, phoneToolsRoutes, campaignRoutes, startCallPoller } from './modules/phone-calls';
 import { supabase } from './services/db';
 
 // Routes
@@ -35,6 +35,7 @@ app.use('/widget', widgetRoutes);
 app.use('/api/dograh', dograhRoutes);
 app.use('/api/phone-tools', phoneToolsRoutes);
 app.use('/api/crm', crmRoutes);
+app.use('/api/campaigns', campaignRoutes);
 
 app.get('/health', (req, res) => {
   res.json({

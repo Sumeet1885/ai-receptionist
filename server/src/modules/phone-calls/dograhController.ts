@@ -573,6 +573,7 @@ export async function callOut(req: AuthRequest, res: Response): Promise<void> {
 
   const rateLimitError = checkOutboundRateLimit(bot);
   if (rateLimitError) {
+    console.log("Rate limit error : ",rateLimitError);
     res.status(429).json({ error: rateLimitError });
     return;
   }

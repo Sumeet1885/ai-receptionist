@@ -254,5 +254,21 @@ async function ingestRun(
     .eq('id', callRow.id);
   if (finalizeError) throw finalizeError;
 
+  const campaignContactId = (run.initial_context as Record<string, any> | null)?.campaign_contact_id;
+  if (campaignContactId) {
+    const { error: linkError } = await supabase
+      .from('campaign_contacts')
+      .update({
+        phone_call_id: callRow.id,
+        session_id: sessionId,
+      })
+      .eq('id', campaignContactId);
+    if (linkError) {
+      console.error(`[phone-calls] Failed to link campaign contact ${campaignContactId} to phone call ${callRow.id}:`, linkError);
+    } else {
+      console.log(`[phone-calls] Successfully linked campaign contact ${campaignContactId} to phone call ${callRow.id}`);
+    }
+  }
+
   return true;
 }

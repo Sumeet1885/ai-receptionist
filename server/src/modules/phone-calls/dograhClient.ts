@@ -247,6 +247,10 @@ export interface InitiateCallParams {
   phoneNumber: string;
   telephonyConfigId: string | number;
   fromPhoneNumberId: string | number;
+  /** Optional key-value map injected as Dograh's initial_context on the call.
+   *  Use this to embed campaign metadata (e.g. campaign_contact_id) so the poller
+   *  can reliably match the completed Dograh run back to the campaign contact row. */
+  initialContext?: Record<string, unknown>;
 }
 
 export async function initiateCall(params: InitiateCallParams): Promise<unknown> {
@@ -257,6 +261,7 @@ export async function initiateCall(params: InitiateCallParams): Promise<unknown>
       phone_number: params.phoneNumber,
       telephony_configuration_id: Number(params.telephonyConfigId),
       from_phone_number_id: Number(params.fromPhoneNumberId),
+      ...(params.initialContext ? { initial_context: params.initialContext } : {}),
     }),
   });
 }

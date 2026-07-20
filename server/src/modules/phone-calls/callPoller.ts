@@ -4,6 +4,7 @@ import { isDograhConfigured } from './dograhClient';
 import { syncBotCalls } from './callMirror';
 import { DograhProvisionableBot } from './types';
 import { restoreExpiredInboundCapacityWorkflows } from './inboundRateLimiter';
+import { syncCampaignResults } from './campaignSync';
 
 let pollTimer: NodeJS.Timeout | null = null;
 
@@ -26,6 +27,13 @@ async function pollOnce(supabase: SupabaseClient): Promise<void> {
     } catch (err) {
       console.error(`[phone-calls] Poller sync failed for bot ${bot.id}:`, err);
     }
+  }
+
+  // Back-fill campaign contact summaries for any contacts whose Dograh runs have completed.
+  try {
+    await syncCampaignResults(supabase);
+  } catch (err) {
+    console.error('[phone-calls] Campaign result sync failed:', err);
   }
 }
 
