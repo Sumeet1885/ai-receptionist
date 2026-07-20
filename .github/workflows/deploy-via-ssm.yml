@@ -1,0 +1,65 @@
+name: STAGING - Deploy via AWS SSM
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: "Full Commit SHA to deploy"
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Send SSM command to EC2
+        run: |
+          COMMIT_SHA="${{ github.event.inputs.commit_sha }}"
+          SHORT_SHA=$(echo $COMMIT_SHA | cut -c1-7)
+
+          aws ssm send-command \
+            --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploying ai-receptionist commit $SHORT_SHA" \
+            --parameters '{
+              "commands": [
+                "set -e",
+                "cd /home/ec2-user/ai-receptionist",
+                "echo 🔐 Fetching DockerHub password from AWS Secrets Manager...",
+                "DOCKER_PASS=$(aws secretsmanager get-secret-value --secret-id dockerhub-ai-receptionist-password --query SecretString --output text)",
+                "echo 🔑 Logging in to Docker Hub...",
+                "echo $DOCKER_PASS | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin",
+                "echo ✏️  Updating .env with new image tags...",
+                "sed -i \"s/^IMAGE_TAG_SERVER=.*/IMAGE_TAG_SERVER=server-staging-'"$SHORT_SHA"'/\" .env",
+                "sed -i \"s/^IMAGE_TAG_CLIENT=.*/IMAGE_TAG_CLIENT=client-staging-'"$SHORT_SHA"'/\" .env",
+                "echo 📄 Updated image tags:",
+                "grep '"'"'^IMAGE_TAG_'"'"' .env",
+                "echo 🚀 Pulling and restarting containers...",
+                "docker-compose -f docker-compose-staging.yml up -d",
+                "echo ⏳ Waiting 30s for containers to stabilise...",
+                "sleep 30",
+                "echo 🧹 Pruning old images...",
+                "docker image prune -a -f",
+                "echo 📊 Container status:",
+                "docker-compose -f docker-compose-staging.yml ps",
+                "EXIT_CONTAINERS=$(docker-compose -f docker-compose-staging.yml ps | grep Exit || true)",
+                "if [ -n \"$EXIT_CONTAINERS\" ]; then echo \"❌ Some containers exited: $EXIT_CONTAINERS\" && exit 1; else echo \"✅ Deployment successful — all containers running\"; fi"
+              ]
+            }'
+
+      - name: Summary
+        run: |
+          COMMIT_SHA="${{ github.event.inputs.commit_sha }}"
+          SHORT_SHA=$(echo $COMMIT_SHA | cut -c1-7)
+          echo "### ✅ SSM Deploy Command Sent" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`$SHORT_SHA\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Instance:** \`${{ secrets.EC2_INSTANCE_ID }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "> Check AWS Systems Manager → Run Command for live execution logs." >> $GITHUB_STEP_SUMMARY
