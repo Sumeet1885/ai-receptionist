@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Bot } from '../../types';
 import { Icons } from '../../components/common/Icons';
 import { PhoneAgentPanel } from './PhoneAgentPanel';
+import { BulkCallPanel } from './BulkCallPanel';
 import { CallsTable } from './CallsTable';
 import { dograhApi, PhoneCallRecord } from './dograhApi';
 
@@ -13,10 +14,11 @@ interface CallsWorkspaceProps {
 }
 
 export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({ bots, activeBotId, setActiveBotId, showToast }) => {
-  const selectedBotId = activeBotId || bots[0]?.id || null;
+  const selectedBotId = bots.find(b => b.id === activeBotId)?.id || bots[0]?.id || null;
   const [calls, setCalls] = useState<PhoneCallRecord[]>([]);
   const [loadingCalls, setLoadingCalls] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [isAgentProvisioned, setIsAgentProvisioned] = useState(false);
 
   const loadCalls = useCallback(async (botId: string) => {
     setLoadingCalls(true);
@@ -83,7 +85,8 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({ bots, activeBotI
       </aside>
 
       <div className="space-y-4">
-        {selectedBotId && <PhoneAgentPanel botId={selectedBotId} showToast={showToast} />}
+        {selectedBotId && <PhoneAgentPanel botId={selectedBotId} showToast={showToast} onProvisionedChange={setIsAgentProvisioned} />}
+        {selectedBotId && <BulkCallPanel botId={selectedBotId} isProvisioned={isAgentProvisioned} showToast={showToast} />}
         <CallsTable calls={calls} loading={loadingCalls} onSync={handleSync} syncing={syncing} />
       </div>
     </div>
