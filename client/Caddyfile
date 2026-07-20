@@ -4,14 +4,13 @@
 # passes them through as environment variables on the web service).
 
 {$APP_DOMAIN} {
-	root * /srv
-	encode gzip
-	try_files {path} /index.html
-	file_server
-}
 
-{$API_DOMAIN} {
-	# Handles REST, the widget loader, and the live-voice WebSocket the same way -
-	# Caddy upgrades WebSocket connections automatically, no special directive needed.
-	reverse_proxy api:4000
+    handle /api/* {
+        reverse_proxy api:4000
+    }
+
+    root * /srv
+    encode gzip
+    try_files {path} /index.html
+    file_server
 }
