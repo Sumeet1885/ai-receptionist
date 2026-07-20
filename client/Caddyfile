@@ -2,8 +2,7 @@
 # renews a Let's Encrypt TLS cert for each domain (no certbot/nginx config needed).
 # APP_DOMAIN and API_DOMAIN come from the root .env file (docker-compose.yml
 # passes them through as environment variables on the web service).
-
-{$APP_DOMAIN} {
+http://{$APP_DOMAIN} {
 
     handle /api/* {
         reverse_proxy api:4000
