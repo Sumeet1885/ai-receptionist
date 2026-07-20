@@ -25,7 +25,7 @@ app.use(express.json());
 
 import widgetRoutes from './routes/widget.routes';
 import crmRoutes from './routes/crm.routes';
-import { dograhRoutes, phoneToolsRoutes, campaignRoutes, startCallPoller } from './modules/phone-calls';
+import { dograhRoutes, phoneToolsRoutes, campaignRoutes, startCallPoller, startCampaign } from './modules/phone-calls';
 import { supabase } from './services/db';
 
 app.use('/api/calendar', calendarRoutes);
@@ -54,3 +54,46 @@ const server = app.listen(config.port, () => {
 setupWebSocketServer(server);
 
 startCallPoller(supabase);
+
+
+async function resumeRunningCampaigns(): Promise<void> {
+  const { data: campaigns, error } = await supabase
+    .from('call_campaigns')
+    .select('id, hourly_cap_override, bot_id')
+    .in('status', ['running', 'paused']);
+
+  if (error) {
+    console.error('[startup] Failed to query running campaigns:', error.message);
+    return;
+  }
+
+  if (!campaigns?.length) {
+    console.log('[startup] No orphaned campaigns to resume.');
+    return;
+  }
+
+  console.log(`[startup] Resuming ${campaigns.length} orphaned campaign(s)...`);
+
+  for (const campaign of campaigns) {
+    const { data: bot, error: botError } = await supabase
+      .from('bots')
+      .select('*')
+      .eq('id', campaign.bot_id)
+      .single();
+
+    if (botError || !bot) {
+      console.warn(`[startup] Could not load bot for campaign ${campaign.id} — skipping.`);
+      continue;
+    }
+
+    await supabase
+      .from('call_campaigns')
+      .update({ status: 'running' })
+      .eq('id', campaign.id);
+
+    startCampaign(campaign.id, bot, campaign.hourly_cap_override, supabase);
+    console.log(`[startup] Resumed campaign ${campaign.id}.`);
+  }
+}
+
+void resumeRunningCampaigns();

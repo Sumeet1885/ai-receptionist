@@ -23,6 +23,7 @@ import { DograhProvisionableBot } from './types';
 import { buildCapacityWorkflowDefinition, buildLeadExtractionVariables, buildSingleNodeWorkflowDefinition, MAX_CALL_DURATION_SECONDS } from './workflowDefinition';
 import { syncInboundRateLimitWorkflow } from './inboundRateLimiter';
 
+
 const PHONE_DEFAULT_TIMEZONE = 'Asia/Kolkata';
 
 const WORKFLOW_CONFIGURATIONS = { max_call_duration: MAX_CALL_DURATION_SECONDS };
@@ -107,6 +108,7 @@ async function ensurePhoneTools(bot: DograhProvisionableBot): Promise<PhoneToolU
   return { checkAvailabilityToolUuid, bookAppointmentToolUuid };
 }
 
+
 async function ensureCallTimeTool(bot: DograhProvisionableBot): Promise<string> {
   const params = {
     name: `Check Call Time Remaining - ${bot.business_name}`,
@@ -125,6 +127,7 @@ async function ensureCallTimeTool(bot: DograhProvisionableBot): Promise<string> 
   }
   return (await createHttpTool(params)).tool_uuid;
 }
+
 
 async function ensureRateLimitTool(bot: DograhProvisionableBot): Promise<string> {
   const params = {
@@ -180,7 +183,6 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
   try {
     const widgetConfig = mergeWidgetConfig((bot as any).widget_config, bot);
     const extractionVariables = buildLeadExtractionVariables(withoutAutoKnownPhoneField(widgetConfig));
-
     const callTimeToolUuid = await ensureCallTimeTool(bot);
     const rateLimitToolUuid = await ensureRateLimitTool(bot);
     const preCallFetchBase = `${config.phoneTools.callbackBaseUrl}/api/phone-tools/${botId}/pre-call?key=${config.phoneTools.apiKey}`;
@@ -521,7 +523,6 @@ export async function callOut(req: AuthRequest, res: Response): Promise<void> {
 
   const rateLimitError = checkOutboundRateLimit(bot);
   if (rateLimitError) {
-    console.log("Rate limit error : ",rateLimitError);
     res.status(429).json({ error: rateLimitError });
     return;
   }

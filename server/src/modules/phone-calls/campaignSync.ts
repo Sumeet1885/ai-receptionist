@@ -26,12 +26,18 @@ export async function syncCampaignResults(supabase: SupabaseClient): Promise<voi
 
       if (!matchedCall) continue;
 
+      console.warn(
+        `[campaignSync] FALLBACK match used for contact ${contact.id} ` +
+        `(phone: ${contact.phone_number}) → phone_call ${matchedCall.id}. `
+      );
+
       await supabase
         .from('campaign_contacts')
         .update({ phone_call_id: matchedCall.id, session_id: matchedCall.session_id })
         .eq('id', contact.id);
 
-    } catch (_) {
+    } catch (err) {
+      console.error(`[campaignSync] Error linking contact ${contact.id} via fallback:`, err);
     }
   }
 
@@ -92,21 +98,10 @@ export async function syncCampaignResults(supabase: SupabaseClient): Promise<voi
         })
         .eq('id', contact.id);
 
-      await supabase
-        .from('call_campaigns')
-        .update({ called_count: (await getCampaignCalledCount(contact.campaign_id, supabase)) })
-        .eq('id', contact.campaign_id);
+      await supabase.rpc('increment_campaign_called_count', { campaign_id_arg: contact.campaign_id });
 
-    } catch (_) {
+    } catch (err) {
+      console.error(`[campaignSync] Error processing linked contact ${contact.id}:`, err);
     }
   }
-}
-
-async function getCampaignCalledCount(campaignId: string, supabase: SupabaseClient): Promise<number> {
-  const { count } = await supabase
-    .from('campaign_contacts')
-    .select('id', { count: 'exact', head: true })
-    .eq('campaign_id', campaignId)
-    .in('call_status', ['done', 'failed', 'calling']);
-  return count ?? 0;
 }

@@ -1,8 +1,27 @@
 import { Response } from 'express';
 import * as XLSX from 'xlsx';
+import { parsePhoneNumberFromString } from 'libphonenumber-js/max';
 import { AuthRequest } from '../../middleware/auth';
 import { supabase } from '../../services/db';
 import { startCampaign, stopCampaign, isCampaignRunning } from './campaignRunner';
+
+
+function normalisePhone(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  const isInternational = /^\+[1-9]\d+$/.test(trimmed);
+  const isLikelyIndian  = /^\d{10}$/.test(trimmed);
+
+  const parsed = isInternational
+    ? parsePhoneNumberFromString(trimmed)
+    : isLikelyIndian
+      ? parsePhoneNumberFromString(trimmed, 'IN')
+      : parsePhoneNumberFromString(trimmed);
+
+  if (!parsed?.isValid()) return null;
+  return parsed.number;
+}
 
 
 const PHONE_PATTERNS = ['phone', 'mobile', 'number', 'tel', 'telephone', 'contact number', 'ph', 'cell', 'contact'];
@@ -128,9 +147,26 @@ export async function uploadCampaign(req: AuthRequest, res: Response): Promise<v
     return;
   }
 
-  const contactRows = rows.map((row, index) => {
+  const validContacts: Array<{
+    campaign_id: string;
+    bot_id: string;
+    phone_number: string;
+    name: string | null;
+    extra_data: Record<string, unknown> | null;
+    call_status: string;
+    row_index: number;
+  }> = [];
+  let skipped = 0;
+
+  rows.forEach((row, index) => {
     const phoneRaw = String(row[phoneCol] ?? '').trim();
-    const phone = phoneRaw.replace(/[\s\-().]/g, '');
+    const phone = normalisePhone(phoneRaw);
+
+    if (!phone) {
+      skipped++;
+      return; 
+    }
+
     const name = nameCol ? String(row[nameCol] ?? '').trim() || null : null;
 
     const extra: Record<string, unknown> = {};
@@ -139,7 +175,7 @@ export async function uploadCampaign(req: AuthRequest, res: Response): Promise<v
       extra[h] = row[h];
     }
 
-    return {
+    validContacts.push({
       campaign_id: campaign.id,
       bot_id: botId,
       phone_number: phone,
@@ -147,11 +183,8 @@ export async function uploadCampaign(req: AuthRequest, res: Response): Promise<v
       extra_data: Object.keys(extra).length > 0 ? extra : null,
       call_status: 'pending',
       row_index: index,
-    };
+    });
   });
-
-  const validContacts = contactRows.filter(r => r.phone_number.length >= 7);
-  const skipped = contactRows.length - validContacts.length;
 
   const CHUNK = 500;
   for (let i = 0; i < validContacts.length; i += CHUNK) {

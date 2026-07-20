@@ -160,7 +160,7 @@ async function pauseForRateLimit(campaignId: string, supabase: SupabaseClient): 
     await supabase.from('call_campaigns').update({ status: 'running' }).eq('id', campaignId);
     const cap = Math.min(data.hourly_cap_override ?? DEFAULT_HOURLY_CAP, MAX_HOURLY_CAP);
     void advanceLoop(campaignId, bot, cap, supabase);
-  }, msUntilNextHour + 5000); // +5s buffer
+  }, msUntilNextHour + 5000); 
 
   activeCampaigns.set(campaignId, handle);
 }
