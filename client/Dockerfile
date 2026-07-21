@@ -6,12 +6,12 @@ RUN npm ci
 
 COPY . .
 
-# Vite embeds these at build time, so they must be passed as build args
-# (docker compose build --build-arg, or the `args:` block in docker-compose.yml).
-ARG VITE_SUPABASE_URL
-ARG VITE_SUPABASE_PUBLISHABLE_KEY
-ARG VITE_EXPRESS_SERVER_URL
-ARG VITE_WIDGET_BASE_URL
+# Vite embeds these at build time. Defaults are hardcoded here so the image
+# builds correctly without --build-arg.  Override with --build-arg if needed.
+ARG VITE_SUPABASE_URL="https://xdwcrsydlzprtldkwqzh.supabase.co"
+ARG VITE_SUPABASE_PUBLISHABLE_KEY="sb_publishable_fvHLCT-vSL2xPmhEzbVBiA__qYmKzey"
+ARG VITE_EXPRESS_SERVER_URL="http://15.206.125.45/api"
+ARG VITE_WIDGET_BASE_URL="http://15.206.125.45/api"
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
 ENV VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY
 ENV VITE_EXPRESS_SERVER_URL=$VITE_EXPRESS_SERVER_URL
