@@ -1,13 +1,17 @@
-# Two domains, one EC2 instance, one Caddy process - Caddy auto-provisions and
-# renews a Let's Encrypt TLS cert for each domain (no certbot/nginx config needed).
-# APP_DOMAIN and API_DOMAIN come from the root .env file (docker-compose.yml
-# passes them through as environment variables on the web service).
-{$APP_DOMAIN} {
+# Subdomain: reception.clarusgrid.online
+# Caddy auto-provisions and renews a Let's Encrypt TLS cert automatically.
+# No certbot or nginx config needed - just make sure port 80 and 443 are
+# open in your EC2 Security Group and the DNS A record for "reception"
+# points to your EC2 IP in Hostinger's DNS zone.
 
+reception.clarusgrid.online {
+
+    # All /api/* requests → Express backend (api service on port 4000)
     handle /api/* {
         reverse_proxy api:4000
     }
 
+    # Everything else → Vite-built React SPA
     root * /srv
     encode gzip
     try_files {path} /index.html
