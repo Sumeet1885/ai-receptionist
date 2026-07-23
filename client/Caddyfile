@@ -11,6 +11,11 @@ reception.clarusgrid.online {
         reverse_proxy api:4000
     }
 
+    # All /widget/* requests → Express backend (api service on port 4000)
+    handle /widget/* {
+        reverse_proxy api:4000
+    }
+
     # Everything else → Vite-built React SPA
     root * /srv
     encode gzip
