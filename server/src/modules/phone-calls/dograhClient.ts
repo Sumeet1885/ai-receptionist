@@ -271,7 +271,7 @@ export async function getRun(workflowId: string, runId: string | number): Promis
 export async function fetchTranscript(transcriptUrl: string): Promise<unknown> {
   const response = await fetch(transcriptUrl);
   if (!response.ok) {
-    throw new Error(`Failed to fetch transcript at ${transcriptUrl}: ${response.status}`);
+    throw new DograhApiError(`Failed to fetch transcript at ${transcriptUrl}: ${response.status}`, response.status);
   }
   const contentType = response.headers.get('content-type') || '';
   return contentType.includes('application/json') ? response.json() : response.text();

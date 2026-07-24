@@ -1,6 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { analyzeLead } from '../../controllers/leadController';
-import { fetchTranscript, getRun, listRuns } from './dograhClient';
+import { DograhApiError, fetchTranscript, getRun, listRuns } from './dograhClient';
 import { DograhProvisionableBot, DograhRunDetail } from './types';
 import { config } from '../../config';
 
@@ -235,7 +235,7 @@ async function ingestRun(
           .join('\n');
       }
     } catch (err: any) {
-      if (err.message && err.message.includes('404')) {
+      if (err instanceof DograhApiError && err.status === 404) {
         console.warn(`[phone-calls] Transcript not found (404) for run ${runId} of bot ${bot.id}. Proceeding with empty transcript.`);
       } else {
         throw err;
