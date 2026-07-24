@@ -46,7 +46,6 @@ async function request<T>(path: string, init: RequestInit = {}, retrying = false
     throw new Error('Dograh is not configured (DOGRAH_EMAIL/DOGRAH_PASSWORD missing).');
   }
   const token = cachedToken ?? (await login());
-  console.log("Dograh Request URL:", `${apiUrl}${path}`);
   const response = await fetch(`${apiUrl}${path}`, {
     ...init,
     headers: {
