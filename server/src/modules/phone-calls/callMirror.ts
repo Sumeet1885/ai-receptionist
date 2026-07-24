@@ -2,6 +2,15 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { analyzeLead } from '../../controllers/leadController';
 import { fetchTranscript, getRun, listRuns } from './dograhClient';
 import { DograhProvisionableBot, DograhRunDetail } from './types';
+import { config } from '../../config';
+
+function resolveDograhUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  const base = config.dograh.apiUrl.replace(/\/+$/, '');
+  const path = url.replace(/^\/+/, '');
+  return `${base}/${path}`;
+}
 
 interface TranscriptTurn {
   sender: 'user' | 'bot';
@@ -133,6 +142,7 @@ export async function syncBotCalls(bot: DograhProvisionableBot, supabase: Supaba
         await supabase
           .from('phone_calls')
           .update({ ingest_status: 'failed' })
+          .eq('dograh_workflow_id', workflowId)
           .eq('dograh_run_id', String(runSummary.id));
       }
     }
@@ -167,6 +177,7 @@ async function ingestRun(
     const { data: existing, error: fetchError } = await supabase
       .from('phone_calls')
       .select('*')
+      .eq('dograh_workflow_id', workflowId)
       .eq('dograh_run_id', dograhRunId)
       .single();
     if (fetchError || !existing) throw insertError;
@@ -206,21 +217,29 @@ async function ingestRun(
     if (bindError) throw bindError;
   }
 
-  const transcriptUrl = run.transcript_public_url || run.transcript_url;
-  const recordingUrl = run.recording_public_url || run.recording_url;
+  const transcriptUrl = resolveDograhUrl(run.transcript_public_url || run.transcript_url);
+  const recordingUrl = resolveDograhUrl(run.recording_public_url || run.recording_url);
   const counterpartyNumber = extractCounterpartyNumber(run);
   const callerEmail = extractCallerEmail(run);
   let transcript = '';
   if (transcriptUrl) {
-    const raw = await fetchTranscript(transcriptUrl);
-    const turns = parseTranscript(raw);
-    if (turns.length > 0) {
-      await supabase.from('messages').insert(
-        turns.map(turn => ({ session_id: sessionId, sender: turn.sender, content: turn.content }))
-      );
-      transcript = turns
-        .map(turn => `${turn.sender === 'user' ? 'Visitor' : 'Receptionist'}: ${turn.content}`)
-        .join('\n');
+    try {
+      const raw = await fetchTranscript(transcriptUrl);
+      const turns = parseTranscript(raw);
+      if (turns.length > 0) {
+        await supabase.from('messages').insert(
+          turns.map(turn => ({ session_id: sessionId, sender: turn.sender, content: turn.content }))
+        );
+        transcript = turns
+          .map(turn => `${turn.sender === 'user' ? 'Visitor' : 'Receptionist'}: ${turn.content}`)
+          .join('\n');
+      }
+    } catch (err: any) {
+      if (err.message && err.message.includes('404')) {
+        console.warn(`[phone-calls] Transcript not found (404) for run ${runId} of bot ${bot.id}. Proceeding with empty transcript.`);
+      } else {
+        throw err;
+      }
     }
   }
 

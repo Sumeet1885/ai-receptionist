@@ -16,11 +16,14 @@ export function isDograhConfigured(): boolean {
 let cachedToken: string | null = null;
 
 async function login(): Promise<string> {
+
+  
   const response = await fetch(`${apiUrl}/api/v1/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
+
   if (!response.ok) {
     throw new Error(`Dograh login failed: ${response.status} ${await response.text()}`);
   }
@@ -29,12 +32,21 @@ async function login(): Promise<string> {
   return cachedToken;
 }
 
+export class DograhApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+    this.name = 'DograhApiError';
+  }
+}
+
 async function request<T>(path: string, init: RequestInit = {}, retrying = false): Promise<T> {
   if (!isDograhConfigured()) {
     throw new Error('Dograh is not configured (DOGRAH_EMAIL/DOGRAH_PASSWORD missing).');
   }
   const token = cachedToken ?? (await login());
-
+  console.log("Dograh Request URL:", `${apiUrl}${path}`);
   const response = await fetch(`${apiUrl}${path}`, {
     ...init,
     headers: {
@@ -50,7 +62,7 @@ async function request<T>(path: string, init: RequestInit = {}, retrying = false
   }
 
   if (!response.ok) {
-    throw new Error(`Dograh API error on ${path}: ${response.status} ${await response.text()}`);
+    throw new DograhApiError(`Dograh API error on ${path}: ${response.status} ${await response.text()}`, response.status);
   }
 
   if (response.status === 204) return undefined as T;

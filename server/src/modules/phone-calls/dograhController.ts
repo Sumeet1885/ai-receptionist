@@ -18,6 +18,7 @@ import {
   updateEndCallTool,
   updateHttpTool,
   updateWorkflowInPlace,
+  DograhApiError,
 } from './dograhClient';
 import { DograhProvisionableBot } from './types';
 import { buildCapacityWorkflowDefinition, buildLeadExtractionVariables, buildSingleNodeWorkflowDefinition, MAX_CALL_DURATION_SECONDS } from './workflowDefinition';
@@ -93,14 +94,30 @@ async function ensurePhoneTools(bot: DograhProvisionableBot): Promise<PhoneToolU
 
   let checkAvailabilityToolUuid = bot.dograh_check_availability_tool_uuid;
   if (checkAvailabilityToolUuid) {
-    await updateHttpTool(checkAvailabilityToolUuid, checkAvailabilityParams);
+    try {
+      await updateHttpTool(checkAvailabilityToolUuid, checkAvailabilityParams);
+    } catch (err: any) {
+      if (err instanceof DograhApiError && err.status === 404) {
+        checkAvailabilityToolUuid = (await createHttpTool(checkAvailabilityParams)).tool_uuid;
+      } else {
+        throw err;
+      }
+    }
   } else {
     checkAvailabilityToolUuid = (await createHttpTool(checkAvailabilityParams)).tool_uuid;
   }
 
   let bookAppointmentToolUuid = bot.dograh_book_appointment_tool_uuid;
   if (bookAppointmentToolUuid) {
-    await updateHttpTool(bookAppointmentToolUuid, bookAppointmentParams);
+    try {
+      await updateHttpTool(bookAppointmentToolUuid, bookAppointmentParams);
+    } catch (err: any) {
+      if (err instanceof DograhApiError && err.status === 404) {
+        bookAppointmentToolUuid = (await createHttpTool(bookAppointmentParams)).tool_uuid;
+      } else {
+        throw err;
+      }
+    }
   } else {
     bookAppointmentToolUuid = (await createHttpTool(bookAppointmentParams)).tool_uuid;
   }
@@ -122,8 +139,15 @@ async function ensureCallTimeTool(bot: DograhProvisionableBot): Promise<string> 
   };
 
   if (bot.dograh_call_time_tool_uuid) {
-    await updateHttpTool(bot.dograh_call_time_tool_uuid, params);
-    return bot.dograh_call_time_tool_uuid;
+    try {
+      await updateHttpTool(bot.dograh_call_time_tool_uuid, params);
+      return bot.dograh_call_time_tool_uuid;
+    } catch (err: any) {
+      if (err instanceof DograhApiError && err.status === 404) {
+        return (await createHttpTool(params)).tool_uuid;
+      }
+      throw err;
+    }
   }
   return (await createHttpTool(params)).tool_uuid;
 }
@@ -136,17 +160,35 @@ async function ensureRateLimitTool(bot: DograhProvisionableBot): Promise<string>
   };
 
   if (bot.dograh_rate_limit_tool_uuid) {
-    await updateEndCallTool(bot.dograh_rate_limit_tool_uuid, params);
-    return bot.dograh_rate_limit_tool_uuid;
+    try {
+      await updateEndCallTool(bot.dograh_rate_limit_tool_uuid, params);
+      return bot.dograh_rate_limit_tool_uuid;
+    } catch (err: any) {
+      if (err instanceof DograhApiError && err.status === 404) {
+        return (await createEndCallTool(params)).tool_uuid;
+      }
+      throw err;
+    }
   }
   return (await createEndCallTool(params)).tool_uuid;
 }
 
 async function ensureCapacityWorkflow(bot: DograhProvisionableBot, endCallToolUuid: string) {
   const definition = buildCapacityWorkflowDefinition(endCallToolUuid);
-  const workflow = bot.dograh_capacity_workflow_id
-    ? await updateWorkflowInPlace(bot.dograh_capacity_workflow_id, definition, CAPACITY_WORKFLOW_CONFIGURATIONS)
-    : await createWorkflowFromDefinition(`AI receptionist capacity hangup for ${bot.business_name}`, definition, CAPACITY_WORKFLOW_CONFIGURATIONS);
+  let workflow;
+  if (bot.dograh_capacity_workflow_id) {
+    try {
+      workflow = await updateWorkflowInPlace(bot.dograh_capacity_workflow_id, definition, CAPACITY_WORKFLOW_CONFIGURATIONS);
+    } catch (err: any) {
+      if (err instanceof DograhApiError && err.status === 404) {
+        workflow = await createWorkflowFromDefinition(`AI receptionist capacity hangup for ${bot.business_name}`, definition, CAPACITY_WORKFLOW_CONFIGURATIONS);
+      } else {
+        throw err;
+      }
+    }
+  } else {
+    workflow = await createWorkflowFromDefinition(`AI receptionist capacity hangup for ${bot.business_name}`, definition, CAPACITY_WORKFLOW_CONFIGURATIONS);
+  }
   await publishWorkflow(workflow.id);
   return workflow;
 }
@@ -210,9 +252,21 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
       toolUuids,
       preCallFetchUrl: inboundPreCallFetchUrl,
     });
-    const inboundWorkflow = bot.dograh_workflow_id
-      ? await updateWorkflowInPlace(bot.dograh_workflow_id, inboundDefinition, WORKFLOW_CONFIGURATIONS)
-      : await createWorkflowFromDefinition(`AI receptionist for ${bot.business_name}`, inboundDefinition, WORKFLOW_CONFIGURATIONS);
+
+    let inboundWorkflow;
+    if (bot.dograh_workflow_id) {
+      try {
+        inboundWorkflow = await updateWorkflowInPlace(bot.dograh_workflow_id, inboundDefinition, WORKFLOW_CONFIGURATIONS);
+      } catch (err: any) {
+        if (err instanceof DograhApiError && err.status === 404) {
+          inboundWorkflow = await createWorkflowFromDefinition(`AI receptionist for ${bot.business_name}`, inboundDefinition, WORKFLOW_CONFIGURATIONS);
+        } else {
+          throw err;
+        }
+      }
+    } else {
+      inboundWorkflow = await createWorkflowFromDefinition(`AI receptionist for ${bot.business_name}`, inboundDefinition, WORKFLOW_CONFIGURATIONS);
+    }
     await publishWorkflow(inboundWorkflow.id);
 
     const outboundInstruction = buildDograhOutboundInstruction(bot, widgetConfig, { timezone: PHONE_DEFAULT_TIMEZONE, useToolBasedBooking: useTools });
@@ -224,9 +278,20 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
       toolUuids,
       preCallFetchUrl: outboundPreCallFetchUrl,
     });
-    const outboundWorkflow = bot.dograh_outbound_workflow_id
-      ? await updateWorkflowInPlace(bot.dograh_outbound_workflow_id, outboundDefinition, WORKFLOW_CONFIGURATIONS)
-      : await createWorkflowFromDefinition(`AI outbound caller for ${bot.business_name}`, outboundDefinition, WORKFLOW_CONFIGURATIONS);
+    let outboundWorkflow;
+    if (bot.dograh_outbound_workflow_id) {
+      try {
+        outboundWorkflow = await updateWorkflowInPlace(bot.dograh_outbound_workflow_id, outboundDefinition, WORKFLOW_CONFIGURATIONS);
+      } catch (err: any) {
+        if (err instanceof DograhApiError && err.status === 404) {
+          outboundWorkflow = await createWorkflowFromDefinition(`AI outbound caller for ${bot.business_name}`, outboundDefinition, WORKFLOW_CONFIGURATIONS);
+        } else {
+          throw err;
+        }
+      }
+    } else {
+      outboundWorkflow = await createWorkflowFromDefinition(`AI outbound caller for ${bot.business_name}`, outboundDefinition, WORKFLOW_CONFIGURATIONS);
+    }
     await publishWorkflow(outboundWorkflow.id);
 
     const capacityWorkflow = await ensureCapacityWorkflow(bot, rateLimitToolUuid);

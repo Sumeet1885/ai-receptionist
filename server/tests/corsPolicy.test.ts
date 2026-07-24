@@ -17,6 +17,12 @@ test('allows only configured application and backend origins globally', () => {
   assert.equal(isTrustedCorsOrigin('https://evil.example.com', trustedOrigins), false);
 });
 
+test('allows localhost and loopback origins dynamically', () => {
+  assert.equal(isTrustedCorsOrigin('http://localhost:5173', trustedOrigins), true);
+  assert.equal(isTrustedCorsOrigin('http://127.0.0.1:3000', trustedOrigins), true);
+  assert.equal(isTrustedCorsOrigin('http://[::1]:8080', trustedOrigins), true);
+});
+
 test('normalizes configured origins before comparison', () => {
   assert.equal(
     isTrustedCorsOrigin('https://app.example.com', ['https://app.example.com/']),

@@ -11,6 +11,15 @@ function normalizeOrigin(value: string): string {
   }
 }
 
+function isLoopbackOrigin(origin: string): boolean {
+  try {
+    const hostname = new URL(origin).hostname.toLowerCase();
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '[::1]';
+  } catch {
+    return false;
+  }
+}
+
 export function isTrustedCorsOrigin(
   requestOrigin: string | undefined,
   trustedOrigins: string[],
@@ -19,6 +28,10 @@ export function isTrustedCorsOrigin(
 
   const normalizedRequestOrigin = normalizeOrigin(requestOrigin);
   if (!normalizedRequestOrigin) return false;
+
+  if (isLoopbackOrigin(normalizedRequestOrigin)) {
+    return true;
+  }
 
   return trustedOrigins.some(origin => normalizeOrigin(origin) === normalizedRequestOrigin);
 }

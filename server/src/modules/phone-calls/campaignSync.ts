@@ -8,36 +8,38 @@ export async function syncCampaignResults(supabase: SupabaseClient): Promise<voi
     .is('phone_call_id', null)
     .limit(100);
 
-  if (error || !contacts || contacts.length === 0) return;
+  if (error) {
+    console.error('[campaignSync] Error fetching unlinked contacts:', error);
+  } else if (contacts && contacts.length > 0) {
+    for (const contact of contacts) {
+      try {
+        if (!contact.called_at) continue;
 
-  for (const contact of contacts) {
-    try {
-      if (!contact.called_at) continue;
+        const since = new Date(new Date(contact.called_at).getTime() - 5 * 60 * 1000).toISOString();
+        const { data: matchedCall } = await supabase
+          .from('phone_calls')
+          .select('id, session_id, ingest_status, duration_seconds, status')
+          .eq('caller_number', contact.phone_number)
+          .gte('started_at', since)
+          .order('started_at', { ascending: true })
+          .limit(1)
+          .single();
 
-      const since = new Date(new Date(contact.called_at).getTime() - 5 * 60 * 1000).toISOString();
-      const { data: matchedCall } = await supabase
-        .from('phone_calls')
-        .select('id, session_id, ingest_status, duration_seconds, status')
-        .eq('caller_number', contact.phone_number)
-        .gte('started_at', since)
-        .order('started_at', { ascending: true })
-        .limit(1)
-        .single();
+        if (!matchedCall) continue;
 
-      if (!matchedCall) continue;
+        console.warn(
+          `[campaignSync] FALLBACK match used for contact ${contact.id} ` +
+          `(phone: ${contact.phone_number}) → phone_call ${matchedCall.id}. `
+        );
 
-      console.warn(
-        `[campaignSync] FALLBACK match used for contact ${contact.id} ` +
-        `(phone: ${contact.phone_number}) → phone_call ${matchedCall.id}. `
-      );
+        await supabase
+          .from('campaign_contacts')
+          .update({ phone_call_id: matchedCall.id, session_id: matchedCall.session_id })
+          .eq('id', contact.id);
 
-      await supabase
-        .from('campaign_contacts')
-        .update({ phone_call_id: matchedCall.id, session_id: matchedCall.session_id })
-        .eq('id', contact.id);
-
-    } catch (err) {
-      console.error(`[campaignSync] Error linking contact ${contact.id} via fallback:`, err);
+      } catch (err) {
+        console.error(`[campaignSync] Error linking contact ${contact.id} via fallback:`, err);
+      }
     }
   }
 
