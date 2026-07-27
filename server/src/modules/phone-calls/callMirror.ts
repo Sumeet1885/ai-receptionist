@@ -24,12 +24,6 @@ function senderForRole(role: string): 'user' | 'bot' {
   return USER_ROLE_HINTS.some(hint => normalized.includes(hint)) ? 'user' : 'bot';
 }
 
-/**
- * Dograh's transcript payload shape isn't pinned down by the OpenAPI schema. The public
- * download endpoint returns a plain-text `.txt` ("Speaker: line" per turn); some deployments
- * return a JSON array. This tolerates both — a JSON array of {role|speaker, content|text|message}
- * turns, or a line-based "Role: content" text transcript — instead of assuming one format.
- */
 function parseTranscript(raw: unknown): TranscriptTurn[] {
   if (Array.isArray(raw)) {
     return raw
@@ -43,9 +37,7 @@ function parseTranscript(raw: unknown): TranscriptTurn[] {
   }
 
   if (typeof raw === 'string' && raw.trim()) {
-    // Line-based "[ISO timestamp] Speaker: utterance" format (confirmed against Dograh's actual
-    // public transcript download). Lines without a recognizable speaker prefix are treated as
-    // continuations of the previous turn (multi-line utterances), so nothing is lost.
+
     const turns: TranscriptTurn[] = [];
     for (const line of raw.split(/\r?\n/)) {
       const trimmed = line.trim().replace(/^\[[^\]]*\]\s*/, '');
@@ -56,7 +48,6 @@ function parseTranscript(raw: unknown): TranscriptTurn[] {
       } else if (turns.length > 0) {
         turns[turns.length - 1].content += ` ${trimmed}`;
       } else {
-        // No speaker prefix at all (free-form note) — keep it rather than drop the call's content.
         turns.push({ sender: 'bot', content: trimmed });
       }
     }
@@ -66,11 +57,7 @@ function parseTranscript(raw: unknown): TranscriptTurn[] {
   return [];
 }
 
-/**
- * The number of the OTHER party on the call (shown in the UI). For inbound that's the external
- * caller; for outbound it's the number we dialed — NOT `caller_number`, which on an outbound run
- * is the bot's own Twilio caller ID and would mislead the owner about who was contacted.
- */
+
 function extractCounterpartyNumber(run: DograhRunDetail): string | null {
   const initial = run.initial_context as Record<string, any> | null;
   const gathered = run.gathered_context as Record<string, any> | null;
@@ -87,9 +74,6 @@ function extractCounterpartyNumber(run: DograhRunDetail): string | null {
   );
 }
 
-/** Dograh's own extraction_variables (see EXTRACTION_FIELD_SPECS in workflowDefinition.ts)
- * already captures the caller's email as a structured field during the call - more reliable than
- * re-deriving it from the transcript text via Groq, the same reasoning as extractCounterpartyNumber. */
 function extractCallerEmail(run: DograhRunDetail): string | null {
   const gathered = run.gathered_context as Record<string, any> | null;
   return gathered?.caller_email || gathered?.extracted_variables?.caller_email || null;
@@ -112,13 +96,7 @@ export interface SyncResult {
   failed: number;
 }
 
-/**
- * Pulls completed Dograh runs for one bot's workflows (inbound and, if provisioned, outbound)
- * and mirrors each into Supabase (chat_sessions + messages + leads), claim-first so a crash
- * mid-sync is resumable without creating duplicate sessions. Pure function of
- * (bot, Dograh API, Supabase) — never invoked as a side effect of a read; only the poller and
- * the explicit "Sync now" action call this.
- */
+
 export async function syncBotCalls(bot: DograhProvisionableBot, supabase: SupabaseClient): Promise<SyncResult> {
   const workflowIds = [bot.dograh_workflow_id, bot.dograh_outbound_workflow_id].filter(
     (id): id is string => Boolean(id)
@@ -159,8 +137,6 @@ async function ingestRun(
 ): Promise<boolean> {
   const dograhRunId = String(runId);
 
-  // 1. Claim. `on conflict do nothing` semantics via insert-then-fetch-on-conflict, since
-  // dograh_run_id is unique. session_id is left null — the claim precedes the session.
   let callRow: any;
   const { data: inserted, error: insertError } = await supabase
     .from('phone_calls')
@@ -238,14 +214,14 @@ async function ingestRun(
       if (err instanceof DograhApiError && err.status === 404) {
         const duration = extractDurationSeconds(run) ?? 0;
         const runAgeMs = Date.now() - new Date(run.created_at).getTime();
-        const MAX_RETRY_AGE_MS = 2 * 60 * 1000; // 2 minutes retry window
+        const MAX_RETRY_AGE_MS = 2 * 60 * 1000; 
 
         if (duration > 0 && runAgeMs < MAX_RETRY_AGE_MS) {
           console.warn(
             `[phone-calls] Transcript not found (404) for run ${runId} of bot ${bot.id} ` +
             `(duration: ${duration}s, age: ${Math.round(runAgeMs / 1000)}s). Delaying ingestion to retry.`
           );
-          return false; // Return false to leave ingest_status as 'pending' and retry on next poll
+          return false; 
         }
 
         console.warn(

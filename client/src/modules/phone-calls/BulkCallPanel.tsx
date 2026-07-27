@@ -8,7 +8,6 @@ interface BulkCallPanelProps {
   showToast: (message: string, type?: 'success' | 'error') => void;
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
 
 function UploadZone({
   onFileSelected,
@@ -46,7 +45,6 @@ function UploadZone({
       />
       <div className="flex flex-col items-center gap-3">
         <div className="w-12 h-12 rounded-full bg-brand-accent/10 border border-brand-accent/20 flex items-center justify-center text-brand-accent">
-          {/* Upload cloud icon */}
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
@@ -116,26 +114,21 @@ function ProgressBar({ total, called }: { total: number; called: number }) {
   );
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
 
 export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvisioned, showToast }) => {
-  // Upload state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [campaignName, setCampaignName] = useState('');
   const [hourlyCap, setHourlyCap] = useState('100');
   const [uploading, setUploading] = useState(false);
   const [uploadPreview, setUploadPreview] = useState<{ phone_number: string; name: string | null }[] | null>(null);
 
-  // Campaign list state
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loadingCampaigns, setLoadingCampaigns] = useState(true);
 
-  // Active campaign detail state
   const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
   const [campaignDetail, setCampaignDetail] = useState<{ campaign: Campaign; contacts: CampaignContact[] } | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  // Action loading states
   const [actionLoading, setActionLoading] = useState<string | null>(null); // campaignId being acted on
   const [exporting, setExporting] = useState<string | null>(null);
 
@@ -156,14 +149,12 @@ export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvision
 
   useEffect(() => { void loadCampaigns(); }, [loadCampaigns]);
 
-  // ── Poll active campaign for progress ───────────────────────────────────────
 
   const loadDetail = useCallback(async (id: string) => {
     setDetailLoading(true);
     try {
       const data = await campaignApi.get(id);
       setCampaignDetail(data);
-      // Update the campaign in the list too
       setCampaigns(prev => prev.map(c => c.id === id ? { ...data.campaign } : c));
     } catch (err: any) {
       showToast(err.message || 'Could not load campaign details', 'error');
@@ -178,7 +169,6 @@ export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvision
 
     void loadDetail(activeCampaignId);
 
-    // Poll every 5s while a campaign is running/paused
     pollRef.current = setInterval(async () => {
       try {
         const data = await campaignApi.get(activeCampaignId);
@@ -194,7 +184,6 @@ export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvision
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [activeCampaignId, loadDetail]);
 
-  // ── File selection ──────────────────────────────────────────────────────────
 
   const handleFileSelected = (file: File) => {
     setSelectedFile(file);
@@ -202,7 +191,6 @@ export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvision
     if (!campaignName) setCampaignName(file.name.replace(/\.[^.]+$/, ''));
   };
 
-  // ── Upload ──────────────────────────────────────────────────────────────────
 
   const handleUpload = async () => {
     if (!selectedFile) return;
@@ -218,7 +206,6 @@ export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvision
       showToast(`Campaign created! ${result.contactCount} contacts imported.`, 'success');
       setUploadPreview(result.preview);
       await loadCampaigns();
-      // Auto-open the new campaign
       setActiveCampaignId(result.campaignId);
     } catch (err: any) {
       showToast(err.message || 'Upload failed', 'error');
@@ -228,7 +215,6 @@ export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvision
     }
   };
 
-  // ── Start / Pause ───────────────────────────────────────────────────────────
 
   const handleStart = async (campaignId: string) => {
     setActionLoading(campaignId);
@@ -258,7 +244,6 @@ export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvision
     }
   };
 
-  // ── Delete ──────────────────────────────────────────────────────────────────
 
   const handleDelete = async (campaignId: string) => {
     if (!confirm('Delete this campaign and all its contacts? This cannot be undone.')) return;
@@ -278,7 +263,6 @@ export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvision
     }
   };
 
-  // ── Export ──────────────────────────────────────────────────────────────────
 
   const handleExport = async (campaignId: string, name: string) => {
     setExporting(campaignId);
@@ -292,15 +276,12 @@ export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvision
     }
   };
 
-  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <section className="bg-brand-card border border-brand-border rounded-xl overflow-hidden shadow-sm">
-      {/* Header */}
       <div className="px-5 sm:px-6 py-4 border-b border-brand-border flex items-center justify-between gap-3 bg-brand-bg/40">
         <div>
           <h3 className="font-display font-bold text-brand-text text-lg flex items-center gap-2">
-            {/* Bulk call icon */}
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
@@ -317,7 +298,6 @@ export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvision
           </div>
         ) : (
           <>
-            {/* ── Upload Section ─────────────────────────────────────────── */}
             <div className="space-y-3">
               <h4 className="text-xs font-bold uppercase tracking-wide text-brand-muted">New Campaign</h4>
 
@@ -369,8 +349,6 @@ export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvision
                   <><Icons.Plus /> Upload & Create Campaign</>
                 )}
               </button>
-
-              {/* Upload preview */}
               {uploadPreview && uploadPreview.length > 0 && (
                 <div className="rounded-lg border border-brand-border bg-brand-bg overflow-hidden">
                   <p className="text-xs text-brand-muted px-3 pt-2 pb-1 font-semibold uppercase tracking-wide">Preview (first 5 rows)</p>
@@ -394,7 +372,6 @@ export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvision
               )}
             </div>
 
-            {/* ── Campaign List ──────────────────────────────────────────── */}
             <div className="border-t border-brand-border pt-5 space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-bold uppercase tracking-wide text-brand-muted">Campaign History</h4>
@@ -418,7 +395,6 @@ export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvision
                 <div className="space-y-2">
                   {campaigns.map(campaign => (
                     <div key={campaign.id} className="rounded-lg border border-brand-border bg-brand-bg overflow-hidden">
-                      {/* Campaign row */}
                       <div className="px-4 py-3 flex flex-wrap items-center gap-3">
                         <button
                           type="button"
@@ -435,7 +411,6 @@ export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvision
                           </p>
                         </button>
 
-                        {/* Actions */}
                         <div className="flex items-center gap-2 flex-shrink-0">
                           {(campaign.status === 'pending' || campaign.status === 'paused') && (
                             <button
@@ -485,14 +460,12 @@ export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvision
                         </div>
                       </div>
 
-                      {/* Progress bar (always visible) */}
                       {campaign.total_contacts > 0 && (
                         <div className="px-4 pb-3">
                           <ProgressBar total={campaign.total_contacts} called={campaign.called_count} />
                         </div>
                       )}
 
-                      {/* Expanded detail: contact table */}
                       {activeCampaignId === campaign.id && (
                         <div className="border-t border-brand-border">
                           {detailLoading ? (

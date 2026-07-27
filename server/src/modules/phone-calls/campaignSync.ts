@@ -155,7 +155,6 @@ export async function syncCampaignResults(supabase: SupabaseClient): Promise<voi
     }
   }
 
-  // Check if any active campaigns are fully complete
   try {
     const { data: activeCampaigns } = await supabase
       .from('call_campaigns')
@@ -175,7 +174,6 @@ export async function syncCampaignResults(supabase: SupabaseClient): Promise<voi
             .from('call_campaigns')
             .update({ status: 'completed', completed_at: new Date().toISOString() })
             .eq('id', campaign.id);
-          console.log(`[campaignSync] Campaign ${campaign.id} auto-completed (all calls finished).`);
         }
       }
     }

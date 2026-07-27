@@ -78,7 +78,6 @@ async function advanceLoop(
     .single();
 
   if (!contact) {
-    // Check if there are still any contacts with status 'calling' in this campaign
     const { count, error: countErr } = await supabase
       .from('campaign_contacts')
       .select('id', { count: 'exact', head: true })
@@ -90,9 +89,7 @@ async function advanceLoop(
         .from('call_campaigns')
         .update({ status: 'completed', completed_at: new Date().toISOString() })
         .eq('id', campaignId);
-      console.log(`[campaign] Campaign ${campaignId} completed immediately (no active calls).`);
     } else {
-      console.log(`[campaign] Campaign ${campaignId} runner finished placing calls. Waiting for active calls to sync.`);
     }
     return;
   }
