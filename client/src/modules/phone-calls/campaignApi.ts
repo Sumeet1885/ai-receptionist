@@ -39,7 +39,7 @@ export interface CampaignContact {
   phone_number: string;
   name: string | null;
   extra_data: Record<string, unknown> | null;
-  call_status: 'pending' | 'calling' | 'done' | 'failed' | 'skipped';
+  call_status: 'pending' | 'calling' | 'done' | 'failed' | 'skipped' | 'not_pickup';
   call_summary: string | null;
   lead_score: string | null;
   call_duration: number | null;

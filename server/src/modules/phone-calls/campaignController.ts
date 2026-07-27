@@ -392,7 +392,7 @@ export async function exportCampaign(req: AuthRequest, res: Response): Promise<v
       '#': i + 1,
       'Name': c.name ?? '',
       'Phone': c.phone_number,
-      'Status': c.call_status,
+      'Status': c.call_status === 'not_pickup' ? 'Not Picked UP' : c.call_status,
       'Called At': c.called_at ? new Date(c.called_at).toLocaleString() : '',
       'Duration (s)': c.call_duration ?? '',
       'Lead Score': c.lead_score ?? '',

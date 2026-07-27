@@ -78,6 +78,8 @@ function LeadScoreBadge({ score }: { score: string | null }) {
   if (!score) return null;
   const cls = score === 'HOT' ? 'text-orange-400 border-orange-400/30 bg-orange-400/10'
     : score === 'WARM' ? 'text-yellow-400 border-yellow-400/30 bg-yellow-400/10'
+    : score === 'HANGUP' ? 'text-red-400 border-red-400/30 bg-red-400/10'
+    : score === 'NO_ANSWER' ? 'text-blue-400 border-blue-400/30 bg-blue-400/10'
     : 'text-brand-muted border-brand-border bg-brand-card';
   return (
     <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide border ${cls}`}>{score}</span>
@@ -91,6 +93,7 @@ function ContactStatusDot({ status }: { status: CampaignContact['call_status'] }
     done: 'bg-brand-accent',
     failed: 'bg-brand-danger',
     skipped: 'bg-brand-muted',
+    not_pickup: 'bg-yellow-500/70',
   };
   return <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${map[status]}`} />;
 }
@@ -454,21 +457,23 @@ export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvision
                               {actionLoading === campaign.id ? '…' : '⏸ Pause'}
                             </button>
                           )}
-                          <button
-                            type="button"
-                            onClick={() => handleExport(campaign.id, campaign.name)}
-                            disabled={exporting === campaign.id}
-                            className="h-8 px-3 rounded-lg bg-brand-card border border-brand-border hover:border-brand-accent/60 text-brand-text text-xs font-bold disabled:opacity-50 flex items-center gap-1"
-                          >
-                            {exporting === campaign.id ? '…' : (
-                              <>
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0119 9.414V19a2 2 0 01-2 2z" />
-                                </svg>
-                                Export
-                              </>
-                            )}
-                          </button>
+                          {(campaign.status === 'completed' || campaign.status === 'failed') && (
+                            <button
+                              type="button"
+                              onClick={() => handleExport(campaign.id, campaign.name)}
+                              disabled={exporting === campaign.id}
+                              className="h-8 px-3 rounded-lg bg-brand-card border border-brand-border hover:border-brand-accent/60 text-brand-text text-xs font-bold disabled:opacity-50 flex items-center gap-1"
+                            >
+                              {exporting === campaign.id ? '…' : (
+                                <>
+                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0119 9.414V19a2 2 0 01-2 2z" />
+                                  </svg>
+                                  Export
+                                </>
+                              )}
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => handleDelete(campaign.id)}
@@ -513,7 +518,9 @@ export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvision
                                       <td className="px-3 py-2">
                                         <div className="flex items-center gap-1.5">
                                           <ContactStatusDot status={c.call_status} />
-                                          <span className="capitalize text-brand-text">{c.call_status}</span>
+                                          <span className="text-brand-text">
+                                            {c.call_status === 'not_pickup' ? 'Not Picked UP' : c.call_status}
+                                          </span>
                                         </div>
                                       </td>
                                       <td className="px-3 py-2 text-brand-text">{c.name ?? '—'}</td>

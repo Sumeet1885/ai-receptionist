@@ -78,11 +78,22 @@ async function advanceLoop(
     .single();
 
   if (!contact) {
-    await supabase
-      .from('call_campaigns')
-      .update({ status: 'completed', completed_at: new Date().toISOString() })
-      .eq('id', campaignId);
-    console.log(`[campaign] Campaign ${campaignId} completed.`);
+    // Check if there are still any contacts with status 'calling' in this campaign
+    const { count, error: countErr } = await supabase
+      .from('campaign_contacts')
+      .select('id', { count: 'exact', head: true })
+      .eq('campaign_id', campaignId)
+      .eq('call_status', 'calling');
+
+    if (!countErr && count === 0) {
+      await supabase
+        .from('call_campaigns')
+        .update({ status: 'completed', completed_at: new Date().toISOString() })
+        .eq('id', campaignId);
+      console.log(`[campaign] Campaign ${campaignId} completed immediately (no active calls).`);
+    } else {
+      console.log(`[campaign] Campaign ${campaignId} runner finished placing calls. Waiting for active calls to sync.`);
+    }
     return;
   }
 
@@ -114,7 +125,12 @@ async function advanceLoop(
     console.error(`[campaign] Failed to call contact ${contact.id}:`, err.message);
     await supabase
       .from('campaign_contacts')
-      .update({ call_status: 'failed', error_message: err.message || 'Call placement failed' })
+      .update({
+        call_status: 'failed',
+        error_message: err.message || 'Call placement failed',
+        lead_score: 'NO_ANSWER',
+        call_summary: 'User was not available to connect / Call not picked up',
+      })
       .eq('id', contact.id);
 
   }

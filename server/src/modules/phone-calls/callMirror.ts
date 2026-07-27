@@ -236,7 +236,22 @@ async function ingestRun(
       }
     } catch (err: any) {
       if (err instanceof DograhApiError && err.status === 404) {
-        console.warn(`[phone-calls] Transcript not found (404) for run ${runId} of bot ${bot.id}. Proceeding with empty transcript.`);
+        const duration = extractDurationSeconds(run) ?? 0;
+        const runAgeMs = Date.now() - new Date(run.created_at).getTime();
+        const MAX_RETRY_AGE_MS = 2 * 60 * 1000; // 2 minutes retry window
+
+        if (duration > 0 && runAgeMs < MAX_RETRY_AGE_MS) {
+          console.warn(
+            `[phone-calls] Transcript not found (404) for run ${runId} of bot ${bot.id} ` +
+            `(duration: ${duration}s, age: ${Math.round(runAgeMs / 1000)}s). Delaying ingestion to retry.`
+          );
+          return false; // Return false to leave ingest_status as 'pending' and retry on next poll
+        }
+
+        console.warn(
+          `[phone-calls] Transcript not found (404) for run ${runId} of bot ${bot.id}. ` +
+          `Exceeded retry time or call duration is 0. Proceeding with empty transcript.`
+        );
       } else {
         throw err;
       }
