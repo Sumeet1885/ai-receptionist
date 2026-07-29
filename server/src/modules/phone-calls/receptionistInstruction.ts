@@ -48,18 +48,37 @@ function buildLeadCollectionInstruction(widgetConfig: WidgetConfig): string {
   return instruction;
 }
 
-/**
- * The verbal-handoff booking instruction used whenever a channel cannot run calendar tools
- * (Dograh phone calls in v1, and Gemini Live when the bot has calendar booking disabled).
- */
+function getTimezoneOffset(timezone: string): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      timeZoneName: 'longOffset',
+    }).formatToParts(new Date());
+    const offsetStr = parts.find(p => p.type === 'timeZoneName')?.value || '';
+    const match = offsetStr.match(/GMT([+-])(\d+):?(\d+)?/);
+    if (!match) return '+00:00';
+    const sign  = match[1];
+    const hours = match[2].padStart(2, '0');
+    const mins  = (match[3] || '00').padStart(2, '0');
+    return `${sign}${hours}:${mins}`;
+  } catch {
+    return '+00:00';
+  }
+}
+
+
+function buildPhoneToolTimezoneConstraint(timezone: string): string {
+  const offset = getTimezoneOffset(timezone);
+  return `\n- TOOL TIMEZONE: When calling check_availability, always pass the local date in 'YYYY-MM-DD' format. When calling book_appointment, construct startTime and endTime in ISO 8601 format using the business timezone offset ${offset} (for example, if the caller selects 5:00 PM on 2026-07-31, startTime must be '2026-07-31T17:00:00${offset}' — never use Z or +00:00 as the offset).`;
+}
+
+
+
 export function buildVerbalHandoffBookingInstruction(): string {
   return `3. Online calendar booking is currently disabled. If the user asks to book an appointment, schedule a visit, or requests a callback, politely inform them that online calendar scheduling is currently unavailable, and collect their contact details (name and phone/email) so a human representative can contact them to schedule it manually.`;
 }
 
-/** Tool-driven booking instruction for channels with check_availability/book_appointment tools.
- * `maxBookingDaysAhead` mirrors the server-side window enforced in calendarOperations.ts - the
- * AI is told the limit so it can set expectations, but the actual rejection always happens
- * server-side regardless of what's said here. */
+
 export function buildToolBasedBookingInstruction(maxBookingDaysAhead?: number): string {
   return `3. If the user asks for a visit, booking, appointment, callback, or you judge that human intervention is needed, move into appointment-assist mode:
    - Ask for any missing basic details first.
@@ -71,12 +90,7 @@ export function buildToolBasedBookingInstruction(maxBookingDaysAhead?: number): 
    - Only after the user explicitly agrees to a specific returned slot, use book_appointment.${maxBookingDaysAhead ? ` Appointments can only be booked within the next ${maxBookingDaysAhead} day(s) from today - if the user requests a date beyond that, politely tell them booking is only available within that window.` : ''}`;
 }
 
-/**
- * Channel-agnostic core persona: identity, business knowledge base, on-topic and tone rules,
- * lead-collection intent, single-appointment limit, and the privacy rule. Contains no tool
- * names or channel-specific UI behavior — those are supplied by the caller via
- * `bookingInstruction` and `extraConstraints`.
- */
+
 export function buildBusinessPersona(
   bot: BusinessPersonaBot,
   widgetConfig: WidgetConfig,
@@ -122,11 +136,7 @@ export interface WebVoiceExtraConstraintsOptions {
   forceEndSignal: string;
 }
 
-/**
- * Gemini Live-only constraints: the request_text_input/text-box protocol, check_availability/
- * book_appointment ordering, internal wrap/force-end signals, tool timezone format, and the
- * end_call instruction. Never used for the Dograh phone persona, which has none of these tools.
- */
+
 export function buildWebVoiceExtraConstraints(options: WebVoiceExtraConstraintsOptions): string {
   const textInputInstructions = options.requiredContactFields.length > 0 ? `
 - TOOL-FIRST CONTACT INPUT: Voice recognition for phone numbers and emails is unreliable, so the value must always be typed, never spoken. Whenever phone or email is needed (including the moment the user first says they want to book, schedule, or be contacted), say one short, natural sentence such as "Sure, for booking a meeting, I would like you to enter your details in the text box." Then immediately call \`request_text_input\` for exactly one configured field. Never say the tool's name, never say you are "calling a tool", never request phone and email together, and never ask the user to say the value out loud.
@@ -142,25 +152,13 @@ export function buildWebVoiceExtraConstraints(options: WebVoiceExtraConstraintsO
 - CALL ENDING: ${options.endCallInstruction}`;
 }
 
-/**
- * On any Dograh phone call (either direction), the caller's/callee's number is already known
- * from telephony metadata — Twilio's caller ID on inbound, the dialed number on outbound (see
- * `extractCounterpartyNumber` in callMirror.ts). Asking the user to read their own phone number
- * back is redundant at best and, on an outbound call the business itself placed, actively
- * confusing ("why is it asking for my number, it's calling me"). Web chat/voice has no such
- * metadata, so this only applies to the phone channel's lead-collection text and extraction.
- */
+
 export function withoutAutoKnownPhoneField(widgetConfig: WidgetConfig): WidgetConfig {
   if (!widgetConfig.requiredLeadFields.includes('phone')) return widgetConfig;
   return { ...widgetConfig, requiredLeadFields: widgetConfig.requiredLeadFields.filter(f => f !== 'phone') };
 }
 
-/**
- * The Dograh phone persona: shared business core plus either the tool-driven booking flow
- * (when the bot's owner has a calendar connected and check_availability/book_appointment tools
- * are attached to the conversation node - see dograhController.ts) or the tool-free verbal
- * handoff. The phone agent never claims to use a tool it doesn't actually have attached.
- */
+
 export function buildDograhPhoneInstruction(
   bot: BusinessPersonaBot,
   widgetConfig: WidgetConfig,
@@ -171,20 +169,15 @@ export function buildDograhPhoneInstruction(
     bookingInstruction: options.useToolBasedBooking
       ? buildToolBasedBookingInstruction(widgetConfig.maxBookingDaysAhead)
       : buildVerbalHandoffBookingInstruction(),
+    extraConstraints: options.useToolBasedBooking
+      ? buildPhoneToolTimezoneConstraint(options.timezone)
+      : undefined,
   });
 }
 
-/** Goal 1 for a channel that placed the call itself, rather than answering one. Dograh's
- * outbound API has no per-call context field (no lead name/reason), so this is intentionally
- * generic — see "Phone calls/README.md" for that limitation. */
 export const OUTBOUND_OPENING_INSTRUCTION =
   'You are calling this person on behalf of the business. Introduce yourself and the business by name, briefly explain that you are following up with someone who showed interest, then answer their questions relying strictly on the business details above.';
 
-/**
- * The Dograh outbound-call persona: same shared business core and the same tool-free
- * verbal-handoff booking instruction as the inbound phone persona, but with a calling-flavored
- * Goal 1 instead of an answering one. Booking-during-call stays deferred for outbound too.
- */
 export function buildDograhOutboundInstruction(
   bot: BusinessPersonaBot,
   widgetConfig: WidgetConfig,
@@ -196,5 +189,8 @@ export function buildDograhOutboundInstruction(
     bookingInstruction: options.useToolBasedBooking
       ? buildToolBasedBookingInstruction(widgetConfig.maxBookingDaysAhead)
       : buildVerbalHandoffBookingInstruction(),
+    extraConstraints: options.useToolBasedBooking
+      ? buildPhoneToolTimezoneConstraint(options.timezone)
+      : undefined,
   });
 }

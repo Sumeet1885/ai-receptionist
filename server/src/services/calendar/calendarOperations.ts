@@ -5,14 +5,40 @@ import { validateContactInput } from '../../utils/contactValidation';
 type AdapterFactory = (provider: string) => CalendarAdapter;
 const inFlightBookingSessions = new Set<string>();
 
+function normalizeTimestampToTimezone(isoString: string, timezone: string): string {
+  if (!isoString || !timezone) return isoString;
+
+  const isUtcSuffix = /Z$/.test(isoString) || /[+-]00:00$/.test(isoString);
+  if (!isUtcSuffix) return isoString;
+
+  const wallClock = isoString.replace(/Z$/, '').replace(/[+-]00:00$/, '');
+
+
+  try {
+    const wallClockZ = wallClock + 'Z';
+    const offsetParts = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      timeZoneName: 'longOffset',
+    }).formatToParts(new Date(wallClockZ));
+    const offsetStr = offsetParts.find(p => p.type === 'timeZoneName')?.value || '';
+    const match = offsetStr.match(/GMT([+-])(\d+):?(\d+)?/);
+    if (!match) return isoString; 
+    const sign  = match[1];
+    const hours = match[2].padStart(2, '0');
+    const mins  = (match[3] || '00').padStart(2, '0');
+    const offset = `${sign}${hours}:${mins}`;
+    return `${wallClock}${offset}`;
+  } catch {
+    return isoString; 
+  }
+}
+
 interface AvailabilityInput {
   db: any;
   ownerId: string;
   date: string;
   timezone?: string;
   getAdapter?: AdapterFactory;
-  /** Owner-configured cap on how far ahead a date may be, from `widgetConfig.maxBookingDaysAhead`.
-   * Undefined means no limit. */
   maxBookingDaysAhead?: number;
 }
 
@@ -28,9 +54,7 @@ interface BookingInput {
   maxBookingDaysAhead?: number;
 }
 
-/** Enforced server-side (never trust the AI agent to self-limit) so it applies identically across
- * phone, text chat, and live voice - all three funnel through checkCalendarAvailability/
- * bookCalendarAppointment. `dateStr` is a local 'YYYY-MM-DD' date in the caller's timezone. */
+
 function assertWithinBookingWindow(dateStr: string, timezone: string | undefined, maxBookingDaysAhead: number | undefined) {
   const requested = new Date(`${dateStr}T00:00:00`);
   if (Number.isNaN(requested.getTime())) return;
@@ -89,6 +113,15 @@ export async function checkCalendarAvailability(input: AvailabilityInput): Promi
 
 export async function bookCalendarAppointment(input: BookingInput) {
   const { details, db, sessionId } = input;
+
+
+  if (input.timezone && details?.startTime) {
+    details.startTime = normalizeTimestampToTimezone(details.startTime, input.timezone);
+  }
+  if (input.timezone && details?.endTime) {
+    details.endTime = normalizeTimestampToTimezone(details.endTime, input.timezone);
+  }
+
   const requestedStart = new Date(details?.startTime);
   const requestedEnd = new Date(details?.endTime);
 
@@ -100,8 +133,6 @@ export async function bookCalendarAppointment(input: BookingInput) {
     throw new Error('Appointment endTime must be after startTime.');
   }
 
-  // Strict Server-Side Validation: Ensure contact information is truly valid
-  // before proceeding, ignoring hallucinated inputs.
   if (details.visitorPhone) {
     const phoneValidation = validateContactInput('phone', details.visitorPhone);
     if (!phoneValidation.valid) {
