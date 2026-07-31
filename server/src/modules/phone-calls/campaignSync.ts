@@ -102,12 +102,24 @@ export async function syncCampaignResults(supabase: SupabaseClient): Promise<voi
           if (sessionId) {
             const { data: lead } = await supabase
               .from('leads')
-              .select('summary, lead_score')
+              .select('name, email, phone, summary, appointment_status, lead_score')
               .eq('session_id', sessionId)
               .maybeSingle();
 
-            summary = lead?.summary ?? null;
-            leadScore = lead?.lead_score ?? null;
+            if (lead) {
+              leadScore = lead.lead_score ?? null;
+
+              const parts: string[] = [];
+              if (lead.name && lead.name !== 'Anonymous') parts.push(`Name: ${lead.name}`);
+              if (lead.phone && lead.phone !== 'Not Provided') parts.push(`Phone: ${lead.phone}`);
+              if (lead.email) parts.push(`Email: ${lead.email}`);
+              if (lead.summary) parts.push(`Summary: ${lead.summary}`);
+              if (lead.appointment_status && lead.appointment_status !== 'None') {
+                parts.push(`Appointment: ${lead.appointment_status}`);
+              }
+
+              summary = parts.join(' | ') || lead.summary || null;
+            }
           }
 
           if (!leadScore || !summary) {
