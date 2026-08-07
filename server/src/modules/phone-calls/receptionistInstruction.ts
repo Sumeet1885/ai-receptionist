@@ -7,22 +7,15 @@ export interface BusinessPersonaBot {
   knowledge_base: string;
 }
 
-/** Goal 1 for a channel that answers calls (web voice, inbound phone). Unchanged from before
- * outbound existed, so default behavior for those channels stays byte-identical. */
+
 export const DEFAULT_OPENING_INSTRUCTION =
   "Warmly answer the user's questions relying strictly on the business details above.";
 
 export interface BusinessPersonaOptions {
   timezone: string;
-  /** Goal 1 text. Channel-specific: an answering persona vs one that placed the call itself.
-   * Defaults to `DEFAULT_OPENING_INSTRUCTION` so existing callers are unaffected. */
+
   openingInstruction?: string;
-  /** Goal 3 text. Channel-specific: tool-driven scheduling rules vs a verbal handoff. Must
-   * already include the leading "3. " prefix, matching the numbering of the other goals. */
   bookingInstruction: string;
-  /** Extra lines appended after the shared CRITICAL SECURITY & CONSTRAINTS rules. Channel-specific
-   * tool/signal rules (e.g. Gemini Live's request_text_input/end_call protocol) belong here, never
-   * in the shared persona, so a channel that lacks those tools is never told to use them. */
   extraConstraints?: string;
 }
 

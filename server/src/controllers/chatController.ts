@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Bot, Message } from '../types/index.ts';
 import { config } from '../config';
 import { geminiGuard, RateLimitError } from '../services/geminiGuard';
@@ -96,7 +95,6 @@ async function callGeminiWithRetry(reqBody: any): Promise<any> {
       break;
     }
 
-    // Log the error clearly so it is captured in Railway dashboard logs
     console.error(`[Railway Log] Gemini model ${model} failed with status ${modelStatus}. Error detail: ${modelErrorText}. Trying next fallback model if available.`);
 
     lastStatus = modelStatus;
@@ -131,10 +129,7 @@ function isHandoffRequest(text: string): boolean {
   return handoffPatterns.some(pattern => pattern.test(normalized));
 }
 
-/**
- * Builds the system instruction from the bot's knowledge base and calls Gemini.
- * Saves both the user message and bot reply into the messages table.
- */
+
 export async function handleChat(
   input: ChatInput,
   supabase: any
@@ -199,7 +194,6 @@ export async function handleChat(
   const tzOffset = getTzOffsetStr(timezone);
   const userLocaleTime = formatCurrentDateTime(timezone);
 
-  // 1. Build system instruction from bot configuration
   const fieldsToCollect = widgetConfig.requiredLeadFields || [];
 
   const fieldDescriptions: Record<string, string> = {
@@ -271,7 +265,6 @@ CRITICAL SECURITY & CONSTRAINTS:
     bookAppointmentRequired.push('visitorEmail');
   }
 
-  // Define tools
   const tools = widgetConfig.enableCalendar ? [{
     functionDeclarations: [
       {
@@ -334,7 +327,6 @@ CRITICAL SECURITY & CONSTRAINTS:
       reqBody.tools = tools;
     }
 
-    // ── GeminiGuard: RPM + TPM check before every HTTP call ──────────────
     try {
       const promptText = JSON.stringify(reqBody);
       geminiGuard.estimateAndCheckTPM(promptText);
@@ -344,7 +336,7 @@ CRITICAL SECURITY & CONSTRAINTS:
         console.warn(`[GeminiGuard/Chat] ${err.message} Waiting before retry...`);
         await geminiGuard.waitForRPMSlot();
       } else {
-        throw err; // propagate non-rate-limit errors
+        throw err; 
       }
     }
 
@@ -362,7 +354,6 @@ CRITICAL SECURITY & CONSTRAINTS:
     const candidate = geminiData.candidates?.[0];
     const parts = candidate?.content?.parts || [];
 
-    // Check if there is a function call
     const functionCall = parts.find((p: any) => p.functionCall);
 
     if (functionCall) {
@@ -410,13 +401,11 @@ CRITICAL SECURITY & CONSTRAINTS:
         console.error(`Function ${name} returned error:`, functionResponse.error);
       }
 
-      // Add model's function call to contents
       contents.push({
         role: 'model',
         parts: [{ functionCall: functionCall.functionCall }]
       });
 
-      // Add function response to contents
       contents.push({
         role: 'function',
         parts: [{
@@ -428,7 +417,6 @@ CRITICAL SECURITY & CONSTRAINTS:
       });
 
     } else {
-      // No function call, we have the final text reply
       reply = parts[0]?.text || 'Thank you for your message. A specialist will contact you shortly.';
       break;
     }
