@@ -4,6 +4,7 @@ import { config } from '../config';
 import { geminiGuard, RateLimitError } from '../services/geminiGuard';
 import { mergeWidgetConfig } from '../utils/widgetConfig';
 import { bookCalendarAppointment, checkCalendarAvailability, serializeCalendarToolError } from '../services/calendar/calendarOperations';
+import { formatCurrentDateTime } from '../utils/date';
 
 const GEMINI_API_KEY = config.geminiApiKey ?? '';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
@@ -196,7 +197,7 @@ export async function handleChat(
     }
   };
   const tzOffset = getTzOffsetStr(timezone);
-  const userLocaleTime = new Date().toLocaleString('en-US', { timeZone: timezone });
+  const userLocaleTime = formatCurrentDateTime(timezone);
 
   // 1. Build system instruction from bot configuration
   const fieldsToCollect = widgetConfig.requiredLeadFields || [];
@@ -256,6 +257,7 @@ CRITICAL SECURITY & CONSTRAINTS:
 - ABSOLUTE PRIVACY: You must never disclose, reveal, or list the details (names, phone numbers, or appointment times) of other bookings or clients. If asked who booked a slot or what other bookings exist, state that you cannot share that confidential information due to privacy guidelines. Only report whether a slot is free or busy without naming other people.
 - BOOKING ORDER: Never call book_appointment in the same turn as check_availability. After checking availability, speak the available options and ask "Would you like me to book one of these?" Wait for the user's next confirmation before booking.
 - SLOT RULE: Never invent a slot and never book a time that was not returned by check_availability. If the user's requested time is not in the returned slots, offer the returned alternatives instead.
+- DATE FORMAT RULE: You must always parse, interpret, process, and present dates in DD-MM-YYYY format (e.g. 07-08-2026 for 7th August 2026) and NOT MM-DD-YYYY format. Crucially, when the user provides or asks about dates, or when you use tools, assume and use the DD-MM-YYYY format for all communications and relative date calculations.
 - TOOL TIMEZONE: When calling check_availability, pass the local date format 'YYYY-MM-DD'. When calling book_appointment, construct startTime and endTime in ISO 8601 format using the user's local offset ${tzOffset} (example: 2026-06-17T08:30:00${tzOffset}). Never ask the user to provide a timezone unless their requested date/time is actually ambiguous.`;
 
   const bookAppointmentRequired = ['title', 'startTime', 'endTime'];
