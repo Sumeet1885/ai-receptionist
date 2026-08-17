@@ -28,6 +28,7 @@ api.yourdomain.com   ->  this instance's IP   (the API, widget loader, live voic
    - SSH (22) — 0.0.0.0/0 (or your office IP only)
    - HTTP (80) — 0.0.0.0/0 (needed for Caddy's automatic HTTPS certificate issuance)
    - HTTPS (443) — 0.0.0.0/0
+   - Custom TCP (8000) — 0.0.0.0/0 (needed for Dograh server to call back into this one)
 
 No other ports need to be open publicly - the API and the static site are both served through
 Caddy on 80/443.
@@ -67,8 +68,8 @@ your DNS provider. Caddy (Step 6) won't be able to get TLS certificates until th
 
 ## Step 4: Connect and Install Docker
 
-```bash
-ssh -i /path/to/ai-receptionist-key.pem ubuntu@<PUBLIC_IP>
+```bash No Required when we are running the application using AWS Browser Window
+ssh -i /path/to/ai-receptionist-key.pem ubuntu@<PUBLIC_IP> 
 ```
 
 Install Docker:
@@ -83,7 +84,7 @@ exit
 
 Reconnect:
 
-```bash
+```bash No Required when we are running the application using AWS Browser Window
 ssh -i /path/to/ai-receptionist-key.pem ubuntu@<PUBLIC_IP>
 ```
 
@@ -273,3 +274,50 @@ site. A single EC2 instance with Docker Compose and Caddy for automatic HTTPS ge
 production outcome - HTTPS, WebSocket support for live voice, restart-on-crash - with one host
 to manage instead of five AWS services. Revisit this if traffic genuinely outgrows a single
 instance; don't pre-build for that case.
+
+---
+
+## GitHub Actions CI/CD Pipelines
+
+For automated builds and deployments, this repository includes three GitHub Actions workflows in [`.github/workflows`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/.github/workflows):
+1. **STAGING - Build project** ([`build-project.yml`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/.github/workflows/build-project.yml)): Verifies client building and server typechecking.
+2. **STAGING - Build and Push Docker Images** ([`docker-image-staging.yml`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/.github/workflows/docker-image-staging.yml)): Builds frontend and backend Docker images and pushes them to Docker Hub.
+3. **STAGING - Deploy via AWS SSM** ([`deploy-via-ssm.yml`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/.github/workflows/deploy-via-ssm.yml)): Uses AWS Systems Manager (SSM) to execute a shell script on the EC2 instance to pull updated Docker images and restart services.
+
+### Configuring Secrets & Variables in GitHub
+
+To allow these workflows to run, you must configure the following Secrets and Variables in your GitHub Repository settings. 
+
+Since these workflows target the `staging` environment (e.g. `environment: staging`), configure these values under **Settings** → **Secrets and variables** → **Actions**:
+- You can configure them either under the **Environment secrets/variables** for the `staging` environment (recommended), or as repository-wide secrets/variables.
+
+#### 1. Repository/Environment Secrets
+
+Set these in GitHub under **Secrets** tab:
+
+| Secret Name | Description / Value | Used In |
+|---|---|---|
+| `DOCKER_USERNAME` | Your Docker Hub username. | `docker-image-staging.yml`, `deploy-via-ssm.yml` |
+| `DOCKER_PASSWORD` | Your Docker Hub Personal Access Token (PAT) or password. | `docker-image-staging.yml` |
+| `AWS_ACCESS_KEY_ID` | AWS Access Key ID with permissions to execute `ssm:SendCommand`. | `deploy-via-ssm.yml` |
+| `AWS_SECRET_ACCESS_KEY` | AWS Secret Access Key. | `deploy-via-ssm.yml` |
+| `AWS_REGION` | The AWS region of your EC2 instance (e.g., `us-east-1`). | `deploy-via-ssm.yml` |
+| `EC2_INSTANCE_ID` | The Instance ID of your target EC2 instance (e.g., `i-0abcdef1234567890`). | `deploy-via-ssm.yml` |
+| `VITE_SUPABASE_URL` | Your Supabase Project URL (e.g., `https://YOUR_PROJECT.supabase.co`). | `docker-image-staging.yml` |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Your Supabase Publishable/Anon Key. | `docker-image-staging.yml` |
+| `VITE_EXPRESS_SERVER_URL` | The URL of your API/Express server (e.g., `https://api.yourdomain.com`). | `docker-image-staging.yml` |
+| `VITE_WIDGET_BASE_URL` | The URL of your API/Express server for widget asset hosting (e.g., `https://api.yourdomain.com`). | `docker-image-staging.yml` |
+
+> [!NOTE]
+> Ensure that a secret named `dockerhub-ai-receptionist-password` is also created in **AWS Secrets Manager** (under the same AWS account and region where the EC2 instance resides) containing your Docker Hub password. The deployment workflow ([`deploy-via-ssm.yml`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/.github/workflows/deploy-via-ssm.yml)) fetches this secret using the AWS CLI running on the EC2 instance to log in to Docker Hub.
+
+#### 2. Repository/Environment Variables
+
+Set these in GitHub under **Variables** tab (referenced using `vars.KEY`):
+
+| Variable Name | Value | Used In |
+|---|---|---|
+| `VITE_SUPABASE_URL` | Your Supabase Project URL (e.g., `https://YOUR_PROJECT.supabase.co`). | `build-project.yml` |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Your Supabase Publishable/Anon Key. | `build-project.yml` |
+| `VITE_EXPRESS_SERVER_URL` | The URL of your API/Express server (e.g., `https://api.yourdomain.com`). | `build-project.yml` |
+| `VITE_WIDGET_BASE_URL` | The URL of your API/Express server for widget asset hosting (e.g., `https://api.yourdomain.com`). | `build-project.yml` |

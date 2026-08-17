@@ -4,7 +4,7 @@
 # open in your EC2 Security Group and the DNS A record for "reception"
 # points to your EC2 IP in Hostinger's DNS zone.
 
-reception.clarusgrid.online {
+{$APP_DOMAIN:reception.clarusgrid.online}, {$API_DOMAIN:reception.clarusgrid.online} {
 
     # All /api/* requests → Express backend (api service on port 4000)
     handle /api/* {
