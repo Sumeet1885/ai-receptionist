@@ -14,7 +14,7 @@
 
 services:
   api:
-    image: ${DOCKER_USERNAME}/ai-receptionist:${IMAGE_TAG_SERVER}
+    image: ${DOCKER_USERNAME}/recrui8-dockerhub-repo-dev:${IMAGE_TAG_SERVER}
     container_name: ai-receptionist-api
     # All server secrets live in server/.env on the EC2 instance.
     # Copy your server/.env to the EC2 project folder before first deploy.
@@ -25,7 +25,7 @@ services:
     restart: unless-stopped
 
   web:
-    image: ${DOCKER_USERNAME}/ai-receptionist:${IMAGE_TAG_CLIENT}
+    image: ${DOCKER_USERNAME}/recrui8-dockerhub-repo-dev:${IMAGE_TAG_CLIENT}
     container_name: ai-receptionist-web
     # Caddy uses APP_DOMAIN and API_DOMAIN to provision TLS certs and route traffic.
     environment:
