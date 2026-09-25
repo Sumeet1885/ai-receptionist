@@ -41,13 +41,13 @@ jobs:
           docker buildx build \
             --platform linux/amd64 \
             --build-arg deployment_env=${{ env.DEPLOYMENT_ENV }} \
-            -t ${{ secrets.DOCKER_USERNAME }}/recrui8-dockerhub-repo-dev:server-staging-${{ env.SHORT_SHA }} \
+            -t ${{ secrets.DOCKER_USERNAME }}/recrui8-dockerhub-repo-dev:ai-receptionist-server-staging-${{ env.SHORT_SHA }} \
             -f server/Dockerfile \
             ./server
 
       - name: Push Server Docker image
         run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/recrui8-dockerhub-repo-dev:server-staging-${{ env.SHORT_SHA }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/recrui8-dockerhub-repo-dev:ai-receptionist-server-staging-${{ env.SHORT_SHA }}
 
       # ── Client ──────────────────────────────────────────────────────────────
       - name: Build Client Docker image
@@ -58,16 +58,16 @@ jobs:
             --build-arg VITE_SUPABASE_PUBLISHABLE_KEY="${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}" \
             --build-arg VITE_EXPRESS_SERVER_URL="${{ secrets.VITE_EXPRESS_SERVER_URL }}" \
             --build-arg VITE_WIDGET_BASE_URL="${{ secrets.VITE_WIDGET_BASE_URL }}" \
-            -t ${{ secrets.DOCKER_USERNAME }}/recrui8-dockerhub-repo-dev:client-staging-${{ env.SHORT_SHA }} \
+            -t ${{ secrets.DOCKER_USERNAME }}/recrui8-dockerhub-repo-dev:ai-receptionist-client-staging-${{ env.SHORT_SHA }} \
             -f client/Dockerfile \
             ./client
 
       - name: Push Client Docker image
         run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/recrui8-dockerhub-repo-dev:client-staging-${{ env.SHORT_SHA }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/recrui8-dockerhub-repo-dev:ai-receptionist-client-staging-${{ env.SHORT_SHA }}
 
       - name: Summary
         run: |
           echo "### ✅ Docker Images Pushed" >> $GITHUB_STEP_SUMMARY
-          echo "- **Server:** \`${{ secrets.DOCKER_USERNAME }}/recrui8-dockerhub-repo-dev:server-staging-${{ env.SHORT_SHA }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Client:** \`${{ secrets.DOCKER_USERNAME }}/recrui8-dockerhub-repo-dev:client-staging-${{ env.SHORT_SHA }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Server:** \`${{ secrets.DOCKER_USERNAME }}/recrui8-dockerhub-repo-dev:ai-receptionist-server-staging-${{ env.SHORT_SHA }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Client:** \`${{ secrets.DOCKER_USERNAME }}/recrui8-dockerhub-repo-dev:ai-receptionist-client-staging-${{ env.SHORT_SHA }}\`" >> $GITHUB_STEP_SUMMARY

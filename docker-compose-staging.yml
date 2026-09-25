@@ -6,8 +6,8 @@
 # automatically by the 'deploy-via-ssm.yml' workflow on every deployment.
 #
 # EC2 .env must contain at minimum:
-#   IMAGE_TAG_SERVER=server-staging-<short-sha>
-#   IMAGE_TAG_CLIENT=client-staging-<short-sha>
+#   IMAGE_TAG_SERVER=ai-receptionist-server-staging-<short-sha>
+#   IMAGE_TAG_CLIENT=ai-receptionist-client-staging-<short-sha>
 #   APP_DOMAIN=your-app-domain.com
 #   API_DOMAIN=api.your-app-domain.com
 #   DOCKER_USERNAME=your-dockerhub-username
