@@ -38,6 +38,7 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
 export const AppointmentsTab: React.FC = () => {
   const [connectionState, setConnectionState] = useState<ConnectionState>('loading');
   const [provider, setProvider] = useState<string | null>(null);
+  const [disconnecting, setDisconnecting] = useState<boolean>(false);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loadingAppointments, setLoadingAppointments] = useState(true);
   const [appointmentsError, setAppointmentsError] = useState<string | null>(null);
@@ -108,6 +109,37 @@ export const AppointmentsTab: React.FC = () => {
     }
   };
 
+  const handleDisconnect = async () => {
+    const confirmed = window.confirm(
+      'Disconnect your calendar?\n\nYour receptionist will no longer be able to check availability or automatically book appointments.'
+    );
+    if (!confirmed) return;
+
+    setDisconnecting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const response = await fetch(`${expressUrl}/api/calendar/connection`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error((body as { error?: string }).error || 'Failed to disconnect calendar');
+      }
+
+      setProvider(null);
+      setConnectionState('disconnected');
+    } catch (err: any) {
+      console.error('[Calendar] Disconnect error:', err);
+      alert(err.message || 'Could not disconnect. Please try again.');
+    } finally {
+      setDisconnecting(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <section className="bg-brand-card border border-brand-border rounded-xl overflow-hidden shadow-sm">
@@ -135,7 +167,17 @@ export const AppointmentsTab: React.FC = () => {
               </p>
             </div>
           </div>
-          {connectionState !== 'connected' && (
+          {connectionState === 'connected' ? (
+            <button
+              type="button"
+              id="calendar-disconnect-btn"
+              onClick={handleDisconnect}
+              disabled={disconnecting}
+              className="h-10 px-4 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs font-bold transition disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {disconnecting ? 'Disconnecting…' : 'Disconnect Calendar'}
+            </button>
+          ) : connectionState !== 'loading' && (
             <div className="flex flex-col sm:flex-row gap-2">
               <button type="button" onClick={() => connectCalendar('google')} className="h-10 px-4 rounded-lg bg-white text-gray-900 border border-gray-300 text-xs font-bold flex items-center justify-center gap-2"><Icons.Google /> Google</button>
               <button type="button" onClick={() => connectCalendar('outlook')} className="h-10 px-4 rounded-lg bg-[#0078d4] text-white text-xs font-bold flex items-center justify-center gap-2"><Icons.Microsoft /> Outlook</button>

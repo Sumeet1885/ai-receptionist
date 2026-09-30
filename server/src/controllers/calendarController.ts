@@ -55,3 +55,25 @@ export const getStatus = async (req: any, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+export const disconnectConnection = async (req: any, res: Response) => {
+  const ownerId = req.user?.id;
+  if (!ownerId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const { error } = await supabase
+      .from('calendar_connections')
+      .delete()
+      .eq('owner_id', ownerId);
+
+    if (error) throw error;
+
+    console.log(`[Calendar] Disconnected calendar for owner: ${ownerId}`);
+    res.json({ success: true, connected: false, message: 'Calendar disconnected successfully' });
+  } catch (err: any) {
+    console.error('[Calendar] Failed to disconnect:', err);
+    res.status(500).json({ error: err.message || 'Failed to disconnect calendar' });
+  }
+};
