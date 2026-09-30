@@ -437,9 +437,6 @@ export async function unassignNumber(req: AuthRequest, res: Response): Promise<v
     return;
   }
 
-  // Best-effort: tell Dograh to detach the inbound workflow from the number.
-  // If Dograh returns 404 (number was removed upstream) or the API is down,
-  // we log the issue but continue to clean up local DB state regardless.
   try {
     await unassignInboundWorkflow(bot.dograh_telephony_config_id, bot.dograh_phone_number_id);
   } catch (err: any) {

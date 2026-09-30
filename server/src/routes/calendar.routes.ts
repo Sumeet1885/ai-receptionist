@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth';
-// Import controllers (will create next)
 import * as calendarController from '../controllers/calendarController';
 
 const router = Router();

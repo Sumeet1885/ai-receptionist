@@ -31,9 +31,6 @@ export const config = {
     apiKey: process.env.DOGRAH_API_KEY || '',
     pollIntervalMs: parseInt(process.env.DOGRAH_POLL_INTERVAL_MS || '60000', 10),
   },
-  // Lets Dograh's container call back into this server mid-call (calendar tool calls, pre-call
-  // session creation). Server-to-server only - never exposed to the browser, distinct from the
-  // public Cloudflare tunnel used for inbound telephony webhooks.
   phoneTools: {
     apiKey: process.env.PHONE_TOOLS_API_KEY || '',
     callbackBaseUrl: (process.env.PHONE_TOOLS_CALLBACK_BASE_URL || 'http://host.docker.internal:4000').replace(/\/+$/, ''),
