@@ -1,8 +1,3 @@
-export interface DograhLoginResponse {
-  token: string;
-  user: { id?: number | string; email?: string; organization_id?: number | string };
-}
-
 export interface DograhWorkflow {
   id: number;
   name: string;

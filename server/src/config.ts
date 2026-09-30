@@ -28,8 +28,7 @@ export const config = {
   },
   dograh: {
     apiUrl: (process.env.DOGRAH_API_URL || 'http://localhost:8000').replace(/\/+$/, ''),
-    email: process.env.DOGRAH_EMAIL || '',
-    password: process.env.DOGRAH_PASSWORD || '',
+    apiKey: process.env.DOGRAH_API_KEY || '',
     pollIntervalMs: parseInt(process.env.DOGRAH_POLL_INTERVAL_MS || '60000', 10),
   },
   // Lets Dograh's container call back into this server mid-call (calendar tool calls, pre-call

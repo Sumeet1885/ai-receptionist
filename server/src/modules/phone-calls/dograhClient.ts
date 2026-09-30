@@ -1,35 +1,15 @@
 import { config } from '../../config';
 import {
-  DograhLoginResponse,
   DograhPhoneNumber,
   DograhRunDetail,
   DograhTelephonyConfig,
   DograhWorkflow,
 } from './types';
 
-const { apiUrl, email, password } = config.dograh;
+const { apiUrl, apiKey } = config.dograh;
 
 export function isDograhConfigured(): boolean {
-  return Boolean(apiUrl && email && password);
-}
-
-let cachedToken: string | null = null;
-
-async function login(): Promise<string> {
-
-  
-  const response = await fetch(`${apiUrl}/api/v1/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Dograh login failed: ${response.status} ${await response.text()}`);
-  }
-  const data: DograhLoginResponse = await response.json();
-  cachedToken = data.token;
-  return cachedToken;
+  return Boolean(apiUrl && apiKey);
 }
 
 export class DograhApiError extends Error {
@@ -41,24 +21,18 @@ export class DograhApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}, retrying = false): Promise<T> {
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!isDograhConfigured()) {
-    throw new Error('Dograh is not configured (DOGRAH_EMAIL/DOGRAH_PASSWORD missing).');
+    throw new Error('Dograh is not configured (DOGRAH_API_KEY missing).');
   }
-  const token = cachedToken ?? (await login());
   const response = await fetch(`${apiUrl}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
+      'X-API-Key': apiKey,
       ...(init.headers || {}),
     },
   });
-
-  if (response.status === 401 && !retrying) {
-    cachedToken = null;
-    return request<T>(path, init, true);
-  }
 
   if (!response.ok) {
     throw new DograhApiError(`Dograh API error on ${path}: ${response.status} ${await response.text()}`, response.status);

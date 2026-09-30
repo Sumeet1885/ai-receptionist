@@ -1,8 +1,9 @@
 # Configure Dograh
 
 Do this after `Call/dograh-docker/Dograh_DEPLOYMENT_GUIDE.md` - Dograh needs to actually be
-running first. Open `http://<DOGRAH_PUBLIC_IP>:38080` and log in with the
-`DOGRAH_EMAIL`/`DOGRAH_PASSWORD` you set in Dograh's `.env`.
+running first. Open `http://<DOGRAH_PUBLIC_IP>:38080` and log in as an admin to generate an
+API key (Settings → API Keys → Create). Copy the key - it is the value for `DOGRAH_API_KEY`
+in `server/.env`.
 
 These are organization-wide settings - set once, used by every bot's phone workflows.
 
@@ -71,9 +72,12 @@ Two things carry forward into `server/.env` on the AI Receptionist EC2 instance 
 
 ```txt
 DOGRAH_API_URL=http://<DOGRAH_PUBLIC_IP>:8000
-DOGRAH_EMAIL=<the login you used above>
-DOGRAH_PASSWORD=<the login you used above>
+DOGRAH_API_KEY=<the API key generated in Dograh Settings → API Keys>
 ```
+
+The `DOGRAH_API_KEY` is sent as an `X-API-Key` header on every server-to-server request from
+AI Receptionist to Dograh (workflow creation, telephony config, outbound call triggers, run
+polling). It is never exposed to the browser.
 
 If Plivo rejects inbound call webhooks (a `"... parameter is not valid"` error when placing a
 call, or calls failing with "currently busy" before ever reaching the app) and Dograh's own
