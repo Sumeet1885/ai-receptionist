@@ -1,6 +1,6 @@
 import { SSMClient, GetParametersByPathCommand } from '@aws-sdk/client-ssm';
 
-const REGION = 'ap-south-1';
+const REGION = process.env.AWS_REGION || 'ap-south-1';
 
 const SSM_MANAGED_KEYS = new Set<string>([
   'SUPABASE_URL',
