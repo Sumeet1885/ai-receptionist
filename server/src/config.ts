@@ -10,6 +10,7 @@ function requireEnv(name: string): string {
 }
 
 export const config = {
+  environment: process.env.DEPLOY_ENV || 'development',
   port: parseInt(process.env.PORT || '4000', 10),
   clientUrl: process.env.CLIENT_URL || 'http://localhost:3000',
   supabaseUrl: requireEnv('SUPABASE_URL'),

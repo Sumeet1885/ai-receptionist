@@ -1,7 +1,6 @@
 import { SSMClient, GetParametersByPathCommand } from '@aws-sdk/client-ssm';
 
-const SSM_PATH = '/ai-receptionist/prod/';
-const REGION   = 'ap-south-1';
+const REGION = 'ap-south-1';
 
 const SSM_MANAGED_KEYS = new Set<string>([
   'SUPABASE_URL',
@@ -15,7 +14,17 @@ const SSM_MANAGED_KEYS = new Set<string>([
 ]);
 
 export async function loadSecrets(): Promise<void> {
+  const environment = process.env.DEPLOY_ENV || 'development';
+
+  if (environment === 'development') {
+    console.log('[SSM] 🛠️  Local development — skipping SSM, using .env values.');
+    return;
+  }
+
+  const SSM_PATH = `/ai-receptionist/${environment}/`;
   const client = new SSMClient({ region: REGION });
+
+  console.log(`[SSM] 🔍 Environment: ${environment} — fetching secrets from ${SSM_PATH}`);
 
   try {
     let nextToken: string | undefined;
