@@ -209,6 +209,19 @@ export async function assignInboundWorkflow(
   );
 }
 
+export async function unassignInboundWorkflow(
+  configId: string | number,
+  phoneNumberId: string | number
+): Promise<DograhPhoneNumber> {
+  return request<DograhPhoneNumber>(
+    `/api/v1/organizations/telephony-configs/${configId}/phone-numbers/${phoneNumberId}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({ inbound_workflow_id: null }),
+    }
+  );
+}
+
 export interface InitiateCallParams {
   workflowId: string | number;
   phoneNumber: string;
