@@ -18,6 +18,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
   const [numbers, setNumbers] = useState<DograhNumber[]>([]);
   const [selectedNumberKey, setSelectedNumberKey] = useState('');
   const [assigning, setAssigning] = useState(false);
+  const [unassigning, setUnassigning] = useState(false);
   const [dialNumber, setDialNumber] = useState('');
   const [dialTouched, setDialTouched] = useState(false);
   const [calling, setCalling] = useState(false);
@@ -76,6 +77,20 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
       showToast(err.message || 'Failed to provision the phone agent', 'error');
     } finally {
       setProvisioning(false);
+    }
+  };
+
+  const handleUnassign = async () => {
+    setUnassigning(true);
+    try {
+      await dograhApi.unassignNumber(botId);
+      showToast('Phone number disconnected and returned to the pool.', 'success');
+      setSelectedNumberKey('');
+      await Promise.all([loadStatus(), loadNumbers()]);
+    } catch (err: any) {
+      showToast(err.message || 'Failed to disconnect the phone number', 'error');
+    } finally {
+      setUnassigning(false);
     }
   };
 
@@ -173,9 +188,25 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                 <p className="text-sm font-bold text-brand-text">
                   {status?.provisioned ? 'Phone agent provisioned' : 'Phone agent not provisioned'}
                 </p>
-                <p className="text-xs text-brand-muted mt-0.5">
-                  {status?.phoneNumber ? `Assigned number: ${status.phoneNumber}` : 'No number assigned yet.'}
-                </p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  {status?.phoneNumber ? (
+                    <>
+                      <p className="text-xs text-brand-muted">
+                        Assigned: <span className="font-semibold text-brand-text">{status.phoneNumber}</span>
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleUnassign}
+                        disabled={unassigning}
+                        className="h-6 px-2.5 rounded-md bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 text-red-400 text-[10px] font-bold disabled:opacity-50 transition-colors"
+                      >
+                        {unassigning ? 'Disconnecting…' : 'Disconnect'}
+                      </button>
+                    </>
+                  ) : (
+                    <p className="text-xs text-brand-muted">No number assigned yet.</p>
+                  )}
+                </div>
               </div>
             </div>
 

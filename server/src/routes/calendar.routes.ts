@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth';
-// Import controllers (will create next)
 import * as calendarController from '../controllers/calendarController';
 
 const router = Router();
@@ -8,5 +7,7 @@ const router = Router();
 router.get('/auth-url', requireAuth, calendarController.getAuthUrl);
 router.get('/callback/:provider', calendarController.handleCallback);
 router.get('/status', requireAuth, calendarController.getStatus);
+router.delete('/connection', requireAuth, calendarController.disconnectConnection);
+
 
 export default router;

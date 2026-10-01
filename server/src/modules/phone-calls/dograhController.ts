@@ -8,6 +8,7 @@ import { buildDograhOutboundInstruction, buildDograhPhoneInstruction, withoutAut
 import { syncBotCalls } from './callMirror';
 import {
   assignInboundWorkflow,
+  unassignInboundWorkflow,
   createEndCallTool,
   createHttpTool,
   createWorkflowFromDefinition,
@@ -420,6 +421,50 @@ export async function assignNumber(req: AuthRequest, res: Response): Promise<voi
     console.error('[phone-calls] Assigning number failed:', err);
     res.status(502).json({ error: err.message || 'Failed to assign the phone number' });
   }
+}
+
+export async function unassignNumber(req: AuthRequest, res: Response): Promise<void> {
+  const botId = req.params.botId;
+
+  const bot = await loadOwnedBot(botId, req.user!.id);
+  if (!bot) {
+    res.status(404).json({ error: 'Bot not found' });
+    return;
+  }
+
+  if (!bot.dograh_phone_number_id || !bot.dograh_telephony_config_id) {
+    res.status(400).json({ error: 'No phone number is currently assigned to this agent' });
+    return;
+  }
+
+  try {
+    await unassignInboundWorkflow(bot.dograh_telephony_config_id, bot.dograh_phone_number_id);
+  } catch (err: any) {
+    console.warn(
+      `[phone-calls] unassignNumber: Dograh API call failed for bot ${botId} (continuing with DB cleanup):`,
+      err.message
+    );
+  }
+
+  const { error } = await supabase
+    .from('bots')
+    .update({
+      dograh_telephony_config_id: null,
+      dograh_phone_number_id: null,
+      dograh_phone_number: null,
+      dograh_inbound_active_workflow: 'normal',
+      dograh_inbound_rate_limited_until: null,
+    })
+    .eq('id', botId);
+
+  if (error) {
+    console.error('[phone-calls] unassignNumber: Supabase update failed:', error);
+    res.status(500).json({ error: error.message });
+    return;
+  }
+
+  console.log(`[phone-calls] Phone number ${bot.dograh_phone_number} unassigned from bot ${botId}`);
+  res.json({ success: true });
 }
 
 export async function listCalls(req: AuthRequest, res: Response): Promise<void> {

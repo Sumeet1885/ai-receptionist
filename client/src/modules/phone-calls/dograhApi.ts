@@ -66,6 +66,10 @@ export const dograhApi = {
       method: 'POST',
       body: JSON.stringify({ telephonyConfigId, phoneNumberId }),
     }),
+  unassignNumber: (botId: string) =>
+    authedFetch<{ success: boolean }>(`/api/dograh/bots/${botId}/unassign-number`, {
+      method: 'POST',
+    }),
   callOut: (botId: string, phoneNumber: string) =>
     authedFetch<{ success: boolean }>(`/api/dograh/bots/${botId}/call`, {
       method: 'POST',
