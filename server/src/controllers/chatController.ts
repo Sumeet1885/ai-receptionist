@@ -3,7 +3,7 @@ import { config } from '../config';
 import { geminiGuard, RateLimitError } from '../services/geminiGuard';
 import { mergeWidgetConfig } from '../utils/widgetConfig';
 import { bookCalendarAppointment, checkCalendarAvailability, serializeCalendarToolError } from '../services/calendar/calendarOperations';
-import { formatCurrentDateTime } from '../utils/date';
+import { formatCurrentDateTime, getTimezoneOffsetString, normalizeTimezone } from '../utils/date';
 
 const GEMINI_API_KEY = config.geminiApiKey ?? '';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
@@ -143,55 +143,8 @@ export async function handleChat(
     return { reply: handoffText };
   }
 
-  const timezone = input.timezone || 'Asia/Kolkata';
-  const getTzOffsetStr = (tz: string) => {
-    try {
-      const d = new Date();
-      const formatter = new Intl.DateTimeFormat('en-US', {
-        timeZone: tz,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      });
-      const parts = formatter.formatToParts(d);
-      const getPart = (type: string) => parts.find(p => p.type === type)?.value || '';
-
-      let hour = getPart('hour');
-      if (hour === '24') hour = '00';
-
-      const targetUtc = Date.UTC(
-        Number(getPart('year')),
-        Number(getPart('month')) - 1,
-        Number(getPart('day')),
-        Number(hour),
-        Number(getPart('minute')),
-        Number(getPart('second'))
-      );
-
-      const actualUtc = Date.UTC(
-        d.getUTCFullYear(),
-        d.getUTCMonth(),
-        d.getUTCDate(),
-        d.getUTCHours(),
-        d.getUTCMinutes(),
-        d.getUTCSeconds()
-      );
-
-      const diffMin = Math.round((targetUtc - actualUtc) / 60000);
-      const sign = diffMin >= 0 ? '+' : '-';
-      const absMin = Math.abs(diffMin);
-      const hours = String(Math.floor(absMin / 60)).padStart(2, '0');
-      const mins = String(absMin % 60).padStart(2, '0');
-      return `${sign}${hours}:${mins}`;
-    } catch {
-      return '+05:30';
-    }
-  };
-  const tzOffset = getTzOffsetStr(timezone);
+  const timezone = normalizeTimezone(input.timezone, 'Asia/Kolkata');
+  const tzOffset = getTimezoneOffsetString(timezone);
   const userLocaleTime = formatCurrentDateTime(timezone);
 
   const fieldsToCollect = widgetConfig.requiredLeadFields || [];
@@ -254,7 +207,7 @@ CRITICAL SECURITY & CONSTRAINTS:
 - DATE FORMAT RULE: You must always parse, interpret, process, and present dates in DD-MM-YYYY format (e.g. 07-08-2026 for 7th August 2026) and NOT MM-DD-YYYY format. Crucially, when the user provides or asks about dates, or when you use tools, assume and use the DD-MM-YYYY format for all communications and relative date calculations.
 - TOOL TIMEZONE: When calling check_availability, pass the local date format 'YYYY-MM-DD'. When calling book_appointment, construct startTime and endTime in ISO 8601 format using the user's local offset ${tzOffset} (example: 2026-06-17T08:30:00${tzOffset}). Never ask the user to provide a timezone unless their requested date/time is actually ambiguous.`;
 
-  const bookAppointmentRequired = ['title', 'startTime', 'endTime'];
+  const bookAppointmentRequired = ['startTime'];
   if (fieldsToCollect.includes('name')) {
     bookAppointmentRequired.push('visitorName');
   }
@@ -273,7 +226,7 @@ CRITICAL SECURITY & CONSTRAINTS:
         parameters: {
           type: 'OBJECT',
           properties: {
-            date: { type: 'STRING', description: 'Date in YYYY-MM-DD format (local timezone of visitor)' }
+            date: { type: 'STRING', description: 'Date in YYYY-MM-DD or DD-MM-YYYY format (local timezone of visitor)' }
           },
           required: ['date']
         }
@@ -284,12 +237,12 @@ CRITICAL SECURITY & CONSTRAINTS:
         parameters: {
           type: 'OBJECT',
           properties: {
-            title: { type: 'STRING', description: 'Title of the appointment' },
+            title: { type: 'STRING', description: 'Title of the appointment (optional)' },
             visitorName: { type: 'STRING', description: 'Visitor full name' },
             visitorPhone: { type: 'STRING', description: 'Visitor phone number' },
             visitorEmail: { type: 'STRING', description: 'Visitor email address' },
-            startTime: { type: 'STRING', description: 'Start time in ISO 8601 format' },
-            endTime: { type: 'STRING', description: 'End time in ISO 8601 format' }
+            startTime: { type: 'STRING', description: 'Start time in ISO 8601 format (e.g. 2026-10-06T15:00:00+05:30)' },
+            endTime: { type: 'STRING', description: 'End time in ISO 8601 format (optional, defaults to 30 min duration)' }
           },
           required: bookAppointmentRequired
         }

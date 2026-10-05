@@ -291,3 +291,68 @@ test('bookCalendarAppointment rejects a startTime past the owner-configured book
     /can only be booked up to 30 day\(s\) ahead/,
   );
 });
+
+test('availability normalizes IST and UST timezone abbreviations properly', async () => {
+  const calls: any[] = [];
+  const db = {
+    from: () => queryResult({ provider: 'google' }),
+  };
+  const adapter = {
+    async checkAvailability(date: string, ownerId: string, timezone?: string) {
+      calls.push([date, timezone]);
+      return [];
+    },
+  };
+
+  const bookingDate = isoDateDaysFromNow(3);
+
+  // Test IST -> Asia/Kolkata
+  await checkCalendarAvailability({
+    db,
+    ownerId: 'owner-1',
+    date: bookingDate,
+    timezone: 'IST',
+    getAdapter: () => adapter as any,
+  });
+
+  // Test UST -> UTC
+  await checkCalendarAvailability({
+    db,
+    ownerId: 'owner-1',
+    date: bookingDate,
+    timezone: 'UST',
+    getAdapter: () => adapter as any,
+  });
+
+  assert.equal(calls[0][1], 'Asia/Kolkata');
+  assert.equal(calls[1][1], 'UTC');
+});
+
+test('availability accepts DD-MM-YYYY date strings and normalizes to YYYY-MM-DD', async () => {
+  const calls: any[] = [];
+  const db = {
+    from: () => queryResult({ provider: 'google' }),
+  };
+  const adapter = {
+    async checkAvailability(date: string, ownerId: string, timezone?: string) {
+      calls.push([date, timezone]);
+      return [];
+    },
+  };
+
+  // Convert an ISO date 5 days from now to DD-MM-YYYY
+  const isoDate = isoDateDaysFromNow(5);
+  const [year, month, day] = isoDate.split('-');
+  const ddmmyyyy = `${day}-${month}-${year}`;
+
+  await checkCalendarAvailability({
+    db,
+    ownerId: 'owner-1',
+    date: ddmmyyyy,
+    timezone: 'IST',
+    getAdapter: () => adapter as any,
+  });
+
+  assert.equal(calls[0][0], isoDate);
+  assert.equal(calls[0][1], 'Asia/Kolkata');
+});

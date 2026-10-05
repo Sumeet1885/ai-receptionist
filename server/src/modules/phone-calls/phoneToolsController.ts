@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { supabase } from '../../services/db';
 import { checkCalendarAvailability, bookCalendarAppointment, serializeCalendarToolError } from '../../services/calendar/calendarOperations';
 import { mergeWidgetConfig } from '../../utils/widgetConfig';
+import { normalizeTimezone } from '../../utils/date';
 import { InboundRateLimitBot, markInboundAttemptAndApplyLimit } from './inboundRateLimiter';
 
 /**
@@ -106,12 +107,13 @@ export async function checkAvailability(req: Request, res: Response): Promise<vo
 
   const { date, timezone } = req.body || {};
   const widgetConfig = mergeWidgetConfig(bot.widget_config);
+  const effectiveTimezone = normalizeTimezone(timezone || widgetConfig.timezone, 'Asia/Kolkata');
   try {
     const slots = await checkCalendarAvailability({
       db: supabase,
       ownerId: bot.owner_id,
       date,
-      timezone,
+      timezone: effectiveTimezone,
       maxBookingDaysAhead: widgetConfig.maxBookingDaysAhead
     });
     res.json({ slots });
@@ -135,13 +137,14 @@ export async function bookAppointment(req: Request, res: Response): Promise<void
   }
 
   const widgetConfig = mergeWidgetConfig(bot.widget_config);
+  const effectiveTimezone = normalizeTimezone(timezone || widgetConfig.timezone, 'Asia/Kolkata');
   try {
     const result = await bookCalendarAppointment({
       db: supabase,
       ownerId: bot.owner_id,
       botId,
       sessionId: session_id,
-      timezone,
+      timezone: effectiveTimezone,
       details,
       maxBookingDaysAhead: widgetConfig.maxBookingDaysAhead
     });

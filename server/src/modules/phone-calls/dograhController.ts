@@ -81,12 +81,12 @@ async function ensurePhoneTools(bot: DograhProvisionableBot): Promise<PhoneToolU
     method: 'POST' as const,
     headers: apiKeyHeader,
     parameters: [
-      { name: 'title', type: 'string' as const, description: 'Title of the appointment', required: true },
+      { name: 'title', type: 'string' as const, description: 'Title of the appointment (optional)', required: false },
       { name: 'visitorName', type: 'string' as const, description: 'Caller full name', required: false },
       { name: 'visitorPhone', type: 'string' as const, description: 'Caller phone number', required: false },
       { name: 'visitorEmail', type: 'string' as const, description: 'Caller email address', required: false },
-      { name: 'startTime', type: 'string' as const, description: 'Start time in ISO 8601 format', required: true },
-      { name: 'endTime', type: 'string' as const, description: 'End time in ISO 8601 format', required: true },
+      { name: 'startTime', type: 'string' as const, description: 'Start time in ISO 8601 format (e.g. 2026-10-06T15:00:00+05:30)', required: true },
+      { name: 'endTime', type: 'string' as const, description: 'End time in ISO 8601 format (optional, defaults to 30 min duration)', required: false },
     ],
     presetParameters: [
       { name: 'session_id', type: 'string' as const, value_template: '{{initial_context.session_id}}' },

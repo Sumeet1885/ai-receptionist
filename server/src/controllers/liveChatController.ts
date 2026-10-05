@@ -9,6 +9,7 @@ import { checkAllowedOrigin } from '../utils/security';
 import { checkWebSocketRateLimit } from '../middleware/rateLimit';
 import { wsTransport } from '../utils/wsTransport';
 import { mergeWidgetConfig } from '../utils/widgetConfig';
+import { getTimezoneOffsetString, normalizeTimezone } from '../utils/date';
 import { LiveInputTranscriptAccumulator } from '../services/llm/liveInputTranscript';
 import { bookCalendarAppointment, checkCalendarAvailability, serializeCalendarToolError } from '../services/calendar/calendarOperations';
 import { loadLiveSessionContext } from '../services/liveSession';
@@ -57,7 +58,7 @@ export function setupWebSocketServer(server: Server) {
     const sessionId = url.searchParams.get('sessionId');
     const preverifiedContactsParam = url.searchParams.get('preverifiedContacts');
 
-    const timezone = url.searchParams.get('timezone') || 'IST';
+    const timezone = normalizeTimezone(url.searchParams.get('timezone'), 'Asia/Kolkata');
     let preverifiedContacts: Partial<Record<ContactField, unknown>> = {};
     if (preverifiedContactsParam) {
       try {
@@ -116,55 +117,7 @@ export function setupWebSocketServer(server: Server) {
       return;
     }
 
-    // Helper to compute client timezone offset string, e.g. "+05:30" or "-08:00"
-    const getTzOffsetStr = (tz: string) => {
-      try {
-        const d = new Date();
-        const formatter = new Intl.DateTimeFormat('en-US', {
-          timeZone: tz,
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: false
-        });
-        const parts = formatter.formatToParts(d);
-        const getPart = (type: string) => parts.find(p => p.type === type)?.value || '';
-
-        let hour = getPart('hour');
-        if (hour === '24') hour = '00';
-
-        const targetUtc = Date.UTC(
-          Number(getPart('year')),
-          Number(getPart('month')) - 1,
-          Number(getPart('day')),
-          Number(hour),
-          Number(getPart('minute')),
-          Number(getPart('second'))
-        );
-
-        const actualUtc = Date.UTC(
-          d.getUTCFullYear(),
-          d.getUTCMonth(),
-          d.getUTCDate(),
-          d.getUTCHours(),
-          d.getUTCMinutes(),
-          d.getUTCSeconds()
-        );
-
-        const diffMin = Math.round((targetUtc - actualUtc) / 60000);
-        const sign = diffMin >= 0 ? '+' : '-';
-        const absMin = Math.abs(diffMin);
-        const hours = String(Math.floor(absMin / 60)).padStart(2, '0');
-        const mins = String(absMin % 60).padStart(2, '0');
-        return `${sign}${hours}:${mins}`;
-      } catch {
-        return '+00:00';
-      }
-    };
-    const tzOffset = getTzOffsetStr(timezone);
+    const tzOffset = getTimezoneOffsetString(timezone);
 
     // 2. Connect to Gemini Live API
     const geminiWs = new WebSocket(LIVE_API_URL);
@@ -276,7 +229,7 @@ export function setupWebSocketServer(server: Server) {
       const seededContacts = seedVerifiedContactInputs(contactCollection, preverifiedContacts);
       seededContactFields = Object.keys(seededContacts.seeded) as ContactField[];
       const missingContactFields = requiredContactFields.filter(field => !contactCollection.getVerified(field));
-      const bookAppointmentRequired = ['title', 'startTime', 'endTime'];
+      const bookAppointmentRequired = ['startTime'];
       if (fieldsToCollect.includes('name')) {
         bookAppointmentRequired.push('visitorName');
       }
