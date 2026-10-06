@@ -6,10 +6,38 @@ import {
   DograhWorkflow,
 } from './types';
 
-const { apiUrl, apiKey } = config.dograh;
-
 export function isDograhConfigured(): boolean {
-  return Boolean(apiUrl && apiKey);
+  return Boolean(config.dograh.apiUrl && (config.dograh.apiKey || (config.dograh.email && config.dograh.password)));
+}
+
+let cachedToken: string | null = null;
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  if (config.dograh.apiKey) {
+    if (config.dograh.apiKey.startsWith('ey')) {
+      return { Authorization: `Bearer ${config.dograh.apiKey}` };
+    }
+    return { 'X-API-Key': config.dograh.apiKey };
+  }
+
+  if (config.dograh.email && config.dograh.password) {
+    if (cachedToken) {
+      return { Authorization: `Bearer ${cachedToken}` };
+    }
+    const res = await fetch(`${config.dograh.apiUrl}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: config.dograh.email, password: config.dograh.password }),
+    });
+    if (!res.ok) {
+      throw new DograhApiError(`Dograh login failed: ${res.status} ${await res.text()}`, res.status);
+    }
+    const data: any = await res.json();
+    cachedToken = data.token;
+    return { Authorization: `Bearer ${cachedToken}` };
+  }
+
+  throw new Error('Dograh is not configured (DOGRAH_API_KEY or DOGRAH_EMAIL/DOGRAH_PASSWORD missing).');
 }
 
 export class DograhApiError extends Error {
@@ -21,18 +49,25 @@ export class DograhApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function request<T>(path: string, init: RequestInit = {}, retrying = false): Promise<T> {
   if (!isDograhConfigured()) {
-    throw new Error('Dograh is not configured (DOGRAH_API_KEY missing).');
+    throw new Error('Dograh is not configured (DOGRAH_API_KEY or DOGRAH_EMAIL/DOGRAH_PASSWORD missing).');
   }
-  const response = await fetch(`${apiUrl}${path}`, {
+
+  const authHeaders = await getAuthHeaders();
+  const response = await fetch(`${config.dograh.apiUrl}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
-      'X-API-Key': apiKey,
+      ...authHeaders,
       ...(init.headers || {}),
     },
   });
+
+  if (response.status === 401 && !retrying && config.dograh.email && config.dograh.password) {
+    cachedToken = null;
+    return request<T>(path, init, true);
+  }
 
   if (!response.ok) {
     throw new DograhApiError(`Dograh API error on ${path}: ${response.status} ${await response.text()}`, response.status);
@@ -96,6 +131,7 @@ export interface CreateHttpToolParams {
   headers?: Record<string, string>;
   parameters?: HttpToolParam[];
   presetParameters?: HttpToolPresetParam[];
+  timeoutMs?: number;
 }
 
 function httpToolBody(params: CreateHttpToolParams) {
@@ -110,7 +146,8 @@ function httpToolBody(params: CreateHttpToolParams) {
         url: params.url,
         headers: params.headers,
         parameters: params.parameters,
-        preset_parameters: params.presetParameters,
+        preset_parameters: params.presetParameters || [],
+        timeout_ms: params.timeoutMs || 15000,
       },
     },
   };

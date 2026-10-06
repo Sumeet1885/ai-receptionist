@@ -82,13 +82,15 @@ function extractCallerEmail(run: DograhRunDetail): string | null {
 function extractDurationSeconds(run: DograhRunDetail): number | null {
   const usage = run.usage_info as Record<string, any> | null;
   const cost = run.cost_info as Record<string, any> | null;
-  return (
+  const raw =
     usage?.call_duration_seconds ??
     usage?.duration_seconds ??
     cost?.call_duration_seconds ??
     cost?.duration_seconds ??
-    null
-  );
+    null;
+  if (raw === null || raw === undefined) return null;
+  const num = typeof raw === 'number' ? raw : parseFloat(String(raw));
+  return isNaN(num) ? null : Math.round(num);
 }
 
 export interface SyncResult {
