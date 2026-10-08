@@ -12,7 +12,9 @@ export function requirePhoneToolsApiKey(req: Request, res: Response, next: NextF
   // Header for the http_api tools (check_availability/book_appointment, which support static
   // headers); query param for pre_call_fetch, whose schema only offers a credential_uuid for
   // auth and we don't want to require the owner to manually create a Dograh credential for this.
-  const presented = req.header('X-API-Key') || req.query.key;
+  const authHeader = req.header('Authorization');
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const presented = req.header('X-API-Key') || req.query.key || bearerToken;
   if (presented !== config.phoneTools.apiKey) {
     res.status(401).json({ error: 'Invalid API key' });
     return;

@@ -6,10 +6,18 @@ import {
   DograhWorkflow,
 } from './types';
 
-const { apiUrl, apiKey } = config.dograh;
-
 export function isDograhConfigured(): boolean {
-  return Boolean(apiUrl && apiKey);
+  return Boolean(config.dograh.apiUrl && config.dograh.apiKey);
+}
+
+function getAuthHeaders(): Record<string, string> {
+  if (!config.dograh.apiKey) {
+    throw new Error('Dograh is not configured (DOGRAH_API_KEY missing).');
+  }
+  if (config.dograh.apiKey.startsWith('ey')) {
+    return { Authorization: `Bearer ${config.dograh.apiKey}` };
+  }
+  return { 'X-API-Key': config.dograh.apiKey };
 }
 
 export class DograhApiError extends Error {
@@ -25,11 +33,13 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!isDograhConfigured()) {
     throw new Error('Dograh is not configured (DOGRAH_API_KEY missing).');
   }
-  const response = await fetch(`${apiUrl}${path}`, {
+
+  const authHeaders = getAuthHeaders();
+  const response = await fetch(`${config.dograh.apiUrl}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
-      'X-API-Key': apiKey,
+      ...authHeaders,
       ...(init.headers || {}),
     },
   });
@@ -96,6 +106,7 @@ export interface CreateHttpToolParams {
   headers?: Record<string, string>;
   parameters?: HttpToolParam[];
   presetParameters?: HttpToolPresetParam[];
+  timeoutMs?: number;
 }
 
 function httpToolBody(params: CreateHttpToolParams) {
@@ -110,7 +121,8 @@ function httpToolBody(params: CreateHttpToolParams) {
         url: params.url,
         headers: params.headers,
         parameters: params.parameters,
-        preset_parameters: params.presetParameters,
+        preset_parameters: params.presetParameters || [],
+        timeout_ms: params.timeoutMs || 15000,
       },
     },
   };
