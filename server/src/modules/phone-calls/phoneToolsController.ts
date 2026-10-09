@@ -3,6 +3,8 @@ import { supabase } from '../../services/db';
 import { checkCalendarAvailability, bookCalendarAppointment, serializeCalendarToolError } from '../../services/calendar/calendarOperations';
 import { mergeWidgetConfig } from '../../utils/widgetConfig';
 import { InboundRateLimitBot, markInboundAttemptAndApplyLimit } from './inboundRateLimiter';
+import { logger } from '../../services/cloudwatchLogger';
+
 
 /**
  * Endpoints Dograh's own backend calls back into mid-call (pre-call session creation, then the
@@ -48,7 +50,7 @@ export async function preCall(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  if (req.query.direction === 'inbound') {
+    if (req.query.direction === 'inbound') {
     try {
       await markInboundAttemptAndApplyLimit(supabase, bot);
     } catch (err) {
@@ -57,6 +59,12 @@ export async function preCall(req: Request, res: Response): Promise<void> {
       console.error(`[phone-calls] Inbound rate-limit workflow switch failed for bot ${botId}:`, err);
     }
   }
+
+  logger.callEvent('pre_call_session_created', {
+    botId,
+    sessionId: session.id,
+    direction: req.query.direction === 'inbound' ? 'inbound' : 'outbound',
+  });
 
   // Dograh's pre-call-fetch extractor only merges variables nested under an `initial_context`
   // key (or the legacy `dynamic_variables`) - a flat `{ session_id }` body is silently ignored,
@@ -114,8 +122,20 @@ export async function checkAvailability(req: Request, res: Response): Promise<vo
       timezone,
       maxBookingDaysAhead: widgetConfig.maxBookingDaysAhead
     });
+    const slotCount = Array.isArray(slots) ? slots.length : 0;
+    logger.aiReceptionist('Phone tool check_availability called', {
+      botId,
+      date,
+      timezone,
+      slotCount,
+    });
     res.json({ slots });
   } catch (err: any) {
+    logger.aiReceptionist('Phone tool check_availability failed', {
+      botId,
+      date,
+      error: err?.message,
+    }, 'warn');
     res.json(serializeCalendarToolError(err));
   }
 }
@@ -145,8 +165,23 @@ export async function bookAppointment(req: Request, res: Response): Promise<void
       details,
       maxBookingDaysAhead: widgetConfig.maxBookingDaysAhead
     });
+    logger.leadEvent('appointment_booked_via_phone_tool', {
+      botId,
+      sessionId: session_id,
+      title: details?.title,
+      startTime: details?.startTime,
+      endTime: details?.endTime,
+      visitorName: details?.visitorName,
+      visitorPhone: details?.visitorPhone,
+      eventId: result.eventId,
+    });
     res.json(result);
   } catch (err: any) {
+    logger.aiReceptionist('Phone tool book_appointment threw exception', {
+      botId,
+      sessionId: session_id,
+      error: err?.message,
+    }, 'error');
     res.json(serializeCalendarToolError(err));
   }
 }

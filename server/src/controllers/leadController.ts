@@ -1,8 +1,10 @@
 // @ts-nocheck
 import { config } from '../config';
 import { isCrmSyncEnabled, syncLeadToCrm } from '../services/crmSync';
+import { logger } from '../services/cloudwatchLogger';
 
 const GROQ_API_KEY = config.groqApiKey || '';
+
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 export interface LeadInput {
@@ -116,6 +118,28 @@ export async function analyzeLead(
     updated_at:         new Date().toISOString()
   }, { onConflict: 'session_id' });
 
+  logger.leadEvent('lead_analyzed', {
+    botId,
+    sessionId,
+    leadScore: lead.leadScore || 'COLD',
+    sentiment: lead.sentiment || 'Neutral',
+    appointmentStatus: lead.appointmentStatus || 'None',
+    requirement: lead.requirement || 'General Inquiry',
+    hasName: Boolean(lead.name && lead.name !== 'Anonymous'),
+    hasPhone: Boolean(phone && phone !== 'Not Provided'),
+    hasEmail: Boolean(email),
+    summary: lead.summary || '',
+  });
+
+  if (lead.leadScore === 'HOT') {
+    logger.leadEvent('hot_lead_qualified', {
+      botId,
+      sessionId,
+      requirement: lead.requirement,
+      summary: lead.summary,
+    });
+  }
+
   // Only mirror leads with at least a name and phone (this app's compulsory
   // contact fields) to the owner's own CRM, if they've connected one for this bot.
   if (lead.name?.trim() && phone) {
@@ -127,6 +151,12 @@ export async function analyzeLead(
 
     if (isCrmSyncEnabled(crmConn)) {
       const businessName = Array.isArray(crmConn.bots) ? crmConn.bots[0]?.business_name : crmConn.bots?.business_name;
+      logger.leadEvent('lead_crm_sync_dispatched', {
+        botId,
+        sessionId,
+        businessName,
+        leadScore: lead.leadScore,
+      });
       syncLeadToCrm(lead, crmConn, { sessionId, businessName }).catch((err) =>
         console.error('[crm-sync] background sync error:', err)
       );

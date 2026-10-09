@@ -41,6 +41,7 @@ export interface Bot {
   knowledgeBase: string;
   allowedDomains?: string[];
   widgetConfig: WidgetConfig;
+  phoneNumber?: string;
   createdAt: string;
 }
 

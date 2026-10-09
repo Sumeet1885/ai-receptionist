@@ -16,6 +16,7 @@ function mapBotFromDb(b: any): Bot {
     knowledgeBase: b.knowledge_base,
     allowedDomains: b.allowed_domains || [],
     widgetConfig: mergeWidgetConfig(b.widget_config),
+    phoneNumber: b.widget_config?.phoneNumber || b.dograh_phone_number || b.phone_number || '',
     createdAt: b.created_at
   };
 }
@@ -53,10 +54,16 @@ export function useBots() {
     primary_color: string;
     knowledge_base: string;
     widget_config?: WidgetConfig;
+    phone_number?: string;
   }) => {
+    const insertPayload: any = { ...payload };
+    if (insertPayload.phone_number) {
+      insertPayload.dograh_phone_number = insertPayload.phone_number;
+      delete insertPayload.phone_number;
+    }
     const { data, error } = await supabase
       .from('bots')
-      .insert([payload])
+      .insert([insertPayload])
       .select('*')
       .single();
 
@@ -75,6 +82,7 @@ export function useBots() {
     knowledgeBase: string;
     allowedDomains: string[];
     widgetConfig: WidgetConfig;
+    phoneNumber: string;
   }>) => {
     const dbUpdates: any = {};
     if (updates.businessName !== undefined) dbUpdates.business_name = updates.businessName;
@@ -84,6 +92,14 @@ export function useBots() {
     if (updates.knowledgeBase !== undefined) dbUpdates.knowledge_base = updates.knowledgeBase;
     if (updates.allowedDomains !== undefined) dbUpdates.allowed_domains = updates.allowedDomains;
     if (updates.widgetConfig !== undefined) dbUpdates.widget_config = updates.widgetConfig;
+    if (updates.phoneNumber !== undefined) {
+      dbUpdates.dograh_phone_number = updates.phoneNumber;
+      const currentWidgetConfig = updates.widgetConfig || (bots.find(b => b.id === id)?.widgetConfig as any) || {};
+      dbUpdates.widget_config = {
+        ...currentWidgetConfig,
+        phoneNumber: updates.phoneNumber,
+      };
+    }
 
     const { error } = await supabase
       .from('bots')

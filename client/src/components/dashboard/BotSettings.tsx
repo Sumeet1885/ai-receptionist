@@ -17,6 +17,7 @@ interface BotSettingsProps {
     knowledgeBase: string;
     allowedDomains: string[];
     widgetConfig: WidgetConfig;
+    phoneNumber: string;
   }>) => Promise<void>;
 }
 
@@ -202,7 +203,8 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
         primaryColor: activeBot.primaryColor,
         knowledgeBase: activeBot.knowledgeBase,
         allowedDomains: normalizeDomains(activeBot.allowedDomains || []),
-        widgetConfig: cleanConfig
+        widgetConfig: cleanConfig,
+        phoneNumber: (activeBot.phoneNumber || '').trim()
       });
       showToast('Agent settings saved');
     } catch (err: any) {
@@ -245,6 +247,19 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                 </div>
                 <TextInput maxLength={100} value={activeBot.industry} onChange={(e) => patchActiveBot({ industry: e.target.value })} />
               </div>
+            </div>
+            <div>
+              <div className="flex justify-between items-center">
+                <FieldLabel>Business Contact Phone</FieldLabel>
+                <span className="text-[10px] font-mono text-brand-muted">Optional</span>
+              </div>
+              <TextInput
+                maxLength={30}
+                placeholder="+1 (555) 000-0000"
+                value={activeBot.phoneNumber || ''}
+                onChange={(e) => patchActiveBot({ phoneNumber: e.target.value })}
+              />
+              <p className="text-[11px] text-brand-muted mt-1">Shared by the AI receptionist during human handoffs and direct callback requests.</p>
             </div>
             <div>
               <div className="flex justify-between items-center">

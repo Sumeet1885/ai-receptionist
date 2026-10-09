@@ -45,14 +45,18 @@ export function useAuth() {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        window.history.pushState({}, '', '/auth?mode=reset');
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }
       const newUser = session?.user ?? null;
       setUser(newUser);
       setLoading(false);
       if (session) {
         await saveProviderTokens(session);
       }
-      if (newUser) {
+      if (newUser && event !== 'PASSWORD_RECOVERY') {
         await seedDemoDataForUser(newUser.id);
       }
     });

@@ -4,6 +4,7 @@ import {
   DograhPhoneNumber,
   DograhRunDetail,
   DograhTelephonyConfig,
+  DograhTelephonyConfigDetail,
   DograhWorkflow,
 } from './types';
 
@@ -16,16 +17,20 @@ export function isDograhConfigured(): boolean {
 let cachedToken: string | null = null;
 
 async function login(): Promise<string> {
-
-  
-  const response = await fetch(`${apiUrl}/api/v1/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${apiUrl}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch (err: any) {
+    throw new DograhApiError(`Dograh voice server is unreachable at ${apiUrl} (${err.message}). Please check if the Dograh EC2 instance or container is running.`, 503);
+  }
 
   if (!response.ok) {
-    throw new Error(`Dograh login failed: ${response.status} ${await response.text()}`);
+    throw new DograhApiError(`Dograh login failed: ${response.status} ${await response.text()}`, response.status);
   }
   const data: DograhLoginResponse = await response.json();
   cachedToken = data.token;
@@ -46,14 +51,20 @@ async function request<T>(path: string, init: RequestInit = {}, retrying = false
     throw new Error('Dograh is not configured (DOGRAH_EMAIL/DOGRAH_PASSWORD missing).');
   }
   const token = cachedToken ?? (await login());
-  const response = await fetch(`${apiUrl}${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-      ...(init.headers || {}),
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${apiUrl}${path}`, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        ...(init.headers || {}),
+      },
+      signal: init.signal || AbortSignal.timeout(10000),
+    });
+  } catch (err: any) {
+    throw new DograhApiError(`Dograh request to ${path} failed: ${err.message}`, 503);
+  }
 
   if (response.status === 401 && !retrying) {
     cachedToken = null;
@@ -214,11 +225,38 @@ export async function listTelephonyConfigs(): Promise<DograhTelephonyConfig[]> {
   return data.configurations || [];
 }
 
+export async function createTelephonyConfig(payload: {
+  name: string;
+  is_default_outbound?: boolean;
+  config: Record<string, unknown>;
+}): Promise<DograhTelephonyConfigDetail> {
+  return request<DograhTelephonyConfigDetail>('/api/v1/organizations/telephony-configs', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function listPhoneNumbers(configId: string | number): Promise<DograhPhoneNumber[]> {
   const data = await request<{ phone_numbers: DograhPhoneNumber[] }>(
     `/api/v1/organizations/telephony-configs/${configId}/phone-numbers`
   );
   return data.phone_numbers || [];
+}
+
+export async function createPhoneNumber(
+  configId: string | number,
+  params: {
+    address: string;
+    inbound_workflow_id?: number | null;
+    label?: string | null;
+    is_active?: boolean;
+    is_default_caller_id?: boolean;
+  }
+): Promise<DograhPhoneNumber> {
+  return request<DograhPhoneNumber>(`/api/v1/organizations/telephony-configs/${configId}/phone-numbers`, {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
 }
 
 export async function assignInboundWorkflow(

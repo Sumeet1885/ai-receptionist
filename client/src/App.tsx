@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './lib/supabaseClient';
 
-import { Toast as ToastType } from './types';
+import { Toast as ToastType, LeadField } from './types';
 import { defaultWidgetConfig, mergeWidgetConfig } from './lib/widgetConfig';
+import { BUSINESS_TEMPLATES } from './lib/businessTemplates';
 import { getLeadRefreshInterval } from './lib/leadQuery';
 import { useAuth } from './hooks/useAuth';
 import { useBots } from './hooks/useBots';
@@ -31,7 +32,7 @@ type AgentTab = 'overview' | 'knowledge' | 'install' | 'crm' | 'preview';
 
 type AppRoute =
   | { name: 'landing' }
-  | { name: 'auth'; mode: 'signin' | 'signup' }
+  | { name: 'auth'; mode: 'signin' | 'signup' | 'forgot' | 'reset' }
   | { name: 'dashboard' }
   | { name: 'leads' }
   | { name: 'inbox' }
@@ -47,12 +48,18 @@ const agentTabs: AgentTab[] = ['overview', 'knowledge', 'install', 'crm', 'previ
 function parseRoute(): AppRoute {
   const path = window.location.pathname;
   const params = new URLSearchParams(window.location.search);
+  const hash = window.location.hash;
 
   const chatMatch = path.match(/^\/chats\/([^/]+)/);
   if (chatMatch) return { name: 'public-chat', subdomain: decodeURIComponent(chatMatch[1]) };
 
-  if (path === '/auth') {
-    return { name: 'auth', mode: params.get('mode') === 'signup' ? 'signup' : 'signin' };
+  if (path === '/auth' || hash.includes('type=recovery')) {
+    const modeParam = params.get('mode');
+    let mode: 'signin' | 'signup' | 'forgot' | 'reset' = 'signin';
+    if (modeParam === 'signup') mode = 'signup';
+    else if (modeParam === 'forgot') mode = 'forgot';
+    else if (modeParam === 'reset' || hash.includes('type=recovery')) mode = 'reset';
+    return { name: 'auth', mode };
   }
   if (path === '/dashboard') return { name: 'dashboard' };
   if (path === '/leads') return { name: 'leads' };
@@ -86,11 +93,13 @@ export default function App() {
   const { leads, setLeads, fetchLeads } = useLeads();
   const chat = useChat();
 
-  const [newBotName, setNewBotName] = useState('');
-  const [newBotIndustry, setNewBotIndustry] = useState('Education');
-  const [newBotGreeting, setNewBotGreeting] = useState('');
-  const [newBotKB, setNewBotKB] = useState('');
-  const [newBotColor, setNewBotColor] = useState('indigo');
+  const [newBotName, setNewBotName] = useState('SmileCare Dental & Wellness Clinic');
+  const [newBotIndustry, setNewBotIndustry] = useState('Healthcare');
+  const [newBotGreeting, setNewBotGreeting] = useState("Welcome to SmileCare Clinic! I'm your virtual medical receptionist. I can help you schedule appointments, check doctor availability, and answer questions about cleanings, procedures, or insurance coverage. How can I assist you today?");
+  const [newBotKB, setNewBotKB] = useState(BUSINESS_TEMPLATES[0].knowledgeBase);
+  const [newBotColor, setNewBotColor] = useState('emerald');
+  const [newBotLeadFields, setNewBotLeadFields] = useState<LeadField[]>(BUSINESS_TEMPLATES[0].requiredLeadFields);
+  const [newBotPrompts, setNewBotPrompts] = useState<string[]>(BUSINESS_TEMPLATES[0].suggestedPrompts);
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
   const [newlyCreatedBotId, setNewlyCreatedBotId] = useState<string | null>(null);
   const [leadAgentFilter, setLeadAgentFilter] = useState<string | 'all'>('all');
@@ -230,22 +239,39 @@ export default function App() {
   }, [route]);
 
   const applyOnboardingTemplate = (industry: string) => {
+    const tmpl = BUSINESS_TEMPLATES.find(
+      t => t.industry.toLowerCase() === industry.toLowerCase() || t.id.toLowerCase() === industry.toLowerCase()
+    );
+    if (tmpl) {
+      setNewBotName(tmpl.defaultName);
+      setNewBotGreeting(tmpl.greeting);
+      setNewBotKB(tmpl.knowledgeBase);
+      setNewBotColor(tmpl.primaryColor);
+      setNewBotLeadFields(tmpl.requiredLeadFields);
+      setNewBotPrompts(tmpl.suggestedPrompts);
+      return;
+    }
     if (industry === 'Education') {
       setNewBotName('Alpha Education Institute');
       setNewBotGreeting('Welcome to Alpha Education! How can I help you with details on engineering admissions, MBA courses, or fee structures today?');
       setNewBotKB(`Alpha Education Institute details:\n1. Available Programs:\n- Executive MBA (1 Year Program) - Fee: INR 2,50,000.\n- Master's in Computer Science (2 Years) - Fee: INR 1,80,000 per year.\n2. Admissions: Opens in June. Apply online on our portal.\n3. Office Location: Sector-5, Salt Lake, Kolkata.`);
-    } else if (industry === 'Real Estate') {
-      setNewBotName('Apex Horizon Estates');
-      setNewBotGreeting('Welcome to Apex Horizon Estates! Interested in our premium high-rise projects, commercial spaces, or planning a direct site visit?');
-      setNewBotKB(`Apex Horizon Estates portfolio details:\n1. Active Project: "Horizon Heights" located in Kharadi, Pune.\n- Configurations: premium 2 BHK (INR 85 Lakhs onwards) and 3 BHK (INR 1.25 Cr onwards).\n- Amenities: Infinite swimming pool, sky garden, fully equipped modern gym.\n2. Site Visits: Open daily from 9:00 AM to 7:00 PM.`);
+      setNewBotColor('indigo');
+      setNewBotLeadFields(['name', 'phone', 'requirement']);
+      setNewBotPrompts(['Ask about admissions', 'Fee structure details']);
     } else if (industry === 'Recruitment') {
       setNewBotName('Recrui8 Tech Staffing');
       setNewBotGreeting('Hello! I am the Recrui8 Virtual HR Assistant. I can help you browse active technical openings, track candidate application status, or schedule interviews!');
       setNewBotKB(`Recrui8 Tech Staffing guide:\n1. Active Technical Openings:\n- Senior React Developer: Requires 5+ years of experience. Salary: 18-24 LPA.\n- AI Product Engineer: Requires expertise in LLMs, Gemini/OpenAI API integrations. Salary: 20-30 LPA.\n2. Candidate Application Process:\nSubmit Resume, GitHub Link, and complete a 45-minute coding challenge.`);
+      setNewBotColor('indigo');
+      setNewBotLeadFields(['name', 'phone', 'email', 'requirement']);
+      setNewBotPrompts(['Explore tech roles', 'Submit resume', 'Interview status']);
     } else if (industry === 'Other') {
       setNewBotName('');
       setNewBotGreeting('Welcome to our business! How can our virtual assistant help you today?');
       setNewBotKB('Add details about your business here...');
+      setNewBotColor('indigo');
+      setNewBotLeadFields(['name', 'phone']);
+      setNewBotPrompts([]);
     }
   };
 
@@ -278,7 +304,9 @@ export default function App() {
         widget_config: {
           ...defaultWidgetConfig,
           assistantName: newBotName || 'AI Receptionist',
-          avatarText: (newBotName || 'AI').slice(0, 2).toUpperCase()
+          avatarText: (newBotName || 'AI').slice(0, 2).toUpperCase(),
+          requiredLeadFields: newBotLeadFields,
+          suggestedPrompts: newBotPrompts
         }
       });
       setNewlyCreatedBotId(newBotId);
@@ -352,6 +380,10 @@ export default function App() {
             setNewBotKB={setNewBotKB}
             newBotColor={newBotColor}
             setNewBotColor={setNewBotColor}
+            newBotLeadFields={newBotLeadFields}
+            setNewBotLeadFields={setNewBotLeadFields}
+            newBotPrompts={newBotPrompts}
+            setNewBotPrompts={setNewBotPrompts}
             setView={legacySetView}
             handleCreateBot={handleCreateBot}
           />
@@ -412,7 +444,8 @@ export default function App() {
         {route.name === 'calls' && (
           <PostLoginShell
             title="Calls"
-            subtitle="Provision a phone agent and review inbound calls answered by your receptionist."
+            subtitle="Provision your AI phone agent, connect your telephony provider (Twilio, Plivo, Carrier), and review conversations."
+            maxWidth="max-w-[1560px]"
           >
             <CallsWorkspace
               bots={bots}

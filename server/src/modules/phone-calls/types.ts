@@ -17,6 +17,17 @@ export interface DograhTelephonyConfig {
   provider: string;
 }
 
+export interface DograhTelephonyConfigDetail {
+  id: number;
+  name: string;
+  provider: string;
+  is_default_outbound: boolean;
+  credentials?: Record<string, unknown>;
+  stasis_app_name?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DograhPhoneNumber {
   id: number;
   telephony_configuration_id: number;
@@ -72,4 +83,20 @@ export interface DograhProvisionableBot {
   dograh_inbound_hourly_cap?: number;
   dograh_inbound_active_workflow?: 'normal' | 'capacity' | string | null;
   dograh_inbound_rate_limited_until?: string | null;
+  widget_config?: any;
+}
+
+export interface ConnectedPhoneLine {
+  id: string;
+  phoneNumber: string;
+  type: 'inbound' | 'outbound' | 'both' | 'forwarding';
+  provider: 'twilio' | 'plivo' | 'vonage' | 'telnyx' | 'forwarding' | 'asterisk' | 'pool' | 'custom';
+  label?: string | null;
+  status: 'active' | 'inactive';
+  isPrimaryInbound?: boolean;
+  isPrimaryOutbound?: boolean;
+  configuredAt: string;
+  telephonyConfigId?: string | number | null;
+  phoneNumberId?: string | number | null;
+  credentials?: any;
 }

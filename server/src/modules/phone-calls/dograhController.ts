@@ -10,6 +10,8 @@ import {
   assignInboundWorkflow,
   createEndCallTool,
   createHttpTool,
+  createPhoneNumber,
+  createTelephonyConfig,
   createWorkflowFromDefinition,
   initiateCall,
   listPhoneNumbers,
@@ -20,9 +22,11 @@ import {
   updateWorkflowInPlace,
   DograhApiError,
 } from './dograhClient';
-import { DograhProvisionableBot } from './types';
+import { DograhProvisionableBot, ConnectedPhoneLine } from './types';
 import { buildCapacityWorkflowDefinition, buildLeadExtractionVariables, buildSingleNodeWorkflowDefinition, MAX_CALL_DURATION_SECONDS } from './workflowDefinition';
 import { syncInboundRateLimitWorkflow } from './inboundRateLimiter';
+import { logger } from '../../services/cloudwatchLogger';
+
 
 
 const PHONE_DEFAULT_TIMEZONE = 'Asia/Kolkata';
@@ -47,6 +51,96 @@ async function loadOwnedBot(botId: string, ownerId: string): Promise<DograhProvi
 
   if (error || !data) return null;
   return data;
+}
+
+export function extractConnectedLines(bot: DograhProvisionableBot): ConnectedPhoneLine[] {
+  const widgetConfig = (bot as any).widget_config || {};
+  let lines: ConnectedPhoneLine[] = Array.isArray(widgetConfig.connectedLines)
+    ? [...widgetConfig.connectedLines]
+    : [];
+
+  const primaryInboundNumber = bot.dograh_phone_number || (bot as any).phone_number || widgetConfig.phoneNumber || null;
+  const telephony = widgetConfig.telephony || null;
+  const outboundTelephony = widgetConfig.outboundTelephony || null;
+  const primaryOutboundNumber = outboundTelephony?.phoneNumber || null;
+  const forwardingNumber = widgetConfig.forwardingPhoneNumber || (telephony?.provider === 'forwarding' ? telephony.phoneNumber : null);
+
+  // 1. If primaryInboundNumber exists and is not just a forwarding number:
+  if (primaryInboundNumber && telephony?.provider !== 'forwarding') {
+    const existingInbound = lines.find(l => l.phoneNumber === primaryInboundNumber && (l.type === 'inbound' || l.type === 'both'));
+    if (!existingInbound) {
+      lines.unshift({
+        id: `line_in_${primaryInboundNumber.replace(/\D/g, '') || 'primary'}`,
+        phoneNumber: primaryInboundNumber,
+        type: (primaryOutboundNumber === primaryInboundNumber || !primaryOutboundNumber) ? 'both' : 'inbound',
+        provider: telephony?.provider || 'pool',
+        label: telephony?.label || (telephony?.provider === 'pool' ? 'Default Receptionist Line' : `${(telephony?.provider || 'Platform').toUpperCase()} Inbound Line`),
+        status: 'active',
+        isPrimaryInbound: true,
+        isPrimaryOutbound: (primaryOutboundNumber === primaryInboundNumber || !primaryOutboundNumber),
+        configuredAt: telephony?.configuredAt || new Date().toISOString(),
+        telephonyConfigId: bot.dograh_telephony_config_id || telephony?.telephonyConfigId || null,
+        phoneNumberId: bot.dograh_phone_number_id || telephony?.phoneNumberId || null,
+        credentials: telephony?.credentials || null,
+      });
+    } else {
+      existingInbound.isPrimaryInbound = true;
+      if (primaryOutboundNumber === primaryInboundNumber || !primaryOutboundNumber) {
+        existingInbound.isPrimaryOutbound = true;
+      }
+    }
+  }
+
+  // 2. If outboundTelephony has a separate number:
+  if (primaryOutboundNumber && primaryOutboundNumber !== primaryInboundNumber) {
+    const existingOutbound = lines.find(l => l.phoneNumber === primaryOutboundNumber && (l.type === 'outbound' || l.type === 'both'));
+    if (!existingOutbound) {
+      lines.push({
+        id: `line_out_${primaryOutboundNumber.replace(/\D/g, '') || 'dedicated'}`,
+        phoneNumber: primaryOutboundNumber,
+        type: 'outbound',
+        provider: outboundTelephony?.provider || 'pool',
+        label: outboundTelephony?.label || `${(outboundTelephony?.provider || 'Dedicated').toUpperCase()} Outbound Line`,
+        status: 'active',
+        isPrimaryInbound: false,
+        isPrimaryOutbound: true,
+        configuredAt: outboundTelephony?.configuredAt || new Date().toISOString(),
+        telephonyConfigId: outboundTelephony?.telephonyConfigId || null,
+        phoneNumberId: outboundTelephony?.phoneNumberId || null,
+      });
+    } else {
+      existingOutbound.isPrimaryOutbound = true;
+    }
+  }
+
+  // 3. If forwardingNumber exists:
+  if (forwardingNumber) {
+    const existingFwd = lines.find(l => l.phoneNumber === forwardingNumber && l.type === 'forwarding');
+    if (!existingFwd) {
+      lines.push({
+        id: `line_fwd_${forwardingNumber.replace(/\D/g, '') || 'sim'}`,
+        phoneNumber: forwardingNumber,
+        type: 'forwarding',
+        provider: 'forwarding',
+        label: 'Carrier Call Forwarding (Mobile SIM)',
+        status: 'active',
+        configuredAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  // Deduplicate lines by (phoneNumber + type)
+  const uniqueLines: ConnectedPhoneLine[] = [];
+  const seenKeys = new Set<string>();
+  for (const line of lines) {
+    const key = `${line.phoneNumber}:${line.type}`;
+    if (!seenKeys.has(key)) {
+      seenKeys.add(key);
+      uniqueLines.push(line);
+    }
+  }
+
+  return uniqueLines;
 }
 
 async function isCalendarConnected(ownerId: string): Promise<boolean> {
@@ -201,28 +295,40 @@ export async function getStatus(req: AuthRequest, res: Response): Promise<void> 
     return;
   }
 
+  const widgetConfig = (bot as any).widget_config || {};
+  const telephony = widgetConfig.telephony || null;
+  const outboundTelephony = widgetConfig.outboundTelephony || null;
+  const inboundWebhookUrl = `${config.dograh.apiUrl}/api/v1/telephony/inbound/run`;
+  const connectedLines = extractConnectedLines(bot);
+
   res.json({
     provisioned: Boolean(bot.dograh_workflow_id),
     outboundProvisioned: Boolean(bot.dograh_outbound_workflow_id),
-    phoneNumber: bot.dograh_phone_number || null,
+    phoneNumber: bot.dograh_phone_number || (bot as any).phone_number || null,
+    outboundPhoneNumber: outboundTelephony?.phoneNumber || bot.dograh_phone_number || (bot as any).phone_number || null,
     inboundActiveWorkflow: bot.dograh_inbound_active_workflow || 'normal',
     inboundRateLimitedUntil: bot.dograh_inbound_rate_limited_until || null,
     outboundCooldownSeconds: bot.dograh_outbound_cooldown_seconds ?? 10,
     outboundHourlyCap: bot.dograh_outbound_hourly_cap ?? 20,
     inboundCooldownSeconds: bot.dograh_inbound_cooldown_seconds ?? 10,
     inboundHourlyCap: bot.dograh_inbound_hourly_cap ?? 20,
+    telephony,
+    outboundTelephony,
+    connectedLines,
+    inboundWebhookUrl,
+    defaultPlatformNumber: config.defaultPhoneNumber || null,
   });
 }
 
 export async function provisionBot(req: AuthRequest, res: Response): Promise<void> {
-  const botId = req.params.botId;
-  const bot = await loadOwnedBot(botId, req.user!.id);
-  if (!bot) {
-    res.status(404).json({ error: 'Bot not found' });
-    return;
-  }
-
   try {
+    const botId = req.params.botId;
+    const bot = await loadOwnedBot(botId, req.user!.id);
+    if (!bot) {
+      res.status(404).json({ error: 'Bot not found' });
+      return;
+    }
+
     const widgetConfig = mergeWidgetConfig((bot as any).widget_config, bot);
     const extractionVariables = buildLeadExtractionVariables(withoutAutoKnownPhoneField(widgetConfig));
     const callTimeToolUuid = await ensureCallTimeTool(bot);
@@ -232,6 +338,12 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
     const outboundPreCallFetchUrl = `${preCallFetchBase}&direction=outbound`;
 
     const useTools = widgetConfig.enableCalendar && (await isCalendarConnected(bot.owner_id));
+    logger.aiReceptionist('Provisioning AI Receptionist started', {
+      botId,
+      businessName: bot.business_name,
+      ownerId: req.user!.id,
+      useTools,
+    });
     let checkAvailabilityToolUuid = bot.dograh_check_availability_tool_uuid;
     let bookAppointmentToolUuid = bot.dograh_book_appointment_tool_uuid;
     if (useTools) {
@@ -308,7 +420,19 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
         dograh_rate_limit_tool_uuid: rateLimitToolUuid,
       })
       .eq('id', botId);
-    if (error) throw error;
+    if (error) {
+      console.error('[phone-calls] Error updating bot after provisioning:', error);
+      res.status(500).json({ error: error.message || 'Database update failed after provisioning' });
+      return;
+    }
+
+    logger.aiReceptionist('Provisioning AI Receptionist completed successfully', {
+      botId,
+      businessName: bot.business_name,
+      inboundWorkflowId: String(inboundWorkflow.id),
+      outboundWorkflowId: String(outboundWorkflow.id),
+      capacityWorkflowId: String(capacityWorkflow.id),
+    });
 
     res.json({
       dograhWorkflowId: String(inboundWorkflow.id),
@@ -316,8 +440,13 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
       dograhCapacityWorkflowId: String(capacityWorkflow.id),
     });
   } catch (err: any) {
-    console.error('[phone-calls] Provisioning failed:', err);
-    res.status(502).json({ error: err.message || 'Failed to provision the Dograh phone agent' });
+    const errorMsg = err?.message || (typeof err === 'object' ? JSON.stringify(err) : String(err));
+    console.error('[phone-calls] Provisioning failed:', errorMsg);
+    logger.aiReceptionist('Provisioning AI Receptionist failed', {
+      botId: req.params.botId,
+      error: errorMsg,
+    }, 'error');
+    res.status(502).json({ error: errorMsg || 'Failed to provision the Dograh phone agent' });
   }
 }
 
@@ -340,19 +469,39 @@ export async function listNumbers(req: AuthRequest, res: Response): Promise<void
         .map((row: any) => row.dograh_phone_number_id)
     );
 
-    const configs = await listTelephonyConfigs();
     const numbers = [];
-    for (const tc of configs) {
-      const phoneNumbers = await listPhoneNumbers(tc.id);
-      for (const number of phoneNumbers) {
-        if (claimedByOtherBot.has(String(number.id))) continue;
-        numbers.push({
-          telephonyConfigId: tc.id,
-          telephonyConfigName: tc.name,
-          phoneNumberId: number.id,
-          address: number.address,
-          label: number.label,
-          isAssignedToThisBot: bot ? String(number.id) === bot.dograh_phone_number_id : false,
+    try {
+      const configs = await listTelephonyConfigs();
+      for (const tc of configs) {
+        const phoneNumbers = await listPhoneNumbers(tc.id);
+        for (const number of phoneNumbers) {
+          if (claimedByOtherBot.has(String(number.id))) continue;
+          numbers.push({
+            telephonyConfigId: tc.id,
+            telephonyConfigName: tc.name,
+            phoneNumberId: number.id,
+            address: number.address,
+            label: number.label,
+            isAssignedToThisBot: bot ? String(number.id) === bot.dograh_phone_number_id : false,
+          });
+        }
+      }
+    } catch (err: any) {
+      console.warn('[phone-calls] External telephony provider not reachable; returning empty numbers pool:', err?.message);
+    }
+
+    // Include the default platform number provided by us
+    const defaultNumber = config.defaultPhoneNumber;
+    if (defaultNumber) {
+      const alreadyIncluded = numbers.some(n => n.address === defaultNumber);
+      if (!alreadyIncluded) {
+        numbers.unshift({
+          telephonyConfigId: 999999,
+          telephonyConfigName: 'Default Platform Line (Instant)',
+          phoneNumberId: 999999,
+          address: defaultNumber,
+          label: 'Default AI Receptionist Line',
+          isAssignedToThisBot: bot?.dograh_phone_number === defaultNumber || (bot as any)?.phone_number === defaultNumber,
         });
       }
     }
@@ -360,65 +509,581 @@ export async function listNumbers(req: AuthRequest, res: Response): Promise<void
     res.json({ numbers });
   } catch (err: any) {
     console.error('[phone-calls] Listing numbers failed:', err);
-    res.status(502).json({ error: err.message || 'Failed to list Dograh phone numbers' });
+    res.json({ numbers: [] });
   }
 }
 
 export async function assignNumber(req: AuthRequest, res: Response): Promise<void> {
-  const botId = req.params.botId;
-  const { telephonyConfigId, phoneNumberId } = req.body || {};
-  if (!telephonyConfigId || !phoneNumberId) {
-    res.status(400).json({ error: 'telephonyConfigId and phoneNumberId are required' });
-    return;
-  }
-
-  const bot = await loadOwnedBot(botId, req.user!.id);
-  if (!bot) {
-    res.status(404).json({ error: 'Bot not found' });
-    return;
-  }
-  if (!bot.dograh_workflow_id) {
-    res.status(400).json({ error: 'Provision the phone agent before assigning a number' });
-    return;
-  }
-
-  const { data: claimant } = await supabase
-    .from('bots')
-    .select('id')
-    .eq('dograh_phone_number_id', String(phoneNumberId))
-    .neq('id', botId)
-    .maybeSingle();
-  if (claimant) {
-    res.status(409).json({ error: 'This number is already assigned to another receptionist' });
-    return;
-  }
-
   try {
-    const rateLimitedUntil = bot.dograh_inbound_rate_limited_until ? new Date(bot.dograh_inbound_rate_limited_until) : null;
-    const shouldKeepCapacity =
-      bot.dograh_inbound_active_workflow === 'capacity' &&
-      bot.dograh_capacity_workflow_id &&
-      rateLimitedUntil &&
-      rateLimitedUntil.getTime() > Date.now();
-    const workflowId = shouldKeepCapacity ? bot.dograh_capacity_workflow_id! : bot.dograh_workflow_id;
-    const number = await assignInboundWorkflow(telephonyConfigId, phoneNumberId, workflowId);
+    const botId = req.params.botId;
+    const {
+      telephonyConfigId,
+      phoneNumberId,
+      customPhoneNumber,
+      provider,
+      credentials,
+      label,
+    } = req.body || {};
 
-    const { error } = await supabase
+    const bot = await loadOwnedBot(botId, req.user!.id);
+    if (!bot) {
+      res.status(404).json({ error: 'Bot not found' });
+      return;
+    }
+
+    // Handle Bring Your Own (BYO) custom number or provider
+    if (customPhoneNumber) {
+      const rawNumber = String(customPhoneNumber).trim();
+      let normalized = rawNumber;
+
+      if (provider === 'asterisk' || provider === 'ari') {
+        if (!rawNumber || /[\s,&]/.test(rawNumber)) {
+          res.status(400).json({ error: 'SIP extension/number cannot be empty or contain spaces, commas, or ampersands' });
+          return;
+        }
+      } else {
+        const validation = validateContactInput('phone', rawNumber);
+        if (!validation.valid || !validation.normalized) {
+          res.status(400).json({ error: validation.error || 'Please provide a valid phone number with country code' });
+          return;
+        }
+        normalized = validation.normalized;
+      }
+
+      let stasisAppName: string | null = credentials?.stasisAppName || null;
+      let matchedConfigId: number | null = null;
+      let matchedNumberId: number | null = null;
+
+      // Validate provider specific required fields if provider is specified
+      if (provider === 'asterisk' || provider === 'ari') {
+        const ariEndpoint = credentials?.ariEndpoint?.trim();
+        const appName = credentials?.appName?.trim();
+        const appPassword = credentials?.appPassword?.trim();
+        const wsClientName = credentials?.wsClientName?.trim();
+
+        if (!ariEndpoint) {
+          res.status(400).json({ error: 'ARI base URL is required (e.g., http://asterisk.example.com:8088)' });
+          return;
+        }
+        if (!appName) {
+          res.status(400).json({ error: 'ARI username is required (matching section name in ari.conf)' });
+          return;
+        }
+        if (!appPassword && !credentials?.hasSecret) {
+          res.status(400).json({ error: 'ARI App Password is required' });
+          return;
+        }
+        if (!wsClientName) {
+          res.status(400).json({ error: 'websocket_client.conf connection name for externalMedia is required' });
+          return;
+        }
+
+        // Create the configuration directly in Dograh backend
+        try {
+          const configName = label?.trim() || `Asterisk ARI (${appName})`;
+          const createdConfig = await createTelephonyConfig({
+            name: configName,
+            is_default_outbound: Boolean(credentials?.isDefaultOutbound),
+            config: {
+              provider: 'ari',
+              ari_endpoint: ariEndpoint,
+              app_name: appName,
+              app_password: appPassword,
+              ws_client_name: wsClientName,
+              dial_string_template: credentials?.dialStringTemplate?.trim() || 'PJSIP/{number}',
+            },
+          });
+          matchedConfigId = createdConfig.id;
+          stasisAppName = (createdConfig.credentials as any)?.stasis_app_name || (createdConfig as any).stasisAppName || `dograh_${createdConfig.id}`;
+
+          // Register SIP extension / phone number under this configuration in Dograh
+          try {
+            const numRes = await createPhoneNumber(createdConfig.id, {
+              address: normalized,
+              inbound_workflow_id: bot.dograh_workflow_id ? Number(bot.dograh_workflow_id) : undefined,
+              is_active: true,
+              is_default_caller_id: true,
+            });
+            matchedNumberId = numRes.id;
+          } catch (numErr: any) {
+            console.warn('[phone-calls] Could not register extension under Dograh ARI configuration:', numErr?.message);
+          }
+        } catch (err: any) {
+          console.warn('[phone-calls] Dograh createTelephonyConfig for ARI returned error:', err?.message);
+          if (!stasisAppName) {
+            stasisAppName = `dograh_${botId.replace(/-/g, '').slice(0, 10)}`;
+          }
+        }
+      } else if (provider === 'twilio') {
+        const sid = credentials?.accountSid?.trim();
+        const token = credentials?.authToken?.trim();
+        if (!sid) {
+          res.status(400).json({ error: 'Twilio Account SID is required (starts with AC...)' });
+          return;
+        }
+        if (!token && !credentials?.hasSecret) {
+          res.status(400).json({ error: 'Twilio Auth Token is required' });
+          return;
+        }
+
+        // Auto-provision Twilio configuration directly in Dograh backend
+        if (sid && token) {
+          try {
+            const configName = label?.trim() || `Twilio (${maskPhoneNumber(normalized)})`;
+            const createdConfig = await createTelephonyConfig({
+              name: configName,
+              is_default_outbound: true,
+              config: {
+                provider: 'twilio',
+                account_sid: sid,
+                auth_token: token,
+              },
+            });
+            matchedConfigId = createdConfig.id;
+
+            try {
+              const numRes = await createPhoneNumber(createdConfig.id, {
+                address: normalized,
+                inbound_workflow_id: bot.dograh_workflow_id ? Number(bot.dograh_workflow_id) : undefined,
+                is_active: true,
+                is_default_caller_id: true,
+              });
+              matchedNumberId = numRes.id;
+            } catch (numErr: any) {
+              console.warn('[phone-calls] Could not register phone number under Dograh Twilio configuration:', numErr?.message);
+            }
+          } catch (err: any) {
+            console.warn('[phone-calls] Dograh createTelephonyConfig for Twilio returned error:', err?.message);
+          }
+        }
+      } else if (provider === 'plivo') {
+        const authId = credentials?.authId?.trim();
+        const authToken = credentials?.authToken?.trim();
+        if (!authId) {
+          res.status(400).json({ error: 'Plivo Auth ID is required' });
+          return;
+        }
+        if (!authToken && !credentials?.hasSecret) {
+          res.status(400).json({ error: 'Plivo Auth Token is required' });
+          return;
+        }
+
+        // Auto-provision Plivo configuration directly in Dograh backend
+        if (authId && authToken) {
+          try {
+            const configName = label?.trim() || `Plivo (${maskPhoneNumber(normalized)})`;
+            const createdConfig = await createTelephonyConfig({
+              name: configName,
+              is_default_outbound: true,
+              config: {
+                provider: 'plivo',
+                auth_id: authId,
+                auth_token: authToken,
+                app_id: credentials?.appId?.trim() || undefined,
+              },
+            });
+            matchedConfigId = createdConfig.id;
+
+            try {
+              const numRes = await createPhoneNumber(createdConfig.id, {
+                address: normalized,
+                inbound_workflow_id: bot.dograh_workflow_id ? Number(bot.dograh_workflow_id) : undefined,
+                is_active: true,
+                is_default_caller_id: true,
+              });
+              matchedNumberId = numRes.id;
+            } catch (numErr: any) {
+              console.warn('[phone-calls] Could not register phone number under Dograh Plivo configuration:', numErr?.message);
+            }
+          } catch (err: any) {
+            console.warn('[phone-calls] Dograh createTelephonyConfig for Plivo returned error:', err?.message);
+          }
+        }
+      } else if (provider === 'vonage') {
+        const apiKey = credentials?.apiKey?.trim();
+        const apiSecret = credentials?.apiSecret?.trim();
+        if (!apiKey || (!apiSecret && !credentials?.hasSecret)) {
+          res.status(400).json({ error: 'Vonage API Key and API Secret are required' });
+          return;
+        }
+      } else if (provider === 'telnyx') {
+        const apiKey = credentials?.apiKey?.trim();
+        if (!apiKey) {
+          res.status(400).json({ error: 'Telnyx API Key is required' });
+          return;
+        }
+      }
+
+      // Check if another bot already has this number assigned
+      const { data: claimant } = await supabase
+        .from('bots')
+        .select('id')
+        .eq('dograh_phone_number', normalized)
+        .neq('id', botId)
+        .maybeSingle();
+
+      if (claimant) {
+        res.status(409).json({ error: 'This phone number is already configured for another receptionist' });
+        return;
+      }
+
+      // Check if this number exists in any Dograh telephony configurations (best effort if bot is provisioned)
+      if (provider !== 'asterisk' && provider !== 'ari' && bot.dograh_workflow_id) {
+        try {
+          const configs = await listTelephonyConfigs();
+          for (const tc of configs) {
+            const phoneNumbers = await listPhoneNumbers(tc.id);
+            const match = phoneNumbers.find(
+              n => n.address === normalized || n.address.replace(/\D/g, '') === normalized.replace(/\D/g, '')
+            );
+            if (match) {
+              matchedConfigId = tc.id;
+              matchedNumberId = match.id;
+              break;
+            }
+          }
+        } catch {
+          // Telephony configs check is best-effort for BYO numbers
+        }
+
+        if (matchedConfigId && matchedNumberId) {
+          try {
+            await assignInboundWorkflow(matchedConfigId, matchedNumberId, bot.dograh_workflow_id);
+          } catch (err: any) {
+            console.warn('[phone-calls] Could not bind matched Dograh workflow for custom number:', err?.message);
+          }
+        }
+      }
+
+      if (provider === 'forwarding') {
+        const existingWidgetConfig = (bot as any).widget_config || {};
+        let currentLines = extractConnectedLines(bot);
+        const existingIndex = currentLines.findIndex(l => l.phoneNumber === normalized && l.type === 'forwarding');
+        if (existingIndex >= 0) {
+          currentLines[existingIndex].status = 'active';
+          currentLines[existingIndex].label = label || currentLines[existingIndex].label;
+        } else {
+          currentLines.push({
+            id: `line_fwd_${Date.now()}`,
+            phoneNumber: normalized,
+            type: 'forwarding',
+            provider: 'forwarding',
+            label: label || 'Carrier Call Forwarding (Mobile SIM)',
+            status: 'active',
+            configuredAt: new Date().toISOString(),
+          });
+        }
+
+        const { error } = await supabase
+          .from('bots')
+          .update({
+            widget_config: {
+              ...existingWidgetConfig,
+              forwardingPhoneNumber: normalized,
+              connectedLines: currentLines,
+            },
+          })
+          .eq('id', botId);
+
+        if (error) {
+          res.status(500).json({ error: error.message || 'Failed to save forwarding number' });
+          return;
+        }
+
+        logger.aiReceptionist('Forwarding phone number configured', {
+          botId,
+          phoneNumber: maskPhoneNumber(normalized),
+        });
+
+        res.json({
+          phoneNumber: normalized,
+          provider: 'forwarding',
+          status: 'configured',
+          connectedLines: currentLines,
+          inboundWebhookUrl: `${config.dograh.apiUrl}/api/v1/telephony/inbound/run`,
+        });
+        return;
+      }
+
+      const existingWidgetConfig = (bot as any).widget_config || {};
+      const telephonyRecord = {
+        provider: provider || 'custom',
+        phoneNumber: normalized,
+        label: label || credentials?.label || (provider === 'asterisk' ? `Asterisk ARI (${credentials?.appName || 'pbx'})` : null),
+        credentials: {
+          accountSid: credentials?.accountSid || null,
+          authId: credentials?.authId || null,
+          appId: credentials?.appId || null,
+          apiKey: credentials?.apiKey || null,
+          connectionId: credentials?.connectionId || null,
+          hasSecret: Boolean(credentials?.authToken || credentials?.apiSecret || credentials?.appPassword),
+          ariEndpoint: credentials?.ariEndpoint || null,
+          appName: credentials?.appName || null,
+          wsClientName: credentials?.wsClientName || null,
+          dialStringTemplate: credentials?.dialStringTemplate || 'PJSIP/{number}',
+          stasisAppName: stasisAppName || null,
+          isDefaultOutbound: Boolean(credentials?.isDefaultOutbound),
+        },
+        configuredAt: new Date().toISOString(),
+        status: 'active',
+      };
+
+      let currentLines = extractConnectedLines(bot);
+      currentLines.forEach(l => {
+        if (l.type === 'inbound' || l.type === 'both') l.isPrimaryInbound = false;
+      });
+      const existingIndex = currentLines.findIndex(l => l.phoneNumber === normalized && (l.type === 'inbound' || l.type === 'both'));
+      if (existingIndex >= 0) {
+        currentLines[existingIndex].isPrimaryInbound = true;
+        currentLines[existingIndex].status = 'active';
+        currentLines[existingIndex].provider = provider || 'custom';
+        currentLines[existingIndex].label = label || currentLines[existingIndex].label;
+        currentLines[existingIndex].telephonyConfigId = matchedConfigId ? String(matchedConfigId) : currentLines[existingIndex].telephonyConfigId;
+        currentLines[existingIndex].phoneNumberId = matchedNumberId ? String(matchedNumberId) : currentLines[existingIndex].phoneNumberId;
+      } else {
+        currentLines.unshift({
+          id: `line_in_${Date.now()}`,
+          phoneNumber: normalized,
+          type: 'inbound',
+          provider: provider || 'custom',
+          label: label || `${(provider || 'Custom').toUpperCase()} Inbound Line`,
+          status: 'active',
+          isPrimaryInbound: true,
+          configuredAt: new Date().toISOString(),
+          telephonyConfigId: matchedConfigId ? String(matchedConfigId) : null,
+          phoneNumberId: matchedNumberId ? String(matchedNumberId) : null,
+          credentials: telephonyRecord.credentials,
+        });
+      }
+
+      const { error } = await supabase
+        .from('bots')
+        .update({
+          dograh_telephony_config_id: matchedConfigId ? String(matchedConfigId) : null,
+          dograh_phone_number_id: matchedNumberId ? String(matchedNumberId) : null,
+          dograh_phone_number: normalized,
+          phone_number: normalized,
+          dograh_inbound_active_workflow: 'normal',
+          widget_config: {
+            ...existingWidgetConfig,
+            phoneNumber: normalized,
+            telephony: telephonyRecord,
+            connectedLines: currentLines,
+          },
+        })
+        .eq('id', botId);
+
+      if (error) {
+        console.error('[phone-calls] Failed to save custom phone number:', error);
+        res.status(500).json({ error: error.message || 'Failed to save phone number' });
+        return;
+      }
+
+      logger.aiReceptionist('Inbound phone number configured (BYO)', {
+        botId,
+        phoneNumber: maskPhoneNumber(normalized),
+        provider: provider || 'custom',
+        matchedConfigId,
+        matchedNumberId,
+      });
+
+      res.json({
+        phoneNumber: normalized,
+        provider: provider || 'custom',
+        status: 'configured',
+        connectedLines: currentLines,
+        inboundWebhookUrl: `${config.dograh.apiUrl}/api/v1/telephony/inbound/run`,
+        stasisAppName: stasisAppName || null,
+        telephonyConfigId: matchedConfigId || null,
+      });
+      return;
+    }
+
+    // Handle selecting from Dograh telephony pool
+    if (!telephonyConfigId || !phoneNumberId) {
+      res.status(400).json({ error: 'Either customPhoneNumber or both telephonyConfigId and phoneNumberId are required' });
+      return;
+    }
+
+    // Special handling for the Default Platform Number
+    if (telephonyConfigId === 999999 || phoneNumberId === 999999) {
+      if (!config.defaultPhoneNumber) {
+        res.status(400).json({ error: 'No shared platform pool numbers available right now. Please connect a carrier line or set up call forwarding.' });
+        return;
+      }
+      const defaultNumber = config.defaultPhoneNumber;
+      const existingWidgetConfig = (bot as any).widget_config || {};
+      const telephonyRecord = {
+        provider: 'pool',
+        phoneNumber: defaultNumber,
+        telephonyConfigId: 999999,
+        phoneNumberId: 999999,
+        label: 'Default Platform Line',
+        configuredAt: new Date().toISOString(),
+        status: 'active',
+      };
+
+      let currentLines = extractConnectedLines(bot);
+      currentLines.forEach(l => {
+        if (l.type === 'inbound' || l.type === 'both') l.isPrimaryInbound = false;
+      });
+      const existingIdx = currentLines.findIndex(l => l.phoneNumber === defaultNumber && (l.type === 'inbound' || l.type === 'both'));
+      if (existingIdx >= 0) {
+        currentLines[existingIdx].isPrimaryInbound = true;
+        currentLines[existingIdx].status = 'active';
+      } else {
+        currentLines.unshift({
+          id: `line_pool_default`,
+          phoneNumber: defaultNumber,
+          type: 'inbound',
+          provider: 'pool',
+          label: 'Default Platform Line',
+          status: 'active',
+          isPrimaryInbound: true,
+          configuredAt: new Date().toISOString(),
+          telephonyConfigId: '999999',
+          phoneNumberId: '999999',
+        });
+      }
+
+      const { error } = await supabase
+        .from('bots')
+        .update({
+          dograh_telephony_config_id: '999999',
+          dograh_phone_number_id: '999999',
+          dograh_phone_number: defaultNumber,
+          phone_number: defaultNumber,
+          dograh_inbound_active_workflow: 'normal',
+          widget_config: {
+            ...existingWidgetConfig,
+            phoneNumber: defaultNumber,
+            telephony: telephonyRecord,
+            connectedLines: currentLines,
+          },
+        })
+        .eq('id', botId);
+
+      if (error) {
+        console.error('[phone-calls] Error assigning default platform line:', error);
+        res.status(500).json({ error: error.message || 'Failed to assign default line' });
+        return;
+      }
+
+      logger.aiReceptionist('Inbound phone number configured (Platform Default)', {
+        botId,
+        phoneNumber: maskPhoneNumber(defaultNumber),
+      });
+
+      res.json({
+        phoneNumber: defaultNumber,
+        provider: 'pool',
+        status: 'configured',
+        connectedLines: currentLines,
+      });
+      return;
+    }
+
+    const { data: claimant } = await supabase
       .from('bots')
-      .update({
-        dograh_telephony_config_id: String(telephonyConfigId),
-        dograh_phone_number_id: String(phoneNumberId),
-        dograh_phone_number: number.address,
-        dograh_inbound_active_workflow: shouldKeepCapacity ? 'capacity' : 'normal',
-        dograh_inbound_rate_limited_until: shouldKeepCapacity ? bot.dograh_inbound_rate_limited_until : null,
-      })
-      .eq('id', botId);
-    if (error) throw error;
+      .select('id')
+      .eq('dograh_phone_number_id', String(phoneNumberId))
+      .neq('id', botId)
+      .maybeSingle();
+    if (claimant) {
+      res.status(409).json({ error: 'This number is already assigned to another receptionist' });
+      return;
+    }
 
-    res.json({ phoneNumber: number.address });
+    try {
+      const rateLimitedUntil = bot.dograh_inbound_rate_limited_until ? new Date(bot.dograh_inbound_rate_limited_until) : null;
+      const shouldKeepCapacity =
+        bot.dograh_inbound_active_workflow === 'capacity' &&
+        bot.dograh_capacity_workflow_id &&
+        rateLimitedUntil &&
+        rateLimitedUntil.getTime() > Date.now();
+      const workflowId = shouldKeepCapacity ? bot.dograh_capacity_workflow_id! : bot.dograh_workflow_id;
+      const number = await assignInboundWorkflow(telephonyConfigId, phoneNumberId, workflowId);
+
+      const existingWidgetConfig = (bot as any).widget_config || {};
+      const telephonyRecord = {
+        provider: 'pool',
+        phoneNumber: number.address,
+        telephonyConfigId,
+        phoneNumberId,
+        configuredAt: new Date().toISOString(),
+        status: 'active',
+      };
+
+      let currentLines = extractConnectedLines(bot);
+      currentLines.forEach(l => {
+        if (l.type === 'inbound' || l.type === 'both') l.isPrimaryInbound = false;
+      });
+      const existingIdx = currentLines.findIndex(l => l.phoneNumber === number.address && (l.type === 'inbound' || l.type === 'both'));
+      if (existingIdx >= 0) {
+        currentLines[existingIdx].isPrimaryInbound = true;
+        currentLines[existingIdx].status = 'active';
+      } else {
+        currentLines.unshift({
+          id: `line_pool_${number.id}`,
+          phoneNumber: number.address,
+          type: 'inbound',
+          provider: 'pool',
+          label: number.label || 'Assigned Pool Line',
+          status: 'active',
+          isPrimaryInbound: true,
+          configuredAt: new Date().toISOString(),
+          telephonyConfigId: String(telephonyConfigId),
+          phoneNumberId: String(phoneNumberId),
+        });
+      }
+
+      const { error } = await supabase
+        .from('bots')
+        .update({
+          dograh_telephony_config_id: String(telephonyConfigId),
+          dograh_phone_number_id: String(phoneNumberId),
+          dograh_phone_number: number.address,
+          phone_number: number.address,
+          dograh_inbound_active_workflow: shouldKeepCapacity ? 'capacity' : 'normal',
+          dograh_inbound_rate_limited_until: shouldKeepCapacity ? bot.dograh_inbound_rate_limited_until : null,
+          widget_config: {
+            ...existingWidgetConfig,
+            phoneNumber: number.address,
+            telephony: telephonyRecord,
+            connectedLines: currentLines,
+          },
+        })
+        .eq('id', botId);
+      if (error) {
+        console.error('[phone-calls] Failed to save assigned pool number in database:', error);
+        res.status(500).json({ error: error.message || 'Failed to update bot with assigned number' });
+        return;
+      }
+
+      logger.aiReceptionist('Inbound phone number assigned from pool', {
+        botId,
+        phoneNumber: maskPhoneNumber(number.address),
+        telephonyConfigId: String(telephonyConfigId),
+        phoneNumberId: String(phoneNumberId),
+      });
+
+      res.json({
+        phoneNumber: number.address,
+        provider: 'pool',
+        status: 'configured',
+        connectedLines: currentLines,
+        inboundWebhookUrl: `${config.dograh.apiUrl}/api/v1/telephony/inbound/run`,
+      });
+    } catch (err: any) {
+      console.error('[phone-calls] Assigning number failed:', err);
+      logger.aiReceptionist('Inbound phone number assignment failed', { botId, error: err?.message }, 'error');
+      res.status(502).json({ error: err.message || 'Failed to assign the phone number' });
+    }
   } catch (err: any) {
-    console.error('[phone-calls] Assigning number failed:', err);
-    res.status(502).json({ error: err.message || 'Failed to assign the phone number' });
+    const errorMsg = err?.message || (typeof err === 'object' ? JSON.stringify(err) : String(err));
+    console.error('[phone-calls] assignNumber unhandled error:', errorMsg);
+    logger.aiReceptionist('Inbound phone number assignment failed', { botId: req.params.botId, error: errorMsg }, 'error');
+    res.status(500).json({ error: errorMsg || 'Internal error configuring phone number' });
   }
 }
 
@@ -432,7 +1097,7 @@ export async function listCalls(req: AuthRequest, res: Response): Promise<void> 
 
   const { data: calls, error } = await supabase
     .from('phone_calls')
-    .select('id, session_id, caller_number, status, duration_seconds, recording_url, transcript_url, started_at, created_at, ingest_status')
+    .select('id, session_id, caller_number, status, duration_seconds, recording_url, transcript_url, started_at, created_at, ingest_status, dograh_workflow_id, cost_info')
     .eq('bot_id', botId)
     .order('created_at', { ascending: false });
 
@@ -447,11 +1112,20 @@ export async function listCalls(req: AuthRequest, res: Response): Promise<void> 
     : { data: [] as any[] };
   const leadsBySession = new Map((leads || []).map((lead: any) => [lead.session_id, lead]));
 
+  const outboundWfId = bot.dograh_outbound_workflow_id ? String(bot.dograh_outbound_workflow_id) : null;
+
   res.json({
-    calls: (calls || []).map(call => ({
-      ...call,
-      lead: call.session_id ? leadsBySession.get(call.session_id) || null : null,
-    })),
+    calls: (calls || []).map(call => {
+      const storedDirection = (call.cost_info as any)?.direction;
+      const isOutbound =
+        storedDirection === 'outbound' ||
+        Boolean(outboundWfId && call.dograh_workflow_id === outboundWfId);
+      return {
+        ...call,
+        direction: isOutbound ? 'outbound' : 'inbound',
+        lead: call.session_id ? leadsBySession.get(call.session_id) || null : null,
+      };
+    }),
   });
 }
 
@@ -512,6 +1186,12 @@ export async function updateOutboundRateLimit(req: AuthRequest, res: Response): 
     return;
   }
 
+  logger.aiReceptionist('Outbound rate limit updated', {
+    botId,
+    cooldownSeconds: Math.round(cooldownSeconds),
+    hourlyCap: Math.round(hourlyCap),
+  });
+
   res.json({ outboundCooldownSeconds: Math.round(cooldownSeconds), outboundHourlyCap: Math.round(hourlyCap) });
 }
 
@@ -550,6 +1230,13 @@ export async function updateInboundRateLimit(req: AuthRequest, res: Response): P
       dograh_inbound_hourly_cap: Math.round(hourlyCap),
     });
 
+    logger.aiReceptionist('Inbound rate limit updated', {
+      botId,
+      cooldownSeconds: Math.round(cooldownSeconds),
+      hourlyCap: Math.round(hourlyCap),
+      activeWorkflow: syncResult.activeWorkflow,
+    });
+
     res.json({
       inboundCooldownSeconds: Math.round(cooldownSeconds),
       inboundHourlyCap: Math.round(hourlyCap),
@@ -581,8 +1268,19 @@ export async function callOut(req: AuthRequest, res: Response): Promise<void> {
     res.status(400).json({ error: 'Provision the phone agent before placing outbound calls' });
     return;
   }
-  if (!bot.dograh_telephony_config_id || !bot.dograh_phone_number_id) {
-    res.status(400).json({ error: 'Assign a phone number to this receptionist before placing outbound calls' });
+  const widgetConfig = (bot as any).widget_config || {};
+  const outboundTelephony = widgetConfig.outboundTelephony || null;
+  const activeTelephonyConfigId = outboundTelephony?.telephonyConfigId || bot.dograh_telephony_config_id;
+  const activePhoneNumberId = outboundTelephony?.phoneNumberId || bot.dograh_phone_number_id;
+
+  if (!activeTelephonyConfigId || !activePhoneNumberId) {
+    if (bot.dograh_phone_number || outboundTelephony?.phoneNumber) {
+      res.status(400).json({
+        error: `Outbound calling requires an active telephone configuration. Please assign a phone number from the pool or connect your carrier.`
+      });
+      return;
+    }
+    res.status(400).json({ error: 'Assign an outbound phone number before placing outbound calls' });
     return;
   }
 
@@ -596,17 +1294,28 @@ export async function callOut(req: AuthRequest, res: Response): Promise<void> {
     const callContext = {
       botId,
       workflowId: bot.dograh_outbound_workflow_id,
-      telephonyConfigId: bot.dograh_telephony_config_id,
-      fromPhoneNumberId: bot.dograh_phone_number_id,
+      telephonyConfigId: activeTelephonyConfigId,
+      fromPhoneNumberId: activePhoneNumberId,
       toPhoneNumber: maskPhoneNumber(validation.normalized),
     };
     console.log('[phone-calls] Initiating Dograh outbound call:', callContext);
+    logger.callEvent('outbound_call_initiated', {
+      botId,
+      toPhoneNumber: maskPhoneNumber(validation.normalized),
+      telephonyConfigId: activeTelephonyConfigId,
+      fromPhoneNumberId: activePhoneNumberId,
+    });
 
     const dograhResponse = await initiateCall({
       workflowId: bot.dograh_outbound_workflow_id,
       phoneNumber: validation.normalized,
-      telephonyConfigId: bot.dograh_telephony_config_id,
-      fromPhoneNumberId: bot.dograh_phone_number_id,
+      telephonyConfigId: activeTelephonyConfigId,
+      fromPhoneNumberId: activePhoneNumberId,
+    });
+    logger.callEvent('outbound_call_accepted', {
+      botId,
+      toPhoneNumber: maskPhoneNumber(validation.normalized),
+      response: dograhResponse,
     });
     console.log('[phone-calls] Dograh outbound call accepted:', {
       ...callContext,
@@ -615,7 +1324,541 @@ export async function callOut(req: AuthRequest, res: Response): Promise<void> {
     res.json({ success: true, dograhResponse });
   } catch (err: any) {
     console.error('[phone-calls] Outbound call failed:', err);
+    logger.callEvent('outbound_call_failed', {
+      botId,
+      toPhoneNumber: maskPhoneNumber(validation.normalized),
+      error: err?.message,
+    }, 'error');
     res.status(502).json({ error: err.message || 'Failed to place the outbound call' });
+  }
+}
+
+export async function assignOutboundNumber(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const botId = req.params.botId;
+    const bot = await loadOwnedBot(botId, req.user!.id);
+    if (!bot) {
+      res.status(404).json({ error: 'Bot not found' });
+      return;
+    }
+
+    const { mode, provider, customPhoneNumber, telephonyConfigId, phoneNumberId, credentials, label } = req.body || {};
+    const existingWidgetConfig = (bot as any).widget_config || {};
+
+    // 1. Same as Inbound Receptionist Line
+    if (mode === 'same_as_inbound') {
+      const updatedWidgetConfig = { ...existingWidgetConfig };
+      delete updatedWidgetConfig.outboundTelephony;
+      let currentLines = extractConnectedLines(bot);
+      currentLines.forEach(l => {
+        l.isPrimaryOutbound = Boolean(l.isPrimaryInbound || (bot.dograh_phone_number && l.phoneNumber === bot.dograh_phone_number));
+      });
+      updatedWidgetConfig.connectedLines = currentLines;
+
+      const { error } = await supabase
+        .from('bots')
+        .update({ widget_config: updatedWidgetConfig })
+        .eq('id', botId);
+
+      if (error) {
+        res.status(500).json({ error: error.message || 'Failed to update outbound settings' });
+        return;
+      }
+
+      logger.aiReceptionist('Outbound line configured: same as inbound', {
+        botId,
+        phoneNumber: bot.dograh_phone_number ? maskPhoneNumber(bot.dograh_phone_number) : null,
+      });
+
+      res.json({
+        success: true,
+        mode: 'same_as_inbound',
+        phoneNumber: bot.dograh_phone_number || (bot as any).phone_number || null,
+        connectedLines: currentLines,
+      });
+      return;
+    }
+
+    // 2. Priority 1: Default Platform Outbound Line
+    if (mode === 'platform_default' || provider === 'pool') {
+      let activeConfigId = telephonyConfigId ? Number(telephonyConfigId) : null;
+      let activeNumberId = phoneNumberId ? Number(phoneNumberId) : null;
+      let address = config.defaultPhoneNumber || '';
+
+      if (!activeConfigId || !activeNumberId) {
+        try {
+          const configs = await listTelephonyConfigs();
+          if (configs.length > 0) {
+            const pns = await listPhoneNumbers(configs[0].id);
+            if (pns.length > 0) {
+              activeConfigId = configs[0].id;
+              activeNumberId = pns[0].id;
+              address = pns[0].address;
+            }
+          }
+        } catch {
+          // fallback
+        }
+      }
+
+      if (!address) {
+        res.status(400).json({ error: 'No platform pool outbound numbers available right now. Please connect a custom carrier or mirror your receptionist line.' });
+        return;
+      }
+
+      const outboundTelephony = {
+        mode: 'platform_default',
+        provider: 'pool',
+        phoneNumber: address,
+        telephonyConfigId: activeConfigId ? String(activeConfigId) : (bot.dograh_telephony_config_id || '999999'),
+        phoneNumberId: activeNumberId ? String(activeNumberId) : (bot.dograh_phone_number_id || '999999'),
+        label: 'Default Platform Outgoing Line',
+        configuredAt: new Date().toISOString(),
+      };
+
+      let currentLines = extractConnectedLines(bot);
+      currentLines.forEach(l => { l.isPrimaryOutbound = false; });
+      const existingIdx = currentLines.findIndex(l => l.phoneNumber === address && (l.type === 'outbound' || l.type === 'both'));
+      if (existingIdx >= 0) {
+        currentLines[existingIdx].isPrimaryOutbound = true;
+        currentLines[existingIdx].status = 'active';
+      } else {
+        currentLines.push({
+          id: `line_out_pool`,
+          phoneNumber: address,
+          type: 'outbound',
+          provider: 'pool',
+          label: 'Default Platform Outgoing Line',
+          status: 'active',
+          isPrimaryInbound: false,
+          isPrimaryOutbound: true,
+          configuredAt: new Date().toISOString(),
+          telephonyConfigId: activeConfigId ? String(activeConfigId) : '999999',
+          phoneNumberId: activeNumberId ? String(activeNumberId) : '999999',
+        });
+      }
+
+      const { error } = await supabase
+        .from('bots')
+        .update({
+          widget_config: {
+            ...existingWidgetConfig,
+            outboundTelephony,
+            connectedLines: currentLines,
+          },
+        })
+        .eq('id', botId);
+
+      if (error) {
+        res.status(500).json({ error: error.message || 'Failed to update outbound settings' });
+        return;
+      }
+
+      logger.aiReceptionist('Outbound line configured: platform default', {
+        botId,
+        phoneNumber: maskPhoneNumber(address),
+        telephonyConfigId: activeConfigId,
+        phoneNumberId: activeNumberId,
+      });
+
+      res.json({
+        success: true,
+        outboundTelephony,
+        phoneNumber: address,
+        connectedLines: currentLines,
+      });
+      return;
+    }
+
+    // 3. Option 2: Custom BYOT Outbound Line (Asterisk, Twilio, Plivo, etc.)
+    if (mode === 'byot' || ['asterisk', 'twilio', 'plivo', 'vonage', 'telnyx', 'custom'].includes(provider)) {
+      let normalized = customPhoneNumber ? String(customPhoneNumber).trim() : '';
+      let matchedConfigId: number | null = null;
+      let matchedNumberId: number | null = null;
+
+      if (provider === 'asterisk') {
+        try {
+          const createdConfig = await createTelephonyConfig({
+            name: label || `Asterisk Outbound (${credentials?.appName || 'pbx'})`,
+            is_default_outbound: true,
+            config: {
+              provider: 'ari',
+              ari_endpoint: credentials?.ariEndpoint?.trim(),
+              app_name: credentials?.appName?.trim(),
+              app_password: credentials?.appPassword?.trim(),
+              wsClientName: credentials?.wsClientName?.trim() || 'dograh',
+              dialStringTemplate: credentials?.dialStringTemplate?.trim() || 'PJSIP/{number}',
+            },
+          });
+          matchedConfigId = createdConfig.id;
+          if (normalized) {
+            try {
+              const numRes = await createPhoneNumber(createdConfig.id, {
+                address: normalized,
+                is_active: true,
+                is_default_caller_id: true,
+              });
+              matchedNumberId = numRes.id;
+            } catch {}
+          }
+          normalized = normalized || '8000';
+        } catch (err: any) {
+          console.warn('[phone-calls] Asterisk outbound config warning:', err?.message);
+        }
+      } else if (provider === 'twilio') {
+        const sid = credentials?.accountSid?.trim();
+        const token = credentials?.authToken?.trim();
+        if (sid && token) {
+          try {
+            const configName = label?.trim() || `Twilio Outbound (${maskPhoneNumber(normalized)})`;
+            const createdConfig = await createTelephonyConfig({
+              name: configName,
+              is_default_outbound: true,
+              config: {
+                provider: 'twilio',
+                account_sid: sid,
+                auth_token: token,
+              },
+            });
+            matchedConfigId = createdConfig.id;
+            if (normalized) {
+              try {
+                const numRes = await createPhoneNumber(createdConfig.id, {
+                  address: normalized,
+                  is_active: true,
+                  is_default_caller_id: true,
+                });
+                matchedNumberId = numRes.id;
+              } catch (numErr: any) {
+                console.warn('[phone-calls] Could not register outbound phone number under Dograh Twilio configuration:', numErr?.message);
+              }
+            }
+          } catch (err: any) {
+            console.warn('[phone-calls] Dograh createTelephonyConfig for Twilio outbound returned error:', err?.message);
+          }
+        }
+      } else if (provider === 'plivo') {
+        const authId = credentials?.authId?.trim();
+        const authToken = credentials?.authToken?.trim();
+        if (authId && authToken) {
+          try {
+            const configName = label?.trim() || `Plivo Outbound (${maskPhoneNumber(normalized)})`;
+            const createdConfig = await createTelephonyConfig({
+              name: configName,
+              is_default_outbound: true,
+              config: {
+                provider: 'plivo',
+                auth_id: authId,
+                auth_token: authToken,
+                app_id: credentials?.appId?.trim() || undefined,
+              },
+            });
+            matchedConfigId = createdConfig.id;
+            if (normalized) {
+              try {
+                const numRes = await createPhoneNumber(createdConfig.id, {
+                  address: normalized,
+                  is_active: true,
+                  is_default_caller_id: true,
+                });
+                matchedNumberId = numRes.id;
+              } catch (numErr: any) {
+                console.warn('[phone-calls] Could not register outbound phone number under Dograh Plivo configuration:', numErr?.message);
+              }
+            }
+          } catch (err: any) {
+            console.warn('[phone-calls] Dograh createTelephonyConfig for Plivo outbound returned error:', err?.message);
+          }
+        }
+      } else if (normalized) {
+        const validation = validateContactInput('phone', normalized);
+        if (validation.valid && validation.normalized) {
+          normalized = validation.normalized;
+        }
+        try {
+          const configs = await listTelephonyConfigs();
+          for (const tc of configs) {
+            const pns = await listPhoneNumbers(tc.id);
+            const match = pns.find(n => n.address === normalized || n.address.replace(/\D/g, '') === normalized.replace(/\D/g, ''));
+            if (match) {
+              matchedConfigId = tc.id;
+              matchedNumberId = match.id;
+              break;
+            }
+          }
+        } catch {}
+      }
+
+      const outboundTelephony = {
+        mode: 'byot',
+        provider: provider || 'custom',
+        phoneNumber: normalized || customPhoneNumber || 'Custom Outbound',
+        telephonyConfigId: matchedConfigId ? String(matchedConfigId) : (bot.dograh_telephony_config_id || '999999'),
+        phoneNumberId: matchedNumberId ? String(matchedNumberId) : (bot.dograh_phone_number_id || '999999'),
+        label: label || `${provider?.toUpperCase()} Outbound Line`,
+        credentials: credentials ? {
+          accountSid: credentials.accountSid,
+          authId: credentials.authId,
+          appId: credentials.appId,
+          apiKey: credentials.apiKey,
+          ariEndpoint: credentials.ariEndpoint,
+          appName: credentials.appName,
+          wsClientName: credentials.wsClientName,
+          dialStringTemplate: credentials.dialStringTemplate,
+        } : undefined,
+        configuredAt: new Date().toISOString(),
+      };
+
+      let currentLines = extractConnectedLines(bot);
+      currentLines.forEach(l => { l.isPrimaryOutbound = false; });
+      const outboundNumStr = outboundTelephony.phoneNumber;
+      const existingIdx = currentLines.findIndex(l => l.phoneNumber === outboundNumStr && (l.type === 'outbound' || l.type === 'both'));
+      if (existingIdx >= 0) {
+        currentLines[existingIdx].isPrimaryOutbound = true;
+        currentLines[existingIdx].status = 'active';
+        currentLines[existingIdx].provider = provider || currentLines[existingIdx].provider;
+        currentLines[existingIdx].label = label || currentLines[existingIdx].label;
+      } else {
+        currentLines.push({
+          id: `line_out_${Date.now()}`,
+          phoneNumber: outboundNumStr,
+          type: 'outbound',
+          provider: (provider as any) || 'custom',
+          label: label || `${(provider || 'Custom').toUpperCase()} Outbound Line`,
+          status: 'active',
+          isPrimaryInbound: false,
+          isPrimaryOutbound: true,
+          configuredAt: new Date().toISOString(),
+          telephonyConfigId: matchedConfigId ? String(matchedConfigId) : null,
+          phoneNumberId: matchedNumberId ? String(matchedNumberId) : null,
+        });
+      }
+
+      const { error } = await supabase
+        .from('bots')
+        .update({
+          widget_config: {
+            ...existingWidgetConfig,
+            outboundTelephony,
+            connectedLines: currentLines,
+          },
+        })
+        .eq('id', botId);
+
+      if (error) {
+        res.status(500).json({ error: error.message || 'Failed to update outbound settings' });
+        return;
+      }
+
+      logger.aiReceptionist('Outbound line configured: custom telephony', {
+        botId,
+        provider: provider || 'custom',
+        phoneNumber: maskPhoneNumber(normalized || customPhoneNumber || ''),
+        label,
+      });
+
+      res.json({
+        success: true,
+        outboundTelephony,
+        phoneNumber: outboundTelephony.phoneNumber,
+        connectedLines: currentLines,
+      });
+      return;
+    }
+
+    res.status(400).json({ error: 'Invalid outbound number options' });
+  } catch (err: any) {
+    console.error('[phone-calls] assignOutboundNumber error:', err);
+    logger.aiReceptionist('Outbound line configuration failed', {
+      botId: req.params.botId,
+      error: err?.message,
+    }, 'error');
+    res.status(500).json({ error: err.message || 'Failed to configure outbound number' });
+  }
+}
+
+export async function addPhoneLine(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const botId = req.params.botId;
+    const bot = await loadOwnedBot(botId, req.user!.id);
+    if (!bot) {
+      res.status(404).json({ error: 'Bot not found' });
+      return;
+    }
+
+    const { phoneNumber, type = 'inbound', provider = 'custom', label, credentials } = req.body || {};
+    if (!phoneNumber) {
+      res.status(400).json({ error: 'Phone number is required' });
+      return;
+    }
+
+    let normalized = String(phoneNumber).trim();
+    if (provider !== 'asterisk' && provider !== 'ari') {
+      const validation = validateContactInput('phone', normalized);
+      if (!validation.valid || !validation.normalized) {
+        res.status(400).json({ error: validation.error || 'Please enter a valid phone number' });
+        return;
+      }
+      normalized = validation.normalized;
+    }
+
+    const existingWidgetConfig = (bot as any).widget_config || {};
+    let currentLines = extractConnectedLines(bot);
+
+    const existingIndex = currentLines.findIndex(l => l.phoneNumber === normalized && (l.type === type || l.type === 'both'));
+    if (existingIndex >= 0) {
+      currentLines[existingIndex].label = label || currentLines[existingIndex].label;
+      currentLines[existingIndex].status = 'active';
+    } else {
+      const newLine: ConnectedPhoneLine = {
+        id: `line_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        phoneNumber: normalized,
+        type: type as any,
+        provider: provider as any,
+        label: label || `${provider.toUpperCase()} Line`,
+        status: 'active',
+        isPrimaryInbound: type === 'inbound' && !currentLines.some(l => l.isPrimaryInbound),
+        isPrimaryOutbound: type === 'outbound' && !currentLines.some(l => l.isPrimaryOutbound),
+        configuredAt: new Date().toISOString(),
+        credentials: credentials || undefined,
+      };
+      currentLines.push(newLine);
+    }
+
+    const updatedWidgetConfig = {
+      ...existingWidgetConfig,
+      connectedLines: currentLines,
+    };
+
+    const { error } = await supabase
+      .from('bots')
+      .update({ widget_config: updatedWidgetConfig })
+      .eq('id', botId);
+
+    if (error) {
+      res.status(500).json({ error: error.message || 'Failed to save connected phone line' });
+      return;
+    }
+
+    res.json({ success: true, connectedLines: currentLines });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to add phone line' });
+  }
+}
+
+export async function removePhoneLine(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const botId = req.params.botId;
+    const lineId = req.params.lineId;
+    const bot = await loadOwnedBot(botId, req.user!.id);
+    if (!bot) {
+      res.status(404).json({ error: 'Bot not found' });
+      return;
+    }
+
+    const existingWidgetConfig = (bot as any).widget_config || {};
+    let currentLines = extractConnectedLines(bot);
+    const targetLine = currentLines.find(l => l.id === lineId || l.phoneNumber === lineId);
+    if (!targetLine) {
+      res.status(404).json({ error: 'Phone line not found' });
+      return;
+    }
+
+    currentLines = currentLines.filter(l => l.id !== targetLine.id && l.phoneNumber !== targetLine.phoneNumber);
+
+    const updates: any = {};
+    const updatedWidgetConfig = { ...existingWidgetConfig, connectedLines: currentLines };
+
+    if (targetLine.isPrimaryInbound || bot.dograh_phone_number === targetLine.phoneNumber) {
+      const nextInbound = currentLines.find(l => l.type === 'inbound' || l.type === 'both');
+      if (nextInbound) {
+        nextInbound.isPrimaryInbound = true;
+        updates.dograh_phone_number = nextInbound.phoneNumber;
+        updates.phone_number = nextInbound.phoneNumber;
+      } else {
+        updates.dograh_phone_number = null;
+        updates.phone_number = null;
+        delete updatedWidgetConfig.telephony;
+      }
+    }
+
+    if (targetLine.isPrimaryOutbound || existingWidgetConfig.outboundTelephony?.phoneNumber === targetLine.phoneNumber) {
+      delete updatedWidgetConfig.outboundTelephony;
+    }
+
+    if (targetLine.type === 'forwarding') {
+      delete updatedWidgetConfig.forwardingPhoneNumber;
+    }
+
+    updates.widget_config = updatedWidgetConfig;
+
+    const { error } = await supabase.from('bots').update(updates).eq('id', botId);
+    if (error) {
+      res.status(500).json({ error: error.message || 'Failed to remove line' });
+      return;
+    }
+
+    res.json({ success: true, connectedLines: currentLines });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to remove line' });
+  }
+}
+
+export async function setPrimaryPhoneLine(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const botId = req.params.botId;
+    const lineId = req.params.lineId;
+    const { role } = req.body || {}; // 'inbound' | 'outbound'
+    const bot = await loadOwnedBot(botId, req.user!.id);
+    if (!bot) {
+      res.status(404).json({ error: 'Bot not found' });
+      return;
+    }
+
+    const existingWidgetConfig = (bot as any).widget_config || {};
+    let currentLines = extractConnectedLines(bot);
+    const targetLine = currentLines.find(l => l.id === lineId || l.phoneNumber === lineId);
+    if (!targetLine) {
+      res.status(404).json({ error: 'Phone line not found' });
+      return;
+    }
+
+    const updates: any = {};
+    const updatedWidgetConfig = { ...existingWidgetConfig };
+
+    if (role === 'inbound') {
+      currentLines.forEach(l => {
+        l.isPrimaryInbound = (l.id === targetLine.id);
+      });
+      updates.dograh_phone_number = targetLine.phoneNumber;
+      updates.phone_number = targetLine.phoneNumber;
+    } else if (role === 'outbound') {
+      currentLines.forEach(l => {
+        l.isPrimaryOutbound = (l.id === targetLine.id);
+      });
+      updatedWidgetConfig.outboundTelephony = {
+        mode: 'byot',
+        provider: targetLine.provider,
+        phoneNumber: targetLine.phoneNumber,
+        telephonyConfigId: targetLine.telephonyConfigId || bot.dograh_telephony_config_id,
+        phoneNumberId: targetLine.phoneNumberId || bot.dograh_phone_number_id,
+        label: targetLine.label,
+        configuredAt: new Date().toISOString(),
+      };
+    }
+
+    updatedWidgetConfig.connectedLines = currentLines;
+    updates.widget_config = updatedWidgetConfig;
+
+    const { error } = await supabase.from('bots').update(updates).eq('id', botId);
+    if (error) {
+      res.status(500).json({ error: error.message || 'Failed to update primary line' });
+      return;
+    }
+
+    res.json({ success: true, connectedLines: currentLines });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to update primary line' });
   }
 }
 
@@ -629,9 +1872,18 @@ export async function syncCalls(req: AuthRequest, res: Response): Promise<void> 
 
   try {
     const result = await syncBotCalls(bot, supabase);
+    logger.aiReceptionist('Manual call sync completed', {
+      botId,
+      ingested: result.ingested,
+      failed: result.failed,
+    });
     res.json(result);
   } catch (err: any) {
     console.error('[phone-calls] Manual sync failed:', err);
+    logger.aiReceptionist('Manual call sync failed', {
+      botId,
+      error: err?.message,
+    }, 'error');
     res.status(502).json({ error: err.message || 'Failed to sync calls from Dograh' });
   }
 }

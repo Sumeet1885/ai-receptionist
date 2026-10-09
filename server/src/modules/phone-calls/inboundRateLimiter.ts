@@ -1,5 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { assignInboundWorkflow, isDograhConfigured } from './dograhClient';
+import { logger } from '../../services/cloudwatchLogger';
+
 
 export const DEFAULT_INBOUND_COOLDOWN_SECONDS = 10;
 export const DEFAULT_INBOUND_HOURLY_CAP = 20;
@@ -139,6 +141,10 @@ export async function syncInboundRateLimitWorkflow(
       capacityUntil
     );
     scheduleRestore(supabase, bot.id, capacityUntil!);
+    logger.aiReceptionist('Inbound rate limit triggered: switched to capacity workflow', {
+      botId: bot.id,
+      capacityUntil: capacityUntil?.toISOString(),
+    }, 'warn');
     return { capacityUntil, activeWorkflow: 'capacity', changed: bot.dograh_inbound_active_workflow !== 'capacity' };
   }
 
@@ -149,6 +155,9 @@ export async function syncInboundRateLimitWorkflow(
       clearTimeout(timer);
       restoreTimers.delete(bot.id);
     }
+    logger.aiReceptionist('Inbound rate limit cleared: restored normal receptionist workflow', {
+      botId: bot.id,
+    });
     return { capacityUntil: null, activeWorkflow: 'normal', changed: true };
   }
 
