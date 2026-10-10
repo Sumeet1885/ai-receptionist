@@ -8,6 +8,7 @@ import { buildDograhOutboundInstruction, buildDograhPhoneInstruction, withoutAut
 import { syncBotCalls } from './callMirror';
 import {
   assignInboundWorkflow,
+  unassignInboundWorkflow,
   createEndCallTool,
   createHttpTool,
   createPhoneNumber,
@@ -174,15 +175,12 @@ async function ensurePhoneTools(bot: DograhProvisionableBot): Promise<PhoneToolU
     method: 'POST' as const,
     headers: apiKeyHeader,
     parameters: [
-      { name: 'title', type: 'string' as const, description: 'Title of the appointment', required: true },
+      { name: 'title', type: 'string' as const, description: 'Title of the appointment (optional)', required: false },
       { name: 'visitorName', type: 'string' as const, description: 'Caller full name', required: false },
       { name: 'visitorPhone', type: 'string' as const, description: 'Caller phone number', required: false },
       { name: 'visitorEmail', type: 'string' as const, description: 'Caller email address', required: false },
-      { name: 'startTime', type: 'string' as const, description: 'Start time in ISO 8601 format', required: true },
-      { name: 'endTime', type: 'string' as const, description: 'End time in ISO 8601 format', required: true },
-    ],
-    presetParameters: [
-      { name: 'session_id', type: 'string' as const, value_template: '{{initial_context.session_id}}' },
+      { name: 'startTime', type: 'string' as const, description: 'Start time in ISO 8601 format (e.g. 2026-10-06T15:00:00+05:30)', required: true },
+      { name: 'endTime', type: 'string' as const, description: 'End time in ISO 8601 format (optional, defaults to 30 min duration)', required: false },
     ],
   };
 
@@ -227,9 +225,6 @@ async function ensureCallTimeTool(bot: DograhProvisionableBot): Promise<string> 
     url: `${config.phoneTools.callbackBaseUrl}/api/phone-tools/${bot.id}/call-time-remaining`,
     method: 'POST' as const,
     headers: { 'X-API-Key': config.phoneTools.apiKey },
-    presetParameters: [
-      { name: 'session_id', type: 'string' as const, value_template: '{{initial_context.session_id}}' },
-    ],
   };
 
   if (bot.dograh_call_time_tool_uuid) {
@@ -1085,6 +1080,50 @@ export async function assignNumber(req: AuthRequest, res: Response): Promise<voi
     logger.aiReceptionist('Inbound phone number assignment failed', { botId: req.params.botId, error: errorMsg }, 'error');
     res.status(500).json({ error: errorMsg || 'Internal error configuring phone number' });
   }
+}
+
+export async function unassignNumber(req: AuthRequest, res: Response): Promise<void> {
+  const botId = req.params.botId;
+
+  const bot = await loadOwnedBot(botId, req.user!.id);
+  if (!bot) {
+    res.status(404).json({ error: 'Bot not found' });
+    return;
+  }
+
+  if (!bot.dograh_phone_number_id || !bot.dograh_telephony_config_id) {
+    res.status(400).json({ error: 'No phone number is currently assigned to this agent' });
+    return;
+  }
+
+  try {
+    await unassignInboundWorkflow(bot.dograh_telephony_config_id, bot.dograh_phone_number_id);
+  } catch (err: any) {
+    console.warn(
+      `[phone-calls] unassignNumber: Dograh API call failed for bot ${botId} (continuing with DB cleanup):`,
+      err.message
+    );
+  }
+
+  const { error } = await supabase
+    .from('bots')
+    .update({
+      dograh_telephony_config_id: null,
+      dograh_phone_number_id: null,
+      dograh_phone_number: null,
+      dograh_inbound_active_workflow: 'normal',
+      dograh_inbound_rate_limited_until: null,
+    })
+    .eq('id', botId);
+
+  if (error) {
+    console.error('[phone-calls] unassignNumber: Supabase update failed:', error);
+    res.status(500).json({ error: error.message });
+    return;
+  }
+
+  console.log(`[phone-calls] Phone number ${bot.dograh_phone_number} unassigned from bot ${botId}`);
+  res.json({ success: true });
 }
 
 export async function listCalls(req: AuthRequest, res: Response): Promise<void> {

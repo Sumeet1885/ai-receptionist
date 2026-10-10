@@ -20,8 +20,8 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
   const [numbers, setNumbers] = useState<DograhNumber[]>([]);
   const [selectedNumberKey, setSelectedNumberKey] = useState('');
   const [assigning, setAssigning] = useState(false);
-
   // Line management states
+  const [unassigning, setUnassigning] = useState(false);
   const [unlinkingLineId, setUnlinkingLineId] = useState<string | null>(null);
   const [settingPrimaryLineId, setSettingPrimaryLineId] = useState<string | null>(null);
   const [activeCopiedNumber, setActiveCopiedNumber] = useState<string | null>(null);
@@ -252,6 +252,20 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
       showToast(err.message || 'Failed to provision the phone agent', 'error');
     } finally {
       setProvisioning(false);
+    }
+  };
+
+  const handleUnassign = async () => {
+    setUnassigning(true);
+    try {
+      await dograhApi.unassignNumber(botId);
+      showToast('Phone number disconnected and returned to the pool.', 'success');
+      setSelectedNumberKey('');
+      await Promise.all([loadStatus(), loadNumbers()]);
+    } catch (err: any) {
+      showToast(err.message || 'Failed to disconnect the phone number', 'error');
+    } finally {
+      setUnassigning(false);
     }
   };
 

@@ -3,16 +3,17 @@ import { CalendarAdapter, TimeSlot, BookingDetails } from './calendarInterface';
 import { config } from '../../config';
 import { createClient } from '@supabase/supabase-js';
 import { wsTransport } from '../../utils/wsTransport';
+import { getTimezoneOffsetString, normalizeTimezone, parseDateToYYYYMMDD } from '../../utils/date';
 
 const supabase = createClient(config.supabaseUrl, config.supabaseServiceKey, {
   realtime: { transport: wsTransport },
 });
 
 const formatInTimezone = (date: Date, tz?: string): string => {
-  if (!tz) return date.toISOString();
+  const resolvedTz = normalizeTimezone(tz, 'Asia/Kolkata');
   try {
     const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: tz,
+      timeZone: resolvedTz,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -33,21 +34,7 @@ const formatInTimezone = (date: Date, tz?: string): string => {
     const minute = getPart('minute');
     const second = getPart('second');
 
-    // Get offset
-    const tzParts = new Intl.DateTimeFormat('en-US', {
-      timeZone: tz,
-      timeZoneName: 'longOffset'
-    }).formatToParts(date);
-    const offsetPart = tzParts.find(p => p.type === 'timeZoneName')?.value || '';
-    let offset = '+00:00';
-    const match = offsetPart.match(/GMT([+-])(\d+):?(\d+)?/);
-    if (match) {
-      const sign = match[1];
-      const hours = match[2].padStart(2, '0');
-      const mins = (match[3] || '00').padStart(2, '0');
-      offset = `${sign}${hours}:${mins}`;
-    }
-    
+    const offset = getTimezoneOffsetString(resolvedTz, date);
     return `${year}-${month}-${day}T${hour}:${minute}:${second}${offset}`;
   } catch {
     return date.toISOString();
@@ -131,34 +118,14 @@ export class GoogleCalendarAdapter implements CalendarAdapter {
     
     // Fetch primary calendar's time zone settings
     const cal = await calendar.calendars.get({ calendarId: 'primary' });
-    const timeZone = cal.data.timeZone || 'UTC';
+    const timeZone = cal.data.timeZone;
 
-    // Helper to construct ISO strings using proper timezone offset
-    const tz = timezone || timeZone || 'UTC';
-    const getOffset = (dStr: string) => {
-      try {
-        const offsetParts = new Intl.DateTimeFormat('en-US', {
-          timeZone: tz,
-          timeZoneName: 'longOffset'
-        }).formatToParts(new Date(dStr));
-        const offsetPart = offsetParts.find(p => p.type === 'timeZoneName')?.value || '';
-        let offset = '+00:00';
-        const match = offsetPart.match(/GMT([+-])(\d+):?(\d+)?/);
-        if (match) {
-          const sign = match[1];
-          const hours = match[2].padStart(2, '0');
-          const mins = (match[3] || '00').padStart(2, '0');
-          offset = `${sign}${hours}:${mins}`;
-        }
-        return offset;
-      } catch (err) {
-        return 'Z';
-      }
-    };
+    const tz = normalizeTimezone(timezone || timeZone, 'Asia/Kolkata');
+    const parsedDate = parseDateToYYYYMMDD(date);
+    const offset = getTimezoneOffsetString(tz, new Date(`${parsedDate}T12:00:00Z`));
 
-    const offset = getOffset(date);
-    const timeMin = new Date(`${date}T00:00:00${offset}`);
-    const timeMax = new Date(`${date}T23:59:59${offset}`);
+    const timeMin = new Date(`${parsedDate}T00:00:00${offset}`);
+    const timeMax = new Date(`${parsedDate}T23:59:59${offset}`);
     
     const res = await calendar.freebusy.query({
       requestBody: {
@@ -170,14 +137,14 @@ export class GoogleCalendarAdapter implements CalendarAdapter {
 
     const busySlots = res.data.calendars?.['primary']?.busy || [];
     
-    // In a real app, we'd subtract busySlots from the 9-5 work hours to return free TimeSlots.
-    // For simplicity of this MVP, we just return some hardcoded slots if not busy, 
-    // or properly compute them. Here we compute available 30 min slots:
+    // Working hours: 09:00 to 18:00 in the target timezone
+    const workStart = new Date(`${parsedDate}T09:00:00${offset}`).getTime();
+    const workEnd = new Date(`${parsedDate}T18:00:00${offset}`).getTime();
+
     const freeSlots: TimeSlot[] = [];
-    let current = timeMin.getTime();
-    const end = timeMax.getTime();
+    let current = workStart;
     
-    while (current + 30 * 60000 <= end) {
+    while (current + 30 * 60000 <= workEnd) {
       const slotStart = current;
       const slotEnd = current + 30 * 60000;
       
@@ -189,8 +156,8 @@ export class GoogleCalendarAdapter implements CalendarAdapter {
 
       if (!isBusy) {
         freeSlots.push({
-          start: formatInTimezone(new Date(slotStart), timezone),
-          end: formatInTimezone(new Date(slotEnd), timezone)
+          start: formatInTimezone(new Date(slotStart), tz),
+          end: formatInTimezone(new Date(slotEnd), tz)
         });
       }
       current += 30 * 60000;

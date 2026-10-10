@@ -1,99 +1,108 @@
-import express from 'express';
-import cors from 'cors';
-import { config } from './config';
-import { errorHandler } from './middleware/errorHandler';
-import calendarRoutes from './routes/calendar.routes';
-import chatRoutes from './routes/chat.routes';
-import { geminiGuard } from './services/geminiGuard';
-import { isTrustedCorsOrigin } from './utils/corsPolicy';
+import dotenv from 'dotenv';
+dotenv.config();
 
-const app = express();
+import { loadSecrets } from './utils/loadSecrets';
 
-app.set('trust proxy', 1);
-const trustedCorsOrigins = [
-  config.clientUrl,
-  process.env.WIDGET_BASE_URL,
-  process.env.EXPRESS_SERVER_URL,
-].filter((origin): origin is string => Boolean(origin));
+async function bootstrap(): Promise<void> {
+  await loadSecrets();
 
-app.use(cors({
-  origin(origin, callback) {
-    callback(null, isTrustedCorsOrigin(origin, trustedCorsOrigins));
-  },
-}));
-app.use(express.json());
+  const { config } = await import('./config');
 
-import { requestLogger } from './middleware/requestLogger';
-import { logger } from './services/cloudwatchLogger';
+  const express        = (await import('express')).default;
+  const cors           = (await import('cors')).default;
+  const { errorHandler }       = await import('./middleware/errorHandler');
+  const calendarRoutes         = (await import('./routes/calendar.routes')).default;
+  const chatRoutes             = (await import('./routes/chat.routes')).default;
+  const { geminiGuard }        = await import('./services/geminiGuard');
+  const { isTrustedCorsOrigin }= await import('./utils/corsPolicy');
+  const widgetRoutes           = (await import('./routes/widget.routes')).default;
+  const crmRoutes              = (await import('./routes/crm.routes')).default;
+  const { dograhRoutes, phoneToolsRoutes, campaignRoutes, startCallPoller, startCampaign } =
+    await import('./modules/phone-calls');
+  const { supabase }           = await import('./services/db');
+  const { setupWebSocketServer }= await import('./controllers/liveChatController');
+  const { requestLogger }      = await import('./middleware/requestLogger');
+  const { logger }             = await import('./services/cloudwatchLogger');
 
-app.use(requestLogger);
+  const app = express();
+  app.set('trust proxy', 1);
+  app.use(requestLogger);
 
-import widgetRoutes from './routes/widget.routes';
-import crmRoutes from './routes/crm.routes';
-import { dograhRoutes, phoneToolsRoutes, campaignRoutes, startCallPoller, startCampaign } from './modules/phone-calls';
-import { supabase } from './services/db';
+  const trustedCorsOrigins = [
+    config.clientUrl,
+    process.env.WIDGET_BASE_URL,
+    process.env.EXPRESS_SERVER_URL,
+  ].filter((origin): origin is string => Boolean(origin));
 
-app.use('/api/calendar', calendarRoutes);
-app.use('/api/chat', chatRoutes);
-app.use('/widget', widgetRoutes);
-app.use('/api/dograh', dograhRoutes);
-app.use('/api/phone-tools', phoneToolsRoutes);
-app.use('/api/crm', crmRoutes);
-app.use('/api/campaigns', campaignRoutes);
+  app.use(cors({
+    origin(origin, callback) {
+      callback(null, isTrustedCorsOrigin(origin, trustedCorsOrigins));
+    },
+  }));
+  app.use(express.json());
 
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    geminiGuard: geminiGuard.getStatus()
+  app.use('/api/calendar', calendarRoutes);
+  app.use('/api/chat',     chatRoutes);
+  app.use('/widget',       widgetRoutes);
+  app.use('/api/dograh',   dograhRoutes);
+  app.use('/api/phone-tools', phoneToolsRoutes);
+  app.use('/api/crm',      crmRoutes);
+  app.use('/api/campaigns', campaignRoutes);
+
+  app.get('/health', (_req, res) => {
+    res.json({ status: 'ok', geminiGuard: geminiGuard.getStatus() });
   });
-});
 
-app.use(errorHandler);
+  app.use(errorHandler);
 
-import { setupWebSocketServer } from './controllers/liveChatController';
+  const server = app.listen(config.port, () => {
+    console.log(`🧠 AI Receptionist Brain API running on http://localhost:${config.port}`);
+  });
 
-const server = app.listen(config.port, () => {
   logger.info(`AI Receptionist Brain API running on port ${config.port}`, {
     port: config.port,
     nodeEnv: process.env.NODE_ENV,
     pid: process.pid,
   });
-  console.log(`🧠 AI Receptionist Brain API running on http://localhost:${config.port}`);
-});
 
-process.on('SIGINT', async () => {
-  await logger.flush();
-  process.exit(0);
-});
-
-process.on('SIGTERM', async () => {
-  await logger.flush();
-  process.exit(0);
-});
-
-process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
-  const errMsg = reason?.message || (typeof reason === 'object' ? JSON.stringify(reason) : String(reason));
-  console.error('[process] Unhandled Promise Rejection prevented crash:', errMsg);
-  logger.error('Unhandled Promise Rejection', {
-    error: errMsg,
-    stack: reason?.stack,
+  process.on('SIGINT', async () => {
+    await logger.flush();
+    process.exit(0);
   });
-});
 
-process.on('uncaughtException', (err: Error) => {
-  console.error('[process] Uncaught Exception prevented crash:', err.message);
-  logger.error('Uncaught Exception', {
-    error: err.message,
-    stack: err.stack,
+  process.on('SIGTERM', async () => {
+    await logger.flush();
+    process.exit(0);
   });
-});
 
-setupWebSocketServer(server);
+  process.on('unhandledRejection', (reason: any) => {
+    const errMsg = reason?.message || (typeof reason === 'object' ? JSON.stringify(reason) : String(reason));
+    console.error('[process] Unhandled Promise Rejection prevented crash:', errMsg);
+    logger.error('Unhandled Promise Rejection', {
+      error: errMsg,
+      stack: reason?.stack,
+    });
+  });
 
-startCallPoller(supabase);
+  process.on('uncaughtException', (err: Error) => {
+    console.error('[process] Uncaught Exception prevented crash:', err.message);
+    logger.error('Uncaught Exception', {
+      error: err.message,
+      stack: err.stack,
+    });
+  });
 
+  setupWebSocketServer(server);
 
-async function resumeRunningCampaigns(): Promise<void> {
+  startCallPoller(supabase);
+  await resumeRunningCampaigns(supabase, startCampaign);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function resumeRunningCampaigns(
+  supabase: any,
+  startCampaign: (...args: any[]) => void,
+): Promise<void> {
   const { data: campaigns, error } = await supabase
     .from('call_campaigns')
     .select('id, hourly_cap_override, bot_id')
@@ -133,4 +142,4 @@ async function resumeRunningCampaigns(): Promise<void> {
   }
 }
 
-void resumeRunningCampaigns();
+void bootstrap();

@@ -1,6 +1,5 @@
 import { config } from '../../config';
 import {
-  DograhLoginResponse,
   DograhPhoneNumber,
   DograhRunDetail,
   DograhTelephonyConfig,
@@ -8,33 +7,18 @@ import {
   DograhWorkflow,
 } from './types';
 
-const { apiUrl, email, password } = config.dograh;
-
 export function isDograhConfigured(): boolean {
-  return Boolean(apiUrl && email && password);
+  return Boolean(config.dograh.apiUrl && config.dograh.apiKey);
 }
 
-let cachedToken: string | null = null;
-
-async function login(): Promise<string> {
-  let response: Response;
-  try {
-    response = await fetch(`${apiUrl}/api/v1/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-      signal: AbortSignal.timeout(10000),
-    });
-  } catch (err: any) {
-    throw new DograhApiError(`Dograh voice server is unreachable at ${apiUrl} (${err.message}). Please check if the Dograh EC2 instance or container is running.`, 503);
+function getAuthHeaders(): Record<string, string> {
+  if (!config.dograh.apiKey) {
+    throw new Error('Dograh is not configured (DOGRAH_API_KEY missing).');
   }
-
-  if (!response.ok) {
-    throw new DograhApiError(`Dograh login failed: ${response.status} ${await response.text()}`, response.status);
+  if (config.dograh.apiKey.startsWith('ey')) {
+    return { Authorization: `Bearer ${config.dograh.apiKey}` };
   }
-  const data: DograhLoginResponse = await response.json();
-  cachedToken = data.token;
-  return cachedToken;
+  return { 'X-API-Key': config.dograh.apiKey };
 }
 
 export class DograhApiError extends Error {
@@ -46,29 +30,24 @@ export class DograhApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}, retrying = false): Promise<T> {
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!isDograhConfigured()) {
-    throw new Error('Dograh is not configured (DOGRAH_EMAIL/DOGRAH_PASSWORD missing).');
+    throw new Error('Dograh is not configured (DOGRAH_API_KEY missing).');
   }
-  const token = cachedToken ?? (await login());
+  const authHeaders = getAuthHeaders();
   let response: Response;
   try {
-    response = await fetch(`${apiUrl}${path}`, {
+    response = await fetch(`${config.dograh.apiUrl}${path}`, {
       ...init,
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        ...authHeaders,
         ...(init.headers || {}),
       },
       signal: init.signal || AbortSignal.timeout(10000),
     });
   } catch (err: any) {
     throw new DograhApiError(`Dograh request to ${path} failed: ${err.message}`, 503);
-  }
-
-  if (response.status === 401 && !retrying) {
-    cachedToken = null;
-    return request<T>(path, init, true);
   }
 
   if (!response.ok) {
@@ -133,6 +112,7 @@ export interface CreateHttpToolParams {
   headers?: Record<string, string>;
   parameters?: HttpToolParam[];
   presetParameters?: HttpToolPresetParam[];
+  timeoutMs?: number;
 }
 
 function httpToolBody(params: CreateHttpToolParams) {
@@ -147,7 +127,8 @@ function httpToolBody(params: CreateHttpToolParams) {
         url: params.url,
         headers: params.headers,
         parameters: params.parameters,
-        preset_parameters: params.presetParameters,
+        preset_parameters: params.presetParameters || [],
+        timeout_ms: params.timeoutMs || 15000,
       },
     },
   };
@@ -269,6 +250,19 @@ export async function assignInboundWorkflow(
     {
       method: 'PUT',
       body: JSON.stringify({ inbound_workflow_id: Number(workflowId) }),
+    }
+  );
+}
+
+export async function unassignInboundWorkflow(
+  configId: string | number,
+  phoneNumberId: string | number
+): Promise<DograhPhoneNumber> {
+  return request<DograhPhoneNumber>(
+    `/api/v1/organizations/telephony-configs/${configId}/phone-numbers/${phoneNumberId}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({ inbound_workflow_id: null }),
     }
   );
 }

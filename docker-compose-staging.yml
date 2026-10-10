@@ -6,15 +6,15 @@
 # automatically by the 'deploy-via-ssm.yml' workflow on every deployment.
 #
 # EC2 .env must contain at minimum:
-#   IMAGE_TAG_SERVER=server-staging-<short-sha>
-#   IMAGE_TAG_CLIENT=client-staging-<short-sha>
+#   IMAGE_TAG_SERVER=ai-receptionist-server-staging-<short-sha>
+#   IMAGE_TAG_CLIENT=ai-receptionist-client-staging-<short-sha>
 #   APP_DOMAIN=your-app-domain.com
 #   API_DOMAIN=api.your-app-domain.com
 #   DOCKER_USERNAME=your-dockerhub-username
 
 services:
   api:
-    image: ${DOCKER_USERNAME}/ai-receptionist:${IMAGE_TAG_SERVER}
+    image: ${DOCKER_USERNAME}/recrui8-dockerhub-repo-dev:${IMAGE_TAG_SERVER}
     container_name: ai-receptionist-api
     # All server secrets live in server/.env on the EC2 instance.
     # Copy your server/.env to the EC2 project folder before first deploy.
@@ -25,7 +25,7 @@ services:
     restart: unless-stopped
 
   web:
-    image: ${DOCKER_USERNAME}/ai-receptionist:${IMAGE_TAG_CLIENT}
+    image: ${DOCKER_USERNAME}/recrui8-dockerhub-repo-dev:${IMAGE_TAG_CLIENT}
     container_name: ai-receptionist-web
     # Caddy uses APP_DOMAIN and API_DOMAIN to provision TLS certs and route traffic.
     environment:

@@ -1,8 +1,3 @@
-export interface DograhLoginResponse {
-  token: string;
-  user: { id?: number | string; email?: string; organization_id?: number | string };
-}
-
 export interface DograhWorkflow {
   id: number;
   name: string;
@@ -46,9 +41,6 @@ export interface DograhRunSummary {
 }
 
 export interface DograhRunDetail extends DograhRunSummary {
-  // *_url fields are internal storage keys (e.g. "transcripts/47.txt") — NOT fetchable as-is.
-  // The *_public_url fields are the absolute, downloadable URLs. Always fetch/store the public
-  // ones; fetching transcript_url directly throws (relative URL) and silently breaks mirroring.
   transcript_url: string | null;
   transcript_public_url: string | null;
   recording_url: string | null;
@@ -60,7 +52,6 @@ export interface DograhRunDetail extends DograhRunSummary {
   call_type: 'inbound' | 'outbound';
 }
 
-/** Minimal bot fields the phone-calls module needs; avoids importing the full bots row type. */
 export interface DograhProvisionableBot {
   id: string;
   owner_id: string;

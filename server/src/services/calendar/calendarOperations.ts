@@ -1,36 +1,26 @@
 import { BookingDetails, CalendarAdapter, TimeSlot } from './calendarInterface';
 import { getCalendarAdapter } from './calendarAdapterFactory';
 import { validateContactInput } from '../../utils/contactValidation';
+import { getTimezoneOffsetString, normalizeTimezone, parseDateToYYYYMMDD } from '../../utils/date';
 
 type AdapterFactory = (provider: string) => CalendarAdapter;
 const inFlightBookingSessions = new Set<string>();
 
 function normalizeTimestampToTimezone(isoString: string, timezone: string): string {
   if (!isoString || !timezone) return isoString;
+  const normTz = normalizeTimezone(timezone, 'Asia/Kolkata');
+  const trimmed = isoString.trim();
 
-  const isUtcSuffix = /Z$/.test(isoString) || /[+-]00:00$/.test(isoString);
-  if (!isUtcSuffix) return isoString;
-
-  const wallClock = isoString.replace(/Z$/, '').replace(/[+-]00:00$/, '');
-
-
-  try {
-    const wallClockZ = wallClock + 'Z';
-    const offsetParts = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      timeZoneName: 'longOffset',
-    }).formatToParts(new Date(wallClockZ));
-    const offsetStr = offsetParts.find(p => p.type === 'timeZoneName')?.value || '';
-    const match = offsetStr.match(/GMT([+-])(\d+):?(\d+)?/);
-    if (!match) return isoString; 
-    const sign  = match[1];
-    const hours = match[2].padStart(2, '0');
-    const mins  = (match[3] || '00').padStart(2, '0');
-    const offset = `${sign}${hours}:${mins}`;
-    return `${wallClock}${offset}`;
-  } catch {
-    return isoString; 
+  // If already has a non-zero offset like +05:30 or -04:00 (not Z and not +00:00)
+  const hasSpecificOffset = /[+-](?!00:00)\d{2}:?\d{2}$/.test(trimmed);
+  if (hasSpecificOffset) {
+    return trimmed;
   }
+
+  // Strip trailing Z or +00:00 and normalize space to T
+  const cleanWallClock = trimmed.replace(/Z$/, '').replace(/[+-]00:00$/, '').replace(' ', 'T');
+  const offset = getTimezoneOffsetString(normTz, new Date(cleanWallClock + 'Z'));
+  return `${cleanWallClock}${offset}`;
 }
 
 interface AvailabilityInput {
@@ -56,10 +46,12 @@ interface BookingInput {
 
 
 function assertWithinBookingWindow(dateStr: string, timezone: string | undefined, maxBookingDaysAhead: number | undefined) {
-  const requested = new Date(`${dateStr}T00:00:00`);
+  const normDate = parseDateToYYYYMMDD(dateStr);
+  const requested = new Date(`${normDate}T00:00:00`);
   if (Number.isNaN(requested.getTime())) return;
 
-  const todayInTz = new Date(new Date().toLocaleString('en-US', { timeZone: timezone || 'UTC' }));
+  const normTz = normalizeTimezone(timezone, 'Asia/Kolkata');
+  const todayInTz = new Date(new Date().toLocaleString('en-US', { timeZone: normTz }));
   const todayMidnight = new Date(todayInTz.getFullYear(), todayInTz.getMonth(), todayInTz.getDate());
 
   if (requested.getTime() < todayMidnight.getTime()) {
@@ -106,20 +98,35 @@ async function getConnectedAdapter(db: any, ownerId: string, factory: AdapterFac
 
 export async function checkCalendarAvailability(input: AvailabilityInput): Promise<TimeSlot[]> {
   if (!input.date) throw new Error('A date is required to check availability');
-  assertWithinBookingWindow(input.date, input.timezone, input.maxBookingDaysAhead);
+  const normDate = parseDateToYYYYMMDD(input.date);
+  const normTz = normalizeTimezone(input.timezone, 'Asia/Kolkata');
+  assertWithinBookingWindow(normDate, normTz, input.maxBookingDaysAhead);
   const adapter = await getConnectedAdapter(input.db, input.ownerId, input.getAdapter || getCalendarAdapter);
-  return adapter.checkAvailability(input.date, input.ownerId, input.timezone);
+  return adapter.checkAvailability(normDate, input.ownerId, normTz);
 }
 
 export async function bookCalendarAppointment(input: BookingInput) {
   const { details, db, sessionId } = input;
+  const normTz = normalizeTimezone(input.timezone, 'Asia/Kolkata');
 
-
-  if (input.timezone && details?.startTime) {
-    details.startTime = normalizeTimestampToTimezone(details.startTime, input.timezone);
+  // Default title if omitted by model
+  if (!details?.title) {
+    details.title = details?.visitorName ? `Appointment with ${details.visitorName}` : 'Consultation Appointment';
   }
-  if (input.timezone && details?.endTime) {
-    details.endTime = normalizeTimestampToTimezone(details.endTime, input.timezone);
+
+  // Auto-calculate endTime if model provided only startTime (default 30 min duration)
+  if (!details?.endTime && details?.startTime) {
+    const rawStart = new Date(details.startTime.replace(' ', 'T'));
+    if (!Number.isNaN(rawStart.getTime())) {
+      details.endTime = new Date(rawStart.getTime() + 30 * 60000).toISOString();
+    }
+  }
+
+  if (details?.startTime) {
+    details.startTime = normalizeTimestampToTimezone(details.startTime, normTz);
+  }
+  if (details?.endTime) {
+    details.endTime = normalizeTimestampToTimezone(details.endTime, normTz);
   }
 
   const requestedStart = new Date(details?.startTime);
@@ -165,18 +172,31 @@ export async function bookCalendarAppointment(input: BookingInput) {
       throw new Error('An appointment has already been booked for this session.');
     }
 
-    const requestedLocalDate = details.startTime.slice(0, 10);
-    assertWithinBookingWindow(requestedLocalDate, input.timezone, input.maxBookingDaysAhead);
+    const requestedLocalDate = parseDateToYYYYMMDD(details.startTime.slice(0, 10));
+    assertWithinBookingWindow(requestedLocalDate, normTz, input.maxBookingDaysAhead);
 
     const adapter = await getConnectedAdapter(db, input.ownerId, input.getAdapter || getCalendarAdapter);
-    const availableSlots = await adapter.checkAvailability(requestedLocalDate, input.ownerId, input.timezone);
-    const exactAvailableSlot = availableSlots.some(slot =>
-      new Date(slot.start).getTime() === requestedStart.getTime()
-      && new Date(slot.end).getTime() === requestedEnd.getTime()
-    );
+    const availableSlots = await adapter.checkAvailability(requestedLocalDate, input.ownerId, normTz);
 
-    if (!exactAvailableSlot) {
-      const error: any = new Error('The requested slot is not available during office hours.');
+    if (!availableSlots || availableSlots.length === 0) {
+      const error: any = new Error('No appointment slots are available on this date. Please choose another date.');
+      error.slots = [];
+      throw error;
+    }
+
+    // Flexible slot check: matches an available slot start, or requested slot falls in available window
+    const isSlotAvailable = availableSlots.some(slot => {
+      const slotStart = new Date(slot.start).getTime();
+      const slotEnd = new Date(slot.end).getTime();
+      return (
+        (Math.abs(slotStart - requestedStart.getTime()) <= 60000 && Math.abs(slotEnd - requestedEnd.getTime()) <= 60000) ||
+        (requestedStart.getTime() >= slotStart - 60000 && requestedStart.getTime() < slotEnd) ||
+        (Math.abs(slotStart - requestedStart.getTime()) <= 30 * 60000)
+      );
+    });
+
+    if (!isSlotAvailable) {
+      const error: any = new Error('The requested time is outside available office hours. Please choose an available slot.');
       error.slots = availableSlots;
       throw error;
     }

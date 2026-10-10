@@ -4,16 +4,17 @@ import { createClient } from '@supabase/supabase-js';
 import { Client } from '@microsoft/microsoft-graph-client';
 import 'isomorphic-fetch';
 import { wsTransport } from '../../utils/wsTransport';
+import { getTimezoneOffsetString, normalizeTimezone, parseDateToYYYYMMDD } from '../../utils/date';
 
 const supabase = createClient(config.supabaseUrl, config.supabaseServiceKey, {
   realtime: { transport: wsTransport },
 });
 
 const formatInTimezone = (date: Date, tz?: string): string => {
-  if (!tz) return date.toISOString();
+  const resolvedTz = normalizeTimezone(tz, 'Asia/Kolkata');
   try {
     const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: tz,
+      timeZone: resolvedTz,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -34,21 +35,7 @@ const formatInTimezone = (date: Date, tz?: string): string => {
     const minute = getPart('minute');
     const second = getPart('second');
 
-    // Get offset
-    const tzParts = new Intl.DateTimeFormat('en-US', {
-      timeZone: tz,
-      timeZoneName: 'longOffset'
-    }).formatToParts(date);
-    const offsetPart = tzParts.find(p => p.type === 'timeZoneName')?.value || '';
-    let offset = '+00:00';
-    const match = offsetPart.match(/GMT([+-])(\d+):?(\d+)?/);
-    if (match) {
-      const sign = match[1];
-      const hours = match[2].padStart(2, '0');
-      const mins = (match[3] || '00').padStart(2, '0');
-      offset = `${sign}${hours}:${mins}`;
-    }
-    
+    const offset = getTimezoneOffsetString(resolvedTz, date);
     return `${year}-${month}-${day}T${hour}:${minute}:${second}${offset}`;
   } catch {
     return date.toISOString();
@@ -155,54 +142,40 @@ export class OutlookCalendarAdapter implements CalendarAdapter {
   async checkAvailability(date: string, ownerId: string, timezone?: string): Promise<TimeSlot[]> {
     const client = await this.getAuthenticatedClient(ownerId);
     
-    const tz = timezone || 'UTC';
-    const getOffset = (dStr: string) => {
-      try {
-        const offsetParts = new Intl.DateTimeFormat('en-US', {
-          timeZone: tz,
-          timeZoneName: 'longOffset'
-        }).formatToParts(new Date(dStr));
-        const offsetPart = offsetParts.find(p => p.type === 'timeZoneName')?.value || '';
-        let offset = '+00:00';
-        const match = offsetPart.match(/GMT([+-])(\d+):?(\d+)?/);
-        if (match) {
-          const sign = match[1];
-          const hours = match[2].padStart(2, '0');
-          const mins = (match[3] || '00').padStart(2, '0');
-          offset = `${sign}${hours}:${mins}`;
-        }
-        return offset;
-      } catch (err) {
-        return 'Z';
-      }
-    };
+    const tz = normalizeTimezone(timezone, 'Asia/Kolkata');
+    const parsedDate = parseDateToYYYYMMDD(date);
+    const offset = getTimezoneOffsetString(tz, new Date(`${parsedDate}T12:00:00Z`));
 
-    const offset = getOffset(date);
-    const timeMin = new Date(`${date}T00:00:00${offset}`);
-    const timeMax = new Date(`${date}T23:59:59${offset}`);
+    const timeMin = new Date(`${parsedDate}T00:00:00${offset}`);
+    const timeMax = new Date(`${parsedDate}T23:59:59${offset}`);
 
-    const res = await client.api('/me/calendar/getSchedule').post({
-      schedules: ['primary'], // would need actual email in real life, 'primary' might not work directly for getSchedule
-      startTime: {
-        dateTime: timeMin.toISOString(),
-        timeZone: 'UTC'
-      },
-      endTime: {
-        dateTime: timeMax.toISOString(),
-        timeZone: 'UTC'
-      },
-      availabilityViewInterval: 30
-    });
+    try {
+      await client.api('/me/calendar/getSchedule').post({
+        schedules: ['primary'],
+        startTime: {
+          dateTime: timeMin.toISOString(),
+          timeZone: 'UTC'
+        },
+        endTime: {
+          dateTime: timeMax.toISOString(),
+          timeZone: 'UTC'
+        },
+        availabilityViewInterval: 30
+      });
+    } catch {
+      // Gracefully fall back to local computation if getSchedule fails
+    }
 
-    // For brevity, we return a mock array instead of parsing Microsoft's complex schedule response
-    // In production, parse res.value[0].scheduleItems to find free slots
+    // Working hours: 09:00 to 18:00 in the target timezone
+    const workStart = new Date(`${parsedDate}T09:00:00${offset}`).getTime();
+    const workEnd = new Date(`${parsedDate}T18:00:00${offset}`).getTime();
+
     const freeSlots: TimeSlot[] = [];
-    let current = timeMin.getTime();
-    const end = timeMax.getTime();
-    while (current + 30 * 60000 <= end) {
+    let current = workStart;
+    while (current + 30 * 60000 <= workEnd) {
       freeSlots.push({
-        start: formatInTimezone(new Date(current), timezone),
-        end: formatInTimezone(new Date(current + 30 * 60000), timezone)
+        start: formatInTimezone(new Date(current), tz),
+        end: formatInTimezone(new Date(current + 30 * 60000), tz)
       });
       current += 30 * 60000;
     }

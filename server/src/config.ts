@@ -10,6 +10,7 @@ function requireEnv(name: string): string {
 }
 
 export const config = {
+  environment: process.env.DEPLOY_ENV || 'development',
   port: parseInt(process.env.PORT || '4000', 10),
   clientUrl: process.env.CLIENT_URL || 'http://localhost:3000',
   supabaseUrl: requireEnv('SUPABASE_URL'),
@@ -28,13 +29,11 @@ export const config = {
   },
   dograh: {
     apiUrl: (process.env.DOGRAH_API_URL || 'http://localhost:8000').trim().replace(/\/+$/, ''),
+    apiKey: (process.env.DOGRAH_API_KEY || '').trim(),
     email: (process.env.DOGRAH_EMAIL || '').trim(),
     password: process.env.DOGRAH_PASSWORD || '',
     pollIntervalMs: parseInt(process.env.DOGRAH_POLL_INTERVAL_MS || '60000', 10),
   },
-  // Lets Dograh's container call back into this server mid-call (calendar tool calls, pre-call
-  // session creation). Server-to-server only - never exposed to the browser, distinct from the
-  // public Cloudflare tunnel used for inbound telephony webhooks.
   phoneTools: {
     apiKey: (process.env.PHONE_TOOLS_API_KEY || '').trim(),
     callbackBaseUrl: (process.env.PHONE_TOOLS_CALLBACK_BASE_URL || 'http://host.docker.internal:4000').trim().replace(/\/+$/, ''),

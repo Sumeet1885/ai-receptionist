@@ -11,7 +11,7 @@ const supabase = createClient(config.supabaseUrl, config.supabaseServiceKey, {
 
 export const getAuthUrl = async (req: any, res: Response) => {
   const provider = req.query.provider as string;
-  const ownerId = req.user.id; // from auth middleware
+  const ownerId = req.user.id;
 
   try {
     const adapter = getCalendarAdapter(provider);
@@ -33,7 +33,6 @@ export const handleCallback = async (req: Request, res: Response) => {
     const ownerId = await consumeCalendarOAuthState({ db: supabase, state, provider });
     const adapter = getCalendarAdapter(provider);
     await adapter.handleCallback(code, ownerId);
-    // Redirect back to dashboard appointments tab
     res.redirect(`${config.clientUrl}/dashboard?tab=appointments`);
   } catch (err: any) {
     console.error(`Callback error [${provider}]:`, err);
@@ -53,5 +52,27 @@ export const getStatus = async (req: any, res: Response) => {
     res.json({ connected: !!data, provider: data?.provider });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+export const disconnectConnection = async (req: any, res: Response) => {
+  const ownerId = req.user?.id;
+  if (!ownerId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const { error } = await supabase
+      .from('calendar_connections')
+      .delete()
+      .eq('owner_id', ownerId);
+
+    if (error) throw error;
+
+    console.log(`[Calendar] Disconnected calendar for owner: ${ownerId}`);
+    res.json({ success: true, connected: false, message: 'Calendar disconnected successfully' });
+  } catch (err: any) {
+    console.error('[Calendar] Failed to disconnect:', err);
+    res.status(500).json({ error: err.message || 'Failed to disconnect calendar' });
   }
 };

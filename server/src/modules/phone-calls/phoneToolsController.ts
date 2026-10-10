@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { supabase } from '../../services/db';
 import { checkCalendarAvailability, bookCalendarAppointment, serializeCalendarToolError } from '../../services/calendar/calendarOperations';
 import { mergeWidgetConfig } from '../../utils/widgetConfig';
+import { normalizeTimezone } from '../../utils/date';
 import { InboundRateLimitBot, markInboundAttemptAndApplyLimit } from './inboundRateLimiter';
 import { logger } from '../../services/cloudwatchLogger';
 
@@ -83,15 +84,39 @@ export async function preCall(req: Request, res: Response): Promise<void> {
 const SOFT_LIMIT_SECONDS = 270;
 
 export async function callTimeRemaining(req: Request, res: Response): Promise<void> {
-  const { session_id } = req.body || {};
+  let { session_id } = req.body || {};
+  const botId = req.params.botId;
+
+  if (!session_id && botId) {
+    const { data: session } = await supabase
+      .from('chat_sessions')
+      .select('id')
+      .eq('bot_id', botId)
+      .eq('channel', 'phone')
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (session) {
+      session_id = session.id;
+    }
+  }
+
   if (!session_id) {
-    res.json({ error: 'No active call session.' });
+    res.json({
+      elapsedSeconds: 0,
+      remainingSeconds: SOFT_LIMIT_SECONDS,
+      shouldWrapUp: false,
+    });
     return;
   }
 
   const { data: session, error } = await supabase.from('chat_sessions').select('started_at').eq('id', session_id).maybeSingle();
   if (error || !session?.started_at) {
-    res.json({ error: 'Could not determine call start time.' });
+    res.json({
+      elapsedSeconds: 0,
+      remainingSeconds: SOFT_LIMIT_SECONDS,
+      shouldWrapUp: false,
+    });
     return;
   }
 
@@ -114,12 +139,13 @@ export async function checkAvailability(req: Request, res: Response): Promise<vo
 
   const { date, timezone } = req.body || {};
   const widgetConfig = mergeWidgetConfig(bot.widget_config);
+  const effectiveTimezone = normalizeTimezone(timezone || (widgetConfig as any).timezone, 'Asia/Kolkata');
   try {
     const slots = await checkCalendarAvailability({
       db: supabase,
       ownerId: bot.owner_id,
       date,
-      timezone,
+      timezone: effectiveTimezone,
       maxBookingDaysAhead: widgetConfig.maxBookingDaysAhead
     });
     const slotCount = Array.isArray(slots) ? slots.length : 0;
@@ -148,20 +174,57 @@ export async function bookAppointment(req: Request, res: Response): Promise<void
     return;
   }
 
-  const { session_id, timezone, ...details } = req.body || {};
+  let { session_id, timezone, ...details } = req.body || {};
+
+  // If session_id was not provided (e.g. Dograh tool testing or direct call without pre-call session),
+  // link to the most recent active call session or auto-create a fallback session.
+  if (!session_id) {
+    const { data: recentSession } = await supabase
+      .from('chat_sessions')
+      .select('id')
+      .eq('bot_id', botId)
+      .eq('channel', 'phone')
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (recentSession?.id) {
+      const { data: existingAppt } = await supabase
+        .from('appointments')
+        .select('id')
+        .eq('session_id', recentSession.id)
+        .eq('status', 'confirmed')
+        .maybeSingle();
+
+      if (!existingAppt) {
+        session_id = recentSession.id;
+      }
+    }
+
+    if (!session_id) {
+      const { data: newSession } = await supabase
+        .from('chat_sessions')
+        .insert({ bot_id: botId, channel: 'phone' })
+        .select('id')
+        .single();
+      session_id = newSession?.id;
+    }
+  }
+
   if (!session_id) {
     res.json({ error: 'No active call session - this tool can only be used during a live phone call.' });
     return;
   }
 
   const widgetConfig = mergeWidgetConfig(bot.widget_config);
+  const effectiveTimezone = normalizeTimezone(timezone || (widgetConfig as any).timezone, 'Asia/Kolkata');
   try {
     const result = await bookCalendarAppointment({
       db: supabase,
       ownerId: bot.owner_id,
       botId,
       sessionId: session_id,
-      timezone,
+      timezone: effectiveTimezone,
       details,
       maxBookingDaysAhead: widgetConfig.maxBookingDaysAhead
     });
