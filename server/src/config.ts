@@ -30,8 +30,6 @@ export const config = {
   dograh: {
     apiUrl: (process.env.DOGRAH_API_URL || 'http://localhost:8000').trim().replace(/\/+$/, ''),
     apiKey: (process.env.DOGRAH_API_KEY || '').trim(),
-    email: (process.env.DOGRAH_EMAIL || '').trim(),
-    password: process.env.DOGRAH_PASSWORD || '',
     pollIntervalMs: parseInt(process.env.DOGRAH_POLL_INTERVAL_MS || '60000', 10),
   },
   phoneTools: {
