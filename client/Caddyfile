@@ -1,9 +1,7 @@
-# Subdomain: test.ai-receptionist.agilewaters.com
-# Caddy auto-provisions and renews a Let's Encrypt TLS cert automatically.
-# No certbot or nginx config needed - just make sure port 80 and 443 are
-# open in your EC2 Security Group and the DNS A record points to your EC2 IP.
+# Caddy auto-provisions and renews Let's Encrypt TLS certs automatically.
+# Domains are injected dynamically via APP_DOMAIN and API_DOMAIN environment variables.
 
-{$APP_DOMAIN:test.ai-receptionist.agilewaters.com}, {$API_DOMAIN:test.ai-receptionist.agilewaters.com} {
+{$APP_DOMAIN}, {$API_DOMAIN} {
 
     # All /api/* requests → Express backend (api service on port 4000)
     handle /api/* {
