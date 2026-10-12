@@ -3,6 +3,12 @@ import { analyzeLead } from '../../controllers/leadController';
 import { DograhApiError, fetchTranscript, getRun, listRuns } from './dograhClient';
 import { DograhProvisionableBot, DograhRunDetail } from './types';
 import { config } from '../../config';
+import { logger } from '../../services/cloudwatchLogger';
+
+function maskPhoneNumber(phoneNumber: string): string {
+  if (phoneNumber.length <= 4) return '****';
+  return `${'*'.repeat(Math.max(0, phoneNumber.length - 4))}${phoneNumber.slice(-4)}`;
+}
 
 function resolveDograhUrl(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -119,6 +125,12 @@ export async function syncBotCalls(bot: DograhProvisionableBot, supabase: Supaba
       } catch (err) {
         failed += 1;
         console.error(`[phone-calls] Failed to ingest Dograh run ${runSummary.id} for bot ${bot.id}:`, err);
+        logger.callEvent('call_ingest_failed', {
+          botId: bot.id,
+          workflowId,
+          dograhRunId: String(runSummary.id),
+          error: (err as any)?.message || String(err),
+        }, 'error');
         await supabase
           .from('phone_calls')
           .update({ ingest_status: 'failed' })
@@ -126,6 +138,14 @@ export async function syncBotCalls(bot: DograhProvisionableBot, supabase: Supaba
           .eq('dograh_run_id', String(runSummary.id));
       }
     }
+  }
+
+  if (ingested > 0 || failed > 0) {
+    logger.aiReceptionist('Call sync batch completed', {
+      botId: bot.id,
+      ingested,
+      failed,
+    });
   }
 
   return { ingested, failed };
@@ -240,20 +260,40 @@ async function ingestRun(
     await analyzeLead({ sessionId, botId: bot.id, transcript, knownPhone: counterpartyNumber || undefined, knownEmail: callerEmail || undefined }, supabase);
   }
 
-  const { error: finalizeError } = await supabase
-    .from('phone_calls')
-    .update({
-      caller_number: counterpartyNumber,
-      status: run.is_completed ? 'completed' : 'in_progress',
-      duration_seconds: extractDurationSeconds(run),
-      recording_url: recordingUrl,
-      transcript_url: transcriptUrl,
-      cost_info: run.cost_info,
-      started_at: run.created_at,
-      ingest_status: 'done',
-    })
-    .eq('id', callRow.id);
+    const isOutbound = Boolean(bot.dograh_outbound_workflow_id && workflowId === bot.dograh_outbound_workflow_id);
+    const enrichedCostInfo = {
+      ...(run.cost_info || {}),
+      direction: isOutbound ? 'outbound' : 'inbound',
+    };
+
+    const { error: finalizeError } = await supabase
+      .from('phone_calls')
+      .update({
+        caller_number: counterpartyNumber,
+        status: run.is_completed ? 'completed' : 'in_progress',
+        duration_seconds: extractDurationSeconds(run),
+        recording_url: recordingUrl,
+        transcript_url: transcriptUrl,
+        cost_info: enrichedCostInfo,
+        started_at: run.created_at,
+        ingest_status: 'done',
+      })
+      .eq('id', callRow.id);
   if (finalizeError) throw finalizeError;
+
+  logger.callEvent('call_mirrored', {
+    botId: bot.id,
+    sessionId,
+    callId: callRow.id,
+    workflowId,
+    dograhRunId,
+    status: run.is_completed ? 'completed' : 'in_progress',
+    durationSeconds: extractDurationSeconds(run),
+    callerNumber: counterpartyNumber ? maskPhoneNumber(counterpartyNumber) : null,
+    hasTranscript: Boolean(transcript),
+    hasRecording: Boolean(recordingUrl),
+    callType: run.call_type || 'inbound',
+  });
 
   const campaignContactId = (run.initial_context as Record<string, any> | null)?.campaign_contact_id;
   if (campaignContactId) {

@@ -5,6 +5,7 @@ export interface BusinessPersonaBot {
   business_name: string;
   industry: string;
   knowledge_base: string;
+  phone_number?: string | null;
 }
 
 
@@ -81,8 +82,12 @@ export function buildBusinessPersona(
   const userLocaleTime = formatCurrentDateTime(normTz);
   const leadCollectionInstruction = buildLeadCollectionInstruction(widgetConfig);
   const handoffText = widgetConfig.handoffText || 'I can connect you with the team for this.';
+  const phoneLine = bot.phone_number ? `\nOFFICIAL BUSINESS CONTACT PHONE: ${bot.phone_number}` : '';
+  const handoffResponse = bot.phone_number
+    ? `${handoffText} You can also call us directly at ${bot.phone_number}.`
+    : handoffText;
 
-  return `You are the Virtual AI Receptionist representing "${bot.business_name}" (${bot.industry} sector).
+  return `You are the Virtual AI Receptionist representing "${bot.business_name}" (${bot.industry} sector).${phoneLine}
 
 CURRENT TIMEZONE: ${normTz}
 CURRENT DATE AND TIME: ${userLocaleTime} (in ${normTz})
@@ -97,7 +102,7 @@ YOUR GOALS:
 1. ${options.openingInstruction || DEFAULT_OPENING_INSTRUCTION}
 2. ${leadCollectionInstruction}
 ${options.bookingInstruction}
-4. HUMAN HANDOFF & SUPPORT: If the user wishes or asks to talk to or connect with/contact support, a human, an agent, or a real person, you must respond with exactly the following handoff text and nothing else: "${handoffText}".
+4. HUMAN HANDOFF & SUPPORT: If the user wishes or asks to talk to or connect with/contact support, a human, an agent, or a real person, or asks for a phone number to call, you must respond with: "${handoffResponse}".
 5. Keep answers short (1-2 sentences max).
 6. User should feel like he/she is talking to an actual call center guy.
 7. Ask 1 question at a time.

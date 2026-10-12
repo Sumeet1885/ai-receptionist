@@ -282,24 +282,48 @@ export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvision
       <div className="px-5 sm:px-6 py-4 border-b border-brand-border flex items-center justify-between gap-3 bg-brand-bg/40">
         <div>
           <h3 className="font-display font-bold text-brand-text text-lg flex items-center gap-2">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            Bulk Call Campaign
+            <span>🚀 Automated Campaign (AI Calls A Contact List)</span>
           </h3>
-          <p className="text-xs text-brand-muted mt-1">Upload an Excel sheet to start an automated outbound call campaign.</p>
+          <p className="text-xs text-brand-muted mt-1">
+            Upload an Excel or CSV file of phone numbers. Your AI receptionist will automatically dial down the list, speak with contacts, and capture lead results.
+          </p>
         </div>
       </div>
 
       <div className="p-5 sm:p-6 space-y-6">
         {!isProvisioned ? (
           <div className="py-6 text-center text-brand-muted">
-            <p className="text-sm">Provision the phone agent and assign a number before creating a campaign.</p>
+            <p className="text-sm">Please activate a phone number in the <strong>📥 Incoming Calls (Customers Call You)</strong> tab above before launching an outbound campaign.</p>
           </div>
         ) : (
           <>
             <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wide text-brand-muted">New Campaign</h4>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <h4 className="text-xs font-bold uppercase tracking-wide text-brand-muted">Upload Contacts Spreadsheet</h4>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const csvContent =
+                      "phone_number,name,notes\n" +
+                      "+15551234567,John Smith,Follow up on dental cleaning\n" +
+                      "+15559876543,Sarah Connor,Appointment confirmation\n" +
+                      "+919876543210,Rahul Sharma,Inquiry regarding service\n";
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', 'sample_campaign_contacts.csv');
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    showToast('Sample contacts spreadsheet downloaded!', 'success');
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-brand-bg hover:bg-brand-card text-brand-accent hover:text-brand-accent-hover border border-brand-border text-xs font-bold transition flex items-center gap-1.5 self-start sm:self-auto shadow-sm"
+                >
+                  <span>📥</span>
+                  <span>Download Sample Template (.CSV)</span>
+                </button>
+              </div>
 
               <UploadZone onFileSelected={handleFileSelected} disabled={uploading} />
 

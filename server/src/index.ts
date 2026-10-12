@@ -21,9 +21,12 @@ async function bootstrap(): Promise<void> {
     await import('./modules/phone-calls');
   const { supabase }           = await import('./services/db');
   const { setupWebSocketServer }= await import('./controllers/liveChatController');
+  const { requestLogger }      = await import('./middleware/requestLogger');
+  const { logger }             = await import('./services/cloudwatchLogger');
 
   const app = express();
   app.set('trust proxy', 1);
+  app.use(requestLogger);
 
   const trustedCorsOrigins = [
     config.clientUrl,
@@ -54,6 +57,39 @@ async function bootstrap(): Promise<void> {
 
   const server = app.listen(config.port, () => {
     console.log(`🧠 AI Receptionist Brain API running on http://localhost:${config.port}`);
+  });
+
+  logger.info(`AI Receptionist Brain API running on port ${config.port}`, {
+    port: config.port,
+    nodeEnv: process.env.NODE_ENV,
+    pid: process.pid,
+  });
+
+  process.on('SIGINT', async () => {
+    await logger.flush();
+    process.exit(0);
+  });
+
+  process.on('SIGTERM', async () => {
+    await logger.flush();
+    process.exit(0);
+  });
+
+  process.on('unhandledRejection', (reason: any) => {
+    const errMsg = reason?.message || (typeof reason === 'object' ? JSON.stringify(reason) : String(reason));
+    console.error('[process] Unhandled Promise Rejection prevented crash:', errMsg);
+    logger.error('Unhandled Promise Rejection', {
+      error: errMsg,
+      stack: reason?.stack,
+    });
+  });
+
+  process.on('uncaughtException', (err: Error) => {
+    console.error('[process] Uncaught Exception prevented crash:', err.message);
+    logger.error('Uncaught Exception', {
+      error: err.message,
+      stack: err.stack,
+    });
   });
 
   setupWebSocketServer(server);

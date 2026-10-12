@@ -84,7 +84,7 @@ This document lists and details all external and third-party services integrated
   * **Server-Side:** Communicates with Dograh's REST API. Packages receptionist configurations into workflows (`POST /workflow/create/definition`), links active phone numbers, triggers outbound dialing (`POST /telephony/initiate-call`), and syncs finished call records (runs) into the local database via a process-local poller (`callPoller.ts`).
   * *Note: Dograh itself connects to upstream telephony carriers (like Plivo) to manage cellular/PSTN networks.*
 * **Environment Variables:**
-  * Server: `DOGRAH_API_URL`, `DOGRAH_EMAIL`, `DOGRAH_PASSWORD`, `DOGRAH_POLL_INTERVAL_MS`, `PHONE_TOOLS_API_KEY`, `PHONE_TOOLS_CALLBACK_BASE_URL`
+  * Server: `DOGRAH_API_URL`, `DOGRAH_API_KEY`, `DOGRAH_POLL_INTERVAL_MS`, `PHONE_TOOLS_API_KEY`, `PHONE_TOOLS_CALLBACK_BASE_URL`
 * **Key Files / Integration Points:**
   * Server Module: [`server/src/modules/phone-calls/`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/server/src/modules/phone-calls/)
   * Client Module: [`client/src/modules/phone-calls/`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/client/src/modules/phone-calls/)

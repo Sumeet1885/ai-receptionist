@@ -9,7 +9,11 @@ import { syncCampaignResults } from './campaignSync';
 let pollTimer: NodeJS.Timeout | null = null;
 
 async function pollOnce(supabase: SupabaseClient): Promise<void> {
-  await restoreExpiredInboundCapacityWorkflows(supabase);
+  try {
+    await restoreExpiredInboundCapacityWorkflows(supabase);
+  } catch (err: any) {
+    console.warn('[phone-calls] Inbound capacity workflow restore skipped:', err?.message || err);
+  }
 
   const { data: bots, error } = await supabase
     .from('bots')
@@ -21,13 +25,17 @@ async function pollOnce(supabase: SupabaseClient): Promise<void> {
     return;
   }
 
-  for (const bot of (bots || []) as DograhProvisionableBot[]) {
-    try {
-      await syncBotCalls(bot, supabase);
-    } catch (err) {
-      console.error(`[phone-calls] Poller sync failed for bot ${bot.id}:`, err);
+    for (const bot of (bots || []) as DograhProvisionableBot[]) {
+      try {
+        await syncBotCalls(bot, supabase);
+      } catch (err: any) {
+        if (err?.message?.includes('unreachable') || err?.message?.includes('fetch failed')) {
+          console.warn('[phone-calls] Dograh voice platform unreachable; skipping background sync.');
+          break;
+        }
+        console.error(`[phone-calls] Poller sync failed for bot ${bot.id}:`, err?.message || err);
+      }
     }
-  }
 
   try {
     await syncCampaignResults(supabase);
@@ -45,7 +53,9 @@ export function startCallPoller(supabase: SupabaseClient): void {
   if (pollTimer) return;
 
   pollTimer = setInterval(() => {
-    void pollOnce(supabase);
+    pollOnce(supabase).catch(err => {
+      console.warn('[phone-calls] Call poller cycle failed:', err?.message || err);
+    });
   }, config.dograh.pollIntervalMs);
 
   console.log(`[phone-calls] Call poller started (every ${config.dograh.pollIntervalMs}ms).`);

@@ -7,6 +7,8 @@ import { geminiGuard } from '../services/geminiGuard';
 import WebSocket from 'ws';
 import { checkAllowedOrigin } from '../utils/security';
 import { checkWebSocketRateLimit } from '../middleware/rateLimit';
+import { logger } from '../services/cloudwatchLogger';
+
 import { wsTransport } from '../utils/wsTransport';
 import { mergeWidgetConfig } from '../utils/widgetConfig';
 import { getTimezoneOffsetString, normalizeTimezone } from '../utils/date';
@@ -116,6 +118,12 @@ export function setupWebSocketServer(server: Server) {
       ws.close(1013, 'All AI receptionist lines are busy. Please try again shortly.');
       return;
     }
+
+    logger.voice('web_voice_session_connected', {
+      botId,
+      sessionId,
+      timezone,
+    });
 
     const tzOffset = getTimezoneOffsetString(timezone);
 
@@ -711,11 +719,16 @@ export function setupWebSocketServer(server: Server) {
 
     ws.on('close', async () => {
       console.log('Client disconnected from Live API proxy');
+      logger.voice('web_voice_session_disconnected', {
+        botId,
+        sessionId,
+      });
       clearAssistantHangupTimeout();
       clearForcedShutdownTimeout();
       clearProactiveContactInputTimer();
       // ── GeminiGuard: release slot → wakes next queued caller ─────────────
       geminiGuard.releaseSession(sessionId);
+
 
       if (geminiWs.readyState === WebSocket.OPEN) {
         geminiWs.close();

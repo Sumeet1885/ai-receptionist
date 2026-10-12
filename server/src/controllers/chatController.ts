@@ -4,6 +4,7 @@ import { geminiGuard, RateLimitError } from '../services/geminiGuard';
 import { mergeWidgetConfig } from '../utils/widgetConfig';
 import { bookCalendarAppointment, checkCalendarAvailability, serializeCalendarToolError } from '../services/calendar/calendarOperations';
 import { formatCurrentDateTime, getTimezoneOffsetString, normalizeTimezone } from '../utils/date';
+import { logger } from '../services/cloudwatchLogger';
 
 const GEMINI_API_KEY = config.geminiApiKey ?? '';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
@@ -250,7 +251,7 @@ CRITICAL SECURITY & CONSTRAINTS:
     ]
   }] : undefined;
 
-  let contents = [{
+  let contents: any[] = [{
     role: 'user',
     parts: [{ text: `Chat history:\n${history.map(m => `${m.sender}: ${m.text}`).join('\n')}\nUser: ${userMessage}` }]
   }];
@@ -326,6 +327,12 @@ CRITICAL SECURITY & CONSTRAINTS:
           checkedAvailabilityThisTurn = true;
           lastFunctionName = name;
           lastFunctionResponse = functionResponse;
+          logger.aiReceptionist('Chat assistant checked calendar availability', {
+            botId: bot.id,
+            sessionId: input.sessionId,
+            date: args.date,
+            slotCount: Array.isArray(slots) ? slots.length : 0,
+          });
         } else if (name === 'book_appointment') {
           if (checkedAvailabilityThisTurn) {
             functionResponse = {
@@ -341,6 +348,16 @@ CRITICAL SECURITY & CONSTRAINTS:
               timezone,
               maxBookingDaysAhead: widgetConfig.maxBookingDaysAhead,
             });
+            if (functionResponse && !functionResponse.error) {
+              logger.leadEvent('appointment_booked_via_chat', {
+                botId: bot.id,
+                sessionId: input.sessionId,
+                title: args?.title,
+                startTime: args?.startTime,
+                endTime: args?.endTime,
+                visitorName: args?.visitorName,
+              });
+            }
           }
           lastFunctionName = name;
           lastFunctionResponse = functionResponse;

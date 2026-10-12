@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { validateContactInput } from '@/lib/contactValidation';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
+import { PhoneInputField } from '../common/PhoneInputField';
 
 type VoiceContactField = 'phone' | 'email';
 type PreverifiedVoiceContacts = Partial<Record<VoiceContactField, string>>;
@@ -245,25 +246,17 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
             <div className="w-full space-y-3">
               {preCallFieldValidations.map(({ field, validation }) => (
                 field === 'phone' ? (
-                  <div className="voice-phone-card" key="phone">
-                    <p className="vpc-label">
-                      Phone number <span className="vpc-required">*</span>
-                    </p>
-                    <PhoneInput
+                  <div className="w-full" key="phone">
+                    <PhoneInputField
+                      label="Phone number"
+                      required
                       defaultCountry="IN"
                       placeholder="Enter phone number"
                       value={preCallInputValues.phone || ''}
                       onChange={(val) => handlePreCallInputChange('phone', val || '')}
                       disabled={liveVoice.isSubmittingContact}
+                      error={preCallValidationErrors.phone || (preCallInputValues.phone && !validation.valid ? 'Incomplete or invalid phone number' : null)}
                     />
-                    {preCallInputValues.phone && !validation.valid && (
-                      <p className="vpc-hint">Incomplete or invalid phone number</p>
-                    )}
-                    {preCallValidationErrors.phone && (
-                      <p className="text-xs text-red-300 text-left mt-2">
-                        {preCallValidationErrors.phone}
-                      </p>
-                    )}
                   </div>
                 ) : (
                   <div className="w-full space-y-2" key="email">
@@ -314,31 +307,20 @@ export const VoiceCallView: React.FC<VoiceCallViewProps> = ({
 
             {activeInputType === 'phone' ? (
               <div className="w-full space-y-2.5">
-                <div className="voice-phone-card">
-                  <p className="vpc-label">
-                    Phone number <span className="vpc-required">*</span>
-                  </p>
-                  <PhoneInput
-                    defaultCountry="IN"
-                    placeholder="Enter phone number"
-                    value={inputValue}
-                    onChange={(val) => {
-                      setInputValue(val || '');
-                      if (localValidationError) setLocalValidationError('');
-                      if (liveVoice.validationError) liveVoice.clearValidationError();
-                    }}
-                    disabled={liveVoice.isSubmittingContact}
-                  />
-                  {inputValue && !phoneReady && (
-                    <p className="vpc-hint">Incomplete or invalid phone number</p>
-                  )}
-                </div>
-
-                {(localValidationError || liveVoice.validationError) && (
-                  <p className="text-xs text-red-300 text-center px-1">
-                    {localValidationError || liveVoice.validationError}
-                  </p>
-                )}
+                <PhoneInputField
+                  label="Phone number"
+                  required
+                  defaultCountry="IN"
+                  placeholder="Enter phone number"
+                  value={inputValue}
+                  onChange={(val) => {
+                    setInputValue(val || '');
+                    if (localValidationError) setLocalValidationError('');
+                    if (liveVoice.validationError) liveVoice.clearValidationError();
+                  }}
+                  disabled={liveVoice.isSubmittingContact}
+                  error={localValidationError || liveVoice.validationError || (inputValue && !phoneReady ? 'Incomplete or invalid phone number' : null)}
+                />
 
                 <button
                   type="submit"

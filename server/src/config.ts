@@ -28,12 +28,13 @@ export const config = {
     redirectUri: process.env.MICROSOFT_REDIRECT_URI || 'http://localhost:4000/api/calendar/callback/outlook',
   },
   dograh: {
-    apiUrl: (process.env.DOGRAH_API_URL || 'http://localhost:8000').replace(/\/+$/, ''),
-    apiKey: process.env.DOGRAH_API_KEY || '',
+    apiUrl: (process.env.DOGRAH_API_URL || 'http://localhost:8000').trim().replace(/\/+$/, ''),
+    apiKey: (process.env.DOGRAH_API_KEY || '').trim(),
     pollIntervalMs: parseInt(process.env.DOGRAH_POLL_INTERVAL_MS || '60000', 10),
   },
   phoneTools: {
-    apiKey: process.env.PHONE_TOOLS_API_KEY || '',
-    callbackBaseUrl: (process.env.PHONE_TOOLS_CALLBACK_BASE_URL || 'http://host.docker.internal:4000').replace(/\/+$/, ''),
+    apiKey: (process.env.PHONE_TOOLS_API_KEY || '').trim(),
+    callbackBaseUrl: (process.env.PHONE_TOOLS_CALLBACK_BASE_URL || 'http://host.docker.internal:4000').trim().replace(/\/+$/, ''),
   },
+  defaultPhoneNumber: (process.env.DEFAULT_PLATFORM_PHONE_NUMBER || process.env.PLATFORM_PHONE_NUMBER || '').trim(),
 };
