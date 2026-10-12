@@ -1,0 +1,48 @@
+# docker-compose-prod.yml
+#
+# Production configuration for EC2 deployment.
+# Mirrors ai-clone standard logging and service isolation.
+
+services:
+  api:
+    image: ${DOCKER_USERNAME}/recrui8-dockerhub-repo-prod:${IMAGE_TAG_SERVER}
+    container_name: ai-receptionist-api-prod
+    env_file:
+      - ./server/.env
+    expose:
+      - "4000"
+    restart: unless-stopped
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ap-south-1
+        awslogs-group: /ai-receptionist/production
+        awslogs-create-group: "true"
+        awslogs-stream-prefix: server
+
+  web:
+    image: ${DOCKER_USERNAME}/recrui8-dockerhub-repo-prod:${IMAGE_TAG_CLIENT}
+    container_name: ai-receptionist-web-prod
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data_prod:/data
+      - caddy_config_prod:/config
+    depends_on:
+      - api
+    restart: unless-stopped
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ap-south-1
+        awslogs-group: /ai-receptionist/production
+        awslogs-create-group: "true"
+        awslogs-stream-prefix: client
+
+volumes:
+  caddy_data_prod:
+  caddy_config_prod:

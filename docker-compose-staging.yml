@@ -24,12 +24,12 @@ services:
       - "4000"
     restart: unless-stopped
     logging:
-      driver: "awslogs"
+      driver: awslogs
       options:
-        awslogs-region: "ap-south-1"
-        awslogs-group: "/ai-receptionist/staging"
-        awslogs-stream: "api"
+        awslogs-region: ap-south-1
+        awslogs-group: /ai-receptionist/staging
         awslogs-create-group: "true"
+        awslogs-stream-prefix: server
 
   web:
     image: ${DOCKER_USERNAME}/recrui8-dockerhub-repo-dev:${IMAGE_TAG_CLIENT}
@@ -48,12 +48,12 @@ services:
       - api
     restart: unless-stopped
     logging:
-      driver: "awslogs"
+      driver: awslogs
       options:
-        awslogs-region: "ap-south-1"
-        awslogs-group: "/ai-receptionist/staging"
-        awslogs-stream: "web"
+        awslogs-region: ap-south-1
+        awslogs-group: /ai-receptionist/staging
         awslogs-create-group: "true"
+        awslogs-stream-prefix: client
 
 volumes:
   caddy_data:
