@@ -269,7 +269,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
     }
   };
 
-  const handleAssignDefaultNumber = async (targetKey?: string) => {
+  const handleAssignDefaultNumber = async () => {
     setAssigning(true);
     try {
       if (!status?.provisioned) {
@@ -277,7 +277,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
         await dograhApi.provision(botId);
       }
 
-      const activeKey = targetKey || selectedNumberKey || (numbers[0] ? `${numbers[0].telephonyConfigId}:${numbers[0].phoneNumberId}` : '999999:999999');
+      const activeKey = selectedNumberKey || (numbers[0] ? `${numbers[0].telephonyConfigId}:${numbers[0].phoneNumberId}` : '999999:999999');
       const [configId, numberId] = activeKey.split(':').map(Number);
 
       const result = await dograhApi.assignNumber(botId, {
@@ -1067,7 +1067,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                     </select>
                     <button
                       type="button"
-                      onClick={() => handleAssignDefaultNumber(selectedNumberKey)}
+                      onClick={handleAssignDefaultNumber}
                       disabled={assigning}
                       className="h-10 px-4 rounded-lg bg-brand-card hover:bg-brand-accent/20 text-brand-text hover:text-brand-accent border border-brand-border text-xs font-bold transition disabled:opacity-50"
                     >
