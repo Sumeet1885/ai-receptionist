@@ -1817,8 +1817,6 @@ export async function removePhoneLine(req: AuthRequest, res: Response): Promise<
       } else {
         updates.dograh_phone_number = null;
         updates.phone_number = null;
-        updates.dograh_phone_number_id = null;
-        updates.dograh_telephony_config_id = null;
         delete updatedWidgetConfig.telephony;
       }
     }
