@@ -857,7 +857,6 @@ export async function assignNumber(req: AuthRequest, res: Response): Promise<voi
           dograh_telephony_config_id: matchedConfigId ? String(matchedConfigId) : null,
           dograh_phone_number_id: matchedNumberId ? String(matchedNumberId) : null,
           dograh_phone_number: normalized,
-          phone_number: normalized,
           dograh_inbound_active_workflow: 'normal',
           widget_config: {
             ...existingWidgetConfig,
@@ -947,7 +946,6 @@ export async function assignNumber(req: AuthRequest, res: Response): Promise<voi
           dograh_telephony_config_id: '999999',
           dograh_phone_number_id: '999999',
           dograh_phone_number: defaultNumber,
-          phone_number: defaultNumber,
           dograh_inbound_active_workflow: 'normal',
           widget_config: {
             ...existingWidgetConfig,
@@ -1038,7 +1036,6 @@ export async function assignNumber(req: AuthRequest, res: Response): Promise<voi
           dograh_telephony_config_id: String(telephonyConfigId),
           dograh_phone_number_id: String(phoneNumberId),
           dograh_phone_number: number.address,
-          phone_number: number.address,
           dograh_inbound_active_workflow: shouldKeepCapacity ? 'capacity' : 'normal',
           dograh_inbound_rate_limited_until: shouldKeepCapacity ? bot.dograh_inbound_rate_limited_until : null,
           widget_config: {
@@ -1813,10 +1810,10 @@ export async function removePhoneLine(req: AuthRequest, res: Response): Promise<
       if (nextInbound) {
         nextInbound.isPrimaryInbound = true;
         updates.dograh_phone_number = nextInbound.phoneNumber;
-        updates.phone_number = nextInbound.phoneNumber;
       } else {
         updates.dograh_phone_number = null;
-        updates.phone_number = null;
+        updates.dograh_phone_number_id = null;
+        updates.dograh_telephony_config_id = null;
         delete updatedWidgetConfig.telephony;
       }
     }
@@ -1870,7 +1867,6 @@ export async function setPrimaryPhoneLine(req: AuthRequest, res: Response): Prom
         l.isPrimaryInbound = (l.id === targetLine.id);
       });
       updates.dograh_phone_number = targetLine.phoneNumber;
-      updates.phone_number = targetLine.phoneNumber;
     } else if (role === 'outbound') {
       currentLines.forEach(l => {
         l.isPrimaryOutbound = (l.id === targetLine.id);

@@ -86,6 +86,11 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
 
   const inboundWebhookUrl = status?.inboundWebhookUrl || 'https://staging-dograh.recrui8.com/api/v1/telephony/inbound/run';
 
+  const onProvisionedChangeRef = useRef(onProvisionedChange);
+  useEffect(() => {
+    onProvisionedChangeRef.current = onProvisionedChange;
+  }, [onProvisionedChange]);
+
   const loadStatus = useCallback(async () => {
     setLoadingStatus(true);
     try {
@@ -141,24 +146,31 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
       setOutboundHourlyCapInput(String(data.outboundHourlyCap ?? 20));
       setInboundCooldownInput(String(data.inboundCooldownSeconds ?? 10));
       setInboundHourlyCapInput(String(data.inboundHourlyCap ?? 20));
-      onProvisionedChange?.(Boolean(data.outboundProvisioned && (data.outboundPhoneNumber || data.phoneNumber)));
+      onProvisionedChangeRef.current?.(Boolean(data.outboundProvisioned && (data.outboundPhoneNumber || data.phoneNumber)));
     } catch (err: any) {
       showToast(err.message || 'Could not load phone agent status', 'error');
     } finally {
       setLoadingStatus(false);
     }
-  }, [botId, showToast, onProvisionedChange]);
+  }, [botId, showToast]);
 
   const loadNumbers = useCallback(async () => {
     try {
       const data = await dograhApi.listNumbers(botId);
       setNumbers(data.numbers);
       const assigned = data.numbers.find(n => n.isAssignedToThisBot);
-      if (assigned) {
-        setSelectedNumberKey(`${assigned.telephonyConfigId}:${assigned.phoneNumberId}`);
-      } else if (data.numbers.length > 0) {
-        setSelectedNumberKey(`${data.numbers[0].telephonyConfigId}:${data.numbers[0].phoneNumberId}`);
-      }
+      setSelectedNumberKey(prev => {
+        if (prev && data.numbers.some(n => `${n.telephonyConfigId}:${n.phoneNumberId}` === prev)) {
+          return prev; // Preserve user's current selection!
+        }
+        if (assigned) {
+          return `${assigned.telephonyConfigId}:${assigned.phoneNumberId}`;
+        }
+        if (data.numbers.length > 0) {
+          return `${data.numbers[0].telephonyConfigId}:${data.numbers[0].phoneNumberId}`;
+        }
+        return '';
+      });
     } catch (err: any) {
       console.warn('Could not load telephony pool numbers:', err);
       setNumbers([]);
@@ -269,7 +281,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
     }
   };
 
-  const handleAssignDefaultNumber = async () => {
+  const handleAssignDefaultNumber = async (targetKey?: string) => {
     setAssigning(true);
     try {
       if (!status?.provisioned) {
@@ -277,7 +289,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
         await dograhApi.provision(botId);
       }
 
-      const activeKey = selectedNumberKey || (numbers[0] ? `${numbers[0].telephonyConfigId}:${numbers[0].phoneNumberId}` : '999999:999999');
+      const activeKey = targetKey || selectedNumberKey || (numbers[0] ? `${numbers[0].telephonyConfigId}:${numbers[0].phoneNumberId}` : '999999:999999');
       const [configId, numberId] = activeKey.split(':').map(Number);
 
       const result = await dograhApi.assignNumber(botId, {
@@ -286,7 +298,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
         phoneNumberId: numberId || 999999,
       });
 
-      showToast(`Default platform line ${result.phoneNumber} activated successfully!`, 'success');
+      showToast(`Phone line ${result.phoneNumber} activated successfully!`, 'success');
       await loadStatus();
       await loadNumbers();
     } catch (err: any) {
@@ -590,8 +602,8 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
   ];
 
   const assignedPoolNumber = numbers.find(n => `${n.telephonyConfigId}:${n.phoneNumberId}` === selectedNumberKey)?.address;
-  const defaultCandidateNumber = status?.defaultPlatformNumber || assignedPoolNumber || numbers[0]?.address || (status?.phoneNumber || '');
-  const isDefaultLineActive = Boolean(status?.phoneNumber && (status.phoneNumber === defaultCandidateNumber || status.telephony?.provider === 'pool'));
+  const defaultCandidateNumber = assignedPoolNumber || status?.phoneNumber || status?.defaultPlatformNumber || numbers[0]?.address || '';
+  const isDefaultLineActive = Boolean(status?.phoneNumber && (status.phoneNumber === (assignedPoolNumber || status.phoneNumber) || status.telephony?.provider === 'pool'));
 
   const connectedLines: ConnectedPhoneLine[] = (status?.connectedLines && status.connectedLines.length > 0)
     ? status.connectedLines
@@ -971,10 +983,10 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                     </div>
                     <div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-brand-muted block">
-                        {status?.phoneNumber ? 'Active Receptionist Line' : 'Default Platform Receptionist Line'}
+                        {status?.phoneNumber && !assignedPoolNumber ? 'Active Receptionist Line' : 'Receptionist Line (Selected)'}
                       </span>
                       <span className="text-xl sm:text-2xl font-mono font-extrabold text-brand-text block mt-0.5 tracking-wide">
-                        {status?.phoneNumber || defaultCandidateNumber}
+                        {assignedPoolNumber || status?.phoneNumber || defaultCandidateNumber}
                       </span>
                       <span className="text-[11px] text-emerald-400 font-medium block mt-0.5">
                         {status?.phoneNumber
@@ -997,7 +1009,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                     ) : (
                       <button
                         type="button"
-                        onClick={handleAssignDefaultNumber}
+                        onClick={() => handleAssignDefaultNumber(selectedNumberKey)}
                         disabled={assigning}
                         className="h-11 px-6 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold transition flex items-center gap-2 shadow-lg disabled:opacity-50 active:scale-95"
                       >
@@ -1067,7 +1079,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                     </select>
                     <button
                       type="button"
-                      onClick={handleAssignDefaultNumber}
+                      onClick={() => handleAssignDefaultNumber(selectedNumberKey)}
                       disabled={assigning}
                       className="h-10 px-4 rounded-lg bg-brand-card hover:bg-brand-accent/20 text-brand-text hover:text-brand-accent border border-brand-border text-xs font-bold transition disabled:opacity-50"
                     >
