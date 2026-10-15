@@ -53,12 +53,18 @@ function parseRoute(): AppRoute {
   const chatMatch = path.match(/^\/chats\/([^/]+)/);
   if (chatMatch) return { name: 'public-chat', subdomain: decodeURIComponent(chatMatch[1]) };
 
-  if (path === '/auth' || hash.includes('type=recovery')) {
+  const isRecovery =
+    hash.includes('type=recovery') ||
+    params.get('type') === 'recovery' ||
+    params.get('mode') === 'reset' ||
+    (params.has('code') && params.get('mode') === 'reset');
+
+  if (path === '/auth' || isRecovery) {
     const modeParam = params.get('mode');
     let mode: 'signin' | 'signup' | 'forgot' | 'reset' = 'signin';
     if (modeParam === 'signup') mode = 'signup';
     else if (modeParam === 'forgot') mode = 'forgot';
-    else if (modeParam === 'reset' || hash.includes('type=recovery')) mode = 'reset';
+    else if (modeParam === 'reset' || isRecovery) mode = 'reset';
     return { name: 'auth', mode };
   }
   if (path === '/dashboard') return { name: 'dashboard' };
@@ -161,6 +167,10 @@ export default function App() {
       fetchBots(user.id);
       fetchLeads();
       if (route.name === 'auth' || route.name === 'landing') {
+        if (route.name === 'auth' && route.mode === 'reset') {
+          return;
+        }
+
         const justSignedUp = localStorage.getItem('just_signed_up') === 'true' ||
           (user.last_sign_in_at && user.created_at && Math.abs(new Date(user.last_sign_in_at).getTime() - new Date(user.created_at).getTime()) < 30000);
 
@@ -174,7 +184,7 @@ export default function App() {
     } else if (isProtectedRoute(route)) {
       navigate('/', true);
     }
-  }, [user, authLoading, route.name]);
+  }, [user, authLoading, route]);
 
   useEffect(() => {
     if (!user) return;

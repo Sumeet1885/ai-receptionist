@@ -17,10 +17,93 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [sessionChecking, setSessionChecking] = useState(false);
+  const [sessionError, setSessionError] = useState<string | null>(null);
 
   useEffect(() => {
     setMode(defaultMode);
   }, [defaultMode]);
+
+  useEffect(() => {
+    if (mode !== 'reset') {
+      setSessionError(null);
+      setSessionChecking(false);
+      return;
+    }
+
+    let isMounted = true;
+    const establishRecoverySession = async () => {
+      setSessionChecking(true);
+      setSessionError(null);
+
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+
+        // 1. If PKCE auth code is present in URL, exchange it for session
+        if (code) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            console.error('exchangeCodeForSession error:', error);
+            if (isMounted) {
+              setSessionError('Your password reset link is invalid or has expired. Please request a new one.');
+            }
+            return;
+          }
+          if (data?.session && isMounted) {
+            setSessionError(null);
+            return;
+          }
+        }
+
+        // 2. Check if a session already exists (e.g. from hash token or active session)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && isMounted) {
+          setSessionError(null);
+          return;
+        }
+
+        // 3. Listen for PASSWORD_RECOVERY or SIGNED_IN event from hash token
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+          if ((event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') && s) {
+            if (isMounted) {
+              setSessionError(null);
+              setSessionChecking(false);
+            }
+          }
+        });
+
+        // Settle window for hash parsing
+        setTimeout(async () => {
+          if (!isMounted) return;
+          subscription.unsubscribe();
+          const { data: { session: delayedSession } } = await supabase.auth.getSession();
+          if (delayedSession) {
+            setSessionError(null);
+          } else {
+            setSessionError('No active recovery session found. Your password reset link may have expired or already been used. Please request a new reset link.');
+          }
+          setSessionChecking(false);
+        }, 1200);
+
+      } catch (err: any) {
+        if (isMounted) {
+          setSessionError(err?.message || 'Failed to verify password reset link.');
+        }
+      } finally {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('code') && isMounted) {
+          setSessionChecking(false);
+        }
+      }
+    };
+
+    establishRecoverySession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [mode]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,6 +154,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
 
     setLoading(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("No active recovery session found. Your reset link may have expired. Please request a new one.");
+      }
+
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       showToast("Password updated successfully! Welcome back.", "success");
@@ -78,7 +166,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
       setConfirmPassword('');
       setView('dashboard');
     } catch (err: any) {
-      showToast(err.message || "Failed to update password", "error");
+      const msg = err?.message || "Failed to update password";
+      if (msg.includes("Auth session missing") || msg.includes("session")) {
+        setSessionError("Your reset session has expired or is invalid. Please request a new password reset link.");
+      }
+      showToast(msg, "error");
     } finally {
       setLoading(false);
     }
@@ -262,48 +354,86 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
           )}
 
           {mode === 'reset' && (
-            <form onSubmit={handleResetPassword} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-brand-text mb-1.5">New Password</label>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="w-full bg-black border border-brand-border rounded-lg px-4 py-2.5 text-brand-text focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition"
-                  placeholder="At least 6 characters"
-                  minLength={6}
-                />
+            sessionChecking ? (
+              <div className="py-8 text-center space-y-3">
+                <div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mx-auto" />
+                <p className="text-sm text-brand-muted">Verifying recovery session...</p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-brand-text mb-1.5">Confirm New Password</label>
-                <input
-                  type="password"
-                  required
-                  value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
-                  className="w-full bg-black border border-brand-border rounded-lg px-4 py-2.5 text-brand-text focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition"
-                  placeholder="Re-enter your new password"
-                  minLength={6}
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 px-4 bg-emerald-400 hover:bg-emerald-300 text-black font-semibold rounded-lg shadow-md transition duration-200 mt-2 disabled:opacity-50"
-              >
-                {loading ? 'Updating password...' : 'Update Password'}
-              </button>
-              <div className="mt-6 text-center text-sm text-brand-muted">
+            ) : sessionError ? (
+              <div className="p-5 rounded-xl bg-red-950/40 border border-red-500/30 text-center space-y-4">
+                <div className="w-10 h-10 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center mx-auto text-lg font-bold">
+                  !
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-sm font-bold text-red-300">Session Expired or Missing</h3>
+                  <p className="text-xs text-red-200/80 leading-relaxed">
+                    {sessionError}
+                  </p>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setMode('signin')}
-                  className="text-emerald-400 hover:underline font-medium"
+                  onClick={() => {
+                    setSessionError(null);
+                    setMode('forgot');
+                  }}
+                  className="w-full py-2.5 px-4 bg-emerald-400 hover:bg-emerald-300 text-black font-semibold rounded-lg text-sm shadow-md transition duration-200"
                 >
-                  ← Back to Sign In
+                  Request New Reset Link
                 </button>
+                <div className="pt-2 text-center text-sm text-brand-muted">
+                  <button
+                    type="button"
+                    onClick={() => setMode('signin')}
+                    className="text-emerald-400 hover:underline font-medium text-xs"
+                  >
+                    ← Back to Sign In
+                  </button>
+                </div>
               </div>
-            </form>
+            ) : (
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-brand-text mb-1.5">New Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    className="w-full bg-black border border-brand-border rounded-lg px-4 py-2.5 text-brand-text focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition"
+                    placeholder="At least 6 characters"
+                    minLength={6}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-brand-text mb-1.5">Confirm New Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    className="w-full bg-black border border-brand-border rounded-lg px-4 py-2.5 text-brand-text focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition"
+                    placeholder="Re-enter your new password"
+                    minLength={6}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 px-4 bg-emerald-400 hover:bg-emerald-300 text-black font-semibold rounded-lg shadow-md transition duration-200 mt-2 disabled:opacity-50"
+                >
+                  {loading ? 'Updating password...' : 'Update Password'}
+                </button>
+                <div className="mt-6 text-center text-sm text-brand-muted">
+                  <button
+                    type="button"
+                    onClick={() => setMode('signin')}
+                    className="text-emerald-400 hover:underline font-medium"
+                  >
+                    ← Back to Sign In
+                  </button>
+                </div>
+              </form>
+            )
           )}
         </div>
       </div>
