@@ -106,6 +106,41 @@ export function getTimezoneOffsetString(timezone: string, date: Date = new Date(
 }
 
 /**
+ * Formats a Date object into an ISO 8601 string with local timezone offset (e.g. '2026-10-15T17:30:00+05:30').
+ */
+export function formatInTimezone(date: Date, tz?: string): string {
+  const resolvedTz = normalizeTimezone(tz, 'Asia/Kolkata');
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: resolvedTz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+    const parts = formatter.formatToParts(date);
+    const getPart = (type: string) => parts.find(p => p.type === type)?.value || '';
+
+    let hour = getPart('hour');
+    if (hour === '24') hour = '00';
+
+    const year = getPart('year');
+    const month = getPart('month');
+    const day = getPart('day');
+    const minute = getPart('minute');
+    const second = getPart('second');
+
+    const offset = getTimezoneOffsetString(resolvedTz, date);
+    return `${year}-${month}-${day}T${hour}:${minute}:${second}${offset}`;
+  } catch {
+    return date.toISOString();
+  }
+}
+
+/**
  * Formats the current date and time in the given timezone into an unambiguous format
  * featuring both the DD-MM-YYYY format and the spelled-out month.
  * Example return: "Friday, 07-08-2026 (07 August 2026), 18:09:20"

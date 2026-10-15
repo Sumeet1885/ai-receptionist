@@ -51,7 +51,7 @@ function getTimezoneOffset(timezone: string): string {
 function buildPhoneToolTimezoneConstraint(timezone: string): string {
   const normTz = normalizeTimezone(timezone, 'Asia/Kolkata');
   const offset = getTimezoneOffset(normTz);
-  return `\n- TOOL TIMEZONE: When calling check_availability, always pass the local date in 'YYYY-MM-DD' format. When calling book_appointment, construct startTime and endTime in ISO 8601 format using the business timezone offset ${offset} (for example, if the caller selects 5:00 PM on 2026-07-31, startTime must be '2026-07-31T17:00:00${offset}' — never use Z or +00:00 as the offset).`;
+  return `\n- TOOL TIMEZONE: When calling check_availability, always pass the local date in 'YYYY-MM-DD' format. When calling book_appointment, construct startTime and endTime in ISO 8601 format using the business timezone offset ${offset} (for example, if the caller selects 5:00 PM on 2026-07-31, startTime must be '2026-07-31T17:00:00${offset}' and endTime must be 30 minutes later, e.g. '2026-07-31T17:30:00${offset}' — never use Z or +00:00 as the offset, and never make endTime equal to or earlier than startTime).`;
 }
 
 
@@ -136,7 +136,7 @@ export function buildWebVoiceExtraConstraints(options: WebVoiceExtraConstraintsO
 - INTERNAL SESSION SIGNALS:
   - If you receive exactly ${options.wrapWarningSignal}, treat it as an internal system event, not as user speech. Politely tell the caller, in natural words, that you have an important class to attend soon and would like to quickly wrap up. Keep it brief and start closing the conversation gracefully.
   - If you receive exactly ${options.forceEndSignal}, treat it as an internal system event, not as user speech. Immediately give a short polite goodbye, then call the \`end_call\` tool.
-- TOOL TIMEZONE: When calling check_availability, pass the local date format 'YYYY-MM-DD'. When calling book_appointment, construct the startTime and endTime in ISO 8601 format using the user's local offset ${options.tzOffset} (e.g. if the user selects 8:30 AM on 2026-06-17, startTime must be '2026-06-17T08:30:00${options.tzOffset}').
+- TOOL TIMEZONE: When calling check_availability, pass the local date format 'YYYY-MM-DD'. When calling book_appointment, construct the startTime and endTime in ISO 8601 format using the user's local offset ${options.tzOffset} (for example, if the user selects 8:30 AM on 2026-06-17, startTime must be '2026-06-17T08:30:00${options.tzOffset}' and endTime must be 30 minutes later, e.g. '2026-06-17T09:00:00${options.tzOffset}' — never make endTime equal to or earlier than startTime).
 - CALL ENDING: ${options.endCallInstruction}`;
 }
 
