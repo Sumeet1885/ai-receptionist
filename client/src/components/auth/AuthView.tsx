@@ -17,7 +17,6 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
-  const [sessionChecking, setSessionChecking] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -27,82 +26,18 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
   useEffect(() => {
     if (mode !== 'reset') {
       setSessionError(null);
-      setSessionChecking(false);
       return;
     }
 
-    let isMounted = true;
-    const establishRecoverySession = async () => {
-      setSessionChecking(true);
-      setSessionError(null);
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
 
-      try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
-
-        // 1. If PKCE auth code is present in URL, exchange it for session
-        if (code) {
-          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) {
-            console.error('exchangeCodeForSession error:', error);
-            if (isMounted) {
-              setSessionError('Your password reset link is invalid or has expired. Please request a new one.');
-            }
-            return;
-          }
-          if (data?.session && isMounted) {
-            setSessionError(null);
-            return;
-          }
-        }
-
-        // 2. Check if a session already exists (e.g. from hash token or active session)
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session && isMounted) {
-          setSessionError(null);
-          return;
-        }
-
-        // 3. Listen for PASSWORD_RECOVERY or SIGNED_IN event from hash token
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
-          if ((event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') && s) {
-            if (isMounted) {
-              setSessionError(null);
-              setSessionChecking(false);
-            }
-          }
-        });
-
-        // Settle window for hash parsing
-        setTimeout(async () => {
-          if (!isMounted) return;
-          subscription.unsubscribe();
-          const { data: { session: delayedSession } } = await supabase.auth.getSession();
-          if (delayedSession) {
-            setSessionError(null);
-          } else {
-            setSessionError('No active recovery session found. Your password reset link may have expired or already been used. Please request a new reset link.');
-          }
-          setSessionChecking(false);
-        }, 1200);
-
-      } catch (err: any) {
-        if (isMounted) {
-          setSessionError(err?.message || 'Failed to verify password reset link.');
-        }
-      } finally {
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('code') && isMounted) {
-          setSessionChecking(false);
-        }
-      }
-    };
-
-    establishRecoverySession();
-
-    return () => {
-      isMounted = false;
-    };
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).catch((err) => {
+        // If already handled by detectSessionInUrl, ignore duplicate exchange warning
+        console.warn('exchangeCodeForSession:', err?.message);
+      });
+    }
   }, [mode]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
@@ -354,12 +289,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
           )}
 
           {mode === 'reset' && (
-            sessionChecking ? (
-              <div className="py-8 text-center space-y-3">
-                <div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mx-auto" />
-                <p className="text-sm text-brand-muted">Verifying recovery session...</p>
-              </div>
-            ) : sessionError ? (
+            sessionError ? (
               <div className="p-5 rounded-xl bg-red-950/40 border border-red-500/30 text-center space-y-4">
                 <div className="w-10 h-10 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center mx-auto text-lg font-bold">
                   !
