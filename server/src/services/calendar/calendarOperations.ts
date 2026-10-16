@@ -1,7 +1,7 @@
 import { BookingDetails, CalendarAdapter, TimeSlot } from './calendarInterface';
 import { getCalendarAdapter } from './calendarAdapterFactory';
 import { validateContactInput } from '../../utils/contactValidation';
-import { getTimezoneOffsetString, normalizeTimezone, parseDateToYYYYMMDD } from '../../utils/date';
+import { formatInTimezone, getTimezoneOffsetString, normalizeTimezone, parseDateToYYYYMMDD } from '../../utils/date';
 
 type AdapterFactory = (provider: string) => CalendarAdapter;
 const inFlightBookingSessions = new Set<string>();
@@ -109,33 +109,47 @@ export async function bookCalendarAppointment(input: BookingInput) {
   const { details, db, sessionId } = input;
   const normTz = normalizeTimezone(input.timezone, 'Asia/Kolkata');
 
-  // Default title if omitted by model
-  if (!details?.title) {
-    details.title = details?.visitorName ? `Appointment with ${details.visitorName}` : 'Consultation Appointment';
+  if (!sessionId) throw new Error('A valid chat session is required before booking');
+  if (!details || !details.startTime) {
+    throw new Error('A valid startTime and endTime are required before booking.');
   }
 
-  // Auto-calculate endTime if model provided only startTime (default 30 min duration)
-  if (!details?.endTime && details?.startTime) {
-    const rawStart = new Date(details.startTime.replace(' ', 'T'));
-    if (!Number.isNaN(rawStart.getTime())) {
-      details.endTime = new Date(rawStart.getTime() + 30 * 60000).toISOString();
+  // Default title if omitted by model
+  if (!details.title) {
+    details.title = details.visitorName ? `Appointment with ${details.visitorName}` : 'Consultation Appointment';
+  }
+
+  details.startTime = normalizeTimestampToTimezone(details.startTime, normTz);
+  const requestedStart = new Date(details.startTime);
+
+  if (Number.isNaN(requestedStart.getTime())) {
+    throw new Error('A valid startTime and endTime are required before booking.');
+  }
+
+  // Handle endTime if provided as time-only without date (e.g. "17:30" or "17:30:00+05:30")
+  if (details.endTime && typeof details.endTime === 'string') {
+    const trimmedEnd = details.endTime.trim();
+    if (trimmedEnd && !/^\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(trimmedEnd)) {
+      const startDateMatch = details.startTime.match(/^(\d{4}[-/]\d{1,2}[-/]\d{1,2})/);
+      if (startDateMatch) {
+        const cleanTime = trimmedEnd.replace(/^T/, '');
+        details.endTime = `${startDateMatch[1]}T${cleanTime}`;
+      }
     }
   }
 
-  if (details?.startTime) {
-    details.startTime = normalizeTimestampToTimezone(details.startTime, normTz);
-  }
-  if (details?.endTime) {
+  if (details.endTime) {
     details.endTime = normalizeTimestampToTimezone(details.endTime, normTz);
   }
 
-  const requestedStart = new Date(details?.startTime);
-  const requestedEnd = new Date(details?.endTime);
+  let requestedEnd = new Date(details.endTime);
 
-  if (!sessionId) throw new Error('A valid chat session is required before booking');
-  if (!details?.startTime || !details?.endTime || Number.isNaN(requestedStart.getTime()) || Number.isNaN(requestedEnd.getTime())) {
-    throw new Error('A valid startTime and endTime are required before booking.');
+  // Auto-heal endTime if omitted, unparseable, or not strictly after startTime (default 30 min duration)
+  if (!details.endTime || Number.isNaN(requestedEnd.getTime()) || requestedEnd.getTime() <= requestedStart.getTime()) {
+    requestedEnd = new Date(requestedStart.getTime() + 30 * 60000);
+    details.endTime = formatInTimezone(requestedEnd, normTz);
   }
+
   if (requestedEnd.getTime() <= requestedStart.getTime()) {
     throw new Error('Appointment endTime must be after startTime.');
   }
