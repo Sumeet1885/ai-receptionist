@@ -89,21 +89,30 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
 
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error("No active recovery session found. Your reset link may have expired. Please request a new one.");
+      // 1. If URL has code parameter, make sure code exchange completes
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      if (code) {
+        try {
+          await supabase.auth.exchangeCodeForSession(code);
+        } catch {
+          // If already exchanged, proceed
+        }
       }
 
+      // 2. Directly update user password using current recovery session
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
+
       showToast("Password updated successfully! Welcome back.", "success");
       setPassword('');
       setConfirmPassword('');
+      setSessionError(null);
       setView('dashboard');
     } catch (err: any) {
       const msg = err?.message || "Failed to update password";
       if (msg.includes("Auth session missing") || msg.includes("session")) {
-        setSessionError("Your reset session has expired or is invalid. Please request a new password reset link.");
+        setSessionError("Your reset link has expired or is invalid. Please request a new password reset link below.");
       }
       showToast(msg, "error");
     } finally {
