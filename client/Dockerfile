@@ -7,7 +7,6 @@ RUN npm ci
 COPY . .
 
 # Vite embeds these at build time.
-# Accept build args (may arrive empty from CI), then fall back to defaults.
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_PUBLISHABLE_KEY
 ARG VITE_EXPRESS_SERVER_URL
