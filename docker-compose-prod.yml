@@ -5,7 +5,7 @@
 
 services:
   api:
-    image: ${DOCKER_USERNAME}/recrui8-dockerhub-repo-prod:${IMAGE_TAG_SERVER}
+    image: ${DOCKER_USERNAME}/recrui8-dockerhub-repo-dev:${IMAGE_TAG_SERVER}
     container_name: ai-receptionist-api-prod
     env_file:
       - ./server/.env
@@ -21,7 +21,7 @@ services:
         awslogs-stream-prefix: server
 
   web:
-    image: ${DOCKER_USERNAME}/recrui8-dockerhub-repo-prod:${IMAGE_TAG_CLIENT}
+    image: ${DOCKER_USERNAME}/recrui8-dockerhub-repo-dev:${IMAGE_TAG_CLIENT}
     container_name: ai-receptionist-web-prod
     environment:
       APP_DOMAIN: ${APP_DOMAIN}
