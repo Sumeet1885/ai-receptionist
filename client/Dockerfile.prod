@@ -1,0 +1,40 @@
+# ── WEB image — PRODUCTION ───────────────────────────────────────────────────
+# recrui8-style per-environment Dockerfile. The browser-public VITE_* values are
+# BAKED IN here (Vite bakes VITE_* into the client bundle at BUILD time, so they
+# cannot be changed at runtime). This file holds the PRODUCTION values;
+# client/Dockerfile.staging holds staging's.
+#
+#   • Local dev                → client/Dockerfile  (localhost defaults)
+#   • CI staging build         → client/Dockerfile.staging
+#   • CI production build      → THIS file  (docker-image-production.yml picks it)
+#
+# NOTE: only browser-PUBLIC config belongs here (it ships to the client anyway).
+# Real secrets (DB, JWT, API keys) are NEVER baked — they stay in server/.env.
+#
+# ✅ CONFIRM the production URLs below before the first production build.
+
+# ── Stage 1: Build ───────────────────────────────────────────────────────────
+FROM node:20-alpine AS build
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+
+# ── PRODUCTION build-time config (baked into the bundle) ─────────────────────
+# These VITE_* values are embedded into the JS bundle by Vite at build time.
+# They must match the production deployment URLs.
+ENV VITE_SUPABASE_URL=https://xdwcrsydlzprtldkwqzh.supabase.co
+ENV VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_fvHLCT-vSL2xPmhEzbVBiA__qYmKzey
+ENV VITE_EXPRESS_SERVER_URL=https://ai-receptionist.agilewaters.com
+ENV VITE_WIDGET_BASE_URL=https://ai-receptionist.agilewaters.com
+
+RUN npm run build
+
+# ── Stage 2: Serve with Caddy ─────────────────────────────────────────────────
+# Caddy serves the built SPA and reverse-proxies /api/* and /widget/* to the api
+# container — one image, automatic HTTPS, no nginx/certbot config to maintain.
+FROM caddy:2-alpine
+COPY --from=build /app/dist /srv
+COPY Caddyfile /etc/caddy/Caddyfile
