@@ -50,16 +50,14 @@ jobs:
           docker push ${{ secrets.DOCKER_USERNAME }}/recrui8-dockerhub-repo-dev:ai-receptionist-server-prod-${{ env.SHORT_SHA }}
 
       # ── Client ──────────────────────────────────────────────────────────────
+      # VITE_* values are baked into client/Dockerfile.prod (recrui8-style).
+      # No --build-arg secrets needed — production URLs live in the Dockerfile itself.
       - name: Build Client Docker image
         run: |
           docker buildx build \
             --platform linux/amd64 \
-            --build-arg VITE_SUPABASE_URL="${{ secrets.VITE_SUPABASE_URL || vars.VITE_SUPABASE_URL }}" \
-            --build-arg VITE_SUPABASE_PUBLISHABLE_KEY="${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || vars.VITE_SUPABASE_PUBLISHABLE_KEY }}" \
-            --build-arg VITE_EXPRESS_SERVER_URL="${{ secrets.VITE_EXPRESS_SERVER_URL || vars.VITE_EXPRESS_SERVER_URL }}" \
-            --build-arg VITE_WIDGET_BASE_URL="${{ secrets.VITE_WIDGET_BASE_URL || vars.VITE_WIDGET_BASE_URL }}" \
             -t ${{ secrets.DOCKER_USERNAME }}/recrui8-dockerhub-repo-dev:ai-receptionist-client-prod-${{ env.SHORT_SHA }} \
-            -f client/Dockerfile \
+            -f client/Dockerfile.prod \
             ./client
 
       - name: Push Client Docker image
