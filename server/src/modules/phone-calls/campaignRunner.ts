@@ -3,7 +3,6 @@ import { initiateCall } from './dograhClient';
 import { DograhProvisionableBot } from './types';
 import { logger } from '../../services/cloudwatchLogger';
 import { registerOutboundCall } from './outboundTracker';
-import { prepareOutboundWorkflowForContact } from './dograhController';
 
 function maskPhoneNumber(phoneNumber: string): string {
   if (!phoneNumber) return '****';
@@ -119,10 +118,6 @@ async function advanceLoop(
   try {
     const outboundConfigId = (bot as any).widget_config?.outboundTelephony?.telephonyConfigId || bot.dograh_telephony_config_id!;
     const outboundNumberId = (bot as any).widget_config?.outboundTelephony?.phoneNumberId || bot.dograh_phone_number_id!;
-
-    if (bot.dograh_outbound_workflow_id) {
-      await prepareOutboundWorkflowForContact(bot, contact.name || undefined);
-    }
 
     await initiateCall({
       workflowId: bot.dograh_outbound_workflow_id!,

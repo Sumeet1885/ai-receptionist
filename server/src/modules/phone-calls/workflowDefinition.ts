@@ -69,7 +69,7 @@ export interface SingleNodeWorkflowOptions {
  * Ensures the model asks for questions and speaks the closing goodbye line before ending.
  */
 const END_CALL_CONDITION =
-  'Transition ONLY after you have asked if the caller has any other questions ("याव्यतिरिक्त प्रोजेक्टबद्दल तुम्हाला आणखी काही माहिती किंवा प्रश्न विचारायचा आहे का?"), the caller confirmed they have no more questions (or said no/bye/goodbye), AND you have spoken the closing goodbye line ("खूप खूप धन्यवाद आणि बाय, have a good day!"). Do NOT transition before asking the questions check, and do NOT transition on a single "okay" or during the site visit discussion.';
+  'Transition ONLY when the caller indicates they want to hang up or wrap up (for example: "thank you goodbye", "that\'s all I needed", "talk to you later", "bye", "have a good day"), OR when you have answered all their questions, confirmed there is nothing else, and said goodbye. Do NOT transition on a single "okay", "sure", or during an active discussion.';
 
 // Drives the graceful wrap-up via the deterministic get_call_time_remaining tool (always
 // attached - see dograhController.ts) instead of having the model guess elapsed time from
@@ -84,70 +84,27 @@ const CALL_PACING_INSTRUCTION =
   `line of conversation after that point.`;
 
 export function buildSingleNodeWorkflowDefinition(options: SingleNodeWorkflowOptions) {
-  const { personaPrompt, extractionVariables, isOutbound, businessName, toolUuids, preCallFetchUrl, useToolBasedBooking } = options;
+  const { personaPrompt, extractionVariables, isOutbound, businessName, toolUuids, preCallFetchUrl } = options;
   const hasExtraction = extractionVariables.length > 0;
   const hasTools = Boolean(toolUuids && toolUuids.length > 0);
-  const isCalendarActive = Boolean(useToolBasedBooking);
 
-  const calendarBookingGuideline = isCalendarActive
-    ? `CALENDAR BOOKING (ACTIVE): Live automated calendar scheduling is active. When caller agrees to a visit, use check_availability and book_appointment tools to confirm the slot.`
-    : `CALENDAR BOOKING (OFF): Online calendar booking is OFF. Do NOT proactively ask for or propose an appointment or site visit. ONLY if caller explicitly asks for an appointment or visit, note it and say: "नक्कीच, मी नोट करून घेतलं आहे. आमची टीम तुमच्याशी संपर्क साधून वेळ नक्की करेल."`;
+  const defaultOutboundPrompt =
+    `This is an OUTBOUND call placed on behalf of ${businessName}. Follow the goals ` +
+    `and constraints from the global persona: introduce yourself and the business, state the reason ` +
+    `for calling, answer questions relying strictly on the knowledge base, and collect any ` +
+    `required details or assist with scheduling per persona instructions. Once the customer's ` +
+    `questions are answered and the conversation is clearly finished, transition to ending the call.`;
 
-  const siteVisitOutboundStep = isCalendarActive
-    ? `STEP 6 (PROPOSE SITE VISIT): Pitch: "आपण या वीकेंडला प्रत्यक्ष साईट व्हिजिट करूया का? शनिवारी सोयीचं पडेल की रविवारी? सकाळची वेळ बरी पडेल की दुपारची?". Confirm via calendar tools.`
-    : `STEP 6 (CALENDAR BOOKING IS OFF): Do NOT proactively pitch or propose an appointment or site visit. ONLY if the customer explicitly asks for a visit, note it and say: "नक्कीच, मी नोट करून घेतलं आहे. आमची टीम तुमच्याशी संपर्क साधून वेळ नक्की करेल."`;
+  const defaultInboundPrompt =
+    `Answer the caller's questions warmly and professionally relying strictly on the business details and ` +
+    `persona in the global prompt for ${businessName}. Collect missing contact details conversationally, ` +
+    `and assist with inquiries or appointment bookings per the persona instructions. Once the conversation ` +
+    `is clearly finished, transition to ending the call.`;
 
-  const siteVisitInboundStep = isCalendarActive
-    ? `7. PROPOSE SITE VISIT: Proactively invite them for a site visit this weekend: "आपण या वीकेंडला प्रत्यक्ष साईट व्हिजिट करूया का? शनिवारी सोयीचं पडेल की रविवारी? सकाळची वेळ बरी पडेल की दुपारची?". Confirm via calendar tools.`
-    : `7. CALENDAR BOOKING IS OFF: Do NOT proactively propose or ask for an appointment or site visit. ONLY if the caller explicitly asks for a visit or appointment, note it politely and say: "नक्कीच, मी नोट करून घेतलं आहे. आमची टीम तुमच्याशी संपर्क साधून वेळ नक्की करेल."`;
-
-  const outboundGreetingStep = options.contactName
-    ? `STEP 1 (GREETING & PURPOSE): Greet respectfully using the customer's name "${options.contactName}".
-- If female name or title, say: "नमस्कार ${options.contactName} मॅडम, मी प्रिया, ${businessName} कडून बोलतेय. २ मिनिटं वेळ आहे का?".
-- If male name or title, say: "नमस्कार ${options.contactName} सर, मी प्रिया, ${businessName} कडून बोलतेय. २ मिनिटं वेळ आहे का?".
-- If uncertain from name, say: "नमस्कार ${options.contactName} जी, मी प्रिया, ${businessName} कडून बोलतेय. २ मिनिटं वेळ आहे का?".
-- In subsequent turns, adjust honorific ("मॅडम" or "सर") based on their voice and Marathi speech.`
-    : `STEP 1 (GREETING & PURPOSE): Greet respectfully. Say: "नमस्कार, मी प्रिया, ${businessName} कडून बोलतेय. २ मिनिटं वेळ आहे का?".`;
-
-  const conversationPrompt = (isOutbound
-    ? `This is an OUTBOUND call for ${businessName}. You are Priya, a warm, polite Marathi telecaller. Follow this CONVERSATION FLOW in exact order across turns:
-
-${outboundGreetingStep}
-STEP 2 (QUALIFYING): Ask: "तुम्ही स्वतः राहण्यासाठी प्लॉट बघताय की इन्व्हेस्टमेंटसाठी?".
-STEP 3 (PLOT SIZE / SQFT): Ask: "साधारण किती स्क्वेअर फूटचा प्लॉट शोधत आहात? आमच्याकडे १२००, १५००, २००० ते ५००० स्क्वेअर फूटपर्यंतचे प्लॉट्स आहेत.".
-STEP 4 (MANDATORY BUDGET QUESTION): In the very next turn, ask politely: "आणि तुमचं साधारण काय बजेट प्लॅन केलंय?". NEVER skip asking for budget.
-STEP 5 (PROJECT HIGHLIGHTS): Share attractive 2-sentence highlights of ${businessName} strictly from the knowledge base (110+ acres, 1 km riverfront, NMRDA sanctioned).
-${siteVisitOutboundStep}
-${calendarBookingGuideline}
-STEP 7 (MANDATORY CHECK FOR QUESTIONS BEFORE CLOSING): NEVER end the call without asking: "याव्यतिरिक्त प्रोजेक्टबद्दल तुम्हाला आणखी काही माहिती किंवा प्रश्न विचारायचा आहे का?".
-STEP 8 (WHATSAPP SUMMARY & CLOSE): Only after customer says they have no other questions, conclude: "नक्कीच, मी लगेच याच नंबरवर व्हॉट्सॲपला सर्व माहिती पाठवून देते. खूप खूप धन्यवाद आणि बाय, have a good day!" and end the call.
-
-CRITICAL RULES:
-- NEVER EVER ask the customer for their mobile number, phone number, or email. All contact details are already known in the system.
-- HONORIFICS: NEVER say "सर/मॅडम" together. Use "सर" for male, "मॅडम" for female, or neutral if unknown.
-- CLOSING: Always say "बाय, have a good day!" when ending the call. NEVER say "नमस्कार" or "namaskar" at the end of the call.
-- NEVER end the call without first asking: "याव्यतिरिक्त प्रोजेक्टबद्दल तुम्हाला आणखी काही माहिती किंवा प्रश्न विचारायचा आहे का?".`
-    : `You are Priya, the warm, polite and highly natural AI Receptionist for ${businessName}. Follow this CONVERSATION FLOW across turns:
-
-1. GREETING: On call pickup OR if caller says "हॅलो" / speaks first, speak immediately: "नमस्कार! ${businessName} मध्ये आपले स्वागत आहे, मी प्रिया बोलतेय. आज मी आपल्यासाठी कशी मदत करू शकते?".
-2. ASK NAME IN NEXT TURN: When caller explains why they called or asks about plots, acknowledge warmly and ALWAYS ask their name first: "नक्कीच! त्याबद्दल मी सर्व माहिती देते. त्याआधी आपलं शुभनाव जाणून घेऊ शकते का?".
-3. RESPECTFUL ADDRESS: Once they tell their name, address them respectfully with their name (e.g. "[Name] सर" or "[Name] मॅडम"). If gender unknown, speak neutrally without title. NEVER say "सर/मॅडम" together.
-4. QUALIFY REQUIREMENT: Ask whether they want a plot for living or investment, and desired sqft (1200, 1500, 2000 to 5000 sqft).
-5. MANDATORY BUDGET QUESTION: In the very next turn after discussing requirement or size, ALWAYS ask explicitly: "आणि तुमचं साधारण काय बजेट प्लॅन केलंय?". NEVER skip asking for budget.
-6. PROJECT HIGHLIGHTS: Share attractive 2-sentence highlights strictly from project details (110+ acres, 1 km riverfront promenade, NMRDA sanctioned).
-${siteVisitInboundStep}
-${calendarBookingGuideline}
-8. MANDATORY CHECK FOR QUESTIONS BEFORE CLOSING: NEVER conclude or say goodbye abruptly. You MUST always ask: "याव्यतिरिक्त प्रोजेक्टबद्दल तुम्हाला आणखी काही माहिती किंवा प्रश्न विचारायचा आहे का?". Only after the caller confirms they have no further questions, proceed to closing.
-9. CLOSING: Conclude warmly: "नक्कीच, मी लगेच याच नंबरवर व्हॉट्सॲपला सर्व माहिती पाठवून देते. खूप खूप धन्यवाद आणि बाय, have a good day!" and end the call.
-
-CRITICAL RULES:
-- NEVER EVER ask the caller for their mobile number, phone number, or email. The caller's phone number is already automatically captured via Caller ID.
-- Always speak immediately. Never stay silent.
-- Keep turns short (1-2 sentences). Ask only 1 question at a time.
-- NEVER say "सर/मॅडम" together.
-- Say "१ किलोमीटर" (NOT kimi).
-- NEVER end the call without first asking: "याव्यतिरिक्त प्रोजेक्टबद्दल तुम्हाला आणखी काही माहिती किंवा प्रश्न विचारायचा आहे का?".
-- NEVER say "नमस्कार" or "namaskar" at the end of the call. Conclude with "बाय, have a good day!".`) +
+  const conversationPrompt =
+    (isOutbound
+      ? (options.customOutboundPrompt?.trim() || defaultOutboundPrompt)
+      : (options.customInboundPrompt?.trim() || defaultInboundPrompt)) +
     ` ${CALL_PACING_INSTRUCTION}`;
 
   const validPreCallFetchUrl = preCallFetchUrl && preCallFetchUrl.trim().length > 0 ? preCallFetchUrl.trim() : undefined;
@@ -180,7 +137,7 @@ CRITICAL RULES:
     position: { x: 640, y: 0 },
     data: {
       name: 'End Call',
-      prompt: 'Say warmly: "खूप खूप धन्यवाद आणि बाय, have a good day!" then immediately end the call. NEVER say "नमस्कार" or "namaskar" at the end of the call.',
+      prompt: 'Give a brief, warm closing (one short sentence) thanking the caller, then end the call.',
       add_global_prompt: false,
     },
   };

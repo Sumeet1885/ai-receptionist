@@ -16,7 +16,7 @@ interface WhatsAppButtonProps {
 
 export const WhatsAppButton: React.FC<WhatsAppButtonProps> = ({
   lead,
-  businessName = 'Lok8 Brookside',
+  businessName = 'Our Business',
   size = 'sm',
   className = '',
 }) => {

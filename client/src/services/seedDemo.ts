@@ -5,6 +5,11 @@ import { supabase } from '../lib/supabaseClient';
  */
 export async function seedDemoDataForUser(userId: string) {
   try {
+    const seedKey = `demo_seeded_${userId}`;
+    if (localStorage.getItem(seedKey) === 'true') {
+      return;
+    }
+
     // 1. Check if the user already has bots
     const { data: existingBots, error: botCheckError } = await supabase
       .from('bots')
@@ -13,6 +18,7 @@ export async function seedDemoDataForUser(userId: string) {
 
     if (botCheckError) throw botCheckError;
     if (existingBots && existingBots.length > 0) {
+      localStorage.setItem(seedKey, 'true');
       console.log('User already has bots, skipping seeding.');
       return;
     }
@@ -135,6 +141,7 @@ SaaS or custom software development requests`
       appointment_status: 'Site Visit Requested'
     }]);
 
+    localStorage.setItem(seedKey, 'true');
     console.log('Demo data successfully seeded!');
   } catch (err) {
     console.error('Error seeding demo data:', err);

@@ -15,27 +15,28 @@ export function generateWhatsAppLeadMessage(lead: {
   appointmentStatus?: string | null;
   requirement?: string | null;
   budget?: string | null;
-}, businessName: string = 'Lok8 Brookside'): string {
+}, businessName: string = 'Our Team'): string {
   const isVisitBooked = lead.appointmentStatus && lead.appointmentStatus !== 'None';
-  const displayName = lead.name && lead.name !== 'Anonymous' ? lead.name : 'सर / मॅडम';
+  const displayName = lead.name && lead.name !== 'Anonymous' ? lead.name : 'there';
 
   if (isVisitBooked) {
     return (
-      `नमस्कार ${displayName}!\n` +
-      `${businessName} कडून मी प्रिया.\n\n` +
-      `आपल्या संभाषणाप्रमाणे मी आपल्याला ११० एकर भव्य टाउनशिपचे ब्रोशर, लेआउट प्लॅन आणि साईट लोकेशन पाठवत आहे.\n\n` +
-      `🏡 आपली साईट व्हिजिट: ${lead.appointmentStatus}\n` +
-      `📍 साईट लोकेशन: https://maps.google.com/?q=Lok8+Brookside+South+Nagpur\n\n` +
-      `काही शंका किंवा बदल असल्यास नक्की सांगा. धन्यवाद!`
+      `Hello ${displayName}!\n\n` +
+      `Thank you for speaking with ${businessName}. As discussed, here is your appointment confirmation:\n\n` +
+      `📅 Scheduled Time: ${lead.appointmentStatus}\n` +
+      (lead.requirement ? `📋 Purpose: ${lead.requirement}\n` : '') +
+      `\nPlease feel free to reply directly to this message if you have any questions or wish to reschedule.\n\n` +
+      `Best regards,\n${businessName}`
     );
   }
 
   return (
-    `नमस्कार ${displayName}!\n` +
-    `${businessName} कडून मी प्रिया.\n\n` +
-    `साऊथ नागपूरमधील उमरेड रोड / आऊटर रिंग रोड जवळील ११० एकर भव्य टाउनशिपचे (${businessName}) ब्रोशर, लेआउट प्लॅन आणि सविस्तर माहिती आपल्या माहितीसाठी पाठवत आहे.\n\n` +
-    `📍 साईट लोकेशन: https://maps.google.com/?q=Lok8+Brookside+South+Nagpur\n\n` +
-    `अधिक माहितीसाठी आपण कधीही संपर्क करू शकता. धन्यवाद!`
+    `Hello ${displayName}!\n\n` +
+    `Thank you for your interest in ${businessName}. Following up on our recent conversation, we are pleased to share more details with you.\n\n` +
+    (lead.requirement ? `📋 Inquired: ${lead.requirement}\n` : '') +
+    (lead.budget ? `💰 Budget: ${lead.budget}\n` : '') +
+    `\nPlease let us know if you need any additional assistance. We are happy to help!\n\n` +
+    `Best regards,\n${businessName}`
   );
 }
 
@@ -45,7 +46,7 @@ export function buildWhatsAppUrl(lead: {
   appointmentStatus?: string | null;
   requirement?: string | null;
   budget?: string | null;
-}, businessName: string = 'Lok8 Brookside'): string {
+}, businessName: string = 'Our Team'): string {
   const phone = getCleanWhatsAppPhone(lead.phone);
   if (!phone) return '#';
   const text = generateWhatsAppLeadMessage(lead, businessName);

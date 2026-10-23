@@ -154,6 +154,9 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 Growth Plan (₹1,299 / month)
               </span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-blue-500/10 border border-blue-500/30 text-blue-300">
+                Sandbox Mode
+              </span>
             </div>
             <p className="text-xs text-brand-muted mt-1 font-sans">
               Real-time consumption for {activeBot ? activeBot.businessName : 'All Receptionists'}. Inbound and outbound calls share the same minute pool.

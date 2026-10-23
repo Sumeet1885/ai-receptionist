@@ -36,19 +36,19 @@ export interface LeadData {
   appointmentStatus: string;
 }
 
-const SYSTEM_PROMPT = `You are an advanced business backend analyst. Analyze the conversation between a customer and an AI receptionist / real estate telecaller. Extract lead, budget, and requirement information and return valid JSON with these exact fields:
+const SYSTEM_PROMPT = `You are an advanced business backend analyst. Analyze the conversation between a customer and an AI receptionist. Extract lead, budget, and requirement information and return valid JSON with these exact fields:
 - name: First and last name if mentioned, otherwise empty string
 - phone: Mobile or contact number if mentioned, otherwise empty string
 - email: Email address if mentioned, otherwise empty string
-- requirement: Specific plot size (sqft), property purpose (residential/investment/commercial), or amenities asked about
-- budget: Financial capability or budget if mentioned (e.g. "25 Lakhs", "50L", "1 Crore", etc. Return "N/A" if not stated)
+- requirement: Customer's specific requirement, inquiry, product/service requested, or purpose
+- budget: Financial capability or budget if mentioned (e.g. "$500", "25 Lakhs", "50L", "1 Crore", etc. Return "N/A" if not stated)
 - leadScore: Must be one of "HOT", "WARM", or "COLD". Follow these strict rules:
-  * "HOT": If the customer provides a budget AND shows interest in a site visit or property details, OR if they agree to/schedule/confirm a site visit (e.g. Saturday, Sunday, weekend, or specific time), you MUST score them as "HOT". Never leave customers who gave budget and want to visit as "WARM".
-  * "WARM": The customer engaged, discussed plot requirements or purpose, but did NOT provide a budget and did NOT commit to a site visit.
+  * "HOT": If the customer provides a budget AND shows interest in an appointment/visit/callback, OR if they agree to/schedule/confirm a meeting or visit slot, you MUST score them as "HOT".
+  * "WARM": The customer engaged and discussed their requirements or inquiries, but did NOT commit to a meeting/visit and did NOT provide a budget.
   * "COLD": The customer did not reply, remained silent, hung up immediately, was unreachable, or explicitly declined. (If the customer did not respond, set summary to "Customer did not reply", sentiment to "No Response", and leadScore to "COLD").
 - sentiment: One of "Positive", "Neutral", "No Response", "Urgent/Demanding", or "Angry" (If the customer did not respond, set to "No Response")
-- summary: Brief 1-sentence recap of customer requirement, budget, and site visit status
-- appointmentStatus: Any booked, scheduled, or agreed site visit slot (e.g. "Saturday 11 AM", "Weekend", "Confirmed"), callback request, or "None"`;
+- summary: Brief 1-sentence recap of customer requirement, budget, and appointment/next steps status
+- appointmentStatus: Any booked, scheduled, or agreed meeting/visit slot (e.g. "Saturday 11 AM", "Weekend", "Confirmed"), callback request, or "None"`;
 
 export function parseAppointmentDateTime(statusText: string, transcriptText: string = ''): { hour: number; minute: number; targetDay: number } {
   // Helper to extract day of week (0 = Sun, 1 = Mon, ..., 5 = Fri, 6 = Sat)
@@ -144,7 +144,7 @@ export async function analyzeLead(
         'Authorization': `Bearer ${GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'openai/gpt-oss-20b',
+        model: 'llama-3.3-70b-versatile',
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: analysisPrompt }
@@ -174,7 +174,7 @@ export async function analyzeLead(
         name: '',
         phone: '',
         email: '',
-        requirement: 'Residential property inquiry',
+        requirement: 'General inquiry',
         budget: 'N/A',
         leadScore: 'WARM',
         sentiment: 'Neutral',
@@ -187,7 +187,7 @@ export async function analyzeLead(
       name: '',
       phone: '',
       email: '',
-      requirement: 'Residential property inquiry',
+      requirement: 'General inquiry',
       budget: 'N/A',
       leadScore: 'WARM',
       sentiment: 'Neutral',
@@ -300,11 +300,21 @@ export async function analyzeLead(
       const startTime = apptDate.toISOString();
       const endTime = new Date(apptDate.getTime() + 60 * 60 * 1000).toISOString();
 
+      let businessName = 'Business';
+      try {
+        const { data: bRow } = await supabase.from('bots').select('business_name').eq('id', botId).maybeSingle();
+        if (bRow?.business_name) businessName = bRow.business_name;
+      } catch {
+        // fallback to Business
+      }
+
+      const appointmentTitle = `${businessName} Appointment - ${name !== 'Anonymous' ? name : 'Lead'}`;
+
       if (!existingAppt) {
         await supabase.from('appointments').insert({
           bot_id: botId,
           session_id: sessionId,
-          title: `Lok8 Brookside Site Visit - ${name}`,
+          title: appointmentTitle,
           visitor_name: name !== 'Anonymous' ? name : 'Prospective Buyer',
           visitor_phone: phone || 'Not Provided',
           start_time: startTime,

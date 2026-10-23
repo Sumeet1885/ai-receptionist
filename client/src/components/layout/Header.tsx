@@ -60,7 +60,7 @@ export const Header: React.FC<HeaderProps> = ({
           <h1 className="text-base sm:text-lg font-display font-black tracking-tight text-brand-text flex items-center gap-1">
             Receptionist<span className={isLanding ? 'text-emerald-400' : 'text-brand-accent'}>.ai</span>
           </h1>
-          <p className="text-[8px] sm:text-[9px] text-brand-muted font-mono tracking-wider uppercase font-semibold">Real Estate Voice AI</p>
+          <p className="text-[8px] sm:text-[9px] text-brand-muted font-mono tracking-wider uppercase font-semibold">Enterprise Agent Portal</p>
         </div>
       </div>
 

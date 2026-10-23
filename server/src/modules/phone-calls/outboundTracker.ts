@@ -35,34 +35,23 @@ export function findOutboundCall(params: {
   const targetTime = params.callTimeMs || Date.now();
 
   if (params.runName) {
-    const idx = outboundRecords.findIndex(r => r.runName === params.runName);
-    if (idx !== -1) {
-      const match = outboundRecords[idx];
-      outboundRecords.splice(idx, 1);
-      return match;
-    }
+    const match = outboundRecords.find(r => r.runName === params.runName);
+    if (match) return match;
   }
 
-  const matchingIndices: number[] = [];
-  outboundRecords.forEach((r, idx) => {
-    if (params.botId && r.botId !== params.botId) return;
-    if (params.phoneNumber && r.phoneNumber !== params.phoneNumber) return;
-    if (Math.abs(r.createdAt - targetTime) < 15 * 60 * 1000) {
-      matchingIndices.push(idx);
-    }
+  const matchingRecords = outboundRecords.filter(r => {
+    if (params.botId && r.botId !== params.botId) return false;
+    if (params.phoneNumber && r.phoneNumber !== params.phoneNumber) return false;
+    return Math.abs(r.createdAt - targetTime) < 15 * 60 * 1000;
   });
 
-  if (matchingIndices.length === 0) return undefined;
+  if (matchingRecords.length === 0) return undefined;
 
-  matchingIndices.sort((a, b) => {
-    return Math.abs(outboundRecords[a].createdAt - targetTime) - Math.abs(outboundRecords[b].createdAt - targetTime);
+  matchingRecords.sort((a, b) => {
+    return Math.abs(a.createdAt - targetTime) - Math.abs(b.createdAt - targetTime);
   });
 
-  const bestIdx = matchingIndices[0];
-  const bestRecord = outboundRecords[bestIdx];
-  // CONSUME the record so subsequent calls cannot match the exact same contact
-  outboundRecords.splice(bestIdx, 1);
-  return bestRecord;
+  return matchingRecords[0];
 }
 
 export function getLatestOutboundCallForBot(botId: string, maxAgeMs = 120_000): OutboundCallRecord | undefined {

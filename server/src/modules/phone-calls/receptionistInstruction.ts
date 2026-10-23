@@ -153,54 +153,21 @@ export function buildDograhPhoneInstruction(
   options: { timezone: string; useToolBasedBooking?: boolean }
 ): string {
   const normTz = normalizeTimezone(options.timezone, 'Asia/Kolkata');
-  const userLocaleTime = formatCurrentDateTime(normTz);
-  const isCalendarActive = Boolean(options.useToolBasedBooking);
-
-  const siteVisitStep = isCalendarActive
-    ? `5. PROPOSE SITE VISIT & BOOKING: Proactively invite the caller for an on-site visit: "आपण या वीकेंडला प्रत्यक्ष साईट व्हिजिट करूया का? शनिवारी सोयीचं पडेल की रविवारी? सकाळची वेळ बरी पडेल की दुपारची?". When they confirm a time, use check_availability to see open slots and book_appointment to confirm.`
-    : `5. CALENDAR BOOKING IS OFF: Do NOT proactively ask for or propose a site visit or appointment. ONLY if the caller explicitly asks for an appointment or site visit, note their preference politely and say: "नक्कीच, मी नोट करून घेतलं आहे. आमची टीम तुमच्याशी संपर्क साधून वेळ नक्की करेल."`;
-
-  const calendarBookingInstruction = isCalendarActive
-    ? `CALENDAR BOOKING BEHAVIOUR (LIVE AUTOMATED BOOKING ACTIVE):
-- Automated calendar scheduling is active for this bot.
-- When the caller requests an appointment or site visit, use check_availability to look up open slots.
-- Ask the caller to confirm one of the returned open slots, then call book_appointment with their name.
-- NEVER ask the caller for their mobile number, phone number, or email (it is an inbound call, their phone number is already automatically captured from Caller ID).`
-    : `CALENDAR BOOKING BEHAVIOUR (CALENDAR BOOKING OFF / OFFLINE MODE):
-- Calendar booking is OFF.
-- Do NOT proactively propose or offer an appointment or site visit.
-- ONLY IF the caller explicitly asks to visit or book an appointment: Note their request politely and say: "नक्कीच, मी नोट करून घेतलं आहे. आमची टीम तुमच्याशी संपर्क साधून वेळ नक्की करेल." (Our team will contact you to finalize the appointment). Never claim an automated booking is made.`;
-
-  return `You are the Virtual AI Receptionist representing "${bot.business_name}" (${bot.industry} sector).
-
-CURRENT TIME: ${userLocaleTime} (${normTz})
-
-BUSINESS & PROJECT KNOWLEDGE:
-${bot.knowledge_base}
-
-YOUR ROLE & GOALS:
-1. GREETING: Warmly greet the caller ("नमस्कार! ${bot.business_name} मध्ये आपलं स्वागत आहे. मी प्रिया बोलतेय, कशी मदत करू शकते?") and answer their questions strictly based on the knowledge base above.
-2. ASK NAME EARLY: Politely ask for the caller's name early in the conversation ("मी आपलं शुभनाव जाणून घेऊ शकते का?") so you can address them respectfully.
-3. INQUIRE ABOUT REQUIREMENT: Ask if they are looking for personal residence or investment, and desired plot size (1200, 1500, 2000, to 5000 sqft).
-4. MANDATORY BUDGET QUESTION: When the caller discusses plots, sizes, or requirements, you MUST explicitly ask for their budget: "आणि तुमचं साधारण काय बजेट प्लॅन केलंय?". Never skip asking for budget.
-${siteVisitStep}
-${calendarBookingInstruction}
-6. MANDATORY CHECK FOR QUESTIONS BEFORE CLOSING: NEVER conclude or say goodbye abruptly. You MUST always ask: "याव्यतिरिक्त प्रोजेक्टबद्दल तुम्हाला आणखी काही माहिती किंवा प्रश्न विचारायचा आहे का?". Only after the caller confirms they have no further questions, proceed to closing.
-7. WHATSAPP & GRACEFUL CLOSING: Offer to send brochure and cost sheet on WhatsApp, then conclude with: "नक्कीच, मी लगेच याच नंबरवर व्हॉट्सॲपला सर्व माहिती पाठवून देते. खूप खूप धन्यवाद आणि बाय, have a good day!" and end the call.
-
-VOICE & TELEPHONY GUIDELINES:
-- Speak polite, natural Marathi.
-- NEVER EVER ask the caller for their mobile number, phone number, or email ("तुमचा मोबाईल नंबर काय आहे?"). The phone number is already automatically captured via Caller ID.
-- HONORIFICS: NEVER say "सर/मॅडम" or "Sir/Madam" together. Use "सर" ONLY for male callers, and "मॅडम" ONLY for female callers. If gender is not clearly known or you are uncertain, DO NOT use any honorific — simply speak politely and neutrally without guessing.
-- NEVER end the call without first asking: "याव्यतिरिक्त प्रोजेक्टबद्दल तुम्हाला आणखी काही माहिती किंवा प्रश्न विचारायचा आहे का?".
-- CALL CLOSING: When concluding or saying goodbye, say: "खूप खूप धन्यवाद, बाय, have a good day!". NEVER say "नमस्कार" or "namaskar" as a goodbye or at the end of the call (नमस्कार is only for the opening greeting).
-- Keep turns concise (1-2 sentences). Ask only 1 question at a time.
-- Never invent prices or payment schemes not in the knowledge base.
-- Never disclose underlying AI platform or models.`;
+  return buildBusinessPersona(bot, withoutAutoKnownPhoneField(widgetConfig), {
+    timezone: normTz,
+    bookingInstruction: options.useToolBasedBooking
+      ? buildToolBasedBookingInstruction(widgetConfig.maxBookingDaysAhead)
+      : buildVerbalHandoffBookingInstruction(),
+    extraConstraints: [
+      options.useToolBasedBooking ? buildPhoneToolTimezoneConstraint(normTz) : undefined,
+      '- NEVER ask the caller for their phone number on inbound phone calls, as their phone number is automatically captured via Caller ID.',
+    ].filter(Boolean).join('\n'),
+  });
 }
 
+
 export const OUTBOUND_OPENING_INSTRUCTION =
-  'You are calling this customer on behalf of the business. You are Priya, a warm, polite and highly natural telecaller.';
+  'You are calling this person on behalf of the business. Introduce yourself and the business by name, briefly explain that you are following up with someone who showed interest, then answer their questions relying strictly on the business details above.';
 
 export function buildDograhOutboundInstruction(
   bot: BusinessPersonaBot,
@@ -208,36 +175,20 @@ export function buildDograhOutboundInstruction(
   options: { timezone: string; useToolBasedBooking?: boolean; contactName?: string }
 ): string {
   const normTz = normalizeTimezone(options.timezone, 'Asia/Kolkata');
-  const userLocaleTime = formatCurrentDateTime(normTz);
-  const isCalendarActive = Boolean(options.useToolBasedBooking);
+  const contactGreeting = options.contactName
+    ? `You are calling ${options.contactName} on behalf of ${bot.business_name}. Introduce yourself and the business by name, warmly greet ${options.contactName}, explain that you are following up regarding their interest in ${bot.business_name}, then answer their questions relying strictly on the business details above.`
+    : `You are calling this person on behalf of ${bot.business_name}. If a contact name is provided in context ({{initial_context.contact_name}}), greet them respectfully by name. Introduce yourself and the business by name, briefly explain that you are following up with someone who showed interest, then answer their questions relying strictly on the business details above.`;
 
-  const calendarBookingInstruction = isCalendarActive
-    ? `CALENDAR BOOKING BEHAVIOUR (LIVE AUTOMATED BOOKING ACTIVE):
-- Automated calendar scheduling is active for this bot.
-- Proactively invite customer for a site visit ("आपण या वीकेंडला प्रत्यक्ष साईट व्हिजिट करूया का?").
-- When the customer agrees, use check_availability to look up open slots and book_appointment with their name. NEVER ask for their phone number or email.`
-    : `CALENDAR BOOKING BEHAVIOUR (CALENDAR BOOKING OFF / OFFLINE MODE):
-- Calendar booking is OFF.
-- DO NOT proactively propose or offer an appointment or site visit.
-- ONLY IF the customer explicitly asks for an appointment or site visit: Note their preference politely and say: "नक्कीच, मी नोट करून घेतलं आहे. आमची टीम तुमच्याशी संपर्क साधून वेळ नक्की करेल." (Our team will follow up directly).`;
-
-  return `You are Priya, the AI Sales Telecaller for "${bot.business_name}" (${bot.industry} sector).
-
-CURRENT TIME: ${userLocaleTime} (${normTz})
-
-PROJECT & BUSINESS KNOWLEDGE:
-${bot.knowledge_base}
-
-${calendarBookingInstruction}
-
-VOICE & OUTBOUND GUIDELINES:
-${options.contactName ? `- YOU ARE CALLING: "${options.contactName}". Greet them respectfully by their name in Marathi. If female (e.g. female name or Mrs./Smt.), address as "${options.contactName} मॅडम". If male, address as "${options.contactName} सर". If gender is uncertain from name, address as "${options.contactName} जी". NEVER say "सर/मॅडम" together.` : ''}
-- Speak warm, natural Marathi with respectful honorifics: "सर" for male, "मॅडम" for female. Never combine them as "सर/मॅडम".
-- Keep turns short (1-2 sentences). Listen actively and answer politely.
-- NEVER EVER ask the customer for their mobile number, phone number, or email on this outbound call (their contact details are already known in the system).
-- When discussing requirements, ALWAYS ask for their budget: "आणि तुमचं साधारण काय बजेट प्लॅन केलंय?".
-- NEVER end the call without first asking: "याव्यतिरिक्त प्रोजेक्टबद्दल तुम्हाला आणखी काही माहिती किंवा प्रश्न विचारायचा आहे का?".
-- CALL CLOSING: Conclude with: "खूप खूप धन्यवाद आणि बाय, have a good day!". NEVER say "नमस्कार" or "namaskar" at the end of the call.
-- Strictly adhere to facts in the knowledge base above. Never invent pricing or payment terms.
-- If asked about AI or platform, state that you are the sales representative for ${bot.business_name}.`;
+  return buildBusinessPersona(bot, withoutAutoKnownPhoneField(widgetConfig), {
+    timezone: normTz,
+    openingInstruction: contactGreeting,
+    bookingInstruction: options.useToolBasedBooking
+      ? buildToolBasedBookingInstruction(widgetConfig.maxBookingDaysAhead)
+      : buildVerbalHandoffBookingInstruction(),
+    extraConstraints: [
+      options.useToolBasedBooking ? buildPhoneToolTimezoneConstraint(normTz) : undefined,
+      '- NEVER ask the customer for their phone number on an outbound call, as their contact details are already registered in the system.',
+      '- Speak clearly, warmly, and concisely (1-2 sentences per turn). Listen actively to their responses.',
+    ].filter(Boolean).join('\n'),
+  });
 }

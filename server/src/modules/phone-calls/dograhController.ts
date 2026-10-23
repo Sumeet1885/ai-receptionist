@@ -1409,9 +1409,6 @@ export async function callOut(req: AuthRequest, res: Response): Promise<void> {
       ...(sessionId ? { session_id: sessionId } : {}),
     };
 
-    // Personalize outbound workflow prompt with contact's name before dialing
-    await prepareOutboundWorkflowForContact(bot, normalizedContactName);
-
     const dograhResponse = await initiateCall({
       workflowId: bot.dograh_outbound_workflow_id,
       phoneNumber: validation.normalized,
@@ -2086,16 +2083,16 @@ Knowledge Base: ${bot.knowledge_base}
 
 User's custom requirements: ${userInstruction}
 
-Write a natural, conversational, turn-by-turn prompt in Marathi (or Hindi/English if requested) that:
-1. Warmly greets with respectful honorifics ("सर" for male, "मॅडम" for female, never together).
-2. Asks for customer name, requirement, and planned budget ("आणि तुमचं साधारण काय बजेट प्लॅन केलंय?").
-3. Shares attractive highlights strictly grounded in the knowledge base.
-4. Invites for weekend site visit.
-5. Asks if caller has any questions before closing ("याव्यतिरिक्त प्रोजेक्टबद्दल तुम्हाला आणखी काही माहिती किंवा प्रश्न विचारायचा आहे का?").
-6. Concludes with "खूप खूप धन्यवाद आणि बाय, have a good day!" (never say नमस्कार at the end).
+Write a natural, conversational, turn-by-turn prompt in the business's language that:
+1. Warmly greets with appropriate respectful honorifics.
+2. Identifies customer name, inquiry, and requirement.
+3. Shares attractive highlights strictly grounded in the business knowledge base.
+4. Invites for an appointment, meeting, or visit if relevant to the business.
+5. Asks if caller has any other questions before closing.
+6. Concludes politely with a warm closing.
 Do not wrap in markdown quotes. Output only the prompt template.`;
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${config.geminiApiKey}`;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${config.geminiApiKey}`;
     const resp = await fetch(geminiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
