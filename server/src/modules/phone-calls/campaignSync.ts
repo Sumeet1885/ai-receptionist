@@ -15,18 +15,26 @@ export async function syncCampaignResults(supabase: SupabaseClient): Promise<voi
       try {
         if (!contact.called_at) continue;
 
-        const since = new Date(new Date(contact.called_at).getTime() - 5 * 60 * 1000).toISOString();
+        const calledTime = new Date(contact.called_at).getTime();
+        // An outbound campaign call begins at or shortly after called_at (allow max 15s clock skew, never 5 mins in the past)
+        const since = new Date(calledTime - 15 * 1000).toISOString();
+        const maxFuture = new Date(calledTime + 2 * 60 * 1000).toISOString();
         const { data: matchedCalls } = await supabase
           .from('phone_calls')
-          .select('id, session_id, ingest_status, duration_seconds, status')
+          .select('id, session_id, ingest_status, duration_seconds, status, started_at, cost_info, dograh_workflow_id')
           .eq('caller_number', contact.phone_number)
           .gte('started_at', since)
-          .order('started_at', { ascending: false });
+          .lte('started_at', maxFuture)
+          .order('started_at', { ascending: true });
 
         if (!matchedCalls || matchedCalls.length === 0) continue;
 
-        let bestCall = null;
+        let bestCall: typeof matchedCalls[0] | null = null;
+        let smallestDiff = Infinity;
         for (const call of matchedCalls) {
+          // STRICT: NEVER link an inbound receptionist call to an outbound campaign contact!
+          if (call.cost_info?.direction === 'inbound') continue;
+
           const { data: alreadyLinked } = await supabase
             .from('campaign_contacts')
             .select('id')
@@ -34,8 +42,11 @@ export async function syncCampaignResults(supabase: SupabaseClient): Promise<voi
             .maybeSingle();
 
           if (!alreadyLinked) {
-            bestCall = call;
-            break;
+            const diff = Math.abs(new Date(call.started_at).getTime() - calledTime);
+            if (diff < smallestDiff) {
+              smallestDiff = diff;
+              bestCall = call;
+            }
           }
         }
 
@@ -110,10 +121,8 @@ export async function syncCampaignResults(supabase: SupabaseClient): Promise<voi
               leadScore = lead.lead_score ?? null;
 
               const parts: string[] = [];
-              if (lead.name && lead.name !== 'Anonymous') parts.push(`Name: ${lead.name}`);
-              if (lead.phone && lead.phone !== 'Not Provided') parts.push(`Phone: ${lead.phone}`);
+              if (lead.summary) parts.push(lead.summary);
               if (lead.email) parts.push(`Email: ${lead.email}`);
-              if (lead.summary) parts.push(`Summary: ${lead.summary}`);
               if (lead.appointment_status && lead.appointment_status !== 'None') {
                 parts.push(`Appointment: ${lead.appointment_status}`);
               }

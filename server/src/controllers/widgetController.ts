@@ -1812,10 +1812,10 @@ ${poweredByHtml}
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
-  
+
   const frameAncestors = buildFrameAncestors(bot.allowed_domains || [], [config.clientUrl]);
   res.setHeader('Content-Security-Policy', frameAncestors ? `frame-ancestors ${frameAncestors}` : "frame-ancestors 'none'");
-  
+
   res.removeHeader('X-Frame-Options');
   res.send(html);
 };

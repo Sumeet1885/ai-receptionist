@@ -60,6 +60,8 @@ export interface PhoneAgentStatus {
   connectedLines?: ConnectedPhoneLine[];
   inboundWebhookUrl?: string;
   defaultPlatformNumber?: string;
+  calendarConnected?: boolean;
+  calendarMode?: 'live_booking' | 'sales_callback';
 }
 
 export interface DograhNumber {
@@ -83,7 +85,14 @@ export interface PhoneCallRecord {
   started_at: string | null;
   created_at: string;
   ingest_status: 'pending' | 'done' | 'failed';
-  lead: { name: string; lead_score: string; summary: string; appointment_status: string } | null;
+  lead: {
+    name: string;
+    lead_score: string;
+    summary: string;
+    appointment_status: string;
+    requirement?: string | null;
+    budget?: string | null;
+  } | null;
 }
 
 export interface AssignNumberPayload {
@@ -163,10 +172,10 @@ export const dograhApi = {
     authedFetch<{ success: boolean }>(`/api/dograh/bots/${botId}/unassign-number`, {
       method: 'POST',
     }),
-  callOut: (botId: string, phoneNumber: string) =>
+  callOut: (botId: string, phoneNumber: string, contactName?: string) =>
     authedFetch<{ success: boolean }>(`/api/dograh/bots/${botId}/call`, {
       method: 'POST',
-      body: JSON.stringify({ phoneNumber }),
+      body: JSON.stringify({ phoneNumber, contactName }),
     }),
   updateOutboundRateLimit: (botId: string, cooldownSeconds: number, hourlyCap: number) =>
     authedFetch<{ outboundCooldownSeconds: number; outboundHourlyCap: number }>(`/api/dograh/bots/${botId}/outbound-rate-limit`, {
@@ -208,6 +217,17 @@ export const dograhApi = {
       {
         method: 'PATCH',
         body: JSON.stringify({ role }),
+      }
+    ),
+  generatePrompt: (
+    botId: string,
+    payload: { userInstruction: string; type: 'inbound' | 'outbound' }
+  ) =>
+    authedFetch<{ generatedTemplate: string }>(
+      `/api/dograh/bots/${botId}/generate-prompt`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
       }
     ),
 };

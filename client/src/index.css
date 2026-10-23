@@ -20,14 +20,168 @@
   --color-brand-danger: #ef4444;
 }
 
+@keyframes hotBlink {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 16px rgba(244, 63, 94, 0.7), 0 0 6px rgba(244, 63, 94, 0.4);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.96);
+    box-shadow: 0 0 4px rgba(244, 63, 94, 0.2);
+  }
+}
+
+.animate-hot-blink {
+  animation: hotBlink 1.2s ease-in-out infinite;
+}
+
+@keyframes soundwaveBar {
+  0%, 100% {
+    height: 3px;
+  }
+  50% {
+    height: 14px;
+  }
+}
+
+.soundwave-bar {
+  display: inline-block;
+  width: 2.5px;
+  background-color: var(--color-brand-accent);
+  border-radius: 9999px;
+  animation: soundwaveBar 0.8s ease-in-out infinite;
+}
+.soundwave-bar:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.soundwave-bar:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.soundwave-bar:nth-child(4) {
+  animation-delay: 0.45s;
+}
+
+@keyframes radarSweep {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-radar-sweep {
+  animation: radarSweep 3.5s linear infinite;
+}
+
+@keyframes sonarRipple {
+  0% {
+    transform: scale(0.65);
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(1.65);
+    opacity: 0;
+  }
+}
+
+.animate-sonar-ripple {
+  animation: sonarRipple 2.8s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+
+@keyframes radarBlip {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  10% {
+    opacity: 1;
+    transform: scale(1.35);
+    filter: drop-shadow(0 0 10px currentColor);
+  }
+  28% {
+    opacity: 0.45;
+    transform: scale(1);
+    filter: drop-shadow(0 0 5px currentColor);
+  }
+  48% {
+    opacity: 0;
+    transform: scale(0.7);
+    filter: none;
+  }
+}
+
+.animate-radar-blip-1 {
+  animation: radarBlip 3.5s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  animation-delay: 0.45s;
+}
+
+.animate-radar-blip-2 {
+  animation: radarBlip 3.5s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  animation-delay: 2.05s;
+}
+
+.animate-radar-blip-3 {
+  animation: radarBlip 3.5s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  animation-delay: 3.05s;
+}
+
+.card-hover-glow {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.card-hover-glow:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.5), 0 0 20px rgba(25, 233, 157, 0.15);
+  border-color: rgba(25, 233, 157, 0.45) !important;
+}
+
+.hot-card-glow {
+  box-shadow: 0 0 24px -4px rgba(244, 63, 94, 0.35), inset 0 0 12px rgba(244, 63, 94, 0.08);
+  border-color: rgba(244, 63, 94, 0.55) !important;
+}
+
+.btn-whatsapp-glass {
+  background: linear-gradient(135deg, #25D366, #128C7E);
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(37, 211, 102, 0.35);
+  transition: all 0.2s ease;
+}
+.btn-whatsapp-glass:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(37, 211, 102, 0.5);
+  filter: brightness(1.08);
+}
+
+@keyframes scrollTextOnHover {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-40%);
+  }
+}
+
+.group:hover .animate-marquee-hover {
+  display: inline-block;
+  animation: scrollTextOnHover 4s ease-in-out infinite alternate;
+}
+
 body {
   background-color: var(--color-brand-bg);
   color: var(--color-brand-text);
   font-family: var(--font-sans);
   background-image:
-    radial-gradient(circle at 50% -10%, rgba(25, 233, 157, 0.15), transparent 35%),
-    radial-gradient(rgba(25, 233, 157, 0.08) 1px, transparent 1px);
-  background-size: auto, 26px 26px;
+    radial-gradient(circle at 15% 0%, rgba(25, 233, 157, 0.12), transparent 45%),
+    radial-gradient(circle at 85% 10%, rgba(56, 189, 248, 0.08), transparent 40%),
+    radial-gradient(circle at 50% 100%, rgba(25, 233, 157, 0.06), transparent 50%),
+    radial-gradient(rgba(25, 233, 157, 0.07) 1px, transparent 1px);
+  background-size: auto, auto, auto, 24px 24px;
+  background-attachment: fixed;
 }
 
 ::selection {

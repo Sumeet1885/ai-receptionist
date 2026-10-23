@@ -21,6 +21,7 @@ export interface LeadInput {
    * (request_text_input), when available. Takes priority over the LLM's transcript guess for the
    * same reason knownPhone does - it's the actual validated value, not a spoken/typed guess. */
   knownEmail?: string;
+  knownName?: string;
 }
 
 export interface LeadData {
@@ -35,16 +36,88 @@ export interface LeadData {
   appointmentStatus: string;
 }
 
-const SYSTEM_PROMPT = `You are an advanced business backend analyst. Analyze the conversation between a website visitor and an AI receptionist. Extract lead and requirement information and return valid JSON with these exact fields:
+const SYSTEM_PROMPT = `You are an advanced business backend analyst. Analyze the conversation between a customer and an AI receptionist / real estate telecaller. Extract lead, budget, and requirement information and return valid JSON with these exact fields:
 - name: First and last name if mentioned, otherwise empty string
 - phone: Mobile or contact number if mentioned, otherwise empty string
 - email: Email address if mentioned, otherwise empty string
-- requirement: Specific course, property, treatment, or role they are looking for
-- budget: Financial capability or investment budget if mentioned
-- leadScore: One of "HOT", "WARM", or "COLD"
-- sentiment: One of "Positive", "Neutral", "Urgent/Demanding", or "Angry"
-- summary: Brief 1-sentence recap of user goals and query status
-- appointmentStatus: Any booked slot, callback request, or "None"`;
+- requirement: Specific plot size (sqft), property purpose (residential/investment/commercial), or amenities asked about
+- budget: Financial capability or budget if mentioned (e.g. "25 Lakhs", "50L", "1 Crore", etc. Return "N/A" if not stated)
+- leadScore: Must be one of "HOT", "WARM", or "COLD". Follow these strict rules:
+  * "HOT": If the customer provides a budget AND shows interest in a site visit or property details, OR if they agree to/schedule/confirm a site visit (e.g. Saturday, Sunday, weekend, or specific time), you MUST score them as "HOT". Never leave customers who gave budget and want to visit as "WARM".
+  * "WARM": The customer engaged, discussed plot requirements or purpose, but did NOT provide a budget and did NOT commit to a site visit.
+  * "COLD": The customer did not reply, remained silent, hung up immediately, was unreachable, or explicitly declined. (If the customer did not respond, set summary to "Customer did not reply", sentiment to "No Response", and leadScore to "COLD").
+- sentiment: One of "Positive", "Neutral", "No Response", "Urgent/Demanding", or "Angry" (If the customer did not respond, set to "No Response")
+- summary: Brief 1-sentence recap of customer requirement, budget, and site visit status
+- appointmentStatus: Any booked, scheduled, or agreed site visit slot (e.g. "Saturday 11 AM", "Weekend", "Confirmed"), callback request, or "None"`;
+
+export function parseAppointmentDateTime(statusText: string, transcriptText: string = ''): { hour: number; minute: number; targetDay: number } {
+  // Helper to extract day of week (0 = Sun, 1 = Mon, ..., 5 = Fri, 6 = Sat)
+  const extractDayOfWeek = (text: string): number | null => {
+    const t = text.toLowerCase();
+    if (/friday|शुक्रवार|शुक्रवारी|fri\b/.test(t)) return 5;
+    if (/saturday|शनिवार|शनिवारी|sat\b/.test(t)) return 6;
+    if (/sunday|रविवार|रविवारी|sun\b/.test(t)) return 0;
+    if (/thursday|गुरुवार|गुरुवारी|thu\b/.test(t)) return 4;
+    if (/wednesday|बुधवार|बुधवारी|wed\b/.test(t)) return 3;
+    if (/tuesday|मंगळवार|मंगळवारी|tue\b/.test(t)) return 2;
+    if (/monday|सोमवार|सोमवारी|mon\b/.test(t)) return 1;
+    return null;
+  };
+
+  // Give strict priority to the structured appointment status (e.g. "Friday 10 AM")
+  let targetDay = extractDayOfWeek(statusText);
+  if (targetDay === null && transcriptText) {
+    targetDay = extractDayOfWeek(transcriptText);
+  }
+  // Default to Saturday if no day was found
+  if (targetDay === null) {
+    targetDay = 6;
+  }
+
+  const combined = `${statusText} ${transcriptText}`.toLowerCase();
+
+  // 2. Specific time patterns
+  let hour = 11;
+  let minute = 0;
+
+  // Check for "सवाई बारह" / "सवा बारा" (12:15)
+  if (/सवाई\s*बारह|सवा\s*बारा|12[:.]15/.test(combined)) {
+    return { hour: 12, minute: 15, targetDay };
+  }
+  // Check for "साडे बारा" (12:30)
+  if (/साडे\s*बारा|12[:.]30/.test(combined)) {
+    return { hour: 12, minute: 30, targetDay };
+  }
+
+  // Regex for e.g. "12 PM", "11 AM", "4:00 PM", "12 बजे", "11 वाजता", "12 pm", "12:00"
+  const timeMatch = combined.match(/\b(1[0-2]|[1-9])(?::([0-5][0-9]))?\s*(am|pm|बजे|वाजता)?\b/);
+  if (timeMatch) {
+    let rawHour = parseInt(timeMatch[1], 10);
+    const rawMin = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
+    const meridian = timeMatch[3];
+
+    if (meridian === 'pm' && rawHour < 12) {
+      rawHour += 12;
+    } else if (meridian === 'am' && rawHour === 12) {
+      rawHour = 0;
+    } else if (!meridian || meridian === 'बजे' || meridian === 'वाजता') {
+      // If 1, 2, 3, 4, 5, 6 without AM/PM, it's typically afternoon (1 PM to 6 PM)
+      if (rawHour >= 1 && rawHour <= 6) {
+        rawHour += 12;
+      }
+    }
+    hour = rawHour;
+    minute = rawMin;
+  } else if (/दुपार|afternoon/.test(combined)) {
+    hour = 14; // 2 PM default afternoon
+  } else if (/सकाळ|morning/.test(combined)) {
+    hour = 11; // 11 AM default morning
+  } else if (/संध्याकाळ|evening/.test(combined)) {
+    hour = 17; // 5 PM default evening
+  }
+
+  return { hour, minute, targetDay };
+}
 
 /**
  * Sends the conversation transcript to Groq (llama-3.1-8b-instant) with JSON mode.
@@ -55,7 +128,7 @@ export async function analyzeLead(
   input: LeadInput,
   supabase: any
 ): Promise<void> {
-  const { sessionId, botId, transcript, knownPhone, knownEmail } = input;
+  const { sessionId, botId, transcript, knownPhone, knownEmail, knownName } = input;
 
   if (!GROQ_API_KEY) return;
 
@@ -71,7 +144,7 @@ export async function analyzeLead(
         'Authorization': `Bearer ${GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+        model: 'openai/gpt-oss-20b',
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: analysisPrompt }
@@ -81,42 +154,176 @@ export async function analyzeLead(
       })
     });
 
-    if (!response.ok) return;
-
-    const data = await response.json();
-    rawText = data.choices?.[0]?.message?.content;
-  } catch {
-    return;
+    if (!response.ok) {
+      const errBody = await response.text();
+      console.error(`[leadController] Groq API returned status ${response.status}:`, errBody);
+    } else {
+      const data = await response.json();
+      rawText = data.choices?.[0]?.message?.content;
+    }
+  } catch (err) {
+    console.error('[leadController] Groq fetch error:', err);
   }
 
-  if (!rawText) return;
-
   let lead: LeadData;
-  try {
-    lead = JSON.parse(rawText);
-  } catch {
-    return;
+  if (rawText) {
+    try {
+      lead = JSON.parse(rawText);
+    } catch {
+      lead = {
+        name: '',
+        phone: '',
+        email: '',
+        requirement: 'Residential property inquiry',
+        budget: 'N/A',
+        leadScore: 'WARM',
+        sentiment: 'Neutral',
+        summary: 'Customer called and spoke with receptionist.',
+        appointmentStatus: 'None'
+      };
+    }
+  } else {
+    lead = {
+      name: '',
+      phone: '',
+      email: '',
+      requirement: 'Residential property inquiry',
+      budget: 'N/A',
+      leadScore: 'WARM',
+      sentiment: 'Neutral',
+      summary: 'Customer called and spoke with receptionist.',
+      appointmentStatus: 'None'
+    };
   }
 
   const phone = knownPhone?.trim() || lead.phone?.trim() || '';
   lead.phone = phone; // single source of truth for both the upsert below and syncLeadToCrm's payload
   const email = knownEmail?.trim() || lead.email?.trim() || '';
   lead.email = email; // same pattern as phone, for the same reason
+  const name = lead.name?.trim() || knownName?.trim() || 'Anonymous';
+  lead.name = name;
+
+  // Check if an appointment was already confirmed for this session so we don't accidentally downgrade it
+  const { data: existingLead } = await supabase
+    .from('leads')
+    .select('appointment_status, lead_score')
+    .eq('session_id', sessionId)
+    .maybeSingle();
+
+  const finalAppointmentStatus = existingLead?.appointment_status === 'Confirmed'
+    ? 'Confirmed'
+    : (lead.appointmentStatus || 'None');
+
+  const hasBudget = Boolean(
+    lead.budget &&
+    lead.budget !== 'N/A' &&
+    !/^(none|not mentioned|not provided|unknown|n\/a)$/i.test(lead.budget.trim())
+  );
+
+  const showsVisitInterest = Boolean(
+    (finalAppointmentStatus && finalAppointmentStatus !== 'None') ||
+    /site visit|visit|weekend|saturday|sunday|friday|thursday|wednesday|tuesday|monday|शनिवार|रविवार|शुक्रवार|गुरुवार|बुधवार|मंगळवार|सोमवार|हो|बघायला|येईन|येतो|येणार|पाहण्यासाठी|सकाळ|दुपार/i.test(finalAppointmentStatus) ||
+    /site visit|visit|weekend|saturday|sunday|friday|thursday|wednesday|tuesday|monday|शनिवार|रविवार|शुक्रवार|गुरुवार|बुधवार|मंगळवार|सोमवार|हो|बघायला|येईन|येतो|येणार|पाहण्यासाठी|सकाळ|दुपार/i.test(lead.appointmentStatus || '') ||
+    /site visit|visit|बघायला|येईन|येतो|येणार|पाहण्यासाठी/i.test(lead.summary || '') ||
+    /site visit|visit|बघायला|येईन|येतो|येणार|पाहण्यासाठी/i.test(transcript)
+  );
+
+  let finalLeadScore: 'HOT' | 'WARM' | 'COLD' = lead.leadScore || 'COLD';
+  if (existingLead?.lead_score === 'HOT' || existingLead?.appointment_status === 'Confirmed' || finalAppointmentStatus === 'Confirmed') {
+    finalLeadScore = 'HOT';
+  } else if (hasBudget && showsVisitInterest) {
+    finalLeadScore = 'HOT';
+  } else if (showsVisitInterest && !/none/i.test(finalAppointmentStatus)) {
+    finalLeadScore = 'HOT';
+  } else if (hasBudget && lead.sentiment === 'Positive') {
+    finalLeadScore = 'HOT';
+  }
+
+  let finalSentiment = lead.sentiment || 'Neutral';
+  const isSilentOrNoReply = /customer did not reply|unreachable|no response|remained silent/i.test(lead.summary || '') || !transcript || transcript.trim().length === 0;
+  if (isSilentOrNoReply) {
+    finalSentiment = 'No Response';
+  }
+
+  let finalRequirement = lead.requirement?.trim();
+  if (!finalRequirement || finalRequirement.toLowerCase() === 'general inquiry') {
+    finalRequirement = isSilentOrNoReply ? 'Not specified (No response)' : 'General Inquiry';
+  }
+
+  // If the customer did not respond, remained silent, or was unreachable, and no appointment was confirmed,
+  // do not pollute the active leads queue. The call will still be preserved in Call History (phone_calls).
+  if (isSilentOrNoReply && finalAppointmentStatus === 'None' && finalLeadScore === 'COLD') {
+    console.log(`[leadController] Skipping leads queue creation for silent/unresponsive session ${sessionId}. Preserved in Call History.`);
+    return;
+  }
 
   await supabase.from('leads').upsert({
     bot_id:             botId,
     session_id:         sessionId,
-    name:               lead.name || 'Anonymous',
+    name:               name,
     phone:              phone || 'Not Provided',
     email:              email || null,
-    requirement:        lead.requirement || 'General Inquiry',
+    requirement:        finalRequirement,
     budget:             lead.budget || 'N/A',
-    sentiment:          lead.sentiment || 'Neutral',
-    lead_score:         lead.leadScore || 'COLD',
+    sentiment:          finalSentiment,
+    lead_score:         finalLeadScore,
     summary:            lead.summary || '',
-    appointment_status: lead.appointmentStatus || 'None',
+    appointment_status: finalAppointmentStatus,
     updated_at:         new Date().toISOString()
   }, { onConflict: 'session_id' });
+
+  // Auto-create confirmed appointment record if caller agreed to site visit
+  if (
+    finalAppointmentStatus === 'Confirmed' ||
+    (showsVisitInterest && !/none/i.test(finalAppointmentStatus)) ||
+    /confirm|site visit|saturday|sunday|friday|thursday|wednesday|tuesday|monday|शनिवार|रविवार|शुक्रवार|गुरुवार|बुधवार|मंगळवार|सोमवार/i.test(finalAppointmentStatus)
+  ) {
+    try {
+      const { data: existingAppt } = await supabase
+        .from('appointments')
+        .select('id, visitor_name, visitor_phone')
+        .eq('session_id', sessionId)
+        .maybeSingle();
+
+      const { hour, minute, targetDay } = parseAppointmentDateTime(finalAppointmentStatus, transcript);
+      const now = new Date();
+      let daysUntilTarget = (targetDay - now.getDay() + 7) % 7;
+      if (daysUntilTarget === 0) {
+        // If scheduled for today but the hour has already passed, push to next week
+        if (now.getHours() > hour || (now.getHours() === hour && now.getMinutes() >= minute)) {
+          daysUntilTarget = 7;
+        }
+      }
+      const apptDate = new Date(now.getTime() + daysUntilTarget * 24 * 60 * 60 * 1000);
+      apptDate.setHours(hour, minute, 0, 0);
+
+      const startTime = apptDate.toISOString();
+      const endTime = new Date(apptDate.getTime() + 60 * 60 * 1000).toISOString();
+
+      if (!existingAppt) {
+        await supabase.from('appointments').insert({
+          bot_id: botId,
+          session_id: sessionId,
+          title: `Lok8 Brookside Site Visit - ${name}`,
+          visitor_name: name !== 'Anonymous' ? name : 'Prospective Buyer',
+          visitor_phone: phone || 'Not Provided',
+          start_time: startTime,
+          end_time: endTime,
+          status: 'confirmed',
+        });
+      } else {
+        await supabase.from('appointments').update({
+          start_time: startTime,
+          end_time: endTime,
+          visitor_name: name !== 'Anonymous' ? name : existingAppt.visitor_name,
+          visitor_phone: phone || existingAppt.visitor_phone,
+          status: 'confirmed',
+        }).eq('id', existingAppt.id);
+      }
+    } catch (apptErr) {
+      console.warn('[leadController] Failed to auto-create appointment for confirmed visit:', apptErr);
+    }
+  }
 
   logger.leadEvent('lead_analyzed', {
     botId,

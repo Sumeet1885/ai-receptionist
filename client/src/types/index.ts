@@ -28,6 +28,10 @@ export interface WidgetConfig {
   additionalCollectInfo?: string;
   /** Max number of days ahead a booking date may fall on. Undefined means no limit. */
   maxBookingDaysAhead?: number;
+  /** Custom prompt template specifically for inbound phone calls */
+  inboundPromptTemplate?: string;
+  /** Custom prompt template specifically for outbound telecalling calls */
+  outboundPromptTemplate?: string;
 }
 
 export interface Bot {
@@ -58,6 +62,10 @@ export interface Lead {
   summary: string;
   appointmentStatus: string;
   date: string;
+  channel?: 'inbound' | 'outbound' | 'web';
+  sessionId?: string;
+  recordingUrl?: string;
+  durationSeconds?: number;
 }
 
 export interface Message {

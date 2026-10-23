@@ -21,7 +21,9 @@ export const defaultWidgetConfig: WidgetConfig = {
   requiredLeadFields: ['name', 'phone'],
   handoffText: 'I can connect you with the team for this.',
   additionalCollectInfo: '',
-  maxBookingDaysAhead: undefined
+  maxBookingDaysAhead: undefined,
+  inboundPromptTemplate: '',
+  outboundPromptTemplate: ''
 };
 
 export function mergeWidgetConfig(value: Partial<WidgetConfig> | null | undefined): WidgetConfig {
@@ -32,6 +34,8 @@ export function mergeWidgetConfig(value: Partial<WidgetConfig> | null | undefine
     suggestedPrompts: Array.isArray(config.suggestedPrompts) ? config.suggestedPrompts : [],
     requiredLeadFields: Array.isArray(config.requiredLeadFields) ? config.requiredLeadFields : defaultWidgetConfig.requiredLeadFields,
     additionalCollectInfo: config.additionalCollectInfo || '',
+    inboundPromptTemplate: typeof config.inboundPromptTemplate === 'string' ? config.inboundPromptTemplate : '',
+    outboundPromptTemplate: typeof config.outboundPromptTemplate === 'string' ? config.outboundPromptTemplate : '',
     maxBookingDaysAhead: Number.isFinite(maxBookingDaysAhead) && maxBookingDaysAhead > 0
       ? Math.min(Math.round(maxBookingDaysAhead), 365)
       : undefined

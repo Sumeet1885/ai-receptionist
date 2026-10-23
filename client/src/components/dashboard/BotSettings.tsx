@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bot, LeadField, WidgetConfig, WidgetLauncherPosition, WidgetLauncherStyle, WidgetRadius, WidgetSize } from '../../types';
 import { AllowedDomainsEditor } from './AllowedDomainsEditor';
 import { normalizeDomains } from '../../lib/domain';
 import { isThemePresetActive, WidgetThemePreset, widgetThemePresets } from '../../lib/widgetThemes';
+import { supabase } from '../../lib/supabaseClient';
+import { dograhApi } from '../../modules/phone-calls/dograhApi';
 
 interface BotSettingsProps {
   bots: Bot[];
@@ -38,6 +40,59 @@ const leadFields: Array<{ id: LeadField; label: string }> = [
   { id: 'requirement', label: 'Requirement' },
   { id: 'budget', label: 'Budget' }
 ];
+
+const DEFAULT_INBOUND_TEMPLATE = `You are the Virtual AI Receptionist representing "{{business_name}}" ({{industry}} sector).
+
+CURRENT TIME: {{current_time}}
+
+BUSINESS & SERVICE KNOWLEDGE:
+{{knowledge_base}}
+
+YOUR ROLE & GOALS:
+1. Warmly answer caller questions strictly based on the knowledge base above.
+2. Inquire politely about their specific requirement, preferences, or timing.
+3. Naturally collect lead details during conversation: {{lead_fields}}.
+4. Proactively invite the caller for an on-site visit or consultation this weekend (Saturday/Sunday) if they show interest.
+5. If caller asks for a human specialist/team handoff, politely confirm our team will connect with them.
+
+VOICE & TELEPHONY GUIDELINES:
+- Speak polite, natural Marathi-English.
+- HONORIFICS: NEVER say "सर/मॅडम" or "Sir/Madam" together. Use "सर" ONLY for male, "मॅडम" ONLY for female. If gender is uncertain, do not use any honorific.
+- CLOSING: When concluding or saying goodbye, say: "खूप खूप धन्यवाद, बाय, have a good day!". NEVER say "नमस्कार" or "namaskar" at the end of the call.
+- Keep turns concise (1-2 sentences). Ask only 1 question at a time.
+- Never invent prices, offers, or specs not in {{knowledge_base}}.
+- Never disclose underlying AI platform or models.`;
+
+const DEFAULT_OUTBOUND_TEMPLATE = `This is an OUTBOUND call for {{business_name}}. You are Priya, a warm, polite and highly natural telecaller. Follow this CONVERSATION FLOW in exact order:
+
+STEP 1 (GREETING & PURPOSE):
+{{greeting}}
+Ask: "आम्ही {{business_name}} कडून आपल्याला याविषयी विशेष माहिती देण्यासाठी कॉल केला आहे. आपल्याला १ मिनिट बोलायला सोयीचं पडेल का सर/मॅडम?".
+
+STEP 2 (QUALIFYING & REQUIREMENT):
+Ask 1 polite question inquiring about their requirement, interest, or current preferences. Keep dialogue concise.
+
+STEP 3 (TIMELINE & BUDGET):
+When customer shares their requirement, ask politely about their preferred schedule or budget planning.
+
+STEP 4 (VALUE PROPOSITION & HIGHLIGHTS):
+Share 2 attractive sentences highlighting {{business_name}}'s key benefits and offerings strictly based on {{knowledge_base}}.
+
+STEP 5 (PROPOSE VISIT OR APPOINTMENT):
+Proactively propose: "आपण या वीकेंडला प्रत्यक्ष व्हिजिट किंवा अपॉइंटमेंट करूया का सर/मॅडम? शनिवारी सोयीचं पडेल की रविवारी? सकाळची वेळ बरी पडेल की दुपारची?". Confirm day and time.
+
+STEP 6 (OBJECTIONS & QUESTIONS):
+Answer any customer questions using {{knowledge_base}}. If they ask for brochure or details: "नक्कीच सर/मॅडम, मी आमच्या टीमकडून सर्व सविस्तर माहिती लगेच पाठवून देते.".
+
+STEP 7 (WHATSAPP SUMMARY & CLOSE):
+Say: "मी लगेच याच नंबरवर व्हॉट्सॲपला सर्व तपशील पाठवून देते. खूप खूप धन्यवाद {{contact_name}} सर/मॅडम, आपला दिवस चांगला जावो!" and end the call.
+
+CRITICAL RULES:
+- Never repeat sentences or questions already said.
+- Brief/unclear audio: acknowledge "हो सर/मॅडम, ऐकू येतंय मला. बोला ना?".
+- When customer agrees, move to the next step immediately.
+- Never ask for phone number on outbound calls; always ask to confirm the current number.
+- Strictly adhere to facts in {{knowledge_base}}. Never invent pricing.`;
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return <label className="block text-[11px] font-mono font-bold uppercase tracking-wider text-brand-muted mb-1.5">{children}</label>;
@@ -119,28 +174,124 @@ function SelectControl<T extends string>({
 function Toggle({
   checked,
   label,
-  onChange
+  onChange,
+  disabled,
+  statusLabel
 }: {
   checked: boolean;
   label: string;
   onChange: (checked: boolean) => void;
+  disabled?: boolean;
+  statusLabel?: string;
 }) {
   return (
     <button
       type="button"
-      onClick={() => onChange(!checked)}
-      className="flex items-center justify-between gap-3 h-10 px-3 rounded-md border border-brand-border bg-brand-bg hover:bg-brand-card text-sm text-brand-text transition"
+      disabled={disabled}
+      onClick={() => {
+        if (!disabled) onChange(!checked);
+      }}
+      className={`flex items-center justify-between gap-3 h-11 px-3 rounded-md border text-sm transition ${
+        disabled
+          ? 'opacity-70 cursor-not-allowed bg-brand-bg/60 border-brand-border'
+          : 'bg-brand-bg hover:bg-brand-card border-brand-border cursor-pointer text-brand-text'
+      }`}
     >
-      <span>{label}</span>
-      <span className={`w-9 h-5 rounded-full p-0.5 transition ${checked ? 'bg-brand-accent' : 'bg-brand-border'}`}>
-        <span className={`block w-4 h-4 rounded-full bg-brand-text transition ${checked ? 'translate-x-4' : 'translate-x-0'}`} />
-      </span>
+      <span className="font-medium text-brand-text">{label}</span>
+      <div className="flex items-center gap-2">
+        <span
+          className={`text-[10px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+            statusLabel
+              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+              : checked
+                ? 'bg-brand-accent/20 text-brand-accent'
+                : 'bg-brand-card text-brand-muted border border-brand-border'
+          }`}
+        >
+          {statusLabel || (checked ? 'ON' : 'OFF')}
+        </span>
+        <span className={`w-9 h-5 rounded-full p-0.5 transition ${checked ? 'bg-brand-accent' : 'bg-brand-border'}`}>
+          <span className={`block w-4 h-4 rounded-full bg-brand-text transition ${checked ? 'translate-x-4' : 'translate-x-0'}`} />
+        </span>
+      </div>
     </button>
   );
 }
 
 export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeBot, showToast, updateBot }) => {
-  const [section, setSection] = useState<SettingsSection>('profile');
+  const [section, setSection] = useState<SettingsSection>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const secParam = params.get('section');
+      if (secParam && ['profile', 'widget', 'behavior', 'knowledge', 'security'].includes(secParam)) {
+        return secParam as SettingsSection;
+      }
+      const hash = window.location.hash.replace('#', '');
+      if (hash && ['profile', 'widget', 'behavior', 'knowledge', 'security'].includes(hash)) {
+        return hash as SettingsSection;
+      }
+    } catch {
+      // ignore
+    }
+    return 'profile';
+  });
+  const [calendarConnected, setCalendarConnected] = useState<boolean | null>(null);
+  const [calendarProvider, setCalendarProvider] = useState<string | null>(null);
+  const [loadingCalendar, setLoadingCalendar] = useState<boolean>(true);
+  const [kbSubTab, setKbSubTab] = useState<'general' | 'inbound' | 'outbound'>('general');
+
+  useEffect(() => {
+    let isMounted = true;
+    async function checkCalendar() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          if (isMounted) setLoadingCalendar(false);
+          return;
+        }
+        const expressUrl = import.meta.env.VITE_EXPRESS_SERVER_URL || 'http://localhost:4000';
+        const res = await fetch(`${expressUrl}/api/calendar/status`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted) {
+            setCalendarConnected(Boolean(data.connected));
+            setCalendarProvider(data.provider || null);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to check calendar status in BotSettings:', err);
+      } finally {
+        if (isMounted) setLoadingCalendar(false);
+      }
+    }
+    checkCalendar();
+    return () => { isMounted = false; };
+  }, []);
+
+  // Auto-sync: if calendar is definitely not connected, ensure the receptionist booking toggle is OFF
+  useEffect(() => {
+    if (calendarConnected === false && activeBot.widgetConfig.enableCalendar) {
+      patchConfig({ enableCalendar: false });
+    }
+  }, [calendarConnected, activeBot.widgetConfig.enableCalendar]);
+
+  const handleSectionChange = (sec: SettingsSection) => {
+    setSection(sec);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('section', sec);
+      window.history.replaceState({}, '', url.toString());
+    } catch {
+      // ignore
+    }
+  };
+
+  const navigateToCalendar = () => {
+    window.history.pushState({}, '', '/calendar');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
 
   const patchActiveBot = (patch: Partial<Bot>) => {
     setBots(bots.map(b => b.id === activeBot.id ? { ...b, ...patch } : b));
@@ -149,6 +300,72 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
   const patchConfig = (patch: Partial<WidgetConfig>) => {
     patchActiveBot({ widgetConfig: { ...activeBot.widgetConfig, ...patch } });
   };
+
+  const [aiPromptInstruction, setAiPromptInstruction] = useState('');
+  const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
+  const [promptRevertHistory, setPromptRevertHistory] = useState<{
+    inbound?: string;
+    outbound?: string;
+  }>({});
+
+  const handleGeneratePrompt = async (type: 'inbound' | 'outbound') => {
+    if (!aiPromptInstruction.trim() || isGeneratingPrompt) return;
+    setIsGeneratingPrompt(true);
+    try {
+      const current = type === 'outbound'
+        ? activeBot.widgetConfig.outboundPromptTemplate || ''
+        : activeBot.widgetConfig.inboundPromptTemplate || '';
+      setPromptRevertHistory(prev => ({ ...prev, [type]: current }));
+
+      const res = await dograhApi.generatePrompt(activeBot.id, {
+        userInstruction: aiPromptInstruction.trim(),
+        type,
+      });
+
+      if (res && res.generatedTemplate) {
+        if (type === 'outbound') {
+          patchConfig({ outboundPromptTemplate: res.generatedTemplate });
+        } else {
+          patchConfig({ inboundPromptTemplate: res.generatedTemplate });
+        }
+        showToast('✨ AI prompt template generated! Review and click Save Changes.');
+        setAiPromptInstruction('');
+      } else {
+        throw new Error('Empty template returned');
+      }
+    } catch (err: any) {
+      console.error('Failed to generate prompt template:', err);
+      showToast('Prompt generation failed: ' + (err?.message || err), 'error');
+    } finally {
+      setIsGeneratingPrompt(false);
+    }
+  };
+
+  const handleRevertPrompt = (type: 'inbound' | 'outbound') => {
+    const prev = promptRevertHistory[type];
+    if (prev !== undefined) {
+      if (type === 'outbound') {
+        patchConfig({ outboundPromptTemplate: prev });
+      } else {
+        patchConfig({ inboundPromptTemplate: prev });
+      }
+      setPromptRevertHistory(old => ({ ...old, [type]: undefined }));
+      showToast('Reverted to previous prompt template');
+    }
+  };
+
+  const outboundInspirations = [
+    { label: 'Real Estate Plots (Marathi)', icon: '🏡', text: 'Sell gated township villa plots in South Nagpur. Warm Marathi greeting, ask sqft & budget, pitch 1km riverfront & NMRDA approval, confirm weekend site visit.' },
+    { label: '2BHK/3BHK Luxury Flats (Hindi)', icon: '🏢', text: 'Call prospective buyers for 2BHK and 3BHK luxury apartments in Pune. Inquire current rent vs buy, pitch modern amenities, offer Saturday morning site tour in Hindi/English.' },
+    { label: 'Dental Clinic Checkup (English)', icon: '🏥', text: 'Follow up with clinic inquiries for a free dental hygiene checkup camp this Friday. Inquire tooth pain/cleaning needs, confirm 15-min slot.' },
+    { label: 'B2B SaaS Demo (English)', icon: '💼', text: 'Outbound qualification call for sales automation software. Ask how they currently track leads, pitch 3x response speed, and book a 15-min product walkthrough.' },
+  ];
+
+  const inboundInspirations = [
+    { label: 'Real Estate Sales Desk', icon: '🏢', text: 'Receptionist for Lok8 Brookside. Warmly greet in Marathi/English, answer queries on plot prices and RERA approval, collect name/phone, invite for weekend visit.' },
+    { label: 'Dental Clinic Reception', icon: '🏥', text: 'Clinic front desk receptionist. Answer patient queries on timings, doctor specialties, consultation charges, and help schedule an appointment.' },
+    { label: 'Customer Support Desk', icon: '📞', text: 'Polite frontline customer service. Answer common product FAQs, troubleshoot issues, and transfer complex complaints to senior executive.' },
+  ];
 
   const applyThemePreset = (preset: WidgetThemePreset) => {
     patchConfig({
@@ -193,7 +410,9 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
         suggestedPrompts: activeBot.widgetConfig.suggestedPrompts.map(prompt => prompt.trim()).filter(Boolean),
         launcherText: activeBot.widgetConfig.launcherText.trim() || 'Chat',
         inputPlaceholder: activeBot.widgetConfig.inputPlaceholder.trim() || 'Type a message...',
-        additionalCollectInfo: activeBot.widgetConfig.additionalCollectInfo?.trim() || ''
+        additionalCollectInfo: activeBot.widgetConfig.additionalCollectInfo?.trim() || '',
+        inboundPromptTemplate: activeBot.widgetConfig.inboundPromptTemplate?.trim() || '',
+        outboundPromptTemplate: activeBot.widgetConfig.outboundPromptTemplate?.trim() || ''
       };
 
       await updateBot(activeBot.id, {
@@ -206,6 +425,14 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
         widgetConfig: cleanConfig,
         phoneNumber: (activeBot.phoneNumber || '').trim()
       });
+
+      // Synchronize live voice workflows on Dograh in background so prompt changes take effect immediately
+      if (activeBot.id) {
+        dograhApi.provision(activeBot.id).catch(err => {
+          console.warn('[BotSettings] Background workflow update:', err);
+        });
+      }
+
       showToast('Agent settings saved');
     } catch (err: any) {
       console.error('Failed to save agent settings:', err);
@@ -220,10 +447,17 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
           <button
             key={item.id}
             type="button"
-            onClick={() => setSection(item.id)}
+            onClick={() => handleSectionChange(item.id)}
             className={`w-full text-left px-3 py-2.5 rounded-md transition ${section === item.id ? 'bg-brand-accent text-brand-bg' : 'text-brand-muted hover:text-brand-text hover:bg-brand-bg'}`}
           >
-            <span className="block text-sm font-bold">{item.label}</span>
+            <div className="flex items-center justify-between">
+              <span className="block text-sm font-bold">{item.label}</span>
+              {item.id === 'behavior' && !loadingCalendar && calendarConnected === false && (
+                <span className="text-[10px] bg-amber-500/20 text-amber-300 font-semibold px-1.5 py-0.5 rounded border border-amber-500/30">
+                  Calendar
+                </span>
+              )}
+            </div>
             <span className="block text-[11px] opacity-75 mt-0.5">{item.description}</span>
           </button>
         ))}
@@ -337,9 +571,70 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
 
         {section === 'behavior' && (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <Toggle checked={activeBot.widgetConfig.enableCalendar} label="Calendar booking" onChange={(enableCalendar) => patchConfig({ enableCalendar })} />
-              <Toggle checked={activeBot.widgetConfig.showPoweredBy} label="Powered by label" onChange={(showPoweredBy) => patchConfig({ showPoweredBy })} />
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+                <div className="space-y-2">
+                  {calendarConnected === true && activeBot.widgetConfig.enableCalendar ? (
+                    <div className="rounded-xl border border-brand-success/30 bg-brand-success/5 p-3.5 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-brand-success/15 border border-brand-success/30 flex items-center justify-center shrink-0">
+                          <span className="w-2.5 h-2.5 rounded-full bg-brand-success shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-brand-text">Calendar Booking</span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-brand-success/20 text-brand-success border border-brand-success/30">
+                              ON
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-brand-muted truncate mt-0.5">
+                            Connected to {calendarProvider || 'Google'} Calendar · Automated booking active
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={navigateToCalendar}
+                        className="h-8 px-3 rounded-lg text-xs font-semibold bg-brand-card hover:bg-brand-bg text-brand-text border border-brand-border transition flex items-center gap-1.5 shrink-0 cursor-pointer hover:border-brand-accent/40"
+                      >
+                        <span>Calendar Settings</span>
+                        <span>→</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3.5 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-brand-text">Calendar Booking</span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                              OFF
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-amber-300/80 truncate mt-0.5">
+                            {calendarConnected === false ? 'No calendar connected' : 'Turned OFF in Calendar'}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={navigateToCalendar}
+                        className="h-8 px-3 rounded-lg text-xs font-semibold bg-brand-card hover:bg-brand-bg text-brand-accent border border-brand-border transition flex items-center gap-1.5 shrink-0 cursor-pointer hover:border-brand-accent/40"
+                      >
+                        <span>Manage in Calendar</span>
+                        <span>→</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Toggle checked={activeBot.widgetConfig.showPoweredBy} label="Powered by label" onChange={(showPoweredBy) => patchConfig({ showPoweredBy })} />
+                </div>
+              </div>
             </div>
             {activeBot.widgetConfig.enableCalendar && (
               <div>
@@ -422,11 +717,401 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
 
         {section === 'knowledge' && (
           <div>
-            <div className="flex justify-between items-center">
-              <FieldLabel>Knowledge Base</FieldLabel>
-              <span className="text-[10px] font-mono text-brand-muted">{(activeBot.knowledgeBase || '').length}/3000</span>
+            {/* Sub-tab Switcher: Business Knowledge vs Inbound Call Prompt vs Outbound Telecaller Prompt */}
+            <div className="flex items-center gap-1.5 p-1 mb-5 bg-brand-bg rounded-lg border border-brand-border w-fit flex-wrap">
+              <button
+                type="button"
+                onClick={() => setKbSubTab('general')}
+                className={`px-3.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-2 ${
+                  kbSubTab === 'general'
+                    ? 'bg-brand-card text-brand-text shadow-sm border border-brand-border'
+                    : 'text-brand-muted hover:text-brand-text'
+                }`}
+              >
+                <span>🏢</span>
+                <span>Business Knowledge Base</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setKbSubTab('inbound')}
+                className={`px-3.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-2 ${
+                  kbSubTab === 'inbound'
+                    ? 'bg-brand-accent text-brand-bg shadow-sm font-extrabold'
+                    : 'text-brand-muted hover:text-brand-text'
+                }`}
+              >
+                <span>📥</span>
+                <span>Inbound Call Prompt Template</span>
+                <span className={`px-1.5 py-0.2 rounded text-[9px] uppercase font-bold ${
+                  kbSubTab === 'inbound' ? 'bg-brand-bg/30 text-brand-bg' : 'bg-brand-accent/20 text-brand-accent'
+                }`}>
+                  Inbound Voice
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setKbSubTab('outbound')}
+                className={`px-3.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-2 ${
+                  kbSubTab === 'outbound'
+                    ? 'bg-blue-600 text-white shadow-sm font-extrabold'
+                    : 'text-brand-muted hover:text-brand-text'
+                }`}
+              >
+                <span>📤</span>
+                <span>Outbound Telecaller Prompt Template</span>
+                <span className={`px-1.5 py-0.2 rounded text-[9px] uppercase font-bold ${
+                  kbSubTab === 'outbound' ? 'bg-white/30 text-white' : 'bg-blue-500/20 text-blue-400'
+                }`}>
+                  Outbound Telecaller
+                </span>
+              </button>
             </div>
-            <TextArea maxLength={3000} rows={16} value={activeBot.knowledgeBase} onChange={(e) => patchActiveBot({ knowledgeBase: e.target.value })} />
+
+            {kbSubTab === 'general' && (
+              <div>
+                {!loadingCalendar && calendarConnected === false && (
+                  <div className="mb-4 p-3 bg-brand-bg border border-brand-border rounded-lg text-xs text-brand-muted flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-400 text-sm">📅</span>
+                      <span>Want your receptionist to check availability and book visits? Connect your calendar first at <strong>Calendar Settings</strong>.</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={navigateToCalendar}
+                      className="font-mono text-brand-accent hover:text-brand-accent-hover font-bold text-[11px] shrink-0 cursor-pointer"
+                    >
+                      Connect Calendar →
+                    </button>
+                  </div>
+                )}
+                <div className="flex justify-between items-center">
+                  <div>
+                    <FieldLabel>Knowledge Base & Facts</FieldLabel>
+                    <p className="text-xs text-brand-muted mb-2">Facts, pricing, property specifications, and FAQs used by both website chat and voice receptionists.</p>
+                  </div>
+                  <span className="text-[10px] font-mono text-brand-muted self-start">{(activeBot.knowledgeBase || '').length}/3000</span>
+                </div>
+                <TextArea maxLength={3000} rows={15} value={activeBot.knowledgeBase} onChange={(e) => patchActiveBot({ knowledgeBase: e.target.value })} />
+              </div>
+            )}
+
+            {kbSubTab === 'inbound' && (
+              <div className="space-y-4">
+                {/* ✨ AI 1-Line Inbound Receptionist Prompt Architect */}
+                <div className="relative overflow-hidden rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/40 via-brand-card/90 to-brand-card p-4 sm:p-5 shadow-lg shadow-emerald-950/20 backdrop-blur-md">
+                  <div className="absolute -top-12 -right-12 w-44 h-44 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+                  <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-teal-500/10 rounded-full blur-2xl pointer-events-none" />
+
+                  <div className="relative z-10">
+                    <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-600 via-teal-600 to-cyan-500 flex items-center justify-center text-white shadow-md shadow-emerald-600/30 font-bold text-sm">
+                          ✨
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-bold bg-gradient-to-r from-emerald-200 via-teal-100 to-cyan-200 bg-clip-text text-transparent">
+                              AI 1-Line Receptionist Prompt Architect
+                            </h4>
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider">
+                              Instant Auto-Craft
+                            </span>
+                          </div>
+                          <p className="text-xs text-brand-muted mt-0.5">
+                            Type a 1-line requirement — our AI automatically generates the complete receptionist voice instructions with dynamic variables.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {promptRevertHistory.inbound !== undefined && (
+                          <button
+                            type="button"
+                            onClick={() => handleRevertPrompt('inbound')}
+                            className="text-xs font-mono text-amber-400 hover:text-amber-300 transition flex items-center gap-1.5 cursor-pointer bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg border border-amber-500/30"
+                          >
+                            <span>↺</span>
+                            <span>Undo Generated Prompt</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => patchConfig({ inboundPromptTemplate: DEFAULT_INBOUND_TEMPLATE })}
+                          className="px-3 py-1.5 rounded-lg border border-brand-border bg-brand-bg hover:bg-brand-border text-xs text-brand-muted hover:text-brand-text font-semibold transition cursor-pointer"
+                        >
+                          Reset to Default Script
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="relative mt-3">
+                      <div className="relative flex items-center">
+                        <input
+                          type="text"
+                          value={aiPromptInstruction}
+                          onChange={(e) => setAiPromptInstruction(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !isGeneratingPrompt && aiPromptInstruction.trim()) {
+                              handleGeneratePrompt('inbound');
+                            }
+                          }}
+                          placeholder='e.g. "Warmly greet callers for Lok8, answer questions on plot sizes/price, collect phone, invite for weekend visit."'
+                          className="w-full h-11 bg-brand-bg/90 border border-emerald-500/40 rounded-lg pl-4 pr-32 text-sm text-brand-text placeholder:text-brand-muted/60 focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 transition shadow-inner"
+                          disabled={isGeneratingPrompt}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleGeneratePrompt('inbound')}
+                          disabled={isGeneratingPrompt || !aiPromptInstruction.trim()}
+                          className={`absolute right-1.5 top-1.5 bottom-1.5 px-4 rounded-md text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm ${
+                            isGeneratingPrompt
+                              ? 'bg-emerald-600/50 text-emerald-200 cursor-not-allowed'
+                              : !aiPromptInstruction.trim()
+                                ? 'bg-brand-border/60 text-brand-muted cursor-not-allowed'
+                                : 'bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-600/30 hover:scale-[1.02] active:scale-[0.98]'
+                          }`}
+                        >
+                          {isGeneratingPrompt ? (
+                            <>
+                              <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              <span>Crafting...</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>✨</span>
+                              <span>Generate</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Quick 1-Click Goal Inspiration Chips */}
+                      <div className="mt-2.5 flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-mono text-emerald-300/70 uppercase font-bold tracking-wider mr-1">
+                          Try 1-Click Goal:
+                        </span>
+                        {inboundInspirations.map((chip) => (
+                          <button
+                            key={chip.label}
+                            type="button"
+                            onClick={() => {
+                              setAiPromptInstruction(chip.text);
+                            }}
+                            className="text-[11px] px-2.5 py-1 rounded-md bg-brand-bg/80 hover:bg-emerald-500/20 border border-emerald-500/20 hover:border-emerald-500/40 text-brand-muted hover:text-emerald-200 transition cursor-pointer flex items-center gap-1.5"
+                          >
+                            <span>{chip.icon}</span>
+                            <span>{chip.label}</span>
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Auto-Injected Runtime Variables inside Generator Card */}
+                      <div className="mt-3 pt-3 border-t border-emerald-500/20 flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] font-mono text-emerald-300 font-bold uppercase tracking-wider">
+                            Auto-Injected Runtime Values:
+                          </span>
+                          {['{{business_name}}', '{{knowledge_base}}', '{{current_time}}', '{{lead_fields}}'].map((tag) => (
+                            <button
+                              key={tag}
+                              type="button"
+                              onClick={() => {
+                                const current = activeBot.widgetConfig.inboundPromptTemplate || '';
+                                patchConfig({ inboundPromptTemplate: current ? `${current}\n${tag}` : tag });
+                              }}
+                              className="px-2 py-0.5 rounded bg-brand-bg hover:bg-emerald-500/20 border border-emerald-500/30 font-mono text-[10px] text-emerald-300 transition cursor-pointer"
+                              title="Click to insert into template"
+                            >
+                              + {tag}
+                            </button>
+                          ))}
+                        </div>
+                        <span className="text-[10px] text-brand-muted">
+                          AI automatically inserts & binds these variables in the voice pipeline
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <FieldLabel>Inbound Call Persona & Instructions</FieldLabel>
+                    <span className="text-[10px] font-mono text-brand-muted">
+                      {(activeBot.widgetConfig.inboundPromptTemplate || '').length}/5000
+                    </span>
+                  </div>
+                  <TextArea
+                    maxLength={5000}
+                    rows={15}
+                    placeholder={DEFAULT_INBOUND_TEMPLATE}
+                    value={activeBot.widgetConfig.inboundPromptTemplate || ''}
+                    onChange={(e) => patchConfig({ inboundPromptTemplate: e.target.value })}
+                  />
+                  <p className="text-[11px] text-brand-muted mt-1.5">
+                    Leave blank to automatically use the standard Marathi real estate receptionist instruction.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {kbSubTab === 'outbound' && (
+              <div className="space-y-4">
+                {/* ✨ AI 1-Line Telecaller Prompt Architect */}
+                <div className="relative overflow-hidden rounded-xl border border-indigo-500/30 bg-gradient-to-br from-indigo-950/40 via-brand-card/90 to-brand-card p-4 sm:p-5 shadow-lg shadow-indigo-950/20 backdrop-blur-md">
+                  <div className="absolute -top-12 -right-12 w-44 h-44 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+                  <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-violet-500/10 rounded-full blur-2xl pointer-events-none" />
+
+                  <div className="relative z-10">
+                    <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-violet-600 via-indigo-600 to-sky-500 flex items-center justify-center text-white shadow-md shadow-indigo-600/30 font-bold text-sm">
+                          ✨
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-bold bg-gradient-to-r from-violet-200 via-indigo-100 to-sky-200 bg-clip-text text-transparent">
+                              AI 1-Line Telecaller Prompt Architect
+                            </h4>
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 uppercase tracking-wider">
+                              Instant Auto-Craft
+                            </span>
+                          </div>
+                          <p className="text-xs text-brand-muted mt-0.5">
+                            Don't type 3,000 characters manually. Give a 1-line requirement — our AI automatically generates the complete 7-step telecalling script with variables and pacing.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {promptRevertHistory.outbound !== undefined && (
+                          <button
+                            type="button"
+                            onClick={() => handleRevertPrompt('outbound')}
+                            className="text-xs font-mono text-amber-400 hover:text-amber-300 transition flex items-center gap-1.5 cursor-pointer bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg border border-amber-500/30"
+                          >
+                            <span>↺</span>
+                            <span>Undo Generated Script</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => patchConfig({ outboundPromptTemplate: DEFAULT_OUTBOUND_TEMPLATE })}
+                          className="px-3 py-1.5 rounded-lg border border-brand-border bg-brand-bg hover:bg-brand-border text-xs text-brand-muted hover:text-brand-text font-semibold transition cursor-pointer"
+                        >
+                          Reset to 7-Step Script
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="relative mt-3">
+                      <div className="relative flex items-center">
+                        <input
+                          type="text"
+                          value={aiPromptInstruction}
+                          onChange={(e) => setAiPromptInstruction(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !isGeneratingPrompt && aiPromptInstruction.trim()) {
+                              handleGeneratePrompt('outbound');
+                            }
+                          }}
+                          placeholder='e.g. "Sell 2BHK luxury flats in Pune. Speak Hindi/English, ask budget, pitch clubhouse, confirm Saturday visit."'
+                          className="w-full h-11 bg-brand-bg/90 border border-indigo-500/40 rounded-lg pl-4 pr-32 text-sm text-brand-text placeholder:text-brand-muted/60 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition shadow-inner"
+                          disabled={isGeneratingPrompt}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleGeneratePrompt('outbound')}
+                          disabled={isGeneratingPrompt || !aiPromptInstruction.trim()}
+                          className={`absolute right-1.5 top-1.5 bottom-1.5 px-4 rounded-md text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm ${
+                            isGeneratingPrompt
+                              ? 'bg-indigo-600/50 text-indigo-200 cursor-not-allowed'
+                              : !aiPromptInstruction.trim()
+                                ? 'bg-brand-border/60 text-brand-muted cursor-not-allowed'
+                                : 'bg-gradient-to-r from-violet-600 via-indigo-600 to-sky-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-indigo-600/30 hover:scale-[1.02] active:scale-[0.98]'
+                          }`}
+                        >
+                          {isGeneratingPrompt ? (
+                            <>
+                              <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              <span>Crafting...</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>✨</span>
+                              <span>Generate</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Quick 1-Click Goal Inspiration Chips */}
+                      <div className="mt-2.5 flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-mono text-indigo-300/70 uppercase font-bold tracking-wider mr-1">
+                          Try 1-Click Goal:
+                        </span>
+                        {outboundInspirations.map((chip) => (
+                          <button
+                            key={chip.label}
+                            type="button"
+                            onClick={() => {
+                              setAiPromptInstruction(chip.text);
+                            }}
+                            className="text-[11px] px-2.5 py-1 rounded-md bg-brand-bg/80 hover:bg-indigo-500/20 border border-indigo-500/20 hover:border-indigo-500/40 text-brand-muted hover:text-indigo-200 transition cursor-pointer flex items-center gap-1.5"
+                          >
+                            <span>{chip.icon}</span>
+                            <span>{chip.label}</span>
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Auto-Injected Runtime Variables inside Generator Card */}
+                      <div className="mt-3 pt-3 border-t border-indigo-500/20 flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] font-mono text-indigo-300 font-bold uppercase tracking-wider">
+                            Auto-Injected Runtime Values:
+                          </span>
+                          {['{{business_name}}', '{{contact_name}}', '{{greeting}}', '{{knowledge_base}}', '{{current_time}}'].map((tag) => (
+                            <button
+                              key={tag}
+                              type="button"
+                              onClick={() => {
+                                const current = activeBot.widgetConfig.outboundPromptTemplate || '';
+                                patchConfig({ outboundPromptTemplate: current ? `${current}\n${tag}` : tag });
+                              }}
+                              className="px-2 py-0.5 rounded bg-brand-bg hover:bg-blue-500/20 border border-indigo-500/30 font-mono text-[10px] text-blue-400 transition cursor-pointer"
+                              title="Click to insert into template"
+                            >
+                              + {tag}
+                            </button>
+                          ))}
+                        </div>
+                        <span className="text-[10px] text-brand-muted">
+                          AI automatically inserts & binds these variables in the voice pipeline
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <FieldLabel>Outbound Telecaller Script & Instructions</FieldLabel>
+                    <span className="text-[10px] font-mono text-brand-muted">
+                      {(activeBot.widgetConfig.outboundPromptTemplate || '').length}/5000
+                    </span>
+                  </div>
+                  <TextArea
+                    maxLength={5000}
+                    rows={18}
+                    placeholder={DEFAULT_OUTBOUND_TEMPLATE}
+                    value={activeBot.widgetConfig.outboundPromptTemplate || ''}
+                    onChange={(e) => patchConfig({ outboundPromptTemplate: e.target.value })}
+                  />
+                  <p className="text-[11px] text-brand-muted mt-1.5">
+                    Leave blank to automatically use the standard 7-step Marathi real estate telecalling script.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

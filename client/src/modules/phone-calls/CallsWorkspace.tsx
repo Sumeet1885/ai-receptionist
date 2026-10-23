@@ -110,7 +110,7 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
   const avgMinutes = Math.floor(avgSeconds / 60);
   const avgRemainingSecs = avgSeconds % 60;
   const formattedAvgDuration = totalCallsCount > 0 ? `${avgMinutes}m ${avgRemainingSecs}s` : '—';
-  const leadsCount = calls.filter(c => c.lead && ['hot', 'warm'].includes(c.lead.lead_score?.toLowerCase() || '')).length;
+  const hotLeadsCount = calls.filter(c => c.lead && c.lead.lead_score?.toLowerCase() === 'hot').length;
 
   if (bots.length === 0) {
     return (
@@ -293,24 +293,24 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
             </span>
           </button>
 
-          {/* Card 4: Qualified Leads -> Click to View Qualified Leads */}
+          {/* Card 4: Hot Leads -> Click to View Hot Leads */}
           <button
             type="button"
             onClick={() => {
               setLogFilterDirection('all');
-              setLogFilterScore('qualified');
+              setLogFilterScore('hot');
               setActiveTab('logs');
               scrollToSessions();
             }}
             className={`bg-brand-card border rounded-2xl p-4 shadow-sm flex flex-col justify-between text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-md group cursor-pointer ${
-              activeTab === 'logs' && logFilterScore === 'qualified'
+              activeTab === 'logs' && logFilterScore === 'hot'
                 ? 'border-brand-accent/60 ring-1 ring-brand-accent/40 bg-brand-accent/[0.04]'
                 : 'border-brand-border hover:border-brand-accent/40'
             }`}
           >
             <div className="flex items-center justify-between w-full">
               <span className="text-[11px] font-bold uppercase tracking-wider text-brand-muted group-hover:text-brand-accent transition-colors flex items-center gap-1.5">
-                🔥 Qualified Leads
+                🔥 Hot Leads
               </span>
               <span className="text-[10px] font-bold text-brand-muted group-hover:text-brand-accent flex items-center gap-1 transition-colors">
                 Filter →
@@ -318,7 +318,7 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
             </div>
             <div className="my-2 flex items-baseline gap-2">
               <span className="text-2xl font-extrabold text-brand-accent block">
-                {leadsCount}
+                {hotLeadsCount}
               </span>
               <span className="text-xs text-brand-muted">
                 / {totalCallsCount}
@@ -416,12 +416,28 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
                   </p>
                 </div>
               </div>
-              {agentStatus?.phoneNumber && (
-                <div className="px-4 py-2 rounded-xl bg-brand-bg/80 border border-brand-border shrink-0 self-start sm:self-auto">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-brand-muted block">Your Inbound Number</span>
-                  <span className="text-sm font-mono font-extrabold text-emerald-400">{agentStatus.phoneNumber}</span>
+              <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
+                {agentStatus?.phoneNumber && (
+                  <div className="px-4 py-2 rounded-xl bg-brand-bg/80 border border-brand-border">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-brand-muted block">Your Inbound Number</span>
+                    <span className="text-sm font-mono font-extrabold text-emerald-400">{agentStatus.phoneNumber}</span>
+                  </div>
+                )}
+                <div className="px-4 py-2 rounded-xl bg-brand-bg/80 border border-brand-border">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-brand-muted block">Calendar Booking Status</span>
+                  {agentStatus?.calendarConnected ? (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      Live Calendar Booking Active
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-400" title="Calendar setup not done. AI Agent notes visit day/time and informs caller sales team will follow up.">
+                      <span className="w-2 h-2 rounded-full bg-amber-400" />
+                      Sales Callback Mode (No Calendar)
+                    </span>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
 

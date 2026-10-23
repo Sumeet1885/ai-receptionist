@@ -26,6 +26,7 @@ import { ConversationList } from './components/dashboard/ConversationList';
 import { AppointmentsTab } from './components/dashboard/AppointmentsTab';
 import { AgentsPage } from './components/dashboard/AgentsPage';
 import { AgentDetailPage } from './components/dashboard/AgentDetailPage';
+import { PlansView } from './components/dashboard/PlansView';
 import { CallsWorkspace } from './modules/phone-calls/CallsWorkspace';
 
 type AgentTab = 'overview' | 'knowledge' | 'install' | 'crm' | 'preview';
@@ -39,6 +40,7 @@ type AppRoute =
   | { name: 'calendar' }
   | { name: 'calls' }
   | { name: 'agents' }
+  | { name: 'plans' }
   | { name: 'agent-new' }
   | { name: 'agent-detail'; botId: string; tab: AgentTab }
   | { name: 'public-chat'; subdomain: string };
@@ -74,6 +76,7 @@ function parseRoute(): AppRoute {
   if (path === '/calls') return { name: 'calls' };
   if (path === '/agents/new') return { name: 'agent-new' };
   if (path === '/agents') return { name: 'agents' };
+  if (path === '/plans') return { name: 'plans' };
 
   const agentMatch = path.match(/^\/agents\/([^/]+)(?:\/([^/]+))?/);
   if (agentMatch) {
@@ -447,7 +450,12 @@ export default function App() {
             title="Calendar"
             subtitle="Connect your calendar and review bookings created by the receptionist."
           >
-            <AppointmentsTab />
+            <AppointmentsTab
+              bots={bots}
+              activeBot={activeBot}
+              updateBot={updateBot}
+              showToast={showToast}
+            />
           </PostLoginShell>
         )}
 
@@ -516,6 +524,18 @@ export default function App() {
                 updateBot={updateBot}
               />
             ) : noAgentState}
+          </PostLoginShell>
+        )}
+
+        {route.name === 'plans' && (
+          <PostLoginShell
+            title="Plans & Billing"
+            subtitle="Transparent calling minute packages and live voice minutes consumption."
+          >
+            <PlansView
+              activeBot={activeBot}
+              showToast={showToast}
+            />
           </PostLoginShell>
         )}
 

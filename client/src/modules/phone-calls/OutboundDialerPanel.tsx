@@ -77,6 +77,7 @@ export const OutboundDialerPanel: React.FC<OutboundDialerPanelProps> = ({
   onCallPlaced,
 }) => {
   const [dialNumber, setDialNumber] = useState('');
+  const [contactName, setContactName] = useState('');
   const [dialTouched, setDialTouched] = useState(false);
   const [calling, setCalling] = useState(false);
   const [lastCallResult, setLastCallResult] = useState<string | null>(null);
@@ -100,10 +101,11 @@ export const OutboundDialerPanel: React.FC<OutboundDialerPanelProps> = ({
     setLastCallResult(null);
     setErrorDiagnostic(null);
     try {
-      await dograhApi.callOut(botId, dialValidation.normalized);
-      showToast(`Outbound call dispatched to ${dialValidation.normalized}!`, 'success');
-      setLastCallResult(`Call dispatched to ${dialValidation.normalized}. Your phone should ring shortly.`);
+      await dograhApi.callOut(botId, dialValidation.normalized, contactName.trim() || undefined);
+      showToast(`Outbound call dispatched to ${contactName ? `${contactName} (${dialValidation.normalized})` : dialValidation.normalized}!`, 'success');
+      setLastCallResult(`Call dispatched to ${contactName ? `${contactName} (${dialValidation.normalized})` : dialValidation.normalized}. Phone should ring shortly.`);
       setDialNumber('');
+      setContactName('');
       setDialTouched(false);
       onCallPlaced?.();
     } catch (err: any) {
@@ -129,6 +131,7 @@ export const OutboundDialerPanel: React.FC<OutboundDialerPanelProps> = ({
 
   const handleClear = () => {
     setDialNumber('');
+    setContactName('');
     setDialTouched(false);
   };
 
@@ -166,7 +169,24 @@ export const OutboundDialerPanel: React.FC<OutboundDialerPanelProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 items-start">
           {/* Main Dial Form */}
           <div className="space-y-5">
-            <div className="p-4 rounded-xl bg-brand-bg/60 border border-brand-border space-y-3">
+            <div className="p-4 rounded-xl bg-brand-bg/60 border border-brand-border space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-brand-text mb-1">
+                  Contact / Customer Name <span className="text-brand-muted font-normal">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. John Doe"
+                  value={contactName}
+                  onChange={e => setContactName(e.target.value)}
+                  disabled={calling}
+                  className="w-full px-3 py-2 text-xs rounded-lg bg-brand-card border border-brand-border text-brand-text placeholder-brand-muted focus:outline-none focus:border-brand-accent transition"
+                />
+                <p className="text-[11px] text-brand-muted mt-1">
+                  The AI receptionist will know who it is speaking to, and any scheduled visit or lead will be saved with this name.
+                </p>
+              </div>
+
               <PhoneInputField
                 label="Destination Phone Number to Ring"
                 description="Select your country code and enter your mobile number. The AI receptionist will ring this phone directly."

@@ -216,10 +216,59 @@ export async function bookCalendarAppointment(input: BookingInput) {
     }
 
     const { eventId } = await adapter.bookAppointment(details, input.ownerId);
+
+    // Immediately create or update lead in the leads table
+    let leadId = input.leadId;
+    if (!leadId && sessionId) {
+      try {
+        let formattedDate = details.startTime;
+        try {
+          const parsedDate = new Date(details.startTime);
+          if (!isNaN(parsedDate.getTime())) {
+            formattedDate = parsedDate.toLocaleString('en-IN', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'short',
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true,
+              timeZone: 'Asia/Kolkata',
+            });
+          }
+        } catch {
+          // fallback to raw startTime if parsing fails
+        }
+
+        const { data: leadData } = await db
+          .from('leads')
+          .upsert({
+            bot_id: input.botId,
+            session_id: sessionId,
+            name: details.visitorName?.trim() || 'Lead',
+            phone: details.visitorPhone?.trim() || 'Not Provided',
+            email: details.visitorEmail?.trim() || null,
+            appointment_status: 'Confirmed',
+            lead_score: 'HOT',
+            sentiment: 'Positive',
+            requirement: details.title || 'Scheduled Visit / Appointment',
+            summary: `Site visit confirmed for ${formattedDate}`,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'session_id' })
+          .select('id')
+          .maybeSingle();
+
+        if (leadData?.id) {
+          leadId = leadData.id;
+        }
+      } catch (leadErr) {
+        console.warn('[calendar] Could not auto-upsert lead on appointment booking:', leadErr);
+      }
+    }
+
     const { error: insertError } = await db.from('appointments').insert({
       bot_id: input.botId,
       session_id: sessionId,
-      lead_id: input.leadId,
+      lead_id: leadId,
       title: details.title,
       visitor_name: details.visitorName,
       visitor_phone: details.visitorPhone,

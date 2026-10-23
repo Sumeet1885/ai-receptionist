@@ -6,6 +6,7 @@ import { mergeWidgetConfig } from '../../utils/widgetConfig';
 import { validateContactInput } from '../../utils/contactValidation';
 import { buildDograhOutboundInstruction, buildDograhPhoneInstruction, withoutAutoKnownPhoneField } from './receptionistInstruction';
 import { syncBotCalls } from './callMirror';
+import { registerOutboundCall } from './outboundTracker';
 import {
   assignInboundWorkflow,
   unassignInboundWorkflow,
@@ -296,6 +297,8 @@ export async function getStatus(req: AuthRequest, res: Response): Promise<void> 
   const inboundWebhookUrl = `${config.dograh.apiUrl}/api/v1/telephony/inbound/run`;
   const connectedLines = extractConnectedLines(bot);
 
+  const hasCalendar = widgetConfig.enableCalendar && (await isCalendarConnected(bot.owner_id));
+
   res.json({
     provisioned: Boolean(bot.dograh_workflow_id),
     outboundProvisioned: Boolean(bot.dograh_outbound_workflow_id),
@@ -312,6 +315,8 @@ export async function getStatus(req: AuthRequest, res: Response): Promise<void> 
     connectedLines,
     inboundWebhookUrl,
     defaultPlatformNumber: config.defaultPhoneNumber || null,
+    calendarConnected: Boolean(hasCalendar),
+    calendarMode: hasCalendar ? 'live_booking' : 'sales_callback',
   });
 }
 
@@ -328,16 +333,36 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
     const extractionVariables = buildLeadExtractionVariables(withoutAutoKnownPhoneField(widgetConfig));
     const callTimeToolUuid = await ensureCallTimeTool(bot);
     const rateLimitToolUuid = await ensureRateLimitTool(bot);
-    const preCallFetchBase = `${config.phoneTools.callbackBaseUrl}/api/phone-tools/${botId}/pre-call?key=${config.phoneTools.apiKey}`;
-    const inboundPreCallFetchUrl = `${preCallFetchBase}&direction=inbound`;
-    const outboundPreCallFetchUrl = `${preCallFetchBase}&direction=outbound`;
 
-    const useTools = widgetConfig.enableCalendar && (await isCalendarConnected(bot.owner_id));
+    // Verify if callback URL is actively reachable from the public internet.
+    // If ngrok / local tunnel is inactive, avoid passing pre_call_fetch_url so Dograh does not
+    // stall for 5-8 seconds on call pickup waiting for an unresponsive callback URL.
+    const callbackUrl = (config.phoneTools.callbackBaseUrl || '').trim();
+    let isCallbackLive = false;
+    if (callbackUrl && !callbackUrl.includes('localhost') && !callbackUrl.includes('host.docker.internal')) {
+      try {
+        const ping = await fetch(callbackUrl, { signal: AbortSignal.timeout(2000) });
+        if (ping.status < 500 && ping.status !== 404) {
+          isCallbackLive = true;
+        }
+      } catch {
+        isCallbackLive = false;
+      }
+    }
+
+    const preCallFetchBase = isCallbackLive
+      ? `${callbackUrl}/api/phone-tools/${botId}/pre-call?key=${config.phoneTools.apiKey}`
+      : '';
+    const inboundPreCallFetchUrl = preCallFetchBase ? `${preCallFetchBase}&direction=inbound` : '';
+    const outboundPreCallFetchUrl = preCallFetchBase ? `${preCallFetchBase}&direction=outbound` : '';
+
+    const useTools = isCallbackLive && widgetConfig.enableCalendar && (await isCalendarConnected(bot.owner_id));
     logger.aiReceptionist('Provisioning AI Receptionist started', {
       botId,
       businessName: bot.business_name,
       ownerId: req.user!.id,
       useTools,
+      isCallbackLive,
     });
     let checkAvailabilityToolUuid = bot.dograh_check_availability_tool_uuid;
     let bookAppointmentToolUuid = bot.dograh_book_appointment_tool_uuid;
@@ -358,6 +383,7 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
       businessName: bot.business_name,
       toolUuids,
       preCallFetchUrl: inboundPreCallFetchUrl,
+      useToolBasedBooking: useTools,
     });
 
     let inboundWorkflow;
@@ -384,6 +410,7 @@ export async function provisionBot(req: AuthRequest, res: Response): Promise<voi
       businessName: bot.business_name,
       toolUuids,
       preCallFetchUrl: outboundPreCallFetchUrl,
+      useToolBasedBooking: useTools,
     });
     let outboundWorkflow;
     if (bot.dograh_outbound_workflow_id) {
@@ -1287,7 +1314,8 @@ export async function updateInboundRateLimit(req: AuthRequest, res: Response): P
 
 export async function callOut(req: AuthRequest, res: Response): Promise<void> {
   const botId = req.params.botId;
-  const { phoneNumber } = req.body || {};
+  const { phoneNumber, contactName } = req.body || {};
+  const normalizedContactName = typeof contactName === 'string' && contactName.trim().length > 0 ? contactName.trim() : undefined;
 
   const validation = validateContactInput('phone', String(phoneNumber || ''));
   if (!validation.valid) {
@@ -1333,6 +1361,7 @@ export async function callOut(req: AuthRequest, res: Response): Promise<void> {
       telephonyConfigId: activeTelephonyConfigId,
       fromPhoneNumberId: activePhoneNumberId,
       toPhoneNumber: maskPhoneNumber(validation.normalized),
+      contactName: normalizedContactName,
     };
     console.log('[phone-calls] Initiating Dograh outbound call:', callContext);
     logger.callEvent('outbound_call_initiated', {
@@ -1340,13 +1369,55 @@ export async function callOut(req: AuthRequest, res: Response): Promise<void> {
       toPhoneNumber: maskPhoneNumber(validation.normalized),
       telephonyConfigId: activeTelephonyConfigId,
       fromPhoneNumberId: activePhoneNumberId,
+      contactName: normalizedContactName,
     });
+
+    // Pre-create session so pre-call hook, mirror, and prompt bind to the contact name
+    let sessionId: string | undefined;
+    try {
+      const { data: session } = await supabase
+        .from('chat_sessions')
+        .insert({
+          bot_id: botId,
+          channel: 'phone',
+          visitor_id: normalizedContactName || null,
+        })
+        .select('id')
+        .single();
+      sessionId = session?.id;
+    } catch (err: any) {
+      console.warn('[phone-calls] Could not pre-create session for outbound call:', err?.message);
+    }
+
+    if (sessionId) {
+      registerOutboundCall({
+        botId,
+        phoneNumber: validation.normalized,
+        contactName: normalizedContactName,
+        sessionId,
+      });
+    }
+
+    const initialContext: Record<string, unknown> = {
+      direction: 'outbound',
+      ...(normalizedContactName ? {
+        contact_name: normalizedContactName,
+        customer_name: normalizedContactName,
+        name: normalizedContactName,
+        caller_name: normalizedContactName,
+      } : {}),
+      ...(sessionId ? { session_id: sessionId } : {}),
+    };
+
+    // Personalize outbound workflow prompt with contact's name before dialing
+    await prepareOutboundWorkflowForContact(bot, normalizedContactName);
 
     const dograhResponse = await initiateCall({
       workflowId: bot.dograh_outbound_workflow_id,
       phoneNumber: validation.normalized,
       telephonyConfigId: activeTelephonyConfigId,
       fromPhoneNumberId: activePhoneNumberId,
+      initialContext,
     });
     logger.callEvent('outbound_call_accepted', {
       botId,
@@ -1920,5 +1991,122 @@ export async function syncCalls(req: AuthRequest, res: Response): Promise<void> 
       error: err?.message,
     }, 'error');
     res.status(502).json({ error: err.message || 'Failed to sync calls from Dograh' });
+  }
+}
+
+export async function prepareOutboundWorkflowForContact(
+  bot: DograhProvisionableBot,
+  contactName?: string
+): Promise<void> {
+  if (!bot.dograh_outbound_workflow_id) return;
+  try {
+    const widgetConfig = mergeWidgetConfig((bot as any).widget_config, bot);
+    const callbackUrl = (config.phoneTools.callbackBaseUrl || '').trim();
+    let isCallbackLive = false;
+    if (callbackUrl && !callbackUrl.includes('localhost') && !callbackUrl.includes('host.docker.internal')) {
+      try {
+        const ping = await fetch(callbackUrl, { signal: AbortSignal.timeout(2000) });
+        if (ping.status < 500 && ping.status !== 404) {
+          isCallbackLive = true;
+        }
+      } catch {
+        isCallbackLive = false;
+      }
+    }
+
+    const useTools = isCallbackLive && widgetConfig.enableCalendar && (await isCalendarConnected(bot.owner_id));
+
+    let checkAvailabilityToolUuid = bot.dograh_check_availability_tool_uuid;
+    let bookAppointmentToolUuid = bot.dograh_book_appointment_tool_uuid;
+    if (useTools && (!checkAvailabilityToolUuid || !bookAppointmentToolUuid)) {
+      try {
+        const tools = await ensurePhoneTools(bot);
+        checkAvailabilityToolUuid = tools.checkAvailabilityToolUuid;
+        bookAppointmentToolUuid = tools.bookAppointmentToolUuid;
+      } catch (err) {
+        console.warn('[phone-calls] Could not ensure calendar tools for outbound personalization:', err);
+      }
+    }
+
+    const callTimeToolUuid = bot.dograh_call_time_tool_uuid || (await ensureCallTimeTool(bot));
+    const toolUuids = useTools && checkAvailabilityToolUuid && bookAppointmentToolUuid
+      ? [callTimeToolUuid, checkAvailabilityToolUuid, bookAppointmentToolUuid]
+      : [callTimeToolUuid];
+
+    const extractionVariables = buildLeadExtractionVariables(withoutAutoKnownPhoneField(widgetConfig));
+    const preCallFetchBase = isCallbackLive
+      ? `${callbackUrl}/api/phone-tools/${bot.id}/pre-call?key=${config.phoneTools.apiKey}`
+      : '';
+    const outboundPreCallFetchUrl = preCallFetchBase ? `${preCallFetchBase}&direction=outbound` : '';
+
+    const outboundInstruction = buildDograhOutboundInstruction(bot, widgetConfig, {
+      timezone: PHONE_DEFAULT_TIMEZONE,
+      useToolBasedBooking: useTools,
+      contactName,
+    });
+    const outboundDefinition = buildSingleNodeWorkflowDefinition({
+      personaPrompt: outboundInstruction,
+      extractionVariables,
+      isOutbound: true,
+      businessName: bot.business_name,
+      toolUuids,
+      preCallFetchUrl: outboundPreCallFetchUrl,
+      contactName,
+      customOutboundPrompt: widgetConfig.outboundPromptTemplate,
+      useToolBasedBooking: useTools,
+    });
+
+    await updateWorkflowInPlace(bot.dograh_outbound_workflow_id, outboundDefinition, WORKFLOW_CONFIGURATIONS);
+    await publishWorkflow(bot.dograh_outbound_workflow_id);
+    console.log(`[phone-calls] Personalised outbound workflow ${bot.dograh_outbound_workflow_id} for contact: "${contactName || '(anonymous)'}"`);
+  } catch (err) {
+    console.warn('[phone-calls] Failed to personalise outbound workflow before calling:', err);
+  }
+}
+
+export async function generatePromptTemplate(req: AuthRequest, res: Response): Promise<void> {
+  const botId = req.params.botId;
+  const bot = await loadOwnedBot(botId, req.user!.id);
+  if (!bot) {
+    res.status(404).json({ error: 'Bot not found' });
+    return;
+  }
+  const { userInstruction, type } = req.body || {};
+  if (!userInstruction || typeof userInstruction !== 'string') {
+    res.status(400).json({ error: 'userInstruction is required' });
+    return;
+  }
+
+  try {
+    const prompt = `You are an expert voice AI prompt engineer for telecalling.
+Business: ${bot.business_name}
+Industry: ${bot.industry}
+Call Type: ${type === 'outbound' ? 'Outbound Sales Telecalling' : 'Inbound Receptionist'}
+Knowledge Base: ${bot.knowledge_base}
+
+User's custom requirements: ${userInstruction}
+
+Write a natural, conversational, turn-by-turn prompt in Marathi (or Hindi/English if requested) that:
+1. Warmly greets with respectful honorifics ("सर" for male, "मॅडम" for female, never together).
+2. Asks for customer name, requirement, and planned budget ("आणि तुमचं साधारण काय बजेट प्लॅन केलंय?").
+3. Shares attractive highlights strictly grounded in the knowledge base.
+4. Invites for weekend site visit.
+5. Asks if caller has any questions before closing ("याव्यतिरिक्त प्रोजेक्टबद्दल तुम्हाला आणखी काही माहिती किंवा प्रश्न विचारायचा आहे का?").
+6. Concludes with "खूप खूप धन्यवाद आणि बाय, have a good day!" (never say नमस्कार at the end).
+Do not wrap in markdown quotes. Output only the prompt template.`;
+
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${config.geminiApiKey}`;
+    const resp = await fetch(geminiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+      }),
+    });
+    const data = await resp.json();
+    const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    res.json({ generatedTemplate: generatedText.trim() });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to generate prompt template' });
   }
 }
