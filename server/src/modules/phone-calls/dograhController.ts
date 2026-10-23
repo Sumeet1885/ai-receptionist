@@ -2092,7 +2092,7 @@ Write a natural, conversational, turn-by-turn prompt in the business's language 
 6. Concludes politely with a warm closing.
 Do not wrap in markdown quotes. Output only the prompt template.`;
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${config.geminiApiKey}`;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${config.geminiApiKey}`;
     const resp = await fetch(geminiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
