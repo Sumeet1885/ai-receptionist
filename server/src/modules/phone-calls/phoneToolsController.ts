@@ -5,6 +5,7 @@ import { mergeWidgetConfig } from '../../utils/widgetConfig';
 import { normalizeTimezone } from '../../utils/date';
 import { InboundRateLimitBot, markInboundAttemptAndApplyLimit } from './inboundRateLimiter';
 import { logger } from '../../services/cloudwatchLogger';
+import { findOutboundCall, getLatestOutboundCallForBot } from './outboundTracker';
 
 
 /**
@@ -41,17 +42,49 @@ export async function preCall(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const { data: session, error } = await supabase
-    .from('chat_sessions')
-    .insert({ bot_id: botId, channel: 'phone' })
-    .select()
-    .single();
-  if (error || !session) {
-    res.status(500).json({ error: error?.message || 'Failed to create phone call session' });
-    return;
+  const isOutbound = req.query.direction === 'outbound';
+  const outboundMeta = isOutbound
+    ? (findOutboundCall({
+        botId,
+        phoneNumber: (req.body?.phone_number || req.body?.to_number || req.query?.to) as string | undefined,
+      }) || getLatestOutboundCallForBot(botId))
+    : undefined;
+
+  let sessionId = outboundMeta?.sessionId;
+  let contactName = outboundMeta?.contactName;
+
+  if (sessionId) {
+    const { data: existingSession } = await supabase
+      .from('chat_sessions')
+      .select('id, visitor_id')
+      .eq('id', sessionId)
+      .maybeSingle();
+
+    if (!existingSession) {
+      sessionId = undefined;
+    } else if (!contactName && existingSession.visitor_id) {
+      contactName = existingSession.visitor_id;
+    }
   }
 
-    if (req.query.direction === 'inbound') {
+  if (!sessionId) {
+    const { data: session, error } = await supabase
+      .from('chat_sessions')
+      .insert({
+        bot_id: botId,
+        channel: 'phone',
+        visitor_id: contactName?.trim() || null,
+      })
+      .select()
+      .single();
+    if (error || !session) {
+      res.status(500).json({ error: error?.message || 'Failed to create phone call session' });
+      return;
+    }
+    sessionId = session.id;
+  }
+
+  if (req.query.direction === 'inbound') {
     try {
       await markInboundAttemptAndApplyLimit(supabase, bot);
     } catch (err) {
@@ -63,15 +96,24 @@ export async function preCall(req: Request, res: Response): Promise<void> {
 
   logger.callEvent('pre_call_session_created', {
     botId,
-    sessionId: session.id,
-    direction: req.query.direction === 'inbound' ? 'inbound' : 'outbound',
+    sessionId,
+    contactName: contactName || undefined,
+    direction: isOutbound ? 'outbound' : 'inbound',
   });
 
-  // Dograh's pre-call-fetch extractor only merges variables nested under an `initial_context`
-  // key (or the legacy `dynamic_variables`) - a flat `{ session_id }` body is silently ignored,
-  // which is exactly what produced "Preset parameter 'session_id' resolved to an empty value" on
-  // the first test call. See api/services/pipecat/pre_call_fetch.py's _extract_initial_context.
-  res.json({ initial_context: { session_id: session.id, rate_limited: false } });
+  // Dograh's pre-call-fetch extractor merges variables nested under an `initial_context` key.
+  // Passing contact_name ensures the LLM's active turn context knows the caller's pre-entered name.
+  res.json({
+    initial_context: {
+      session_id: sessionId,
+      rate_limited: false,
+      ...(contactName ? {
+        contact_name: contactName,
+        customer_name: contactName,
+        name: contactName,
+      } : {}),
+    },
+  });
 }
 
 /** Deterministic alternative to the model guessing elapsed time: Dograh has no mid-call clock

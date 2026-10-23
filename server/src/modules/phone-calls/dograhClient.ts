@@ -149,6 +149,62 @@ export function updateHttpTool(toolUuid: string, params: CreateHttpToolParams): 
   });
 }
 
+export interface DograhToolSummary {
+  id: number;
+  tool_uuid: string;
+  name: string;
+  description: string;
+  category: string;
+  status: string;
+}
+
+export async function listTools(): Promise<DograhToolSummary[]> {
+  const data = await request<DograhToolSummary[]>('/api/v1/tools/');
+  return Array.isArray(data) ? data : [];
+}
+
+export async function findToolByName(name: string): Promise<DograhToolSummary | null> {
+  try {
+    const tools = await listTools();
+    const active = tools.filter(t => t.name === name && t.status !== 'archived');
+    return active.length > 0 ? active[active.length - 1] : null;
+  } catch (err) {
+    console.warn(`[dograhClient] Could not fetch tool list to check for existing tool '${name}':`, err);
+    return null;
+  }
+}
+
+export async function createOrUpdateHttpTool(
+  params: CreateHttpToolParams,
+  existingUuid?: string | null
+): Promise<{ tool_uuid: string }> {
+  if (existingUuid) {
+    try {
+      await updateHttpTool(existingUuid, params);
+      return { tool_uuid: existingUuid };
+    } catch (err: any) {
+      if (!(err instanceof DograhApiError && err.status === 404)) {
+        throw err;
+      }
+    }
+  }
+
+  // Deduplication check: re-use existing active tool in Dograh with the same name if available
+  const existing = await findToolByName(params.name);
+  if (existing?.tool_uuid) {
+    try {
+      await updateHttpTool(existing.tool_uuid, params);
+      return { tool_uuid: existing.tool_uuid };
+    } catch (err: any) {
+      if (!(err instanceof DograhApiError && err.status === 404)) {
+        throw err;
+      }
+    }
+  }
+
+  return createHttpTool(params);
+}
+
 export interface CreateEndCallToolParams {
   name: string;
   description: string;
@@ -182,6 +238,37 @@ export function updateEndCallTool(toolUuid: string, params: CreateEndCallToolPar
     method: 'PUT',
     body: JSON.stringify(endCallToolBody(params)),
   });
+}
+
+export async function createOrUpdateEndCallTool(
+  params: CreateEndCallToolParams,
+  existingUuid?: string | null
+): Promise<{ tool_uuid: string }> {
+  if (existingUuid) {
+    try {
+      await updateEndCallTool(existingUuid, params);
+      return { tool_uuid: existingUuid };
+    } catch (err: any) {
+      if (!(err instanceof DograhApiError && err.status === 404)) {
+        throw err;
+      }
+    }
+  }
+
+  // Deduplication check: re-use existing active tool in Dograh with the same name if available
+  const existing = await findToolByName(params.name);
+  if (existing?.tool_uuid) {
+    try {
+      await updateEndCallTool(existing.tool_uuid, params);
+      return { tool_uuid: existing.tool_uuid };
+    } catch (err: any) {
+      if (!(err instanceof DograhApiError && err.status === 404)) {
+        throw err;
+      }
+    }
+  }
+
+  return createEndCallTool(params);
 }
 
 

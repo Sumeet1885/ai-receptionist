@@ -40,6 +40,7 @@ export function buildLeadExtractionVariables(widgetConfig: WidgetConfig): Extrac
 // pipeline_engine_callbacks_processor.py - it only supports this single abort threshold, no
 // separate warning callback), which is why the warning is implemented as a tool call instead.
 export const MAX_CALL_DURATION_SECONDS = 330;
+export const WORKFLOW_CONFIGURATIONS = { max_call_duration: MAX_CALL_DURATION_SECONDS };
 
 export interface SingleNodeWorkflowOptions {
   /** Full persona text (buildDograhPhoneInstruction/buildDograhOutboundInstruction output),
@@ -57,23 +58,18 @@ export interface SingleNodeWorkflowOptions {
    * and the post-call mirror (callMirror.ts) bind to the same session instead of racing. Always
    * set now, not just when calendar tools are attached. */
   preCallFetchUrl: string;
+  useToolBasedBooking?: boolean;
+  contactName?: string;
+  customOutboundPrompt?: string;
+  customInboundPrompt?: string;
 }
 
 /**
- * Tightened, contrastive wording for the one and only edge in the graph. Small models misfire
- * forced-choice edge conditions under ambiguity, so this spells out both the positive case
- * (when to end) and the negative case (when NOT to, i.e. keep going) instead of leaving the
- * "otherwise" branch implicit.
+ * Tightened, contrastive wording for the one and only edge in the graph.
+ * Ensures the model asks for questions and speaks the closing goodbye line before ending.
  */
 const END_CALL_CONDITION =
-  'Transition ONLY when the caller has clearly indicated the conversation is over - for example ' +
-  'they say goodbye, "that\'s all", "no more questions", or explicitly ask to end/hang up the ' +
-  'call, OR all of their questions have been answered AND (if the persona above asks for contact ' +
-  'details) those details have already been collected, OR get_call_time_remaining has reported ' +
-  '"shouldWrapUp": true and you have already said your wrap-up line and a brief goodbye. Do NOT ' +
-  'transition merely because of a short reply, a single "okay"/"thanks", a brief pause, or ' +
-  'uncertainty about what to do next - in those cases keep the conversation going by asking a ' +
-  'clarifying or follow-up question instead.';
+  'Transition ONLY when the caller indicates they want to hang up or wrap up (for example: "thank you goodbye", "that\'s all I needed", "talk to you later", "bye", "have a good day"), OR when you have answered all their questions, confirmed there is nothing else, and said goodbye. Do NOT transition on a single "okay", "sure", or during an active discussion.';
 
 // Drives the graceful wrap-up via the deterministic get_call_time_remaining tool (always
 // attached - see dograhController.ts) instead of having the model guess elapsed time from
@@ -92,24 +88,26 @@ export function buildSingleNodeWorkflowDefinition(options: SingleNodeWorkflowOpt
   const hasExtraction = extractionVariables.length > 0;
   const hasTools = Boolean(toolUuids && toolUuids.length > 0);
 
-  // No `greeting`/`greeting_type` here - Dograh's docs are explicit that the static TTS-only
-  // greeting field is "not supported with realtime (speech-to-speech) models" (this org runs
-  // Gemini Live - see model-configurations/v2). The earlier cascaded STT->LLM->TTS pipeline
-  // needed that field to fill 7-20s of dead air before the model's first response; a
-  // speech-to-speech model has no such cold-start gap, so the opening line goes back into the
-  // prompt itself, said directly by the model on its first turn.
-  const conversationPrompt = (isOutbound
-    ? `This is the only conversational step for the entire call - you placed this call. Begin ` +
-      `immediately by introducing yourself and ${businessName} by name, and briefly explaining ` +
-      `you're following up with someone who showed interest. Then handle the rest of the ` +
-      `conversation across as many turns as needed: answer questions, and collect lead details ` +
-      `per the persona above. When the conversation is clearly finished, transition to ending ` +
-      `the call.`
-    : `Begin immediately by warmly greeting the caller on behalf of ${businessName} and asking ` +
-      `how you can help. Then handle the entire conversation across as many turns as needed: ` +
-      `answer questions, and collect lead details per the persona above. When the conversation ` +
-      `is clearly finished, transition to ending the call.`) +
+  const defaultOutboundPrompt =
+    `This is an OUTBOUND call placed on behalf of ${businessName}. Follow the goals ` +
+    `and constraints from the global persona: introduce yourself and the business, state the reason ` +
+    `for calling, answer questions relying strictly on the knowledge base, and collect any ` +
+    `required details or assist with scheduling per persona instructions. Once the customer's ` +
+    `questions are answered and the conversation is clearly finished, transition to ending the call.`;
+
+  const defaultInboundPrompt =
+    `Answer the caller's questions warmly and professionally relying strictly on the business details and ` +
+    `persona in the global prompt for ${businessName}. Collect missing contact details conversationally, ` +
+    `and assist with inquiries or appointment bookings per the persona instructions. Once the conversation ` +
+    `is clearly finished, transition to ending the call.`;
+
+  const conversationPrompt =
+    (isOutbound
+      ? (options.customOutboundPrompt?.trim() || defaultOutboundPrompt)
+      : (options.customInboundPrompt?.trim() || defaultInboundPrompt)) +
     ` ${CALL_PACING_INSTRUCTION}`;
+
+  const validPreCallFetchUrl = preCallFetchUrl && preCallFetchUrl.trim().length > 0 ? preCallFetchUrl.trim() : undefined;
 
   const conversationNode = {
     id: '1',
@@ -118,30 +116,18 @@ export function buildSingleNodeWorkflowDefinition(options: SingleNodeWorkflowOpt
     data: {
       name: 'Conversation',
       prompt: conversationPrompt,
-      // false (Dograh's own default for startCall, which we'd overridden to true): this
-      // self-hosted telephony audio path has no echo cancellation at the Plivo/Twilio <->
-      // Dograh audio bridge, so the bot's own voice bleeding back into the input was getting
-      // misheard as the caller interrupting, truncating the bot mid-word. That's a transport-
-      // layer issue independent of which model is on the other end (cascaded pipeline or
-      // speech-to-speech), so it stays disabled under Gemini Live too unless that's confirmed
-      // fixed. Caller can still always just start talking once the bot pauses between turns -
-      // this only stops the bot from cutting itself off on its own echo.
       allow_interrupt: false,
       add_global_prompt: true,
       delayed_start: isOutbound,
       delayed_start_duration: isOutbound ? 1.5 : undefined,
-      pre_call_fetch_enabled: Boolean(preCallFetchUrl),
-      pre_call_fetch_url: preCallFetchUrl,
+      pre_call_fetch_enabled: Boolean(validPreCallFetchUrl),
+      pre_call_fetch_url: validPreCallFetchUrl,
       extraction_enabled: hasExtraction,
       extraction_prompt: hasExtraction
         ? 'Capture any lead details the caller has shared so far, even if only partially mentioned. Keep previously captured values unless the caller corrects them.'
         : undefined,
       extraction_variables: hasExtraction ? extractionVariables : undefined,
       tool_uuids: hasTools ? toolUuids : undefined,
-      // Creates the chat_sessions row before the call connects (see phoneToolsController.ts'
-      // pre-call endpoint) so check_availability/book_appointment tool calls during the call,
-      // and the post-call mirror in callMirror.ts, all bind to the same session id instead of
-      // each independently creating one and racing.
     },
   };
 

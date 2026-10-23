@@ -4,6 +4,7 @@ import { DograhApiError, fetchTranscript, getRun, listRuns } from './dograhClien
 import { DograhProvisionableBot, DograhRunDetail } from './types';
 import { config } from '../../config';
 import { logger } from '../../services/cloudwatchLogger';
+import { findOutboundCall } from './outboundTracker';
 
 function maskPhoneNumber(phoneNumber: string): string {
   if (phoneNumber.length <= 4) return '****';
@@ -188,20 +189,59 @@ async function ingestRun(
 
 
   const run = await getRun(workflowId, runId);
+  const counterpartyNumber = extractCounterpartyNumber(run);
+  const callerEmail = extractCallerEmail(run);
+  const callStartTime = callRow.started_at ? new Date(callRow.started_at).getTime() : Date.now();
+  const outboundMeta = findOutboundCall({
+    runName: (run as any).name,
+    botId: bot.id,
+    phoneNumber: counterpartyNumber || undefined,
+    callTimeMs: callStartTime,
+  });
+
+  const initialCtx = (run.initial_context as Record<string, any> | null) || {};
+  const campaignContactId = initialCtx.campaign_contact_id;
+  let contactName: string | undefined =
+    initialCtx.contact_name ||
+    initialCtx.customer_name ||
+    initialCtx.name ||
+    outboundMeta?.contactName;
+
+  if (!contactName && campaignContactId) {
+    const { data: cc } = await supabase
+      .from('campaign_contacts')
+      .select('name')
+      .eq('id', campaignContactId)
+      .maybeSingle();
+    if (cc?.name) contactName = cc.name;
+  }
+
+  if (!contactName) {
+    const { data: cc } = await supabase
+      .from('campaign_contacts')
+      .select('name')
+      .eq('phone_call_id', callRow.id)
+      .maybeSingle();
+    if (cc?.name) contactName = cc.name;
+  }
 
   let sessionId: string = callRow.session_id;
+
   if (!sessionId) {
-    const preCallSessionId = (run.initial_context as Record<string, any> | null)?.session_id;
+    const preCallSessionId = outboundMeta?.sessionId || initialCtx.session_id;
     const { data: existingSession } = preCallSessionId
-      ? await supabase.from('chat_sessions').select('id').eq('id', preCallSessionId).eq('bot_id', bot.id).maybeSingle()
+      ? await supabase.from('chat_sessions').select('id, visitor_id').eq('id', preCallSessionId).eq('bot_id', bot.id).maybeSingle()
       : { data: null };
 
     if (existingSession) {
       sessionId = existingSession.id;
+      if (!contactName && existingSession.visitor_id) {
+        contactName = existingSession.visitor_id;
+      }
     } else {
       const { data: session, error: sessionError } = await supabase
         .from('chat_sessions')
-        .insert({ bot_id: bot.id, channel: 'phone' })
+        .insert({ bot_id: bot.id, channel: 'phone', visitor_id: contactName || null })
         .select()
         .single();
       if (sessionError || !session) throw sessionError || new Error('Failed to create chat session for phone call');
@@ -217,13 +257,13 @@ async function ingestRun(
 
   const transcriptUrl = resolveDograhUrl(run.transcript_public_url || run.transcript_url);
   const recordingUrl = resolveDograhUrl(run.recording_public_url || run.recording_url);
-  const counterpartyNumber = extractCounterpartyNumber(run);
-  const callerEmail = extractCallerEmail(run);
   let transcript = '';
+  let hasCustomerSpoken = false;
   if (transcriptUrl) {
     try {
       const raw = await fetchTranscript(transcriptUrl);
       const turns = parseTranscript(raw);
+      hasCustomerSpoken = turns.some(turn => turn.sender === 'user' && turn.content.trim().length > 0);
       if (turns.length > 0) {
         await supabase.from('messages').insert(
           turns.map(turn => ({ session_id: sessionId, sender: turn.sender, content: turn.content }))
@@ -256,11 +296,52 @@ async function ingestRun(
     }
   }
 
-  if (transcript) {
-    await analyzeLead({ sessionId, botId: bot.id, transcript, knownPhone: counterpartyNumber || undefined, knownEmail: callerEmail || undefined }, supabase);
+  const isOutbound = Boolean(bot.dograh_outbound_workflow_id && workflowId === bot.dograh_outbound_workflow_id);
+
+  if (hasCustomerSpoken && transcript) {
+    await analyzeLead({
+      sessionId,
+      botId: bot.id,
+      transcript,
+      knownPhone: counterpartyNumber || undefined,
+      knownEmail: callerEmail || undefined,
+      knownName: contactName || undefined,
+    }, supabase);
+  } else {
+    // If the customer did not respond / remained silent during the call:
+    // Only update lead if an appointment was previously confirmed for this session.
+    // Silent or dropped calls are preserved in the `phone_calls` table (Call History),
+    // and should not clutter the active leads queue.
+    const { data: existingLead } = await supabase
+      .from('leads')
+      .select('appointment_status, lead_score, summary, name')
+      .eq('session_id', sessionId)
+      .maybeSingle();
+
+    const isConfirmed = existingLead?.appointment_status === 'Confirmed';
+
+    if (isConfirmed && existingLead) {
+      await supabase
+        .from('leads')
+        .upsert({
+          bot_id: bot.id,
+          session_id: sessionId,
+          name: contactName?.trim() || existingLead.name || 'Anonymous',
+          phone: counterpartyNumber || 'Not Provided',
+          email: callerEmail || null,
+          requirement: isOutbound ? 'Outbound Call' : 'General Inquiry',
+          budget: 'N/A',
+          sentiment: 'Positive',
+          lead_score: 'HOT',
+          summary: existingLead.summary,
+          appointment_status: 'Confirmed',
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'session_id' });
+    } else {
+      console.log(`[phone-calls] Call had no conversation / customer silent on session ${sessionId}. Stored in phone_calls history, skipping leads queue.`);
+    }
   }
 
-    const isOutbound = Boolean(bot.dograh_outbound_workflow_id && workflowId === bot.dograh_outbound_workflow_id);
     const enrichedCostInfo = {
       ...(run.cost_info || {}),
       direction: isOutbound ? 'outbound' : 'inbound',
@@ -295,7 +376,6 @@ async function ingestRun(
     callType: run.call_type || 'inbound',
   });
 
-  const campaignContactId = (run.initial_context as Record<string, any> | null)?.campaign_contact_id;
   if (campaignContactId) {
     const { error: linkError } = await supabase
       .from('campaign_contacts')

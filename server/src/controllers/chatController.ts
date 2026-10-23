@@ -7,7 +7,7 @@ import { formatCurrentDateTime, getTimezoneOffsetString, normalizeTimezone } fro
 import { logger } from '../services/cloudwatchLogger';
 
 const GEMINI_API_KEY = config.geminiApiKey ?? '';
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
 const GEMINI_MAX_RETRIES = Number(process.env.GEMINI_MAX_RETRIES || 2);
 

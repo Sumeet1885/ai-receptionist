@@ -53,6 +53,10 @@ async function bootstrap(): Promise<void> {
     res.json({ status: 'ok', geminiGuard: geminiGuard.getStatus() });
   });
 
+  app.get('/', (_req, res) => {
+    res.json({ status: 'ok', service: 'ai-receptionist-server' });
+  });
+
   app.use(errorHandler);
 
   const server = app.listen(config.port, () => {

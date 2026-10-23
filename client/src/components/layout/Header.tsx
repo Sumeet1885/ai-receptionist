@@ -14,7 +14,8 @@ const authedNav = [
   { label: 'Inbox', path: '/inbox', key: 'inbox' },
   { label: 'Calendar', path: '/calendar', key: 'calendar' },
   { label: 'Calls', path: '/calls', key: 'calls' },
-  { label: 'Agents', path: '/agents', key: 'agents' }
+  { label: 'Agents', path: '/agents', key: 'agents' },
+  { label: 'Plans', path: '/plans', key: 'plans' }
 ];
 
 export const Header: React.FC<HeaderProps> = ({
@@ -42,37 +43,37 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className={`sticky top-0 z-40 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between ${
+    <header className={`sticky top-0 z-40 backdrop-blur-xl px-4 sm:px-6 flex items-center justify-between transition-all duration-300 ${
       isLanding
-        ? 'bg-black/95 border-b border-white/10 py-3'
-        : 'bg-brand-bg/90 border-b border-brand-border py-4'
+        ? 'bg-black/90 border-b border-white/10 py-3 shadow-lg'
+        : 'bg-brand-bg/80 border-b border-brand-border/60 py-3.5 shadow-[0_4px_30px_rgba(0,0,0,0.5)]'
     }`}>
-      <div className="flex items-center space-x-2 sm:space-x-3 cursor-pointer" onClick={() => navigate(user ? '/dashboard' : '/')}>
-        <div className={`p-1.5 sm:p-2 border rounded-lg shadow-sm transition hover:scale-105 ${
+      <div className="flex items-center space-x-2.5 sm:space-x-3 cursor-pointer group" onClick={() => navigate(user ? '/dashboard' : '/')}>
+        <div className={`p-2 border rounded-xl shadow-sm transition-all duration-300 group-hover:scale-105 ${
           isLanding
-            ? 'bg-white/5 border-white/10 text-emerald-400'
-            : 'bg-brand-accent/10 border-brand-border text-brand-accent'
+            ? 'bg-white/5 border-white/10 text-emerald-400 group-hover:border-emerald-400/40'
+            : 'bg-brand-accent/10 border-brand-border text-brand-accent group-hover:border-brand-accent/50 group-hover:shadow-[0_0_15px_rgba(25,233,157,0.25)]'
         }`}>
           <Icons.Bot />
         </div>
         <div>
-          <h1 className="text-base sm:text-xl font-display font-extrabold tracking-tight text-brand-text">
+          <h1 className="text-base sm:text-lg font-display font-black tracking-tight text-brand-text flex items-center gap-1">
             Receptionist<span className={isLanding ? 'text-emerald-400' : 'text-brand-accent'}>.ai</span>
           </h1>
-          <p className="text-[8px] sm:text-[10px] text-brand-muted font-mono tracking-wider uppercase font-semibold">Enterprise Agent Portal</p>
+          <p className="text-[8px] sm:text-[9px] text-brand-muted font-mono tracking-wider uppercase font-semibold">Enterprise Agent Portal</p>
         </div>
       </div>
 
-      <nav className="hidden md:flex items-center space-x-6 text-sm font-sans font-medium">
+      <nav className="hidden md:flex items-center space-x-1.5 text-xs font-sans p-1 rounded-full bg-brand-bg/60 border border-brand-border/50 backdrop-blur-md">
         {user ? (
           authedNav.map(item => (
             <button
               key={item.key}
               onClick={() => navigate(item.path)}
-              className={`hover:text-brand-text transition-colors duration-200 pb-1 border-b-2 ${
+              className={`px-3.5 py-1.5 rounded-full transition-all duration-200 ${
                 isActive(item.key)
-                  ? 'text-brand-text border-brand-accent font-semibold'
-                  : 'text-brand-muted border-transparent'
+                  ? 'text-brand-accent bg-brand-accent/15 border border-brand-accent/35 font-bold shadow-[0_0_12px_rgba(25,233,157,0.2)]'
+                  : 'text-brand-muted hover:text-brand-text hover:bg-white/[0.04] font-medium'
               }`}
             >
               {item.label}
@@ -81,7 +82,7 @@ export const Header: React.FC<HeaderProps> = ({
         ) : (
           <button
             onClick={() => navigate('/')}
-            className={`hover:text-brand-text transition-colors duration-200 pb-1 border-b-2 ${routeName === 'landing' ? `text-brand-text ${isLanding ? 'border-emerald-400' : 'border-brand-accent'} font-semibold` : 'text-brand-muted border-transparent'}`}
+            className={`px-3.5 py-1.5 rounded-full transition-all ${routeName === 'landing' ? `text-brand-accent bg-brand-accent/15 border border-brand-accent/35 font-bold` : 'text-brand-muted hover:text-brand-text font-medium'}`}
           >
             Features
           </button>
@@ -90,11 +91,11 @@ export const Header: React.FC<HeaderProps> = ({
 
       <div className="flex items-center gap-2 sm:gap-4">
         {user ? (
-          <div className="hidden md:flex items-center gap-4">
-            <span className="text-sm text-brand-muted">{user.email}</span>
+          <div className="hidden md:flex items-center gap-3">
+            <span className="text-xs text-brand-muted font-mono max-w-[150px] truncate">{user.email}</span>
             <button
               onClick={handleSignOut}
-              className="px-4 py-2 font-sans font-semibold text-sm rounded-lg shadow-sm transition duration-200 border border-brand-border hover:bg-brand-card text-brand-text"
+              className="px-3 py-1.5 font-sans font-semibold text-xs rounded-lg transition duration-200 border border-brand-border hover:border-brand-accent/40 hover:bg-brand-card text-brand-text"
             >
               Sign Out
             </button>

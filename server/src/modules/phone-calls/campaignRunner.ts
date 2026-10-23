@@ -2,6 +2,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { initiateCall } from './dograhClient';
 import { DograhProvisionableBot } from './types';
 import { logger } from '../../services/cloudwatchLogger';
+import { registerOutboundCall } from './outboundTracker';
 
 function maskPhoneNumber(phoneNumber: string): string {
   if (!phoneNumber) return '****';
@@ -128,7 +129,16 @@ async function advanceLoop(
         campaign_contact_id: contact.id,
         campaign_id: campaignId,
         contact_name: contact.name ?? '',
+        customer_name: contact.name ?? '',
+        name: contact.name ?? '',
       },
+    });
+
+    registerOutboundCall({
+      botId: bot.id,
+      phoneNumber: contact.phone_number,
+      contactName: contact.name || undefined,
+      sessionId: '',
     });
 
     console.log(`[campaign] Placed call for contact ${contact.id} (${contact.phone_number}) in campaign ${campaignId}.`);

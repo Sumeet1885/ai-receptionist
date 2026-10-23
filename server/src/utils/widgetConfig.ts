@@ -23,6 +23,10 @@ export interface WidgetConfig {
    * the caller's timezone. `undefined` means no limit (today's behavior, unchanged for existing
    * bots). Enforced server-side in calendarOperations.ts - never trust the AI to self-limit. */
   maxBookingDaysAhead?: number;
+  /** Custom prompt template specifically for inbound phone calls */
+  inboundPromptTemplate?: string;
+  /** Custom prompt template specifically for outbound telecalling calls */
+  outboundPromptTemplate?: string;
 }
 
 const colorMap: Record<string, string> = {
@@ -53,7 +57,9 @@ export const defaultWidgetConfig: WidgetConfig = {
   requiredLeadFields: ['name', 'phone'],
   handoffText: 'I can connect you with the team for this.',
   additionalCollectInfo: '',
-  maxBookingDaysAhead: undefined
+  maxBookingDaysAhead: undefined,
+  inboundPromptTemplate: '',
+  outboundPromptTemplate: ''
 };
 
 function cleanHex(value: unknown, fallback: string) {
@@ -130,6 +136,8 @@ export function mergeWidgetConfig(value: any, bot?: { business_name?: string; pr
       : defaultWidgetConfig.requiredLeadFields,
     handoffText: cleanText(input.handoffText, defaultWidgetConfig.handoffText, 180),
     additionalCollectInfo: cleanText(input.additionalCollectInfo, '', 500),
+    inboundPromptTemplate: cleanText(input.inboundPromptTemplate, '', 5000),
+    outboundPromptTemplate: cleanText(input.outboundPromptTemplate, '', 5000),
     maxBookingDaysAhead: cleanMaxBookingDaysAhead(input.maxBookingDaysAhead)
   };
 }

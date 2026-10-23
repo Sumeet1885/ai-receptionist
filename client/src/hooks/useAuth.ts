@@ -56,8 +56,9 @@ export function useAuth() {
       if (session) {
         await saveProviderTokens(session);
       }
-      if (newUser && event !== 'PASSWORD_RECOVERY') {
+      if (newUser && event !== 'PASSWORD_RECOVERY' && localStorage.getItem('just_signed_up') === 'true') {
         await seedDemoDataForUser(newUser.id);
+        localStorage.removeItem('just_signed_up');
       }
     });
 

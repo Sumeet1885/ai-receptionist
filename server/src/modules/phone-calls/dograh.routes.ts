@@ -20,5 +20,6 @@ router.post('/bots/:botId/sync', dograhController.syncCalls);
 router.post('/bots/:botId/lines', dograhController.addPhoneLine);
 router.delete('/bots/:botId/lines/:lineId', dograhController.removePhoneLine);
 router.patch('/bots/:botId/lines/:lineId/primary', dograhController.setPrimaryPhoneLine);
+router.post('/bots/:botId/generate-prompt', dograhController.generatePromptTemplate);
 
 export default router;

@@ -152,16 +152,19 @@ export function buildDograhPhoneInstruction(
   widgetConfig: WidgetConfig,
   options: { timezone: string; useToolBasedBooking?: boolean }
 ): string {
+  const normTz = normalizeTimezone(options.timezone, 'Asia/Kolkata');
   return buildBusinessPersona(bot, withoutAutoKnownPhoneField(widgetConfig), {
-    timezone: options.timezone,
+    timezone: normTz,
     bookingInstruction: options.useToolBasedBooking
       ? buildToolBasedBookingInstruction(widgetConfig.maxBookingDaysAhead)
       : buildVerbalHandoffBookingInstruction(),
-    extraConstraints: options.useToolBasedBooking
-      ? buildPhoneToolTimezoneConstraint(options.timezone)
-      : undefined,
+    extraConstraints: [
+      options.useToolBasedBooking ? buildPhoneToolTimezoneConstraint(normTz) : undefined,
+      '- NEVER ask the caller for their phone number on inbound phone calls, as their phone number is automatically captured via Caller ID.',
+    ].filter(Boolean).join('\n'),
   });
 }
+
 
 export const OUTBOUND_OPENING_INSTRUCTION =
   'You are calling this person on behalf of the business. Introduce yourself and the business by name, briefly explain that you are following up with someone who showed interest, then answer their questions relying strictly on the business details above.';
@@ -169,16 +172,23 @@ export const OUTBOUND_OPENING_INSTRUCTION =
 export function buildDograhOutboundInstruction(
   bot: BusinessPersonaBot,
   widgetConfig: WidgetConfig,
-  options: { timezone: string; useToolBasedBooking?: boolean }
+  options: { timezone: string; useToolBasedBooking?: boolean; contactName?: string }
 ): string {
+  const normTz = normalizeTimezone(options.timezone, 'Asia/Kolkata');
+  const contactGreeting = options.contactName
+    ? `You are calling ${options.contactName} on behalf of ${bot.business_name}. Introduce yourself and the business by name, warmly greet ${options.contactName}, explain that you are following up regarding their interest in ${bot.business_name}, then answer their questions relying strictly on the business details above.`
+    : `You are calling this person on behalf of ${bot.business_name}. If a contact name is provided in context ({{initial_context.contact_name}}), greet them respectfully by name. Introduce yourself and the business by name, briefly explain that you are following up with someone who showed interest, then answer their questions relying strictly on the business details above.`;
+
   return buildBusinessPersona(bot, withoutAutoKnownPhoneField(widgetConfig), {
-    timezone: options.timezone,
-    openingInstruction: OUTBOUND_OPENING_INSTRUCTION,
+    timezone: normTz,
+    openingInstruction: contactGreeting,
     bookingInstruction: options.useToolBasedBooking
       ? buildToolBasedBookingInstruction(widgetConfig.maxBookingDaysAhead)
       : buildVerbalHandoffBookingInstruction(),
-    extraConstraints: options.useToolBasedBooking
-      ? buildPhoneToolTimezoneConstraint(options.timezone)
-      : undefined,
+    extraConstraints: [
+      options.useToolBasedBooking ? buildPhoneToolTimezoneConstraint(normTz) : undefined,
+      '- NEVER ask the customer for their phone number on an outbound call, as their contact details are already registered in the system.',
+      '- Speak clearly, warmly, and concisely (1-2 sentences per turn). Listen actively to their responses.',
+    ].filter(Boolean).join('\n'),
   });
 }
