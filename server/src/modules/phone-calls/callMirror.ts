@@ -229,9 +229,30 @@ async function ingestRun(
 
   if (!sessionId) {
     const preCallSessionId = outboundMeta?.sessionId || initialCtx.session_id;
-    const { data: existingSession } = preCallSessionId
-      ? await supabase.from('chat_sessions').select('id, visitor_id').eq('id', preCallSessionId).eq('bot_id', bot.id).maybeSingle()
-      : { data: null };
+    let existingSession = null;
+    if (preCallSessionId) {
+      const { data } = await supabase.from('chat_sessions').select('id, visitor_id').eq('id', preCallSessionId).eq('bot_id', bot.id).maybeSingle();
+      existingSession = data;
+    }
+    if (!existingSession && counterpartyNumber) {
+      const { data: recentAppt } = await supabase
+        .from('appointments')
+        .select('session_id')
+        .eq('bot_id', bot.id)
+        .eq('visitor_phone', counterpartyNumber)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (recentAppt?.session_id) {
+        const { data: apptSession } = await supabase
+          .from('chat_sessions')
+          .select('id, visitor_id')
+          .eq('id', recentAppt.session_id)
+          .eq('bot_id', bot.id)
+          .maybeSingle();
+        existingSession = apptSession;
+      }
+    }
 
     if (existingSession) {
       sessionId = existingSession.id;

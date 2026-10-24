@@ -101,11 +101,9 @@ export function buildSingleNodeWorkflowDefinition(options: SingleNodeWorkflowOpt
     `and assist with inquiries or appointment bookings per the persona instructions. Once the conversation ` +
     `is clearly finished, transition to ending the call.`;
 
-  const conversationPrompt =
-    (isOutbound
-      ? (options.customOutboundPrompt?.trim() || defaultOutboundPrompt)
-      : (options.customInboundPrompt?.trim() || defaultInboundPrompt)) +
-    ` ${CALL_PACING_INSTRUCTION}`;
+  const conversationPrompt = isOutbound
+    ? (options.customOutboundPrompt?.trim() || defaultOutboundPrompt) + ` ${CALL_PACING_INSTRUCTION}`
+    : (options.customInboundPrompt?.trim() || defaultInboundPrompt);
 
   const validPreCallFetchUrl = preCallFetchUrl && preCallFetchUrl.trim().length > 0 ? preCallFetchUrl.trim() : undefined;
 
@@ -116,7 +114,7 @@ export function buildSingleNodeWorkflowDefinition(options: SingleNodeWorkflowOpt
     data: {
       name: 'Conversation',
       prompt: conversationPrompt,
-      allow_interrupt: false,
+      allow_interrupt: true,
       add_global_prompt: true,
       delayed_start: isOutbound,
       delayed_start_duration: isOutbound ? 1.5 : undefined,
