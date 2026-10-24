@@ -295,11 +295,14 @@ async function ingestRun(
       }
     } catch (err: any) {
       if (err instanceof DograhApiError && err.status === 404) {
+        const hasRealtimeLogs = Array.isArray((run.logs as any)?.realtime_feedback_events) &&
+          (run.logs as any).realtime_feedback_events.length > 0;
+
         const duration = extractDurationSeconds(run) ?? 0;
         const runAgeMs = Date.now() - new Date(run.created_at).getTime();
         const MAX_RETRY_AGE_MS = 2 * 60 * 1000; 
 
-        if (duration > 0 && runAgeMs < MAX_RETRY_AGE_MS) {
+        if (!hasRealtimeLogs && duration > 0 && runAgeMs < MAX_RETRY_AGE_MS) {
           console.warn(
             `[phone-calls] Transcript not found (404) for run ${runId} of bot ${bot.id} ` +
             `(duration: ${duration}s, age: ${Math.round(runAgeMs / 1000)}s). Delaying ingestion to retry.`
@@ -309,13 +312,51 @@ async function ingestRun(
 
         console.warn(
           `[phone-calls] Transcript not found (404) for run ${runId} of bot ${bot.id}. ` +
-          `Exceeded retry time or call duration is 0. Proceeding with empty transcript.`
+          `Proceeding with fallback extraction.`
         );
       } else {
         throw err;
       }
     }
   }
+
+  // Fallback: If static transcript file is missing/404, reconstruct conversation from Dograh's realtime logs
+  if (!transcript && run.logs && Array.isArray((run.logs as any).realtime_feedback_events)) {
+    const events = (run.logs as any).realtime_feedback_events;
+    const extractedTurns: Array<{ sender: 'user' | 'assistant'; content: string }> = [];
+
+    for (const ev of events) {
+      if (ev.type === 'rtf-user-transcription' && ev.payload?.text?.trim()) {
+        extractedTurns.push({ sender: 'user', content: ev.payload.text.trim() });
+      } else if (ev.type === 'rtf-bot-text' && ev.payload?.text?.trim()) {
+        extractedTurns.push({ sender: 'assistant', content: ev.payload.text.trim() });
+      }
+    }
+
+    if (extractedTurns.length > 0) {
+      hasCustomerSpoken = extractedTurns.some(turn => turn.sender === 'user' && turn.content.trim().length > 0);
+      try {
+        await supabase.from('messages').insert(
+          extractedTurns.map(turn => ({ session_id: sessionId, sender: turn.sender, content: turn.content }))
+        );
+      } catch (msgErr) {
+        console.warn('[callMirror] Failed to insert reconstructed messages:', msgErr);
+      }
+      transcript = extractedTurns
+        .map(turn => `${turn.sender === 'user' ? 'Visitor' : 'Receptionist'}: ${turn.content}`)
+        .join('\n');
+    }
+  }
+
+  // Extract budget, requirement, and visitorName from Dograh's gathered_context / tool calls
+  const gathered = (run.gathered_context || {}) as any;
+  const extractedVars = gathered.extracted_variables || {};
+  const toolResults = Array.isArray(gathered.tool_results) ? gathered.tool_results : [];
+  const apptTool = toolResults.find((t: any) => t.function_name?.includes('book_appointment'))?.arguments;
+
+  const resolvedBudget = apptTool?.budget || extractedVars.caller_budget || undefined;
+  const resolvedRequirement = apptTool?.requirement || extractedVars.caller_requirement || undefined;
+  const resolvedName = apptTool?.visitorName || extractedVars.caller_name || contactName || undefined;
 
   const isOutbound = Boolean(bot.dograh_outbound_workflow_id && workflowId === bot.dograh_outbound_workflow_id);
 
@@ -326,7 +367,9 @@ async function ingestRun(
       transcript,
       knownPhone: counterpartyNumber || undefined,
       knownEmail: callerEmail || undefined,
-      knownName: contactName || undefined,
+      knownName: resolvedName,
+      knownBudget: resolvedBudget,
+      knownRequirement: resolvedRequirement,
     }, supabase);
   } else {
     // If the customer did not respond / remained silent during the call:

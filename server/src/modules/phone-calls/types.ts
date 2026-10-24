@@ -49,6 +49,7 @@ export interface DograhRunDetail extends DograhRunSummary {
   usage_info: Record<string, unknown> | null;
   initial_context: Record<string, unknown> | null;
   gathered_context: Record<string, unknown> | null;
+  logs?: Record<string, unknown> | null;
   call_type: 'inbound' | 'outbound';
 }
 
