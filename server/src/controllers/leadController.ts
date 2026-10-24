@@ -2,6 +2,7 @@
 import { config } from '../config';
 import { isCrmSyncEnabled, syncLeadToCrm } from '../services/crmSync';
 import { logger } from '../services/cloudwatchLogger';
+import { formatInTimezone, getTimezoneOffsetString, normalizeTimezone } from '../utils/date';
 
 const GROQ_API_KEY = config.groqApiKey || '';
 
@@ -281,54 +282,76 @@ export async function analyzeLead(
     try {
       const { data: existingAppt } = await supabase
         .from('appointments')
-        .select('id, visitor_name, visitor_phone')
+        .select('id, visitor_name, visitor_phone, start_time, end_time, calendar_event_id, status')
         .eq('session_id', sessionId)
         .maybeSingle();
 
-      const { hour, minute, targetDay } = parseAppointmentDateTime(finalAppointmentStatus, transcript);
-      const now = new Date();
-      let daysUntilTarget = (targetDay - now.getDay() + 7) % 7;
-      if (daysUntilTarget === 0) {
-        // If scheduled for today but the hour has already passed, push to next week
-        if (now.getHours() > hour || (now.getHours() === hour && now.getMinutes() >= minute)) {
-          daysUntilTarget = 7;
-        }
-      }
-      const apptDate = new Date(now.getTime() + daysUntilTarget * 24 * 60 * 60 * 1000);
-      apptDate.setHours(hour, minute, 0, 0);
-
-      const startTime = apptDate.toISOString();
-      const endTime = new Date(apptDate.getTime() + 60 * 60 * 1000).toISOString();
-
       let businessName = 'Business';
+      let botTimezone = 'Asia/Kolkata';
       try {
-        const { data: bRow } = await supabase.from('bots').select('business_name').eq('id', botId).maybeSingle();
+        const { data: bRow } = await supabase.from('bots').select('business_name, widget_config').eq('id', botId).maybeSingle();
         if (bRow?.business_name) businessName = bRow.business_name;
+        if (bRow?.widget_config?.timezone) botTimezone = bRow.widget_config.timezone;
       } catch {
-        // fallback to Business
+        // fallback to Business / Asia/Kolkata
       }
+      botTimezone = normalizeTimezone(botTimezone, 'Asia/Kolkata');
 
       const appointmentTitle = `${businessName} Appointment - ${name !== 'Anonymous' ? name : 'Lead'}`;
 
-      if (!existingAppt) {
-        await supabase.from('appointments').insert({
-          bot_id: botId,
-          session_id: sessionId,
-          title: appointmentTitle,
-          visitor_name: name !== 'Anonymous' ? name : 'Prospective Buyer',
-          visitor_phone: phone || 'Not Provided',
-          start_time: startTime,
-          end_time: endTime,
-          status: 'confirmed',
-        });
-      } else {
+      // If an appointment was ALREADY booked via the calendar tools mid-call (or was confirmed earlier),
+      // DO NOT overwrite its verified start_time/end_time with a transcript heuristic guess!
+      if (existingAppt?.start_time && (existingAppt.calendar_event_id || existingAppt.status === 'confirmed')) {
         await supabase.from('appointments').update({
-          start_time: startTime,
-          end_time: endTime,
           visitor_name: name !== 'Anonymous' ? name : existingAppt.visitor_name,
           visitor_phone: phone || existingAppt.visitor_phone,
           status: 'confirmed',
         }).eq('id', existingAppt.id);
+      } else {
+        const { hour, minute, targetDay } = parseAppointmentDateTime(finalAppointmentStatus, transcript);
+
+        // Compute the target date in the business timezone (not the server's UTC system timezone!)
+        const nowInTz = new Date(new Date().toLocaleString('en-US', { timeZone: botTimezone }));
+        const currentDay = nowInTz.getDay();
+        let daysUntilTarget = (targetDay - currentDay + 7) % 7;
+        if (daysUntilTarget === 0) {
+          if (nowInTz.getHours() > hour || (nowInTz.getHours() === hour && nowInTz.getMinutes() >= minute)) {
+            daysUntilTarget = 7;
+          }
+        }
+        const targetDate = new Date(nowInTz.getFullYear(), nowInTz.getMonth(), nowInTz.getDate() + daysUntilTarget);
+        const yyyy = targetDate.getFullYear();
+        const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(targetDate.getDate()).padStart(2, '0');
+        const hh = String(hour).padStart(2, '0');
+        const min = String(minute).padStart(2, '0');
+
+        const tzOffset = getTimezoneOffsetString(botTimezone, targetDate);
+        const startTime = `${yyyy}-${mm}-${dd}T${hh}:${min}:00${tzOffset}`;
+        const startDateTimeObj = new Date(startTime);
+        const endDateTimeObj = new Date(startDateTimeObj.getTime() + 60 * 60 * 1000);
+        const endTime = formatInTimezone(endDateTimeObj, botTimezone);
+
+        if (!existingAppt) {
+          await supabase.from('appointments').insert({
+            bot_id: botId,
+            session_id: sessionId,
+            title: appointmentTitle,
+            visitor_name: name !== 'Anonymous' ? name : 'Prospective Buyer',
+            visitor_phone: phone || 'Not Provided',
+            start_time: startTime,
+            end_time: endTime,
+            status: 'confirmed',
+          });
+        } else {
+          await supabase.from('appointments').update({
+            start_time: startTime,
+            end_time: endTime,
+            visitor_name: name !== 'Anonymous' ? name : existingAppt.visitor_name,
+            visitor_phone: phone || existingAppt.visitor_phone,
+            status: 'confirmed',
+          }).eq('id', existingAppt.id);
+        }
       }
     } catch (apptErr) {
       console.warn('[leadController] Failed to auto-create appointment for confirmed visit:', apptErr);
