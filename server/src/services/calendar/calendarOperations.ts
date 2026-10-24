@@ -250,7 +250,8 @@ export async function bookCalendarAppointment(input: BookingInput) {
             appointment_status: 'Confirmed',
             lead_score: 'HOT',
             sentiment: 'Positive',
-            requirement: details.title || 'Scheduled Visit / Appointment',
+            requirement: (details as any).requirement || details.title || 'Scheduled Visit / Appointment',
+            budget: (details as any).budget || 'N/A',
             summary: `Site visit confirmed for ${formattedDate}`,
             updated_at: new Date().toISOString()
           }, { onConflict: 'session_id' })

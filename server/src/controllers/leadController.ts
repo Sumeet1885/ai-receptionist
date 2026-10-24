@@ -23,6 +23,8 @@ export interface LeadInput {
    * same reason knownPhone does - it's the actual validated value, not a spoken/typed guess. */
   knownEmail?: string;
   knownName?: string;
+  knownBudget?: string;
+  knownRequirement?: string;
 }
 
 export interface LeadData {
@@ -129,7 +131,7 @@ export async function analyzeLead(
   input: LeadInput,
   supabase: any
 ): Promise<void> {
-  const { sessionId, botId, transcript, knownPhone, knownEmail, knownName } = input;
+  const { sessionId, botId, transcript, knownPhone, knownEmail, knownName, knownBudget, knownRequirement } = input;
 
   if (!GROQ_API_KEY) return;
 
@@ -203,6 +205,13 @@ export async function analyzeLead(
   lead.email = email; // same pattern as phone, for the same reason
   const name = lead.name?.trim() || knownName?.trim() || 'Anonymous';
   lead.name = name;
+
+  if (knownBudget?.trim() && (!lead.budget || lead.budget === 'N/A' || /^(none|unknown|n\/a)$/i.test(lead.budget.trim()))) {
+    lead.budget = knownBudget.trim();
+  }
+  if (knownRequirement?.trim() && (!lead.requirement || lead.requirement.toLowerCase() === 'general inquiry' || lead.requirement.toLowerCase() === 'not specified')) {
+    lead.requirement = knownRequirement.trim();
+  }
 
   // Check if an appointment was already confirmed for this session so we don't accidentally downgrade it
   const { data: existingLead } = await supabase
