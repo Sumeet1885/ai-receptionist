@@ -24,8 +24,8 @@ const FIELD_DESCRIPTIONS: Record<string, string> = {
   name: 'Full Name',
   phone: 'Contact Phone Number',
   email: 'Email Address',
-  requirement: 'Specific interest/visit purpose',
-  budget: 'Budget / Financial capability if relevant',
+  requirement: 'Specific interest / plot size requirement',
+  budget: 'Budget if mentioned',
 };
 
 function buildLeadCollectionInstruction(widgetConfig: WidgetConfig): string {
@@ -150,11 +150,12 @@ export function withoutAutoKnownPhoneField(widgetConfig: WidgetConfig): WidgetCo
 export function buildDograhPhoneInstruction(
   bot: BusinessPersonaBot,
   widgetConfig: WidgetConfig,
-  options: { timezone: string; useToolBasedBooking?: boolean }
+  options: { timezone: string; useToolBasedBooking?: boolean; openingInstruction?: string }
 ): string {
   const normTz = normalizeTimezone(options.timezone, 'Asia/Kolkata');
   return buildBusinessPersona(bot, withoutAutoKnownPhoneField(widgetConfig), {
     timezone: normTz,
+    openingInstruction: options.openingInstruction,
     bookingInstruction: options.useToolBasedBooking
       ? buildToolBasedBookingInstruction(widgetConfig.maxBookingDaysAhead)
       : buildVerbalHandoffBookingInstruction(),
