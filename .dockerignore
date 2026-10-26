@@ -1,0 +1,28 @@
+# Docker build context is the repository root (npm workspaces).
+# Never send credentials, VCS data or local installs to the builder.
+.env
+.env.*
+**/.env
+**/.env.*
+node_modules
+**/node_modules
+dist
+**/dist
+.git
+.turbo
+**/.turbo
+*.log
+**/npm-debug.log*
+
+# Not needed by any image
+docs
+infra
+scripts
+supabase
+.github
+.vscode
+apps/api/tests
+apps/api/scripts
+apps/api/legacy
+apps/web/tests
+apps/web/.agents

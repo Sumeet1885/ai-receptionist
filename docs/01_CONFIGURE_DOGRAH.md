@@ -1,6 +1,6 @@
 # Configure Dograh
 
-Do this after `Call/dograh-docker/Dograh_DEPLOYMENT_GUIDE.md` - Dograh needs to actually be
+Do this after `infra/dograh-docker/Dograh_DEPLOYMENT_GUIDE.md` - Dograh needs to actually be
 running first. Open `http://<DOGRAH_PUBLIC_IP>:38080` and log in as an admin to generate an
 API key (Settings → API Keys → Create). Copy the key - it is the value for `DOGRAH_API_KEY`
 in `server/.env`.
@@ -35,7 +35,7 @@ email/etc. out of the conversation) and QA scoring. This deployment uses:
 | API Key | the project's `GROQ_API_KEY` |
 
 Save. These are exactly the values this app's workflows were built and tested against (see
-`server/src/modules/phone-calls/dograhClient.ts` and the model-configurations API it calls) - if
+`apps/api/src/modules/phone-calls/dograhClient.ts` and the model-configurations API it calls) - if
 you use a different model, expect to re-verify call quality before relying on it.
 
 ## 2. Telephony (Telephony tab)
@@ -61,7 +61,7 @@ API, or a clear error in the UI if the credentials are wrong).
 
 A phone number only gets bound to an inbound workflow when a bot is provisioned from inside AI
 Receptionist itself (the **Provision phone agent** / **Assign number** buttons on a bot's Calls
-tab - see `client/src/modules/phone-calls/PhoneAgentPanel.tsx`). There's nothing more to do here
+tab - see `apps/web/src/modules/phone-calls/PhoneAgentPanel.tsx`). There's nothing more to do here
 in the Dograh UI for that part; it happens automatically once `docs/AWS_DEPLOYMENT.md` is done
 and you provision a bot through the app.
 

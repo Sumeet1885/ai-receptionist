@@ -12,14 +12,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: staging
 
-    strategy:
-      matrix:
-        include:
-          - folder: client
-            build_cmd: npm run build
-          - folder: server
-            build_cmd: npm run typecheck
-
     steps:
       - name: Checkout code at specified commit
         uses: actions/checkout@v3
@@ -29,15 +21,13 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "20.11.1"
+          node-version-file: ".nvmrc"
 
-      - name: Install dependencies
-        working-directory: ${{ matrix.folder }}
+      - name: Install dependencies (all workspaces)
         run: npm ci
 
-      - name: Build / Typecheck
-        working-directory: ${{ matrix.folder }}
-        run: ${{ matrix.build_cmd }}
+      - name: Typecheck and build (web, api, admin, contracts)
+        run: npx turbo run typecheck build
         env:
           # Vite bakes these into the client bundle at build time.
           # Add them as Variables (not Secrets) in GitHub → Settings → Secrets and Variables → Actions → Variables
@@ -46,8 +36,11 @@ jobs:
           VITE_EXPRESS_SERVER_URL: ${{ vars.VITE_EXPRESS_SERVER_URL }}
           VITE_WIDGET_BASE_URL: ${{ vars.VITE_WIDGET_BASE_URL }}
 
+      - name: Check browser/server import boundaries
+        run: npm run check:boundaries
+
       - name: Summary
         run: |
           echo "### ✅ Build Verified" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit:** \`${{ github.event.inputs.commit_sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Jobs:** client (build) + server (typecheck)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Jobs:** typecheck + build (web, admin), typecheck (api, contracts), boundary check" >> $GITHUB_STEP_SUMMARY

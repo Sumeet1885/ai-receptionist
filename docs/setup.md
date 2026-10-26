@@ -58,15 +58,15 @@ cd ai-receptionist
 Install dependencies:
 
 ```bash
-npm run install:all
+npm install
 ```
 
 ## 2. Confirm the Production Architecture
 
 This repository currently deploys as:
 
-- frontend static build from `client/`
-- backend Node/Express server from `server/`
+- frontend static build from `apps/web/`
+- backend Node/Express server from `apps/api/`
 - Supabase for Auth and Postgres
 - Google OAuth for sign-in and calendar connection
 
@@ -88,7 +88,7 @@ Open the Supabase dashboard and either:
 
 ### Step 3.2: Record the Project Reference
 
-From the repository, note that `server/supabase/config.toml` currently contains:
+From the repository, note that `supabase/config.toml` currently contains:
 
 ```txt
 project_id = "gatzlksagxpdqqonssfq"
@@ -402,7 +402,7 @@ Store it as a backend secret.
 ## 11. Configure Dograh Phone Calls (Optional)
 
 Skip this section entirely if the deployment does not include phone calls. The backend starts
-fine without these values - the phone-calls module (`server/src/modules/phone-calls/`) stays
+fine without these values - the phone-calls module (`apps/api/src/modules/phone-calls/`) stays
 inert (no routes registered, no poller started) when `DOGRAH_EMAIL`/`DOGRAH_PASSWORD` are unset.
 
 If phone calls are in scope, Dograh must already be deployed and configured - see
@@ -445,7 +445,7 @@ GROQ_API_KEY
 
 This is not collected from anywhere - generate it yourself. It is the shared secret Dograh's
 backend presents (`X-API-Key` header) when it calls back into this server mid-call, for the
-calendar tools and pre-call session creation (see `server/src/middleware/phoneToolsAuth.ts`).
+calendar tools and pre-call session creation (see `apps/api/src/middleware/phoneToolsAuth.ts`).
 
 ```bash
 openssl rand -hex 24
@@ -608,14 +608,13 @@ Important:
 
 ## 15. Apply Supabase Migrations
 
-The production database must receive the schema in `server/supabase/migrations/`.
+The production database must receive the schema in `supabase/migrations/`.
 
 ### Recommended CLI Method
 
-From the repository:
+From the repository root (the Supabase project lives in `supabase/`):
 
 ```bash
-cd server
 npx supabase login
 npx supabase link --project-ref YOUR_PROJECT_REF
 npm run db:migrate
@@ -627,7 +626,7 @@ If the project is already linked correctly, verify the target before applying mi
 
 If the organization does not allow Supabase CLI deployment:
 
-1. open `server/supabase/migrations/`
+1. open `supabase/migrations/`
 2. execute the SQL files in order through the Supabase SQL Editor
 
 Do not skip later hardening migrations.

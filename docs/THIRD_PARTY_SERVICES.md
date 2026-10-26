@@ -14,8 +14,8 @@ This document lists and details all external and third-party services integrated
   * Client: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`
   * Server: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 * **Key Files / Integration Points:**
-  * Client Service: [`client/src/services/supabase.ts`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/client/src/services/)
-  * Database Migrations: [`server/supabase/migrations/`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/server/supabase/migrations/)
+  * Client Service: [`apps/web/src/services/supabase.ts`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/apps/web/src/services/)
+  * Database Migrations: [`supabase/migrations/`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/supabase/migrations/)
 
 ---
 
@@ -31,8 +31,8 @@ This document lists and details all external and third-party services integrated
 * **Environment Variables:**
   * Server: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`
 * **Key Files / Integration Points:**
-  * Express Controller: [`server/src/controllers/calendarController.ts`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/server/src/controllers/calendarController.ts)
-  * Google Calendar Adapter: [`server/src/services/calendar/googleCalendar.ts`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/server/src/services/calendar/)
+  * Express Controller: [`apps/api/src/controllers/calendarController.ts`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/apps/api/src/controllers/calendarController.ts)
+  * Google Calendar Adapter: [`apps/api/src/services/calendar/googleCalendar.ts`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/apps/api/src/services/calendar/)
 
 ---
 
@@ -44,7 +44,7 @@ This document lists and details all external and third-party services integrated
 * **Environment Variables:**
   * Server: `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `MICROSOFT_REDIRECT_URI`
 * **Key Files / Integration Points:**
-  * Outlook Adapter: [`server/src/services/calendar/outlookCalendar.ts`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/server/src/services/calendar/)
+  * Outlook Adapter: [`apps/api/src/services/calendar/outlookCalendar.ts`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/apps/api/src/services/calendar/)
   * Dependencies: `@microsoft/microsoft-graph-client`
 
 ---
@@ -58,9 +58,9 @@ This document lists and details all external and third-party services integrated
 * **Environment Variables:**
   * Server: `GEMINI_API_KEY`, `GEMINI_MODEL` (Optional)
 * **Key Files / Integration Points:**
-  * Voice WebSocket Controller: [`server/src/controllers/liveChatController.ts`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/server/src/controllers/liveChatController.ts)
-  * LLM Guard & Rules: [`server/src/services/geminiGuard.ts`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/server/src/services/geminiGuard.ts)
-  * Tool Execution: [`server/src/services/liveTools.ts`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/server/src/services/liveTools.ts)
+  * Voice WebSocket Controller: [`apps/api/src/controllers/liveChatController.ts`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/apps/api/src/controllers/liveChatController.ts)
+  * LLM Guard & Rules: [`apps/api/src/services/geminiGuard.ts`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/apps/api/src/services/geminiGuard.ts)
+  * Tool Execution: [`apps/api/src/services/liveTools.ts`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/apps/api/src/services/liveTools.ts)
 
 ---
 
@@ -72,7 +72,7 @@ This document lists and details all external and third-party services integrated
 * **Environment Variables:**
   * Server: `GROQ_API_KEY`
 * **Key Files / Integration Points:**
-  * Lead Controller: [`server/src/controllers/leadController.ts`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/server/src/controllers/leadController.ts)
+  * Lead Controller: [`apps/api/src/controllers/leadController.ts`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/apps/api/src/controllers/leadController.ts)
 
 ---
 
@@ -86,5 +86,5 @@ This document lists and details all external and third-party services integrated
 * **Environment Variables:**
   * Server: `DOGRAH_API_URL`, `DOGRAH_API_KEY`, `DOGRAH_POLL_INTERVAL_MS`, `PHONE_TOOLS_API_KEY`, `PHONE_TOOLS_CALLBACK_BASE_URL`
 * **Key Files / Integration Points:**
-  * Server Module: [`server/src/modules/phone-calls/`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/server/src/modules/phone-calls/)
-  * Client Module: [`client/src/modules/phone-calls/`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/client/src/modules/phone-calls/)
+  * Server Module: [`apps/api/src/modules/phone-calls/`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/apps/api/src/modules/phone-calls/)
+  * Client Module: [`apps/web/src/modules/phone-calls/`](file:///d:/Dev/Ai-Receptionist/ai-receptionist/apps/web/src/modules/phone-calls/)

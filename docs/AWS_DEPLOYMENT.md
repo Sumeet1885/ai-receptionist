@@ -2,7 +2,7 @@
 
 Simple step-by-step guide to deploy AI Receptionist (dashboard + API + widget) on a single AWS
 EC2 instance. Mirrors the exact pattern used for Dograh's own deployment
-(`Call/dograh-docker/Dograh_DEPLOYMENT_GUIDE.md`) - one instance, Docker Compose, no ECS/ALB/
+(`infra/dograh-docker/Dograh_DEPLOYMENT_GUIDE.md`) - one instance, Docker Compose, no ECS/ALB/
 CloudFront/Route 53 layer to manage.
 
 **Do this after** `docs/setup.md` - that document creates the Supabase project, the Google OAuth
@@ -147,7 +147,7 @@ VITE_WIDGET_BASE_URL=https://api.yourdomain.com
 Create `server/.env`:
 
 ```bash
-cp server/.env.example server/.env
+cp apps/api/.env.example server/.env
 nano server/.env
 ```
 
@@ -252,6 +252,10 @@ go to `docs/05_VERIFY.md` next.
 ---
 
 ## Updating a deployment
+
+> **First deployment after the `apps/` + `packages/` restructure:** follow
+> [deployment/deploy-restructured-repo.md](deployment/deploy-restructured-repo.md) once. Hosts that
+> build images themselves must change their Compose `build:` paths before the commands below work.
 
 ```bash
 cd ~/ai-receptionist

@@ -64,7 +64,7 @@ Only run this section if Dograh was deployed (`docs/01_CONFIGURE_DOGRAH.md`).
   reachable from outside the Dograh EC2 instance, and either one alone being wrong produces the
   exact same symptom:
   1. The EC2 **security group** needs a `Custom TCP 9000` inbound rule (see
-     `Call/dograh-docker/Dograh_DEPLOYMENT_GUIDE.md`, Step 2).
+     `infra/dograh-docker/Dograh_DEPLOYMENT_GUIDE.md`, Step 2).
   2. The `minio` service in `docker-compose.yaml` needs to actually publish that port to all
      interfaces - `docker compose ps` should show `0.0.0.0:9000->9000/tcp`, not
      `127.0.0.1:9000->9000/tcp`. A correct security group does nothing if Docker itself never

@@ -15,7 +15,7 @@ Read this section before changing the project.
 | What are the public surfaces? | `/chats/:subdomain`, `/widget/loader.js`, the widget iframe, typed chat APIs, and the live-voice WebSocket. |
 | Where do AI requests go? | Typed chat uses Gemini HTTP, live voice uses Gemini Live through the backend, and post-conversation lead analysis uses Groq. |
 | Where is authorization enforced? | Supabase RLS protects owner-facing browser queries. Express performs trusted server operations and validates widget origins, sessions, tool arguments, and contact data. |
-| What is not active architecture? | Supabase Edge Functions in `server/supabase/functions/` are legacy/optional. Do not edit them expecting the Express runtime to change. |
+| What is not active architecture? | Supabase Edge Functions in `supabase/functions/` are legacy/optional. Do not edit them expecting the Express runtime to change. |
 
 ### Non-negotiable invariants
 
@@ -73,7 +73,7 @@ flowchart LR
 | Typed chat | `gemini-2.5-flash-lite` | Answers from the bot knowledge base and requests calendar tools. Configurable with `GEMINI_MODEL`. |
 | Live voice | `models/gemini-3.1-flash-live-preview` | Streams audio and performs controlled tool calls through the Express WebSocket proxy. |
 | Lead analysis | Groq `llama-3.1-8b-instant` | Extracts lead fields, sentiment, score, summary, and appointment state after conversations. |
-| Inbound phone calls | Dograh (self-hosted, separate service) | Answers real phone numbers using a voice agent provisioned from the same business persona/knowledge base; calls are mirrored into Supabase. See [Phone calls/README.md](Phone%20calls/README.md). |
+| Inbound phone calls | Dograh (self-hosted, separate service) | Answers real phone numbers using a voice agent provisioned from the same business persona/knowledge base; calls are mirrored into Supabase. See [docs/phone-calls.md](docs/phone-calls.md). |
 
 There is currently no embedding or vector-search layer. The complete `bots.knowledge_base` is added to the Gemini prompt. This is simple, but prompt size and cost grow with the knowledge base.
 
@@ -169,35 +169,49 @@ Lead records are upserted by session. If `GROQ_API_KEY` is absent or Groq fails,
 
 ```text
 .
-├── client/                         React 19, TypeScript, Vite, Tailwind 4
-│   └── src/
-│       ├── components/             Auth, chat, dashboard, landing, layout, UI
-│       ├── hooks/                  Shared client behavior, including live voice
-│       ├── modules/phone-calls/    Calls tab: Dograh provisioning UI + call history
-│       ├── pages/                  Dashboard, agents, leads, inbox, calendar
-│       ├── services/               Supabase and API clients
-│       └── App.tsx                 Client route definitions
-├── server/                         Express, TypeScript, WebSocket backend
-│   ├── src/
-│   │   ├── controllers/            Chat, widget, calendar, lead, live voice
-│   │   ├── middleware/             Authentication and request controls
-│   │   ├── modules/phone-calls/    Dograh client, persona builder, call mirroring/poller, routes
-│   │   ├── services/               Gemini guard/tools and calendar adapters
-│   │   ├── utils/                  Security and contact validation
-│   │   └── index.ts                Active backend entry point
-│   ├── supabase/
-│   │   ├── migrations/             Ordered database schema and policy history
-│   │   └── functions/              Legacy/optional Edge Functions
-│   └── tests/                      Backend integration and regression tests
+├── apps/
+│   ├── web/                        Customer dashboard + public chat (React 19, Vite, Tailwind 4)
+│   │   ├── src/
+│   │   │   ├── components/         Auth, chat, dashboard, landing, layout, UI
+│   │   │   ├── hooks/              Shared client behavior, including live voice
+│   │   │   ├── modules/phone-calls/ Calls tab: Dograh provisioning UI + call history
+│   │   │   ├── services/           Supabase and API clients
+│   │   │   └── App.tsx             Client route definitions
+│   │   ├── tests/                  Client unit tests
+│   │   └── Dockerfile*, Caddyfile  Web image (Caddy serves SPA, proxies /api and /widget)
+│   ├── api/                        Express, TypeScript, WebSocket backend
+│   │   ├── src/
+│   │   │   ├── controllers/        Chat, widget, calendar, lead, live voice
+│   │   │   ├── middleware/         Authentication and request controls
+│   │   │   ├── modules/phone-calls/ Dograh client, persona builder, call mirroring/poller, routes
+│   │   │   ├── services/           Gemini guard/tools, calendar adapters, db.ts (only service-role client)
+│   │   │   ├── utils/              Security and contact validation
+│   │   │   └── index.ts            Active backend entry point
+│   │   ├── tests/                  Backend integration and regression tests
+│   │   ├── scripts/                One-off operational scripts
+│   │   └── legacy/                 Unused pre-`src/` controllers kept for reference
+│   └── admin/                      Staff console scaffold (not deployed; no auth/data yet)
+├── packages/
+│   └── contracts/                  Browser-safe shared types and validators
+├── supabase/
+│   ├── migrations/                 Ordered database schema and policy history
+│   └── functions/                  Legacy/optional Edge Functions
+├── infra/dograh-docker/            Dograh Compose deployment (keep the folder name: it names the volumes)
+├── scripts/
+│   ├── check-boundaries.mjs        Browser/server import boundary guard
+│   └── widget-harness/             Manual widget test page
 ├── docs/
 │   ├── README.md                   Start here - the full deployment sequence across Dograh + this app
 │   ├── 01_CONFIGURE_DOGRAH.md      Dograh UI setup: speech-to-speech model, Plivo telephony
 │   ├── setup.md                    Supabase project, Google OAuth, credential collection
 │   ├── AWS_DEPLOYMENT.md           Single-EC2 Docker Compose deployment for this app
 │   ├── 05_VERIFY.md                Post-deployment smoke test, including phone calls
-│   └── superpowers/                Historical design specs and implementation plans
-├── Phone calls/                    Architecture notes for inbound phone calls (Dograh); runtime code lives under server/client modules above
-├── package.json                    Root orchestration scripts
+│   ├── phone-calls.md              Architecture notes for inbound/outbound phone calls (Dograh)
+│   ├── deployment/                 Deployment workflow guide
+│   └── modernization/              Repository and database architecture plans
+├── docker-compose-{staging,prod}.yml  EC2 runtime (reads ./server/.env on the host)
+├── turbo.json                      Turborepo task pipeline
+├── package.json                    npm workspaces + root scripts
 └── Readme.md                       This architecture and maintenance guide
 ```
 
@@ -205,23 +219,23 @@ Lead records are upserted by session. If `GROQ_API_KEY` is absent or Groq fails,
 
 | Task | Start here |
 | --- | --- |
-| Change app routes | `client/src/App.tsx` |
-| Change public chat UI | `client/src/components/chat/PublicChatView.tsx` |
-| Change live voice client behavior | `client/src/hooks/useLiveVoice.ts`, `client/src/components/chat/VoiceCallView.tsx` |
-| Change typed chat behavior | `server/src/controllers/chatController.ts` |
-| Change Gemini Live behavior | `server/src/controllers/liveChatController.ts` |
-| Change live tools or input protocol | `server/src/services/liveTools.ts` |
-| Change contact validation | `server/src/utils/contactValidation.ts` |
-| Change voice quotas or duration | `server/src/services/geminiGuard.ts` |
-| Change widget loader or iframe | `server/src/controllers/widgetController.ts` |
-| Change domain/origin security | `server/src/utils/security.ts` |
-| Change calendar behavior | `server/src/controllers/calendarController.ts`, `server/src/services/calendar/` |
-| Change booking transaction rules | `server/src/services/calendar/calendarOperations.ts` |
-| Change lead extraction | `server/src/controllers/leadController.ts` |
-| Change schema or RLS | Add a migration under `server/supabase/migrations/` |
-| Change server routing | `server/src/index.ts` |
-| Change inbound phone call behavior (Dograh) | `server/src/modules/phone-calls/` (see [Phone calls/README.md](Phone%20calls/README.md)), `client/src/modules/phone-calls/` |
-| Change the shared receptionist persona text | `server/src/modules/phone-calls/receptionistInstruction.ts` (used by both Gemini Live and Dograh) |
+| Change app routes | `apps/web/src/App.tsx` |
+| Change public chat UI | `apps/web/src/components/chat/PublicChatView.tsx` |
+| Change live voice client behavior | `apps/web/src/hooks/useLiveVoice.ts`, `apps/web/src/components/chat/VoiceCallView.tsx` |
+| Change typed chat behavior | `apps/api/src/controllers/chatController.ts` |
+| Change Gemini Live behavior | `apps/api/src/controllers/liveChatController.ts` |
+| Change live tools or input protocol | `apps/api/src/services/liveTools.ts` |
+| Change contact validation | `apps/api/src/utils/contactValidation.ts` |
+| Change voice quotas or duration | `apps/api/src/services/geminiGuard.ts` |
+| Change widget loader or iframe | `apps/api/src/controllers/widgetController.ts` |
+| Change domain/origin security | `apps/api/src/utils/security.ts` |
+| Change calendar behavior | `apps/api/src/controllers/calendarController.ts`, `apps/api/src/services/calendar/` |
+| Change booking transaction rules | `apps/api/src/services/calendar/calendarOperations.ts` |
+| Change lead extraction | `apps/api/src/controllers/leadController.ts` |
+| Change schema or RLS | Add a migration under `supabase/migrations/` |
+| Change server routing | `apps/api/src/index.ts` |
+| Change inbound phone call behavior (Dograh) | `apps/api/src/modules/phone-calls/` (see [docs/phone-calls.md](docs/phone-calls.md)), `apps/web/src/modules/phone-calls/` |
+| Change the shared receptionist persona text | `apps/api/src/modules/phone-calls/receptionistInstruction.ts` (used by both Gemini Live and Dograh) |
 
 ## Data model
 
@@ -258,7 +272,7 @@ Anonymous visitors do not query or insert these records directly. Express uses t
 
 ## Backend surface
 
-The active HTTP server is `server/src/index.ts`.
+The active HTTP server is `apps/api/src/index.ts`.
 
 | Route | Purpose |
 | --- | --- |
@@ -296,12 +310,14 @@ Global CORS is restricted by trusted runtime origins. Widget authorization is a 
 ### Install
 
 ```bash
-npm run install:all
+npm install
 ```
+
+This installs every workspace (`apps/*`, `packages/*`) from the single root `package-lock.json`.
 
 ### Configure environment
 
-Create `client/.env`:
+Create `apps/web/.env`:
 
 ```dotenv
 VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
@@ -310,7 +326,7 @@ VITE_EXPRESS_SERVER_URL=http://localhost:4000
 VITE_WIDGET_BASE_URL=http://localhost:4000
 ```
 
-Create `server/.env`:
+Create `apps/api/.env`:
 
 ```dotenv
 SUPABASE_URL=https://YOUR_PROJECT.supabase.co
@@ -345,7 +361,7 @@ Use the exact variable names in the repository `.env.example` files if they chan
 
 ### Apply the database
 
-Apply every SQL file in `server/supabase/migrations/` in filename order. The final policy state matters: early schema files contain historical public policies that later hardening migrations remove.
+Apply every SQL file in `supabase/migrations/` in filename order. The final policy state matters: early schema files contain historical public policies that later hardening migrations remove.
 
 ### Run
 
@@ -354,8 +370,8 @@ Apply every SQL file in `server/supabase/migrations/` in filename order. The fin
 npm run dev
 
 # Or run either process separately
-npm run dev:client
-npm run dev:server
+npm run dev:web
+npm run dev:api
 ```
 
 Default URLs:
@@ -364,20 +380,20 @@ Default URLs:
 - Express: `http://localhost:4000`
 - Health check: `http://localhost:4000/health`
 
-The root `dev:functions` and `dev:all` scripts also start legacy Supabase Edge Functions. They are not required for the active Express path.
+The root `dev:functions` script starts the legacy Supabase Edge Functions. They are not required for the active Express path.
 
 ## Verification
 
 Run these before opening a pull request or deploying:
 
 ```bash
-cd server
-npm run typecheck
-npm test
-
-cd ../client
-npm run build
+npm run typecheck          # all workspaces, via turbo
+npm test                   # api + web tests (api tests need SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, GEMINI_API_KEY set; dummy values work)
+npm run build              # web + admin
+npm run check:boundaries   # browser/server import and bundle-secret guard
 ```
+
+`npm run verify` runs all of the above.
 
 The server regression suite covers CORS, newest-message history, safe public bot projections, widget protocol and domains, live contact collection, calendar transactions, OAuth state, migrations, and repository hygiene.
 
@@ -393,10 +409,10 @@ For changes to public chat, voice, contact collection, or booking, test both sur
 
 ### Supported shape
 
-- Deploy `client/` and `server/` together on a single host via the root `docker-compose.yml` (Caddy serves the built SPA and reverse-proxies the API, with automatic HTTPS) - or deploy `client/` as a static SPA on Vercel/S3+CloudFront/Amplify and `server/` separately on any long-lived Node.js platform with WebSocket support, such as Railway.
+- Deploy `apps/web` and `apps/api` together on a single host via the root `docker-compose-{staging,prod}.yml` (Caddy serves the built SPA and reverse-proxies the API, with automatic HTTPS) - or deploy `apps/web` as a static SPA on Vercel/S3+CloudFront/Amplify and `apps/api` separately on any long-lived Node.js platform with WebSocket support, such as Railway.
 - Keep Supabase as the managed Auth/Postgres service.
 
-The backend cannot be deployed as a short-lived serverless HTTP function because live voice requires persistent WebSocket connections. The server Dockerfile uses Node 20 Alpine, runs as a non-root user, and exposes port 4000.
+The backend cannot be deployed as a short-lived serverless HTTP function because live voice requires persistent WebSocket connections. The API Dockerfile (`apps/api/Dockerfile`, built from the repository root) uses Node 20 Alpine, runs as a non-root user, and exposes port 4000.
 
 For the full production deployment sequence (including the Dograh phone-calls deployment), start at [docs/README.md](docs/README.md). For just this app's AWS topology and rollout procedure, read [docs/AWS_DEPLOYMENT.md](docs/AWS_DEPLOYMENT.md).
 
@@ -428,7 +444,7 @@ For the full production deployment sequence (including the Dograh phone-calls de
 
 When an AI agent modifies this repository:
 
-1. Identify the active runtime path before editing. Prefer `server/src/` over legacy Edge Functions.
+1. Identify the active runtime path before editing. Prefer `apps/api/src/` over legacy Edge Functions.
 2. Trace the complete request from browser component to Express controller, database operation, provider call, and response.
 3. Inspect both the hosted public preview and widget implementation. Similar UI does not guarantee shared behavior.
 4. Preserve trust boundaries. Treat model speech and tool arguments as untrusted input.
