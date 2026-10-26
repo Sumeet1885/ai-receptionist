@@ -132,14 +132,14 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
       label: '📥 Incoming Calls (Customers Call You)',
       sublabel: 'How callers reach your AI receptionist',
       badge: agentStatus?.phoneNumber ? agentStatus.telephony?.provider?.toUpperCase() || 'ACTIVE' : 'SETUP REQUIRED',
-      badgeColor: agentStatus?.phoneNumber ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+      badgeColor: agentStatus?.phoneNumber ? 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30' : 'bg-amber-500/15 text-amber-700 border-amber-500/30',
     },
     {
       id: 'outgoing' as WorkspaceTab,
       label: '📤 Outgoing Calls (AI Calls Customers)',
       sublabel: 'Test call your phone or bulk campaign',
       badge: outboundCallsCount > 0 ? `${outboundCallsCount} Calls` : null,
-      badgeColor: 'bg-sky-500/15 text-sky-400 border-sky-500/30',
+      badgeColor: 'bg-sky-500/15 text-sky-700 border-sky-500/30',
     },
     {
       id: 'logs' as WorkspaceTab,
@@ -178,32 +178,32 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
             }`}
           >
             <div className="flex items-center justify-between w-full">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-brand-muted block group-hover:text-emerald-400 transition-colors">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-brand-muted block group-hover:text-emerald-700 transition-colors">
                 Phone Lines
               </span>
-              <span className="text-[10px] font-bold text-brand-muted group-hover:text-emerald-400 flex items-center gap-1 transition-colors">
+              <span className="text-[10px] font-bold text-brand-muted group-hover:text-emerald-700 flex items-center gap-1 transition-colors">
                 Setup →
               </span>
             </div>
             <div className="my-2 space-y-1">
               <div>
                 <span className="text-[10px] text-brand-muted block">📥 Inbound Line:</span>
-                <span className="text-sm font-mono font-extrabold text-brand-text truncate block group-hover:text-emerald-400 transition-colors">
+                <span className="text-sm font-body font-extrabold text-brand-text truncate block group-hover:text-emerald-700 transition-colors">
                   {agentStatus?.phoneNumber || 'No Number Yet'}
                 </span>
               </div>
               {agentStatus?.outboundPhoneNumber && agentStatus.outboundPhoneNumber !== agentStatus.phoneNumber && (
                 <div>
-                  <span className="text-[10px] text-sky-400 block">📤 Outbound Caller ID:</span>
-                  <span className="text-xs font-mono font-bold text-sky-300 truncate block">
+                  <span className="text-[10px] text-sky-700 block">📤 Outbound Caller ID:</span>
+                  <span className="text-xs font-body font-bold text-sky-700 truncate block">
                     {agentStatus.outboundPhoneNumber}
                   </span>
                 </div>
               )}
               {agentStatus?.connectedLines && agentStatus.connectedLines.some(l => l.type === 'forwarding') && (
                 <div>
-                  <span className="text-[10px] text-cyan-400 block">🔄 Forwarding Mobile SIM:</span>
-                  <span className="text-xs font-mono font-bold text-cyan-300 truncate block">
+                  <span className="text-[10px] text-cyan-700 block">🔄 Forwarding Mobile SIM:</span>
+                  <span className="text-xs font-body font-bold text-cyan-700 truncate block">
                     {agentStatus.connectedLines.find(l => l.type === 'forwarding')?.phoneNumber}
                   </span>
                 </div>
@@ -214,7 +214,7 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
                 {agentStatus?.telephony?.provider ? `Via ${agentStatus.telephony.provider.toUpperCase()}` : 'Default Platform Ready'}
               </span>
               {agentStatus?.connectedLines && agentStatus.connectedLines.length > 1 && (
-                <span className="px-1.5 py-0.2 rounded font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 shrink-0">
+                <span className="px-1.5 py-0.2 rounded font-bold bg-emerald-500/15 text-emerald-700 border border-emerald-500/25 shrink-0">
                   {agentStatus.connectedLines.length} Lines
                 </span>
               )}
@@ -237,18 +237,18 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
             }`}
           >
             <div className="flex items-center justify-between w-full">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1.5">
                 📥 Incoming Calls
               </span>
-              <span className="text-[10px] font-bold text-brand-muted group-hover:text-emerald-400 flex items-center gap-1 transition-colors">
+              <span className="text-[10px] font-bold text-brand-muted group-hover:text-emerald-700 flex items-center gap-1 transition-colors">
                 View →
               </span>
             </div>
             <div className="my-2 flex items-baseline justify-between">
-              <span className="text-2xl font-extrabold text-brand-text group-hover:text-emerald-400 transition-colors">
+              <span className="text-2xl font-extrabold text-brand-text group-hover:text-emerald-700 transition-colors">
                 {inboundCallsCount}
               </span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 font-bold">
                 Inbound
               </span>
             </div>
@@ -273,18 +273,18 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
             }`}
           >
             <div className="flex items-center justify-between w-full">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-sky-700 flex items-center gap-1.5">
                 📤 Outgoing Calls
               </span>
-              <span className="text-[10px] font-bold text-brand-muted group-hover:text-sky-400 flex items-center gap-1 transition-colors">
+              <span className="text-[10px] font-bold text-brand-muted group-hover:text-sky-700 flex items-center gap-1 transition-colors">
                 View →
               </span>
             </div>
             <div className="my-2 flex items-baseline justify-between">
-              <span className="text-2xl font-extrabold text-brand-text group-hover:text-sky-400 transition-colors">
+              <span className="text-2xl font-extrabold text-brand-text group-hover:text-sky-700 transition-colors">
                 {outboundCallsCount}
               </span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 font-bold">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-700 border border-sky-500/20 font-bold">
                 Outbound
               </span>
             </div>
@@ -399,7 +399,7 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
           <div className="bg-gradient-to-r from-emerald-500/10 via-brand-card to-brand-card border border-emerald-500/30 rounded-2xl p-5 shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-start gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center text-xl shrink-0">
+                <div className="w-11 h-11 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-700 flex items-center justify-center text-xl shrink-0">
                   📥
                 </div>
                 <div>
@@ -407,7 +407,7 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
                     <h3 className="text-base font-display font-extrabold text-brand-text">
                       Incoming Calls: When Customers Call Your Business
                     </h3>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-700 border border-emerald-500/30">
                       Customer Inbound Line
                     </span>
                   </div>
@@ -420,18 +420,18 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
                 {agentStatus?.phoneNumber && (
                   <div className="px-4 py-2 rounded-xl bg-brand-bg/80 border border-brand-border">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-brand-muted block">Your Inbound Number</span>
-                    <span className="text-sm font-mono font-extrabold text-emerald-400">{agentStatus.phoneNumber}</span>
+                    <span className="text-sm font-body font-extrabold text-emerald-700">{agentStatus.phoneNumber}</span>
                   </div>
                 )}
                 <div className="px-4 py-2 rounded-xl bg-brand-bg/80 border border-brand-border">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-brand-muted block">Calendar Booking Status</span>
                   {agentStatus?.calendarConnected ? (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700">
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                       Live Calendar Booking Active
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-400" title="Calendar setup not done. AI Agent notes visit day/time and informs caller sales team will follow up.">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700" title="Calendar setup not done. AI Agent notes visit day/time and informs caller sales team will follow up.">
                       <span className="w-2 h-2 rounded-full bg-amber-400" />
                       Sales Callback Mode (No Calendar)
                     </span>
@@ -459,7 +459,7 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
           <div className="bg-gradient-to-r from-sky-500/10 via-brand-card to-brand-card border border-sky-500/30 rounded-2xl p-5 shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-start gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-sky-500/20 border border-sky-500/30 text-sky-400 flex items-center justify-center text-xl shrink-0">
+                <div className="w-11 h-11 rounded-xl bg-sky-500/20 border border-sky-500/30 text-sky-700 flex items-center justify-center text-xl shrink-0">
                   📤
                 </div>
                 <div>
@@ -467,7 +467,7 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
                     <h3 className="text-base font-display font-extrabold text-brand-text">
                       Outgoing Calls: When Your AI Calls Customers
                     </h3>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-sky-500/20 text-sky-400 border border-sky-500/30">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-sky-500/20 text-sky-700 border border-sky-500/30">
                       Outbound Voice
                     </span>
                   </div>

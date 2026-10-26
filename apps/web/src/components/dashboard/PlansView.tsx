@@ -150,11 +150,11 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
               <h3 className="font-display font-extrabold text-brand-text text-lg sm:text-xl">
                 Active Subscription & Voice Minutes
               </h3>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 flex items-center gap-1.5">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-body font-bold bg-emerald-500/15 border border-emerald-500/40 text-emerald-700 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 Growth Plan (₹1,299 / month)
               </span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-blue-500/10 border border-blue-500/30 text-blue-300">
+              <span className="px-2 py-0.5 rounded text-[10px] font-body bg-blue-500/10 border border-blue-500/30 text-blue-700">
                 Sandbox Mode
               </span>
             </div>
@@ -167,13 +167,13 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
             <button
               type="button"
               onClick={() => setShowTopupModal(true)}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-bold font-mono bg-brand-accent text-brand-bg hover:bg-brand-accent-hover transition shadow-sm flex items-center gap-1.5"
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold font-body bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground transition shadow-sm flex items-center gap-1.5"
             >
               <span>+</span>
               <span>Top-up Minutes</span>
             </button>
             <div className="text-left md:text-right border-l md:border-l-0 pl-3 md:pl-0 border-brand-border">
-              <span className="text-[10px] uppercase font-mono font-bold text-brand-muted block">Billed Rate</span>
+              <span className="text-[10px] uppercase font-body font-bold text-brand-muted block">Billed Rate</span>
               <span className="text-lg font-display font-black text-brand-text">
                 ₹{activePlanPrice}
                 <span className="text-xs font-normal text-brand-muted font-sans"> / mo</span>
@@ -188,19 +188,19 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
           <div className="md:col-span-2 space-y-3">
             <div className="flex items-baseline justify-between">
               <div>
-                <span className="text-3xl font-display font-extrabold text-brand-text font-mono">
+                <span className="text-3xl font-display font-extrabold text-brand-text font-body">
                   {burnedMinutes.toFixed(1)}
                 </span>
-                <span className="text-sm font-semibold text-brand-muted font-mono ml-1.5">
+                <span className="text-sm font-semibold text-brand-muted font-body ml-1.5">
                   / {totalQuota} Mins Used
                 </span>
                 {topupMinutes > 0 && (
-                  <span className="ml-2 text-xs font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                  <span className="ml-2 text-xs font-body text-emerald-700 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full">
                     +{topupMinutes} top-up
                   </span>
                 )}
               </div>
-              <span className="text-xs font-mono font-bold text-brand-accent">
+              <span className="text-xs font-body font-bold text-brand-accent">
                 {percentageUsed}% Utilized
               </span>
             </div>
@@ -219,7 +219,7 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
               />
             </div>
 
-            <div className="flex flex-wrap items-center justify-between text-xs text-brand-muted gap-2 pt-1 font-mono">
+            <div className="flex flex-wrap items-center justify-between text-xs text-brand-muted gap-2 pt-1 font-body">
               <span className="flex items-center gap-1.5">
                 <span>📞 Inbound: {inboundCalls} calls</span>
                 <span className="text-brand-border">•</span>
@@ -239,24 +239,24 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
 
           {/* Billing Rules Pill Box */}
           <div className="bg-brand-bg/60 border border-brand-border rounded-xl p-4 space-y-2 text-xs">
-            <span className="text-[10px] uppercase font-bold font-mono text-brand-muted block">
+            <span className="text-[10px] uppercase font-bold font-body text-brand-muted block">
               Active Billing Rules:
             </span>
             <div className="space-y-1.5 font-sans">
               <div className="flex items-center justify-between">
                 <span className="text-brand-muted">Calls &lt; 25 seconds:</span>
-                <span className="font-bold text-brand-text font-mono">0.5 min (₹4 value)</span>
+                <span className="font-bold text-brand-text font-body">0.5 min (₹4 value)</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-brand-muted">Calls ≥ 25 seconds:</span>
-                <span className="font-bold text-brand-text font-mono">1 min / min (₹7 rate)</span>
+                <span className="font-bold text-brand-text font-body">1 min / min (₹7 rate)</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-brand-muted">Overage above plan:</span>
-                <span className="font-bold text-amber-400 font-mono">₹7 / min</span>
+                <span className="font-bold text-amber-700 font-body">₹7 / min</span>
               </div>
             </div>
-            <div className="pt-2 border-t border-brand-border/60 text-[11px] text-emerald-400 font-medium">
+            <div className="pt-2 border-t border-brand-border/60 text-[11px] text-emerald-700 font-medium">
               ✓ Inbound & Outbound combined pool
             </div>
           </div>
@@ -280,21 +280,21 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
             <div className="space-y-5">
               <div className="flex items-center justify-between">
                 <h4 className="font-display font-bold text-lg text-brand-text">Starter</h4>
-                <span className="text-xs font-mono font-semibold text-brand-muted px-2 py-0.5 rounded bg-brand-bg border border-brand-border">
+                <span className="text-xs font-body font-semibold text-brand-muted px-2 py-0.5 rounded bg-brand-bg border border-brand-border">
                   Small Teams
                 </span>
               </div>
 
               <div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-display font-black text-brand-text font-mono">₹699</span>
+                  <span className="text-4xl font-display font-black text-brand-text font-body">₹699</span>
                   <span className="text-sm font-semibold text-brand-muted">/ month</span>
                 </div>
                 <p className="text-xs text-brand-muted mt-1">₹6.99 per minute included</p>
               </div>
 
               <div className="p-4 rounded-xl bg-brand-bg/60 border border-brand-border space-y-2">
-                <span className="text-xs font-extrabold text-brand-text uppercase font-mono block">
+                <span className="text-xs font-extrabold text-brand-text uppercase font-body block">
                   100 Call Minutes
                 </span>
                 <p className="text-xs text-brand-muted leading-relaxed font-sans">
@@ -304,19 +304,19 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
 
               <ul className="space-y-2.5 text-xs text-brand-text">
                 <li className="flex items-center gap-2">
-                  <span className="text-emerald-400 font-bold">✓</span>
+                  <span className="text-emerald-700 font-bold">✓</span>
                   <span>Calls &lt; 25s: <strong>0.5 min deducted</strong> (₹4 equivalent)</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="text-emerald-400 font-bold">✓</span>
+                  <span className="text-emerald-700 font-bold">✓</span>
                   <span>Calls ≥ 25s: <strong>1 min / min</strong> (₹7/min rate)</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="text-emerald-400 font-bold">✓</span>
+                  <span className="text-emerald-700 font-bold">✓</span>
                   <span>Same price for Inbound & Outbound</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="text-emerald-400 font-bold">✓</span>
+                  <span className="text-emerald-700 font-bold">✓</span>
                   <span>Extra minutes at <strong>₹7 / min</strong></span>
                 </li>
               </ul>
@@ -326,7 +326,7 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
               <button
                 type="button"
                 onClick={() => setShowDowngradeModal(true)}
-                className="w-full py-2.5 rounded-xl font-bold text-xs transition shadow-sm bg-brand-bg border border-brand-border hover:border-amber-500/50 text-brand-muted hover:text-amber-300"
+                className="w-full py-2.5 rounded-xl font-bold text-xs transition shadow-sm bg-brand-bg border border-brand-border hover:border-amber-500/50 text-brand-muted hover:text-amber-700"
               >
                 Downgrade to Starter
               </button>
@@ -335,7 +335,7 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
 
           {/* TIER 2: GROWTH (CURRENT ACTIVE PLAN) */}
           <div className="bg-brand-card rounded-2xl border-2 border-brand-accent ring-2 ring-brand-accent/30 transition-all flex flex-col justify-between p-6 sm:p-7 relative shadow-xl card-hover-glow">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase bg-emerald-500 text-brand-bg shadow-sm tracking-wider flex items-center gap-1.5">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] font-bold font-body uppercase bg-emerald-500 text-brand-bg shadow-sm tracking-wider flex items-center gap-1.5">
               <span>●</span>
               <span>Your Active Plan</span>
             </div>
@@ -343,21 +343,21 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
             <div className="space-y-5">
               <div className="flex items-center justify-between">
                 <h4 className="font-display font-bold text-lg text-brand-text">Growth</h4>
-                <span className="text-xs font-mono font-bold text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40">
+                <span className="text-xs font-body font-bold text-emerald-700 px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40">
                   Active Subscription
                 </span>
               </div>
 
               <div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-display font-black text-brand-accent font-mono">₹1,299</span>
+                  <span className="text-4xl font-display font-black text-brand-accent font-body">₹1,299</span>
                   <span className="text-sm font-semibold text-brand-muted">/ month</span>
                 </div>
                 <p className="text-xs text-brand-muted mt-1">₹6.49 per minute included (Save ₹100+)</p>
               </div>
 
               <div className="p-4 rounded-xl bg-brand-accent/10 border border-brand-accent/30 space-y-2">
-                <span className="text-xs font-extrabold text-brand-accent uppercase font-mono block">
+                <span className="text-xs font-extrabold text-brand-accent uppercase font-body block">
                   200 Call Minutes Pool
                 </span>
                 <p className="text-xs text-brand-text leading-relaxed font-sans font-medium">
@@ -367,19 +367,19 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
 
               <ul className="space-y-2.5 text-xs text-brand-text">
                 <li className="flex items-center gap-2">
-                  <span className="text-emerald-400 font-bold">✓</span>
+                  <span className="text-emerald-700 font-bold">✓</span>
                   <span>Calls &lt; 25s: <strong>0.5 min deducted</strong> (₹4 equivalent)</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="text-emerald-400 font-bold">✓</span>
+                  <span className="text-emerald-700 font-bold">✓</span>
                   <span>Calls ≥ 25s: <strong>1 min / min</strong> (₹7/min rate)</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="text-emerald-400 font-bold">✓</span>
+                  <span className="text-emerald-700 font-bold">✓</span>
                   <span>Same price for Inbound & Outbound</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="text-emerald-400 font-bold">✓</span>
+                  <span className="text-emerald-700 font-bold">✓</span>
                   <span>Extra minutes at <strong>₹7 / min</strong></span>
                 </li>
               </ul>
@@ -387,14 +387,14 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
 
             <div className="pt-6 mt-6 border-t border-brand-border/60 space-y-2">
               <div className="flex items-center gap-2">
-                <div className="flex-1 py-2.5 rounded-xl font-bold text-xs bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-center flex items-center justify-center gap-1.5 font-mono">
+                <div className="flex-1 py-2.5 rounded-xl font-bold text-xs bg-emerald-500/15 border border-emerald-500/40 text-emerald-700 text-center flex items-center justify-center gap-1.5 font-body">
                   <span>✓</span>
                   <span>Active Plan</span>
                 </div>
                 <button
                   type="button"
                   onClick={handlePayGrowthPlan}
-                  className="px-3.5 py-2.5 rounded-xl text-xs font-bold bg-blue-600/20 border border-blue-500/40 text-blue-300 hover:bg-blue-600 hover:text-white transition flex items-center gap-1.5 shadow-sm"
+                  className="px-3.5 py-2.5 rounded-xl text-xs font-bold bg-blue-600/20 border border-blue-500/40 text-blue-700 hover:bg-blue-600 hover:text-white transition flex items-center gap-1.5 shadow-sm"
                   title="Simulate Razorpay renewal / payment"
                 >
                   <span>💳</span>
@@ -404,7 +404,7 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
               <button
                 type="button"
                 onClick={() => setShowTopupModal(true)}
-                className="w-full py-2 rounded-xl text-xs font-bold bg-brand-accent text-brand-bg hover:bg-brand-accent-hover transition flex items-center justify-center gap-1.5 shadow-sm"
+                className="w-full py-2 rounded-xl text-xs font-bold bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground transition flex items-center justify-center gap-1.5 shadow-sm"
               >
                 <span>⚡</span>
                 <span>Add Extra Minutes (Top-up)</span>
@@ -417,20 +417,20 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
             <div className="space-y-5">
               <div className="flex items-center justify-between">
                 <h4 className="font-display font-bold text-lg text-brand-text">Enterprise</h4>
-                <span className="text-xs font-mono font-semibold text-brand-muted px-2 py-0.5 rounded bg-brand-bg border border-brand-border">
+                <span className="text-xs font-body font-semibold text-brand-muted px-2 py-0.5 rounded bg-brand-bg border border-brand-border">
                   Volume Scale
                 </span>
               </div>
 
               <div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-3xl sm:text-4xl font-display font-black text-brand-text font-mono">Custom</span>
+                  <span className="text-3xl sm:text-4xl font-display font-black text-brand-text font-body">Custom</span>
                 </div>
                 <p className="text-xs text-brand-muted mt-1">High-volume discounted minute slabs</p>
               </div>
 
               <div className="p-4 rounded-xl bg-brand-bg/60 border border-brand-border space-y-2">
-                <span className="text-xs font-extrabold text-brand-text uppercase font-mono block">
+                <span className="text-xs font-extrabold text-brand-text uppercase font-body block">
                   500+ Minutes Pool
                 </span>
                 <p className="text-xs text-brand-muted leading-relaxed font-sans">
@@ -440,19 +440,19 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
 
               <ul className="space-y-2.5 text-xs text-brand-text">
                 <li className="flex items-center gap-2">
-                  <span className="text-emerald-400 font-bold">✓</span>
+                  <span className="text-emerald-700 font-bold">✓</span>
                   <span>Volume discounts below ₹6 / minute</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="text-emerald-400 font-bold">✓</span>
+                  <span className="text-emerald-700 font-bold">✓</span>
                   <span>Dedicated SIP trunks & local PSTN numbers</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="text-emerald-400 font-bold">✓</span>
+                  <span className="text-emerald-700 font-bold">✓</span>
                   <span>Multi-agent workflow orchestration</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="text-emerald-400 font-bold">✓</span>
+                  <span className="text-emerald-700 font-bold">✓</span>
                   <span>Direct phone & WhatsApp enterprise support</span>
                 </li>
               </ul>
@@ -470,7 +470,7 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
                 href="https://wa.me/917038455063?text=Hi%2C%20I%20am%20interested%20in%20the%20Enterprise%20Voice%20AI%20Receptionist%20Plan"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full py-2 rounded-xl text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 transition flex items-center justify-center gap-1.5"
+                className="w-full py-2 rounded-xl text-[11px] font-semibold text-emerald-700 hover:text-emerald-700 transition flex items-center justify-center gap-1.5"
               >
                 <span>💬</span>
                 <span>Chat on WhatsApp</span>
@@ -484,7 +484,7 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
       {showDowngradeModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-brand-card border border-brand-border rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-3 text-amber-400">
+            <div className="flex items-center gap-3 text-amber-700">
               <span className="text-2xl">⚠️</span>
               <h3 className="font-display font-bold text-lg text-brand-text">
                 Subscription Downgrade Policy
@@ -496,15 +496,15 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
             <div className="bg-brand-bg border border-brand-border rounded-xl p-3 text-xs space-y-1.5">
               <div className="flex justify-between text-brand-muted">
                 <span>Current Monthly Pool:</span>
-                <span className="font-bold text-brand-text font-mono">200 Minutes</span>
+                <span className="font-bold text-brand-text font-body">200 Minutes</span>
               </div>
               <div className="flex justify-between text-brand-muted">
                 <span>Starter Plan Pool:</span>
-                <span className="font-bold text-amber-400 font-mono">100 Minutes</span>
+                <span className="font-bold text-amber-700 font-body">100 Minutes</span>
               </div>
               <div className="flex justify-between text-brand-muted pt-1 border-t border-brand-border/60">
                 <span>Billing Cycle Ends:</span>
-                <span className="font-bold text-brand-text font-mono">Next Month</span>
+                <span className="font-bold text-brand-text font-body">Next Month</span>
               </div>
             </div>
             <p className="text-[11px] text-brand-muted">
@@ -521,7 +521,7 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
               <button
                 type="button"
                 onClick={() => setShowDowngradeModal(false)}
-                className="w-full py-2 rounded-xl text-xs font-semibold bg-brand-accent text-brand-bg hover:bg-brand-accent-hover transition"
+                className="w-full py-2 rounded-xl text-xs font-semibold bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground transition"
               >
                 Keep My Growth Plan (₹1,299)
               </button>
@@ -544,7 +544,7 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
               <button
                 type="button"
                 onClick={() => setShowTopupModal(false)}
-                className="text-brand-muted hover:text-brand-text text-sm font-mono px-2 py-1"
+                className="text-brand-muted hover:text-brand-text text-sm font-body px-2 py-1"
               >
                 ✕
               </button>
@@ -570,16 +570,16 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
                       <span className="font-display font-extrabold text-sm text-brand-text">
                         +{pack.mins} Minutes
                       </span>
-                      <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-brand-accent/15 border border-brand-accent/30 text-brand-accent">
+                      <span className="text-[10px] font-body font-bold px-1.5 py-0.2 rounded bg-brand-accent/15 border border-brand-accent/30 text-brand-accent">
                         {pack.badge}
                       </span>
                     </div>
-                    <span className="text-[11px] text-brand-muted font-mono">₹7.00 / minute</span>
+                    <span className="text-[11px] text-brand-muted font-body">₹7.00 / minute</span>
                   </div>
 
                   <button
                     type="button"
-                    className="px-3.5 py-1.5 rounded-lg text-xs font-bold font-mono bg-brand-accent text-brand-bg group-hover:bg-brand-accent-hover transition shadow-sm"
+                    className="px-3.5 py-1.5 rounded-lg text-xs font-bold font-body bg-brand-accent text-primary-foreground group-hover:bg-brand-accent-hover transition shadow-sm"
                   >
                     Pay ₹{pack.price}
                   </button>

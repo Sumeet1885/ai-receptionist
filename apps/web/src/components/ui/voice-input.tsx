@@ -68,7 +68,7 @@ export function VoiceInput({
         <div className="h-6 w-6 items-center justify-center flex ">
           {activeListening ? (
             <motion.div
-              className="w-4 h-4 bg-brand-accent rounded-sm"
+              className="w-4 h-4 bg-brand-accent text-primary-foreground rounded-sm"
               animate={{
                 rotate: [0, 180, 360],
               }}
@@ -98,7 +98,7 @@ export function VoiceInput({
                 {[...Array(12)].map((_, i) => (
                   <motion.div
                     key={i}
-                    className="w-0.5 bg-brand-accent rounded-full"
+                    className="w-0.5 bg-brand-accent text-primary-foreground rounded-full"
                     initial={{ height: 2 }}
                     animate={{
                       height: activeListening
@@ -115,7 +115,7 @@ export function VoiceInput({
                 ))}
               </div>
               {/* Timer */}
-              <div className="text-xs text-brand-muted w-10 text-center font-mono">
+              <div className="text-xs text-brand-muted w-10 text-center font-body">
                 {formatTime(_time)}
               </div>
             </motion.div>

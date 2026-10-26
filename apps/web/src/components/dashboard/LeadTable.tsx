@@ -193,16 +193,16 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, selectedB
       title: '⚡ Warm Inquiries',
       subtitle: 'Interested / Requirements Shared',
       leads: warmLeads,
-      accent: 'border-amber-500/40 text-amber-400 bg-amber-500/10',
-      headerBg: 'bg-amber-950/20',
+      accent: 'border-amber-500/40 text-amber-700 bg-amber-500/10',
+      headerBg: 'bg-amber-50/20',
     },
     {
       id: 'HOT',
       title: '🔥 Hot (Visit Scheduled)',
       subtitle: 'Budget & Site Visit Agreed',
       leads: hotLeads,
-      accent: 'border-rose-500/40 text-rose-400 bg-rose-500/10',
-      headerBg: 'bg-rose-950/20',
+      accent: 'border-rose-500/40 text-rose-700 bg-rose-500/10',
+      headerBg: 'bg-rose-50/20',
     },
   ];
 
@@ -216,7 +216,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, selectedB
               <Icons.Users />
               <span className="ml-2">Lead Pipeline</span>
             </h3>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-brand-bg border border-brand-border text-brand-muted">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-body font-semibold bg-brand-bg border border-brand-border text-brand-muted">
               {visibleLeads.length} {visibleLeads.length === botFilteredLeads.length ? 'leads' : `of ${botFilteredLeads.length}`}
             </span>
           </div>
@@ -254,15 +254,15 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, selectedB
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-brand-border/40">
           {/* Source / Channel Filter Pills */}
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[11px] font-mono uppercase font-bold text-brand-muted mr-1">Source:</span>
+            <span className="text-[11px] font-body uppercase font-bold text-brand-muted mr-1">Source:</span>
             <button
               type="button"
               onClick={() => setFilterChannel('all')}
               className={`h-7 px-2.5 rounded-lg text-xs font-bold transition border ${
-                filterChannel === 'all'
-                  ? 'bg-brand-accent text-brand-bg border-brand-accent shadow-sm'
-                  : 'bg-brand-bg border-brand-border text-brand-muted hover:text-brand-text'
-              }`}
+ filterChannel === 'all'
+ ? 'bg-brand-accent text-primary-foreground border-brand-accent shadow-sm'
+ : 'bg-brand-bg border-brand-border text-brand-muted hover:text-brand-text'
+ }`}
             >
               All Sources ({botFilteredLeads.length})
             </button>
@@ -273,11 +273,11 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, selectedB
               className={`h-7 px-2.5 rounded-lg text-xs font-bold transition border flex items-center gap-1.5 ${
                 filterChannel === 'inbound'
                   ? 'bg-emerald-500 text-black border-emerald-400 shadow-sm font-extrabold'
-                  : 'bg-brand-bg border-emerald-500/30 text-emerald-300 hover:border-emerald-500/60'
+                  : 'bg-brand-bg border-emerald-500/30 text-emerald-700 hover:border-emerald-500/60'
               }`}
             >
               <span>📞 Inbound</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/25 font-mono">{inboundCount}</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/25 font-body">{inboundCount}</span>
             </button>
 
             <button
@@ -286,18 +286,18 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, selectedB
               className={`h-7 px-2.5 rounded-lg text-xs font-bold transition border flex items-center gap-1.5 ${
                 filterChannel === 'outbound'
                   ? 'bg-indigo-500 text-white border-indigo-400 shadow-sm font-extrabold'
-                  : 'bg-brand-bg border-indigo-500/30 text-indigo-300 hover:border-indigo-500/60'
+                  : 'bg-brand-bg border-indigo-500/30 text-indigo-700 hover:border-indigo-500/60'
               }`}
             >
               <span>🚀 Outbound Campaign</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/25 font-mono">{outboundCount}</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/25 font-body">{outboundCount}</span>
             </button>
           </div>
 
           {/* Lead Score Stage Filter (Visible in List Mode) */}
           {viewMode === 'list' && (
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[11px] font-mono uppercase font-bold text-brand-muted mr-1">Stage:</span>
+              <span className="text-[11px] font-body uppercase font-bold text-brand-muted mr-1">Stage:</span>
               <button
                 type="button"
                 onClick={() => setFilterScore('all')}
@@ -316,11 +316,11 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, selectedB
                 className={`h-7 px-2.5 rounded-lg text-xs font-bold transition border flex items-center gap-1.5 ${
                   filterScore === 'HOT'
                     ? 'bg-rose-500 text-white border-rose-400 shadow-sm font-extrabold animate-pulse'
-                    : 'bg-brand-bg border-rose-500/30 text-rose-300 hover:border-rose-500/60'
+                    : 'bg-brand-bg border-rose-500/30 text-rose-700 hover:border-rose-500/60'
                 }`}
               >
                 <span>🔥 Hot</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/25 font-mono">{hotCount}</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/25 font-body">{hotCount}</span>
               </button>
 
               <button
@@ -329,11 +329,11 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, selectedB
                 className={`h-7 px-2.5 rounded-lg text-xs font-bold transition border flex items-center gap-1.5 ${
                   filterScore === 'WARM'
                     ? 'bg-amber-500 text-black border-amber-400 shadow-sm font-extrabold'
-                    : 'bg-brand-bg border-amber-500/30 text-amber-300 hover:border-amber-500/60'
+                    : 'bg-brand-bg border-amber-500/30 text-amber-700 hover:border-amber-500/60'
                 }`}
               >
                 <span>⚡ Warm</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/25 font-mono">{warmCount}</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/25 font-body">{warmCount}</span>
               </button>
             </div>
           )}
@@ -357,7 +357,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, selectedB
                     </h4>
                     <p className="text-[11px] text-brand-muted mt-0.5">{stage.subtitle}</p>
                   </div>
-                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-mono font-bold border ${stage.accent}`}>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-body font-bold border ${stage.accent}`}>
                     {stage.leads.length}
                   </span>
                 </div>
@@ -386,21 +386,21 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, selectedB
                                 {lead.name}
                               </h5>
                               {lead.channel === 'outbound' ? (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-500/15 border border-indigo-500/30 text-indigo-300">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-500/15 border border-indigo-500/30 text-indigo-700">
                                   <span>🚀 Outbound</span>
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-700">
                                   <span>📞 Inbound</span>
                                 </span>
                               )}
                             </div>
                             <div className="flex items-center gap-2 mt-1">
-                              <span className="text-[11px] text-brand-muted font-mono truncate">
+                              <span className="text-[11px] text-brand-muted font-body truncate">
                                 📞 {lead.phone}
                               </span>
                               {lead.date && (
-                                <span className="text-[10px] text-brand-muted/70 font-mono truncate" title="Time lead was created/inquired">
+                                <span className="text-[10px] text-brand-muted/70 font-body truncate" title="Time lead was created/inquired">
                                   🕒 Inquired: {lead.date}
                                 </span>
                               )}
@@ -427,28 +427,28 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, selectedB
                             value={lead.sentiment || (lead.summary === 'Customer did not reply' ? 'No Response' : 'Neutral')}
                             onChange={(e) => handleSentimentChange(lead.id, e.target.value)}
                             disabled={updatingId === lead.id}
-                            className={`h-6 px-1.5 text-[10px] font-bold rounded-md border font-mono transition-colors cursor-pointer focus:outline-none ${
+                            className={`h-6 px-1.5 text-[10px] font-bold rounded-md border font-body transition-colors cursor-pointer focus:outline-none ${
                               lead.sentiment === 'Positive'
-                                ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                                ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-700'
                                 : lead.sentiment === 'No Response' || lead.summary === 'Customer did not reply'
-                                ? 'bg-zinc-800/80 border-zinc-700 text-zinc-400'
+                                ? 'bg-zinc-100/80 border-zinc-200 text-zinc-700'
                                 : lead.sentiment === 'Neutral'
-                                ? 'bg-slate-800/70 border-slate-700 text-slate-300'
+                                ? 'bg-slate-100/70 border-slate-200 text-slate-700'
                                 : lead.sentiment === 'Angry'
-                                ? 'bg-rose-500/20 border-rose-500/40 text-rose-400'
-                                : 'bg-amber-500/15 border-amber-500/40 text-amber-300'
+                                ? 'bg-rose-500/20 border-rose-500/40 text-rose-700'
+                                : 'bg-amber-500/15 border-amber-500/40 text-amber-700'
                             }`}
                             title="Change Sentiment"
                           >
-                            <option value="Positive" className="bg-brand-card text-emerald-400">😊 Positive</option>
-                            <option value="Neutral" className="bg-brand-card text-slate-300">😐 Neutral</option>
-                            <option value="No Response" className="bg-brand-card text-zinc-400">📵 No Response</option>
-                            <option value="Urgent/Demanding" className="bg-brand-card text-amber-400">⚠️ Urgent</option>
-                            <option value="Angry" className="bg-brand-card text-rose-400">😡 Angry</option>
+                            <option value="Positive" className="bg-brand-card text-emerald-700">😊 Positive</option>
+                            <option value="Neutral" className="bg-brand-card text-slate-700">😐 Neutral</option>
+                            <option value="No Response" className="bg-brand-card text-zinc-700">📵 No Response</option>
+                            <option value="Urgent/Demanding" className="bg-brand-card text-amber-700">⚠️ Urgent</option>
+                            <option value="Angry" className="bg-brand-card text-rose-700">😡 Angry</option>
                           </select>
 
                           {lead.budget && lead.budget !== 'N/A' && (
-                            <span className="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 font-semibold font-mono">
+                            <span className="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-700 font-semibold font-body">
                               💰 {lead.budget}
                             </span>
                           )}
@@ -461,7 +461,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, selectedB
 
                         {/* Appointment Status Badge */}
                         {lead.appointmentStatus && lead.appointmentStatus !== 'None' && (
-                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-bold">
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-rose-500/15 border border-rose-500/30 text-rose-700 text-xs font-bold">
                             <Icons.Calendar />
                             <span>Site Visit: {lead.appointmentStatus}</span>
                           </div>
@@ -482,7 +482,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, selectedB
                               onClick={() => handleTogglePlay(lead)}
                               className={`h-8 px-2.5 rounded-lg border text-xs font-semibold transition flex items-center gap-1.5 shadow-sm shrink-0 ${
                                 playingLeadId === lead.id
-                                  ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-300 font-bold'
+                                  ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-700 font-bold'
                                   : 'bg-brand-bg/80 border-brand-border hover:border-brand-accent/50 text-brand-text hover:text-brand-accent'
                               }`}
                               title={playingLeadId === lead.id ? 'Pause audio' : 'Listen to call recording'}
@@ -497,7 +497,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, selectedB
                               ) : (
                                 <span>▶</span>
                               )}
-                              <span className="font-mono text-[11px]">{formatDuration(lead.durationSeconds)}</span>
+                              <span className="font-body text-[11px]">{formatDuration(lead.durationSeconds)}</span>
                             </button>
                           )}
 
@@ -507,7 +507,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, selectedB
                             type="button"
                             onClick={() => handleDeleteLead(lead.id)}
                             disabled={deletingId === lead.id}
-                            className="h-8 w-8 flex items-center justify-center rounded-lg border border-brand-border bg-brand-bg/60 hover:bg-rose-500/10 hover:border-rose-500/30 hover:text-rose-400 text-brand-muted transition text-xs shrink-0 shadow-sm"
+                            className="h-8 w-8 flex items-center justify-center rounded-lg border border-brand-border bg-brand-bg/60 hover:bg-rose-500/10 hover:border-rose-500/30 hover:text-rose-700 text-brand-muted transition text-xs shrink-0 shadow-sm"
                             title="Delete Lead"
                           >
                             <Icons.Trash />
@@ -549,28 +549,28 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, selectedB
                   <div className="flex flex-wrap items-center gap-2.5">
                     <h4 className="text-base sm:text-lg font-display font-bold text-brand-text">{lead.name}</h4>
                     {lead.channel === 'outbound' ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 shadow-sm">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-500/15 border border-indigo-500/30 text-indigo-700 shadow-sm">
                         <span className="text-xs">🚀</span>
                         <span>Outbound Campaign</span>
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 shadow-sm">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 shadow-sm">
                         <span className="text-xs">📞</span>
                         <span>Inbound Call</span>
                       </span>
                     )}
-                    <span className="text-xs text-brand-muted font-mono px-2 py-0.5 rounded bg-brand-bg border border-brand-border flex items-center gap-1">
+                    <span className="text-xs text-brand-muted font-body px-2 py-0.5 rounded bg-brand-bg border border-brand-border flex items-center gap-1">
                       <span>📞</span>
                       <span>{lead.phone}</span>
                     </span>
                     {lead.email && (
-                      <span className="text-xs text-brand-muted font-mono px-2 py-0.5 rounded bg-brand-bg border border-brand-border flex items-center gap-1">
+                      <span className="text-xs text-brand-muted font-body px-2 py-0.5 rounded bg-brand-bg border border-brand-border flex items-center gap-1">
                         <span>✉️</span>
                         <span>{lead.email}</span>
                       </span>
                     )}
                     <span
-                      className="text-xs font-mono px-2.5 py-1 rounded-md bg-brand-bg/80 border border-brand-border/80 flex items-center gap-1.5 shadow-sm text-brand-muted hover:border-brand-accent/40 transition"
+                      className="text-xs font-body px-2.5 py-1 rounded-md bg-brand-bg/80 border border-brand-border/80 flex items-center gap-1.5 shadow-sm text-brand-muted hover:border-brand-accent/40 transition"
                       title="Exact timestamp when this inquiry occurred"
                     >
                       <span className="text-brand-accent text-xs">🕒</span>
@@ -582,18 +582,18 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, selectedB
                   {/* Requirement and Budget badges */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-brand-text bg-brand-bg/60 border border-brand-border p-3.5 rounded-xl shadow-inner">
                     <div>
-                      <span className="text-[10px] text-brand-muted block uppercase font-bold font-mono">Requirement & Interest:</span>
+                      <span className="text-[10px] text-brand-muted block uppercase font-bold font-body">Requirement & Interest:</span>
                       <span className="font-medium text-xs sm:text-sm">{lead.requirement || 'Not specified'}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-brand-muted block uppercase font-bold font-mono">Budget Status:</span>
-                      <span className="text-brand-accent font-semibold text-xs sm:text-sm font-mono">{lead.budget || 'Not specified'}</span>
+                      <span className="text-[10px] text-brand-muted block uppercase font-bold font-body">Budget Status:</span>
+                      <span className="text-brand-accent font-semibold text-xs sm:text-sm font-body">{lead.budget || 'Not specified'}</span>
                     </div>
                   </div>
 
                   {/* Chat Transcript Summary */}
                   <div className="space-y-1">
-                    <span className="text-[10px] text-brand-accent font-bold uppercase tracking-wider block font-mono">AI Generated Chat Summary:</span>
+                    <span className="text-[10px] text-brand-accent font-bold uppercase tracking-wider block font-body">AI Generated Chat Summary:</span>
                     <p className="text-xs sm:text-sm text-brand-text leading-relaxed bg-brand-bg/30 border-l-2 border-brand-accent pl-3.5 py-2 rounded-r-md font-sans">
                       {lead.summary || 'Customer did not reply'}
                     </p>
@@ -601,39 +601,39 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, selectedB
                 </div>
 
                 {/* Lead status and actions column */}
-                <div className="flex flex-row lg:flex-col items-center lg:items-end justify-between lg:justify-center gap-3 shrink-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-brand-border/60">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-row flex-wrap lg:flex-nowrap lg:flex-col items-center lg:items-end justify-between lg:justify-center gap-3 shrink-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-brand-border/60">
+                  <div className="flex flex-wrap items-center gap-2">
                     {/* Interactive Sentiment selector */}
                     <select
                       value={lead.sentiment || (lead.summary === 'Customer did not reply' ? 'No Response' : 'Neutral')}
                       onChange={(e) => handleSentimentChange(lead.id, e.target.value)}
                       disabled={updatingId === lead.id}
-                      className={`h-7 px-2.5 text-[10px] font-bold rounded-full border font-mono transition-colors cursor-pointer focus:outline-none ${
+                      className={`h-7 px-2.5 text-[10px] font-bold rounded-full border font-body transition-colors cursor-pointer focus:outline-none ${
                         lead.sentiment === 'Positive'
-                          ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
+                          ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-700'
                           : lead.sentiment === 'No Response' || lead.summary === 'Customer did not reply'
-                          ? 'bg-zinc-800/80 border-zinc-700 text-zinc-400'
+                          ? 'bg-zinc-100/80 border-zinc-200 text-zinc-700'
                           : lead.sentiment === 'Neutral'
-                          ? 'bg-slate-800/70 border-slate-700 text-slate-300'
+                          ? 'bg-slate-100/70 border-slate-200 text-slate-700'
                           : lead.sentiment === 'Angry'
-                          ? 'bg-rose-500/20 border-rose-500/40 text-rose-400'
-                          : 'bg-amber-500/15 border-amber-500/40 text-amber-300'
+                          ? 'bg-rose-500/20 border-rose-500/40 text-rose-700'
+                          : 'bg-amber-500/15 border-amber-500/40 text-amber-700'
                       }`}
                       title="Click to change Sentiment"
                     >
-                      <option value="Positive" className="bg-brand-card text-emerald-400">😊 Positive</option>
-                      <option value="Neutral" className="bg-brand-card text-slate-300">😐 Neutral</option>
-                      <option value="No Response" className="bg-brand-card text-zinc-400">📵 No Response</option>
-                      <option value="Urgent/Demanding" className="bg-brand-card text-amber-400">⚠️ Urgent</option>
-                      <option value="Angry" className="bg-brand-card text-rose-400">😡 Angry</option>
+                      <option value="Positive" className="bg-brand-card text-emerald-700">😊 Positive</option>
+                      <option value="Neutral" className="bg-brand-card text-slate-700">😐 Neutral</option>
+                      <option value="No Response" className="bg-brand-card text-zinc-700">📵 No Response</option>
+                      <option value="Urgent/Demanding" className="bg-brand-card text-amber-700">⚠️ Urgent</option>
+                      <option value="Angry" className="bg-brand-card text-rose-700">😡 Angry</option>
                     </select>
 
                     <span className={`inline-flex items-center gap-1.5 h-7 px-3 text-xs font-sans font-bold rounded-full border shadow-sm transition-all ${
                       lead.leadScore === 'HOT'
-                        ? 'bg-rose-500/25 text-rose-200 border-rose-500/70 font-extrabold animate-pulse'
+                        ? 'bg-rose-500/25 text-rose-800 border-rose-500/70 font-extrabold animate-pulse'
                         : lead.leadScore === 'WARM'
-                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                        : 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40'
+                        ? 'bg-amber-500/20 text-amber-700 border-amber-500/40'
+                        : 'bg-cyan-500/20 text-cyan-700 border-cyan-400/40'
                     }`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${
                         lead.leadScore === 'HOT' ? 'bg-rose-400' : lead.leadScore === 'WARM' ? 'bg-amber-400' : 'bg-cyan-400'
@@ -651,7 +651,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, selectedB
                   {/* Appointment Schedule details */}
                   {lead.appointmentStatus && lead.appointmentStatus !== 'None' ? (
                     <div className="lg:text-right">
-                      <span className="text-[10px] text-brand-muted font-bold uppercase tracking-wider block font-mono">Site Visit:</span>
+                      <span className="text-[10px] text-brand-muted font-bold uppercase tracking-wider block font-body">Site Visit:</span>
                       <span className="text-xs font-sans font-bold inline-flex items-center gap-1.5 mt-0.5 px-2.5 py-1 rounded-md bg-brand-accent/15 text-brand-accent border border-brand-accent/30">
                         <Icons.Calendar />
                         <span>{lead.appointmentStatus}</span>
@@ -667,7 +667,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, selectedB
                         onClick={() => handleTogglePlay(lead)}
                         className={`h-8 px-2.5 rounded-lg border text-xs font-semibold transition flex items-center gap-1.5 shadow-sm shrink-0 ${
                           playingLeadId === lead.id
-                            ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-300 font-bold'
+                            ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-700 font-bold'
                             : 'bg-brand-bg border-brand-border hover:border-brand-accent/50 text-brand-text hover:text-brand-accent'
                         }`}
                         title={playingLeadId === lead.id ? 'Pause audio' : 'Listen to call recording'}
@@ -682,7 +682,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, selectedB
                         ) : (
                           <span>▶</span>
                         )}
-                        <span className="font-mono text-[11px]">{formatDuration(lead.durationSeconds)}</span>
+                        <span className="font-body text-[11px]">{formatDuration(lead.durationSeconds)}</span>
                       </button>
                     )}
                     <WhatsAppButton lead={lead} size="sm" />
@@ -690,7 +690,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({ leads, setLeads, selectedB
                       type="button"
                       onClick={() => handleDeleteLead(lead.id)}
                       disabled={deletingId === lead.id}
-                      className="h-8 w-8 flex items-center justify-center rounded-lg border border-brand-border bg-brand-bg hover:bg-rose-500/10 hover:border-rose-500/30 hover:text-rose-400 text-brand-muted transition text-xs shadow-sm"
+                      className="h-8 w-8 flex items-center justify-center rounded-lg border border-brand-border bg-brand-bg hover:bg-rose-500/10 hover:border-rose-500/30 hover:text-rose-700 text-brand-muted transition text-xs shadow-sm"
                       title="Delete Lead"
                     >
                       <Icons.Trash />

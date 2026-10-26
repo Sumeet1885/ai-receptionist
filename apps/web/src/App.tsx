@@ -14,7 +14,6 @@ import { Toast } from './components/common/Toast';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 
-import { LandingView } from './components/landing/LandingView';
 import { OnboardingView } from './components/onboarding/OnboardingView';
 import { DeploymentSuccessModal } from './components/onboarding/DeploymentSuccessModal';
 import { PublicChatView } from './components/chat/PublicChatView';
@@ -28,6 +27,9 @@ import { AgentsPage } from './components/dashboard/AgentsPage';
 import { AgentDetailPage } from './components/dashboard/AgentDetailPage';
 import { PlansView } from './components/dashboard/PlansView';
 import { CallsWorkspace } from './modules/phone-calls/CallsWorkspace';
+
+// Marketing page is loaded on demand so its styles and media code stay out of the dashboard bundle.
+const BolegaLanding = React.lazy(() => import('./components/landing/bolega/BolegaLanding'));
 
 type AgentTab = 'overview' | 'knowledge' | 'install' | 'crm' | 'preview';
 
@@ -339,7 +341,7 @@ export default function App() {
       <p className="text-sm">Create an agent first so your receptionist can start collecting leads.</p>
       <button
         onClick={() => navigate('/agents/new')}
-        className="mt-4 px-5 py-2.5 bg-brand-accent hover:bg-brand-accent-hover text-brand-text rounded-lg text-sm font-bold transition"
+        className="mt-4 px-5 py-2.5 bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground rounded-lg text-sm font-bold transition"
       >
         Create Agent
       </button>
@@ -347,10 +349,10 @@ export default function App() {
   );
 
   return (
-    <div className={`bg-brand-bg text-brand-text font-sans antialiased flex flex-col selection:bg-brand-accent/30 selection:text-white ${isStandaloneChat ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
+    <div className={`bg-brand-bg text-brand-text font-sans antialiased flex flex-col ${isStandaloneChat ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
       {toast && <Toast toast={toast} />}
 
-      {!isStandaloneChat && (
+      {!isStandaloneChat && route.name !== 'landing' && (
         <Header
           routeName={route.name}
           navigate={navigate}
@@ -359,20 +361,15 @@ export default function App() {
         />
       )}
 
+      {route.name === 'landing' ? (
+        <React.Suspense fallback={<div className="min-h-screen bg-background" aria-busy="true" />}>
+          <BolegaLanding navigate={navigate} signedIn={Boolean(user)} />
+        </React.Suspense>
+      ) : (
       <main className="flex-1 flex flex-col min-h-0">
         {authLoading && isProtectedRoute(route) ? (
           <div className="flex-1 flex items-center justify-center text-brand-muted text-sm">Loading…</div>
         ) : <>
-        {route.name === 'landing' && (
-          <LandingView
-            setView={legacySetView}
-            setActiveBotId={setActiveBotId}
-            applyOnboardingTemplate={applyOnboardingTemplate}
-            launchPublicChat={launchPublicChat}
-            user={user}
-          />
-        )}
-
         {route.name === 'auth' && (
           <AuthView
             setView={legacySetView}
@@ -481,7 +478,7 @@ export default function App() {
             actions={
               <button
                 onClick={() => navigate('/agents/new')}
-                className="px-4 py-2.5 bg-brand-accent hover:bg-brand-accent-hover text-brand-text rounded-lg text-sm font-bold transition"
+                className="px-4 py-2.5 bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground rounded-lg text-sm font-bold transition"
               >
                 Create Agent
               </button>
@@ -560,6 +557,7 @@ export default function App() {
         )}
         </>}
       </main>
+      )}
 
       {!isStandaloneChat && route.name !== 'landing' && <Footer showToast={(msg) => showToast(msg, 'success')} />}
 

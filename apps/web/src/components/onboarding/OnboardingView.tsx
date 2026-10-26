@@ -106,9 +106,9 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
       <div className="bg-gradient-to-r from-brand-card via-brand-card/95 to-brand-bg rounded-2xl border border-brand-border p-6 lg:p-8 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-brand-accent/10 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-accent/10 border border-brand-accent/30 text-brand-accent text-xs font-mono font-semibold uppercase tracking-wider mb-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-accent/10 border border-brand-accent/30 text-brand-accent text-xs font-body font-semibold uppercase tracking-wider mb-3">
             <span>⚡ 1-Click Business Templates</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-brand-accent animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-brand-accent text-primary-foreground animate-pulse" />
           </div>
           <h1 className="text-3xl sm:text-4xl font-display font-extrabold text-brand-text tracking-tight">
             Create Your AI Receptionist
@@ -125,7 +125,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
           <div>
             <h2 className="text-lg font-display font-bold text-brand-text flex items-center gap-2">
               <span>Choose a Business Persona</span>
-              <span className="text-xs font-mono font-normal text-brand-muted px-2 py-0.5 rounded bg-brand-bg border border-brand-border">
+              <span className="text-xs font-body font-normal text-brand-muted px-2 py-0.5 rounded bg-brand-bg border border-brand-border">
                 1-Click Pre-fill
               </span>
             </h2>
@@ -168,18 +168,18 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                           {tmpl.name}
                         </h3>
                       </div>
-                      <span className="text-[11px] font-mono text-brand-accent uppercase tracking-wider font-semibold">
+                      <span className="text-[11px] font-body text-brand-accent uppercase tracking-wider font-semibold">
                         {tmpl.badge}
                       </span>
                     </div>
                   </div>
 
                   {isSelected ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-brand-success/15 border border-brand-success/40 text-brand-success">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-body font-bold px-2 py-0.5 rounded-full bg-brand-success/15 border border-brand-success/40 text-brand-success">
                       ✓ Active
                     </span>
                   ) : (
-                    <span className="text-[11px] font-mono text-brand-muted group-hover:text-brand-text transition-colors">
+                    <span className="text-[11px] font-body text-brand-muted group-hover:text-brand-text transition-colors">
                       Select →
                     </span>
                   )}
@@ -203,7 +203,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                 </div>
 
                 {/* Footer preview note */}
-                <div className="pt-3 border-t border-brand-border/60 flex items-center justify-between text-[11px] text-brand-muted font-mono">
+                <div className="pt-3 border-t border-brand-border/60 flex items-center justify-between text-[11px] text-brand-muted font-body">
                   <span>Pre-fills: Instructions + Extraction + Theme</span>
                   <span className={`font-semibold flex items-center gap-1 ${isSelected ? 'text-brand-accent' : 'text-brand-muted group-hover:text-brand-accent'}`}>
                     {isSelected ? 'Pre-filled below ↓' : 'Apply & View Fields ↓'}
@@ -225,14 +225,14 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
               <button
                 type="button"
                 onClick={() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                className="text-brand-accent hover:underline font-mono text-xs flex items-center gap-1 font-semibold"
+                className="text-brand-accent hover:underline font-body text-xs flex items-center gap-1 font-semibold"
               >
                 Jump to Fields ↓
               </button>
               <button
                 type="button"
                 onClick={() => setNotification(null)}
-                className="text-brand-muted hover:text-brand-text font-mono text-xs px-1"
+                className="text-brand-muted hover:text-brand-text font-body text-xs px-1"
               >
                 ✕
               </button>
@@ -265,7 +265,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
               </span>
             </div>
           </div>
-          <span className="text-[11px] font-mono text-brand-success bg-brand-success/15 border border-brand-success/30 px-2.5 py-0.5 rounded-full font-bold self-start sm:self-auto shrink-0">
+          <span className="text-[11px] font-body text-brand-success bg-brand-success/15 border border-brand-success/30 px-2.5 py-0.5 rounded-full font-bold self-start sm:self-auto shrink-0">
             ✓ Pre-filled Ready
           </span>
         </div>
@@ -276,16 +276,16 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
               <h3 className="text-lg font-display font-bold text-brand-text flex items-center gap-2">
                 <span>1. Business Profile</span>
               </h3>
-              <span className="text-xs font-mono text-brand-muted">Step 1 of 4</span>
+              <span className="text-xs font-body text-brand-muted">Step 1 of 4</span>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider font-mono">
+                  <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider font-body">
                     Business / Clinic / Agency Name
                   </label>
-                  <span className="text-[10px] font-mono text-brand-muted">{(newBotName || '').length}/100</span>
+                  <span className="text-[10px] font-body text-brand-muted">{(newBotName || '').length}/100</span>
                 </div>
                 <input
                   type="text"
@@ -299,7 +299,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider mb-2 font-mono">
+                <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider mb-2 font-body">
                   Industry Sector
                 </label>
                 <select
@@ -325,15 +325,15 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
               <h3 className="text-lg font-display font-bold text-brand-text">
                 2. AI Greeting & Branding
               </h3>
-              <span className="text-xs font-mono text-brand-muted">Step 2 of 4</span>
+              <span className="text-xs font-body text-brand-muted">Step 2 of 4</span>
             </div>
             
             <div>
               <div className="flex justify-between items-center mb-2">
-                <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider font-mono">
+                <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider font-body">
                   AI Receptionist Greeting Message
                 </label>
-                <span className="text-[10px] font-mono text-brand-muted">{(newBotGreeting || '').length}/400</span>
+                <span className="text-[10px] font-body text-brand-muted">{(newBotGreeting || '').length}/400</span>
               </div>
               <textarea
                 rows={3}
@@ -350,7 +350,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
               <div>
-                <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider mb-2 font-mono">
+                <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider mb-2 font-body">
                   Primary Theme Color
                 </label>
                 <div className="flex items-center space-x-3 mt-1.5">
@@ -385,7 +385,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                   <span>3. Caller Qualification & Extraction Fields</span>
                 </h3>
               </div>
-              <span className="text-xs font-mono text-brand-muted">Step 3 of 4</span>
+              <span className="text-xs font-body text-brand-muted">Step 3 of 4</span>
             </div>
 
             <p className="text-xs text-brand-muted leading-relaxed font-sans">
@@ -414,7 +414,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                         <span className="text-xs font-bold font-sans text-brand-text">
                           {field.label}
                         </span>
-                        <span className={`text-[11px] font-mono ${isActive ? 'text-brand-accent font-bold' : 'text-brand-muted'}`}>
+                        <span className={`text-[11px] font-body ${isActive ? 'text-brand-accent font-bold' : 'text-brand-muted'}`}>
                           {isActive ? '✓ ON' : 'OFF'}
                         </span>
                       </div>
@@ -435,18 +435,18 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                 <h3 className="text-lg font-display font-bold text-brand-text">
                   4. Knowledge Base & Domain Training
                 </h3>
-                <span className="text-[10px] text-brand-accent font-mono tracking-widest bg-brand-accent/10 border border-brand-accent/30 px-2 py-0.5 rounded uppercase">
+                <span className="text-[10px] text-brand-accent font-body tracking-widest bg-brand-accent/10 border border-brand-accent/30 px-2 py-0.5 rounded uppercase">
                   RAG Engine Ready
                 </span>
               </div>
-              <span className="text-xs font-mono text-brand-muted">Step 4 of 4</span>
+              <span className="text-xs font-body text-brand-muted">Step 4 of 4</span>
             </div>
             
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <p className="text-xs text-brand-muted leading-relaxed font-sans">
                 The AI receptionist uses this domain knowledge to answer complex caller questions, check doctor/agent schedules, give accurate pricing, and triage emergency calls.
               </p>
-              <span className="text-[10px] font-mono text-brand-muted shrink-0">
+              <span className="text-[10px] font-body text-brand-muted shrink-0">
                 {(newBotKB || '').length}/3000
               </span>
             </div>
@@ -459,7 +459,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                 value={newBotKB}
                 onChange={(e) => setNewBotKB(e.target.value)}
                 placeholder="Enter services, pricing, provider schedules, policies, emergency protocol, location, and hours..."
-                className="w-full bg-brand-bg border border-brand-border focus:border-brand-accent rounded-lg px-4 py-3 text-brand-text placeholder-brand-muted/40 focus:outline-none transition duration-200 font-sans text-sm leading-relaxed font-mono text-xs focus:ring-1 focus:ring-brand-accent"
+                className="w-full bg-brand-bg border border-brand-border focus:border-brand-accent rounded-lg px-4 py-3 text-brand-text placeholder-brand-muted/40 focus:outline-none transition duration-200 font-sans text-sm leading-relaxed font-body text-xs focus:ring-1 focus:ring-brand-accent"
               />
             </div>
 
@@ -467,10 +467,10 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
             {newBotPrompts && newBotPrompts.length > 0 && (
               <div className="bg-brand-bg/50 border border-brand-border rounded-xl p-3.5 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-mono uppercase tracking-wider text-brand-muted font-semibold">
+                  <span className="text-[11px] font-body uppercase tracking-wider text-brand-muted font-semibold">
                     Pre-configured Starter Prompts (Shown to Callers & Chatters)
                   </span>
-                  <span className="text-[10px] font-mono text-brand-accent">Auto-generated</span>
+                  <span className="text-[10px] font-body text-brand-accent">Auto-generated</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {newBotPrompts.map((prompt, idx) => (
@@ -504,7 +504,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
               </button>
               <button
                 type="submit"
-                className="w-full sm:w-auto px-8 py-2.5 bg-brand-accent hover:bg-brand-accent-hover text-brand-text border border-brand-border font-sans font-bold text-sm rounded-lg shadow-lg hover:shadow-brand-accent/20 transition flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-8 py-2.5 bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground border border-brand-border font-sans font-bold text-sm rounded-lg shadow-lg hover:shadow-brand-accent/20 transition flex items-center justify-center gap-2"
               >
                 <span>⚡ Generate Live AI Receptionist</span>
               </button>

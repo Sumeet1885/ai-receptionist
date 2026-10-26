@@ -95,13 +95,13 @@ Please implement this now.`;
 
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider mb-2 font-mono">Public Chat Link</label>
+              <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider mb-2 font-body">Public Chat Link</label>
               <div className="flex">
                 <input 
                   type="text" 
                   readOnly 
                   value={publicLink}
-                  className="flex-1 bg-brand-bg border border-brand-border rounded-l-lg px-4 py-3 text-brand-text text-sm font-mono focus:outline-none"
+                  className="flex-1 bg-brand-bg border border-brand-border rounded-l-lg px-4 py-3 text-brand-text text-sm font-body focus:outline-none"
                 />
                 <button 
                   onClick={handleCopyLink}
@@ -114,7 +114,7 @@ Please implement this now.`;
             </div>
 
             <div className="pt-2">
-              <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider mb-2 font-mono">Embed Script Tag</label>
+              <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider mb-2 font-body">Embed Script Tag</label>
               {isLocalInstallScript && (
                 <div className="mb-3 bg-brand-danger/10 border border-brand-danger/30 rounded-lg p-3 text-sm text-brand-text">
                   <p className="font-bold text-brand-danger">This script is local-only.</p>
@@ -127,7 +127,7 @@ Please implement this now.`;
                 <pre className="text-xs sm:text-sm text-brand-text font-mono whitespace-pre-wrap break-all leading-relaxed pr-16">{scriptTag}</pre>
                 <button 
                   onClick={handleCopyScript}
-                  className="absolute top-3 right-3 p-2 bg-brand-card hover:bg-brand-accent hover:text-white border border-brand-border rounded-md text-brand-muted transition opacity-100 sm:opacity-0 sm:group-hover:opacity-100 shadow-sm"
+                  className="absolute top-3 right-3 p-2 bg-brand-card hover:bg-brand-accent hover:text-primary-foreground border border-brand-border rounded-md text-brand-muted transition opacity-100 sm:opacity-0 sm:group-hover:opacity-100 shadow-sm"
                   title="Copy Script"
                 >
                   {copiedScript ? (
@@ -153,7 +153,7 @@ Please implement this now.`;
                   </p>
                   <button 
                     onClick={handleCopyPrompt}
-                    className="w-full sm:w-auto px-5 py-2.5 bg-brand-accent hover:bg-brand-accent-hover text-brand-text font-sans font-semibold text-sm rounded-lg shadow-md transition flex items-center justify-center gap-2"
+                    className="w-full sm:w-auto px-5 py-2.5 bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground font-sans font-semibold text-sm rounded-lg shadow-md transition flex items-center justify-center gap-2"
                   >
                     {copiedPrompt ? (
                       <>

@@ -167,7 +167,7 @@ export const AgentSelectorDropdown: React.FC<AgentSelectorDropdownProps> = ({
           <span>Voice Engine:</span>
           <span
             className={`font-semibold flex items-center gap-1 ${
-              agentStatus?.provisioned ? 'text-emerald-400' : 'text-amber-400'
+              agentStatus?.provisioned ? 'text-emerald-700' : 'text-amber-700'
             }`}
           >
             <span
@@ -180,7 +180,7 @@ export const AgentSelectorDropdown: React.FC<AgentSelectorDropdownProps> = ({
         </span>
 
         {agentStatus?.phoneNumber && (
-          <span className="font-mono text-[10px] text-brand-muted truncate max-w-[120px]">
+          <span className="font-body text-[10px] text-brand-muted truncate max-w-[120px]">
             {agentStatus.phoneNumber}
           </span>
         )}
@@ -278,7 +278,7 @@ export const AgentSelectorDropdown: React.FC<AgentSelectorDropdownProps> = ({
 
                     {/* Active Checkmark */}
                     {isSelected ? (
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-brand-accent text-brand-bg shrink-0 flex items-center gap-1 shadow-sm">
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-brand-accent text-primary-foreground shrink-0 flex items-center gap-1 shadow-sm">
                         ✓ Active
                       </span>
                     ) : (
@@ -298,7 +298,7 @@ export const AgentSelectorDropdown: React.FC<AgentSelectorDropdownProps> = ({
               Showing {filteredBots.length} of {bots.length}
             </span>
             <span className="text-[10px] text-brand-muted">
-              Press <kbd className="px-1 py-0.5 bg-brand-card rounded border border-brand-border font-mono text-[9px]">ESC</kbd> to close
+              Press <kbd className="px-1 py-0.5 bg-brand-card rounded border border-brand-border font-body text-[9px]">ESC</kbd> to close
             </span>
           </div>
         </div>

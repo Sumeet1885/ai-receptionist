@@ -95,7 +95,7 @@ export function AIVoiceInput({
             "group w-16 h-16 rounded-xl flex items-center justify-center transition-colors",
             submitted
               ? "bg-none"
-              : "bg-none hover:bg-black/10 dark:hover:bg-white/10"
+              : "bg-none hover:bg-black/10 dark:hover:bg-text/5"
           )}
           type="button"
           onClick={handleClick}
@@ -112,7 +112,7 @@ export function AIVoiceInput({
 
         <span
           className={cn(
-            "font-mono text-sm transition-opacity duration-300",
+            "font-body text-sm transition-opacity duration-300",
             submitted
               ? "text-black/70 dark:text-white/70"
               : "text-black/30 dark:text-white/30"
@@ -129,7 +129,7 @@ export function AIVoiceInput({
                 "w-0.5 rounded-full transition-all duration-300",
                 submitted
                   ? "bg-black/50 dark:bg-white/50 animate-pulse"
-                  : "bg-black/10 dark:bg-white/10 h-1"
+                  : "bg-black/10 dark:bg-text/5 h-1"
               )}
               style={
                 submitted && isClient

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Container, SectionHeading } from '../ui/layout';
 
 interface PostLoginShellProps {
   title: string;
@@ -16,17 +17,11 @@ export const PostLoginShell: React.FC<PostLoginShellProps> = ({
   children
 }) => {
   return (
-    <div className="flex-1 bg-brand-bg">
-      <div className={`${maxWidth || 'max-w-7xl'} mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-6`}>
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-2xl lg:text-3xl font-display font-extrabold text-brand-text">{title}</h2>
-            {subtitle && <p className="text-sm text-brand-muted mt-1 font-sans">{subtitle}</p>}
-          </div>
-          {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
-        </div>
+    <div className="flex-1 bg-background">
+      <Container className={`${maxWidth || 'max-w-7xl'} py-6 lg:py-8 space-y-6`}>
+        <SectionHeading as="h1" title={title} description={subtitle} actions={actions} />
         {children}
-      </div>
+      </Container>
     </div>
   );
 };

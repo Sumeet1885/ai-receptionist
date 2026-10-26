@@ -58,7 +58,7 @@ export const CallsQuickStartGuide: React.FC<CallsQuickStartGuideProps> = ({
                 Quick Start: Get Your AI Receptionist Live in 3 Steps
               </h4>
               {isAllComplete && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-500/15 text-emerald-700 border border-emerald-500/30">
                   🎉 Ready & Tested
                 </span>
               )}
@@ -99,7 +99,7 @@ export const CallsQuickStartGuide: React.FC<CallsQuickStartGuideProps> = ({
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-brand-muted">Step 1</span>
                 {isProvisioned ? (
-                  <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-bold flex items-center justify-center">✓</span>
+                  <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-700 border border-emerald-500/40 text-[10px] font-bold flex items-center justify-center">✓</span>
                 ) : (
                   <span className="w-5 h-5 rounded-full bg-brand-card text-brand-muted border border-brand-border text-[10px] font-bold flex items-center justify-center">1</span>
                 )}
@@ -111,7 +111,7 @@ export const CallsQuickStartGuide: React.FC<CallsQuickStartGuideProps> = ({
             </div>
 
             {isProvisioned ? (
-              <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
+              <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
                 <span>✓</span> Engine Active
               </span>
             ) : (
@@ -119,7 +119,7 @@ export const CallsQuickStartGuide: React.FC<CallsQuickStartGuideProps> = ({
                 type="button"
                 onClick={handleProvisionClick}
                 disabled={provisioning}
-                className="h-8 px-3 rounded-lg bg-brand-accent hover:bg-brand-accent-hover text-brand-bg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
+                className="h-8 px-3 rounded-lg bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
               >
                 {provisioning ? 'Provisioning…' : '⚡ 1-Click Provision'}
               </button>
@@ -136,7 +136,7 @@ export const CallsQuickStartGuide: React.FC<CallsQuickStartGuideProps> = ({
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-brand-muted">Step 2</span>
                 {hasInboundNumber ? (
-                  <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-bold flex items-center justify-center">✓</span>
+                  <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-700 border border-emerald-500/40 text-[10px] font-bold flex items-center justify-center">✓</span>
                 ) : (
                   <span className="w-5 h-5 rounded-full bg-brand-card text-brand-muted border border-brand-border text-[10px] font-bold flex items-center justify-center">2</span>
                 )}
@@ -149,7 +149,7 @@ export const CallsQuickStartGuide: React.FC<CallsQuickStartGuideProps> = ({
 
             {hasInboundNumber ? (
               <div className="flex items-center justify-between">
-                <span className="text-xs font-mono font-bold text-emerald-400 truncate">
+                <span className="text-xs font-body font-bold text-emerald-700 truncate">
                   {phoneNumber}
                 </span>
                 <button
@@ -181,7 +181,7 @@ export const CallsQuickStartGuide: React.FC<CallsQuickStartGuideProps> = ({
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-brand-muted">Step 3</span>
                 {hasPlacedCall ? (
-                  <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-bold flex items-center justify-center">✓</span>
+                  <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-700 border border-emerald-500/40 text-[10px] font-bold flex items-center justify-center">✓</span>
                 ) : (
                   <span className="w-5 h-5 rounded-full bg-brand-card text-brand-muted border border-brand-border text-[10px] font-bold flex items-center justify-center">3</span>
                 )}
@@ -193,7 +193,7 @@ export const CallsQuickStartGuide: React.FC<CallsQuickStartGuideProps> = ({
             </div>
 
             {hasPlacedCall ? (
-              <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
+              <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
                 <span>✓</span> Tested & Verified
               </span>
             ) : (

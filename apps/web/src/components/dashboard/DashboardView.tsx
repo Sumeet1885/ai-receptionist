@@ -73,7 +73,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <p className="text-sm">No chatbots created yet.</p>
         <button
           onClick={() => setView('onboarding')}
-          className="px-5 py-2.5 bg-brand-accent hover:bg-brand-accent-hover border border-brand-border text-brand-text font-sans font-semibold text-sm rounded-lg transition"
+          className="px-5 py-2.5 bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground border border-brand-border font-sans font-semibold text-sm rounded-lg transition"
         >
           Create Your First Bot
         </button>
@@ -87,7 +87,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <aside className="w-full lg:w-72 bg-brand-card border-r border-brand-border p-6 flex flex-col justify-between shrink-0">
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-brand-muted tracking-wider uppercase font-mono">Active Chatbots</h3>
+            <h3 className="text-xs font-bold text-brand-muted tracking-wider uppercase font-body">Active Chatbots</h3>
             <button
               onClick={() => {
                 setNewBotName('');
@@ -95,7 +95,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 setNewBotKB('');
                 setView('onboarding');
               }}
-              className="p-1 bg-brand-accent/10 border border-brand-border hover:bg-brand-accent text-brand-accent hover:text-brand-text rounded-lg transition"
+              className="p-1 bg-brand-accent/10 border border-brand-border hover:bg-brand-accent text-brand-accent hover:text-primary-foreground rounded-lg transition"
               title="Add a new chatbot"
             >
               <Icons.Plus />
@@ -130,7 +130,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Sidebar bottom indicator */}
-        <div className="pt-6 border-t border-brand-border text-xs text-brand-muted space-y-2 font-mono">
+        <div className="pt-6 border-t border-brand-border text-xs text-brand-muted space-y-2 font-body">
           <p>System Region: Pune, IN</p>
           
         </div>
@@ -151,25 +151,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="flex flex-wrap gap-1 bg-brand-card border border-brand-border p-1 rounded-lg">
             <button
               onClick={() => setDashboardTab('leads')}
-              className={`px-3 py-2.5 rounded-md text-xs font-sans font-semibold transition duration-200 ${dashboardTab === 'leads' ? 'bg-brand-accent border border-brand-border text-brand-text' : 'text-brand-muted hover:text-brand-text'}`}
+              className={`px-3 py-2.5 rounded-md text-xs font-sans font-semibold transition duration-200 ${dashboardTab === 'leads' ? 'bg-brand-accent text-primary-foreground border border-brand-border ' : 'text-brand-muted hover:text-brand-text'}`}
             >
               Leads
             </button>
             <button
               onClick={() => setDashboardTab('conversations')}
-              className={`px-3 py-2.5 rounded-md text-xs font-sans font-semibold transition duration-200 ${dashboardTab === 'conversations' ? 'bg-brand-accent border border-brand-border text-brand-text' : 'text-brand-muted hover:text-brand-text'}`}
+              className={`px-3 py-2.5 rounded-md text-xs font-sans font-semibold transition duration-200 ${dashboardTab === 'conversations' ? 'bg-brand-accent text-primary-foreground border border-brand-border ' : 'text-brand-muted hover:text-brand-text'}`}
             >
               Conversations
             </button>
             <button
               onClick={() => setDashboardTab('appointments')}
-              className={`px-3 py-2.5 rounded-md text-xs font-sans font-semibold transition duration-200 ${dashboardTab === 'appointments' ? 'bg-brand-accent border border-brand-border text-brand-text' : 'text-brand-muted hover:text-brand-text'}`}
+              className={`px-3 py-2.5 rounded-md text-xs font-sans font-semibold transition duration-200 ${dashboardTab === 'appointments' ? 'bg-brand-accent text-primary-foreground border border-brand-border ' : 'text-brand-muted hover:text-brand-text'}`}
             >
               Appointments
             </button>
             <button
               onClick={() => setDashboardTab('settings')}
-              className={`px-3 py-2.5 rounded-md text-xs font-sans font-semibold transition duration-200 ${dashboardTab === 'settings' ? 'bg-brand-accent border border-brand-border text-brand-text' : 'text-brand-muted hover:text-brand-text'}`}
+              className={`px-3 py-2.5 rounded-md text-xs font-sans font-semibold transition duration-200 ${dashboardTab === 'settings' ? 'bg-brand-accent text-primary-foreground border border-brand-border ' : 'text-brand-muted hover:text-brand-text'}`}
             >
               Settings
             </button>

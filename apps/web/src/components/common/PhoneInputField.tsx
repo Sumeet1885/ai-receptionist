@@ -47,7 +47,7 @@ const CustomCountrySelect: React.FC<{
   return (
     <div className="relative flex items-center gap-2 h-full px-3 py-2 bg-brand-bg/90 border-r border-brand-border/60 hover:bg-brand-bg transition cursor-pointer select-none group shrink-0">
       {/* SVG Flag */}
-      <div className="w-6 h-4 rounded-[3px] overflow-hidden shadow-sm flex items-center justify-center shrink-0 border border-white/20 bg-black/40">
+      <div className="w-6 h-4 rounded-[3px] overflow-hidden shadow-sm flex items-center justify-center shrink-0 border border-brand-border bg-black/40">
         {FlagComponent ? (
           <FlagComponent title={value || 'Country'} />
         ) : (
@@ -56,7 +56,7 @@ const CustomCountrySelect: React.FC<{
       </div>
 
       {/* Country Calling Code (ALWAYS VISIBLE & HIGH CONTRAST) */}
-      <span className="font-mono font-bold text-xs text-brand-accent tracking-tight shrink-0">
+      <span className="font-body font-bold text-xs text-brand-accent tracking-tight shrink-0">
         {callingCode ? `+${callingCode}` : ''}
       </span>
 
@@ -84,7 +84,7 @@ const CustomCountrySelect: React.FC<{
             <option
               key={opt.value || 'intl'}
               value={opt.value || ''}
-              className="bg-[#0b1713] text-[#f8fafc] py-1 text-sm font-sans"
+              className="bg-surface text-text py-1 text-sm font-sans"
             >
               {opt.label} {optCode ? `(+${optCode})` : ''}
             </option>
@@ -150,22 +150,22 @@ export const PhoneInputField: React.FC<PhoneInputFieldProps> = ({
         <div className="flex items-center justify-between gap-2">
           <label htmlFor={inputId} className="block text-xs font-bold text-brand-text flex items-center gap-1.5">
             <span>{label}</span>
-            {required && <span className="text-rose-400 font-bold">*</span>}
+            {required && <span className="text-rose-700 font-bold">*</span>}
           </label>
 
           {/* Format / Validity Badge */}
           {value ? (
             isValid ? (
-              <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+              <span className="inline-flex items-center gap-1 text-[10px] font-body font-bold text-emerald-700 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Valid E.164
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 text-[10px] font-mono font-medium text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
+              <span className="inline-flex items-center gap-1 text-[10px] font-body font-medium text-amber-700 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
                 Incomplete
               </span>
             )
           ) : (
-            <span className="text-[10px] font-mono text-brand-muted/70">
+            <span className="text-[10px] font-body text-brand-muted/70">
               International (E.164)
             </span>
           )}
@@ -245,7 +245,7 @@ export const PhoneInputField: React.FC<PhoneInputFieldProps> = ({
                       : 'bg-brand-bg/60 border-brand-border text-brand-muted hover:text-brand-text hover:border-brand-accent/40'
                   }`}
                 >
-                  <span className="font-mono text-[10px]">{c.dial}</span>
+                  <span className="font-body text-[10px]">{c.dial}</span>
                   <span>{c.name}</span>
                 </button>
               );
@@ -256,7 +256,7 @@ export const PhoneInputField: React.FC<PhoneInputFieldProps> = ({
 
       {/* Helper text or Error message */}
       {error ? (
-        <p className="text-xs text-rose-400 font-medium flex items-center gap-1 mt-1">
+        <p className="text-xs text-rose-700 font-medium flex items-center gap-1 mt-1">
           <span>⚠️</span>
           <span>{error}</span>
         </p>

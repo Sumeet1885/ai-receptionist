@@ -44,7 +44,7 @@ export const AgentsPage: React.FC<AgentsPageProps> = ({
         <p className="text-sm mt-2">Add business details, FAQs, and a greeting so visitors can start chatting.</p>
         <button
           onClick={() => navigate('/agents/new')}
-          className="mt-5 px-5 py-2.5 bg-brand-accent hover:bg-brand-accent-hover text-brand-text rounded-lg text-sm font-bold transition"
+          className="mt-5 px-5 py-2.5 bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground rounded-lg text-sm font-bold transition"
         >
           Create Agent
         </button>
@@ -60,7 +60,7 @@ export const AgentsPage: React.FC<AgentsPageProps> = ({
           <article key={bot.id} className={`bg-brand-card border rounded-lg p-5 shadow-sm space-y-5 ${isActive ? 'border-brand-accent' : 'border-brand-border'}`}>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-mono uppercase tracking-wider text-brand-muted">{bot.industry}</p>
+                <p className="text-xs font-body uppercase tracking-wider text-brand-muted">{bot.industry}</p>
                 <h3 className="text-lg font-display font-bold text-brand-text mt-1">{bot.businessName}</h3>
               </div>
               <span className={`w-2.5 h-2.5 rounded-full mt-2 ${isActive ? 'bg-brand-success' : 'bg-brand-muted'}`} />
@@ -69,7 +69,7 @@ export const AgentsPage: React.FC<AgentsPageProps> = ({
             <p className="text-sm text-brand-muted line-clamp-3">{bot.greeting}</p>
 
             <div className="bg-brand-bg border border-brand-border rounded-md p-3">
-              <p className="text-[10px] text-brand-muted font-mono uppercase tracking-wider">Public Link</p>
+              <p className="text-[10px] text-brand-muted font-body uppercase tracking-wider">Public Link</p>
               <p className="text-xs text-brand-accent mt-1 break-all">/chats/{bot.subDomain}</p>
             </div>
 
@@ -79,7 +79,7 @@ export const AgentsPage: React.FC<AgentsPageProps> = ({
                   setActiveBotId(bot.id);
                   navigate(`/agents/${bot.id}`);
                 }}
-                className="px-3 py-2 bg-brand-accent hover:bg-brand-accent-hover rounded-md text-xs font-bold text-brand-text transition"
+                className="px-3 py-2 bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground rounded-md text-xs font-bold transition"
               >
                 Manage
               </button>

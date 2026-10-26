@@ -26,19 +26,19 @@ function AppointmentCard({ appointment }: { appointment: Appointment }) {
         <div className="flex items-center gap-2.5 flex-wrap">
           <h5 className="text-sm font-bold text-brand-text truncate group-hover:text-brand-accent transition-colors">{appointment.title}</h5>
           {appointment.status && appointment.status !== 'confirmed' && (
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wide border text-brand-muted border-brand-border bg-brand-card">
+            <span className="px-2 py-0.5 rounded text-[10px] font-body font-bold uppercase tracking-wide border text-brand-muted border-brand-border bg-brand-card">
               {appointment.status}
             </span>
           )}
         </div>
-        <p className="text-xs text-brand-muted font-mono mt-1">👤 {appointment.visitorName} · 📞 {appointment.visitorPhone}</p>
+        <p className="text-xs text-brand-muted font-body mt-1">👤 {appointment.visitorName} · 📞 {appointment.visitorPhone}</p>
       </div>
       <div className="flex items-center gap-4 shrink-0 sm:justify-end">
         <div className="text-left sm:text-right">
           <p className="text-xs font-semibold text-brand-text">
             {formattedDate}
           </p>
-          <p className="text-xs text-brand-accent font-mono font-bold">
+          <p className="text-xs text-brand-accent font-body font-bold">
             {formattedTime}
           </p>
         </div>
@@ -245,7 +245,7 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
             <h3 className="font-display font-bold text-brand-text text-lg flex items-center gap-2"><Icons.Calendar /> Calendar Sync</h3>
             <p className="text-xs text-brand-muted mt-1">Connection health and live calendar availability booked by your receptionist.</p>
           </div>
-          <button type="button" onClick={refresh} className="text-xs font-mono text-brand-accent hover:text-brand-accent-hover flex items-center gap-1">
+          <button type="button" onClick={refresh} className="text-xs font-body text-brand-accent hover:text-brand-accent-hover flex items-center gap-1">
             <Icons.Refresh /> Refresh
           </button>
         </div>
@@ -270,7 +270,7 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
               id="calendar-disconnect-btn"
               onClick={handleDisconnect}
               disabled={disconnecting}
-              className="h-10 px-4 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs font-bold transition disabled:opacity-50 flex items-center justify-center gap-2"
+              className="h-10 px-4 rounded-lg border border-red-500/30 text-red-700 hover:bg-red-500/10 text-xs font-bold transition disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {disconnecting ? 'Disconnecting…' : 'Disconnect Calendar'}
             </button>
@@ -288,14 +288,14 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-mono uppercase tracking-wider text-brand-muted">Receptionist Booking:</span>
+                  <span className="text-xs font-body uppercase tracking-wider text-brand-muted">Receptionist Booking:</span>
                   <span className="text-sm font-bold text-brand-text">
                     {(activeBot || bots?.[0])?.businessName || 'AI Receptionist'}
                   </span>
                   <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider border flex items-center gap-1.5 ${connectionState === 'connected' && Boolean((activeBot || bots?.[0])?.widgetConfig.enableCalendar)
+                    className={`px-2 py-0.5 rounded text-[10px] font-body font-bold uppercase tracking-wider border flex items-center gap-1.5 ${connectionState === 'connected' && Boolean((activeBot || bots?.[0])?.widgetConfig.enableCalendar)
                         ? 'bg-brand-success/10 border-brand-success/30 text-brand-success'
-                        : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                        : 'bg-amber-500/10 border-amber-500/30 text-amber-700'
                       }`}
                   >
                     <span className={`w-1.5 h-1.5 rounded-full ${connectionState === 'connected' && Boolean((activeBot || bots?.[0])?.widgetConfig.enableCalendar) ? 'bg-brand-success' : 'bg-amber-400'}`} />
@@ -309,7 +309,7 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
                 <p className="text-xs text-brand-muted leading-relaxed">
                   {connectionState !== 'connected' ? (
                     <>
-                      <strong className="text-amber-300">Calendar booking toggle is OFF.</strong> You must first connect Google or Outlook Calendar above to unlock and turn on automated booking.
+                      <strong className="text-amber-700">Calendar booking toggle is OFF.</strong> You must first connect Google or Outlook Calendar above to unlock and turn on automated booking.
                     </>
                   ) : (activeBot || bots?.[0])?.widgetConfig.enableCalendar ? (
                     <>
@@ -317,7 +317,7 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
                     </>
                   ) : (
                     <>
-                      <strong className="text-amber-300">Calendar booking toggle is OFF.</strong> Your calendar is connected, but the booking toggle is currently OFF. Turn it ON to start accepting bookings.
+                      <strong className="text-amber-700">Calendar booking toggle is OFF.</strong> Your calendar is connected, but the booking toggle is currently OFF. Turn it ON to start accepting bookings.
                     </>
                   )}
                 </p>
@@ -340,14 +340,14 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
                       showToast?.(nextVal ? 'Calendar booking toggle turned ON' : 'Calendar booking toggle turned OFF');
                     }}
                     className={`h-9 px-4 rounded-md text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm ${(activeBot || bots?.[0])?.widgetConfig.enableCalendar
-                        ? 'bg-brand-card border border-brand-border text-brand-text hover:bg-brand-bg'
-                        : 'bg-brand-accent hover:bg-brand-accent-hover text-brand-bg'
-                      }`}
+ ? 'bg-brand-card border border-brand-border hover:bg-brand-bg'
+ : 'bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground '
+ }`}
                   >
                     <span>{(activeBot || bots?.[0])?.widgetConfig.enableCalendar ? 'Turn OFF Booking' : 'Turn ON Booking'}</span>
                   </button>
                 ) : (
-                  <div className="h-9 px-3 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-mono flex items-center gap-1.5 select-none">
+                  <div className="h-9 px-3 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-700 text-xs font-body flex items-center gap-1.5 select-none">
                     <span>🔒</span>
                     <span>Toggle Locked OFF</span>
                   </div>
@@ -380,7 +380,7 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
             <div className="flex items-center gap-2">
               <h4 className="text-base font-bold text-brand-text flex items-center gap-2">
                 <span>Site Visit Schedule</span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-brand-accent/10 border border-brand-accent/30 text-brand-accent">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-body bg-brand-accent/10 border border-brand-accent/30 text-brand-accent">
                   {appointments.length} Booked
                 </span>
               </h4>
@@ -423,7 +423,7 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
           <div className="py-12 text-center space-y-3">
             <p className="text-sm font-semibold text-brand-text">Appointments could not be loaded</p>
             <p className="text-xs text-brand-muted">{appointmentsError}</p>
-            <button type="button" onClick={() => void loadAppointments()} className="h-9 px-4 rounded-md bg-brand-accent text-brand-bg text-xs font-bold">Try again</button>
+            <button type="button" onClick={() => void loadAppointments()} className="h-9 px-4 rounded-md bg-brand-accent text-primary-foreground text-xs font-bold">Try again</button>
           </div>
         ) : appointments.length === 0 ? (
           <div className="py-14 text-center">
@@ -473,7 +473,7 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
                 <span className="px-2.5 py-1 rounded bg-brand-card border border-brand-border text-brand-muted">
                   Week Total: <strong className="text-brand-text">{weekStats.total}</strong>
                 </span>
-                <span className="px-2.5 py-1 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 font-semibold flex items-center gap-1">
+                <span className="px-2.5 py-1 rounded bg-amber-500/10 border border-amber-500/30 text-amber-700 font-semibold flex items-center gap-1">
                   <span>🌟 Weekend Visits:</span>
                   <strong>{weekStats.weekend}</strong>
                 </span>
@@ -512,12 +512,12 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
                       >
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <span className={`text-xs font-bold uppercase tracking-wider ${isWeekend ? 'text-amber-400 font-black' : isDayToday ? 'text-brand-accent' : 'text-brand-text'
+                            <span className={`text-xs font-bold uppercase tracking-wider ${isWeekend ? 'text-amber-700 font-black' : isDayToday ? 'text-brand-accent' : 'text-brand-text'
                               }`}>
                               {dayName}
                             </span>
                             {isDayToday && (
-                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-brand-accent text-brand-bg uppercase">
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-brand-accent text-primary-foreground uppercase">
                                 Today
                               </span>
                             )}
@@ -529,11 +529,11 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
 
                         <div className="text-right">
                           {isWeekend && (
-                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 block mb-0.5">
+                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 border border-amber-500/30 block mb-0.5">
                               Weekend
                             </span>
                           )}
-                          <span className={`text-[10px] font-mono font-bold ${dayApps.length > 0 ? 'text-emerald-400' : 'text-brand-muted'
+                          <span className={`text-[10px] font-body font-bold ${dayApps.length > 0 ? 'text-emerald-700' : 'text-brand-muted'
                             }`}>
                             {dayApps.length} {dayApps.length === 1 ? 'visit' : 'visits'}
                           </span>
@@ -556,8 +556,8 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
                                 className="group relative rounded-xl border border-brand-border bg-brand-card p-3 space-y-2.5 shadow-sm hover:border-brand-accent/60 hover:-translate-y-1.5 hover:shadow-lg hover:shadow-brand-accent/10 transition-all duration-300 ease-out cursor-pointer overflow-hidden"
                               >
                                 <div className="flex items-center justify-between gap-1.5">
-                                  <span className="px-2.5 py-0.5 rounded text-[11px] font-mono font-bold bg-brand-accent/15 text-brand-accent border border-brand-accent/30 flex items-center gap-1.5">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-brand-accent animate-pulse shrink-0" />
+                                  <span className="px-2.5 py-0.5 rounded text-[11px] font-body font-bold bg-brand-accent/15 text-brand-accent border border-brand-accent/30 flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-brand-accent text-primary-foreground animate-pulse shrink-0" />
                                     {appTime}
                                   </span>
                                   {app.status && app.status !== 'confirmed' && (
@@ -571,7 +571,7 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
                                   <h6 className="text-xs font-bold text-brand-text whitespace-nowrap animate-marquee-hover group-hover:text-brand-accent transition-colors" title={app.visitorName}>
                                     {app.visitorName}
                                   </h6>
-                                  <p className="text-[11px] text-brand-muted font-mono truncate mt-0.5">
+                                  <p className="text-[11px] text-brand-muted font-body truncate mt-0.5">
                                     {app.visitorPhone}
                                   </p>
                                 </div>
@@ -610,7 +610,7 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-sm font-bold text-brand-text">Upcoming Site Visits</h4>
-                <span className="text-[10px] font-mono text-brand-muted">{grouped.upcoming.length} booking{grouped.upcoming.length === 1 ? '' : 's'}</span>
+                <span className="text-[10px] font-body text-brand-muted">{grouped.upcoming.length} booking{grouped.upcoming.length === 1 ? '' : 's'}</span>
               </div>
               {grouped.upcoming.length ? (
                 <div className="space-y-2">
@@ -624,7 +624,7 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
               <div className="pt-6 border-t border-brand-border">
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-sm font-bold text-brand-text">Past Site Visits</h4>
-                  <span className="text-[10px] font-mono text-brand-muted">Most recent first</span>
+                  <span className="text-[10px] font-body text-brand-muted">Most recent first</span>
                 </div>
                 <div className="space-y-2 opacity-80">
                   {grouped.past.map(appointment => <AppointmentCard key={appointment.id} appointment={appointment} />)}

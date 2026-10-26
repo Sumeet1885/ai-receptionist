@@ -61,8 +61,8 @@ function UploadZone({
 function StatusBadge({ status }: { status: Campaign['status'] }) {
   const map: Record<Campaign['status'], { label: string; cls: string }> = {
     pending: { label: 'Pending', cls: 'text-brand-muted border-brand-border bg-brand-card' },
-    running: { label: '▶ Running', cls: 'text-green-400 border-green-500/30 bg-green-500/10 animate-pulse' },
-    paused: { label: '⏸ Paused', cls: 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10' },
+    running: { label: '▶ Running', cls: 'text-green-700 border-green-500/30 bg-green-500/10 animate-pulse' },
+    paused: { label: '⏸ Paused', cls: 'text-yellow-700 border-yellow-500/30 bg-yellow-500/10' },
     completed: { label: '✓ Completed', cls: 'text-brand-accent border-brand-accent/30 bg-brand-accent/10' },
     failed: { label: '✗ Failed', cls: 'text-brand-danger border-brand-danger/30 bg-brand-danger/10' },
   };
@@ -74,10 +74,10 @@ function StatusBadge({ status }: { status: Campaign['status'] }) {
 
 function LeadScoreBadge({ score }: { score: string | null }) {
   if (!score) return null;
-  const cls = score === 'HOT' ? 'text-orange-400 border-orange-400/30 bg-orange-400/10'
-    : score === 'WARM' ? 'text-yellow-400 border-yellow-400/30 bg-yellow-400/10'
-    : score === 'HANGUP' ? 'text-red-400 border-red-400/30 bg-red-400/10'
-    : score === 'NO_ANSWER' ? 'text-blue-400 border-blue-400/30 bg-blue-400/10'
+  const cls = score === 'HOT' ? 'text-orange-700 border-orange-400/30 bg-orange-400/10'
+    : score === 'WARM' ? 'text-yellow-700 border-yellow-400/30 bg-yellow-400/10'
+    : score === 'HANGUP' ? 'text-red-700 border-red-400/30 bg-red-400/10'
+    : score === 'NO_ANSWER' ? 'text-blue-700 border-blue-400/30 bg-blue-400/10'
     : 'text-brand-muted border-brand-border bg-brand-card';
   return (
     <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide border ${cls}`}>{score}</span>
@@ -106,7 +106,7 @@ function ProgressBar({ total, called }: { total: number; called: number }) {
       </div>
       <div className="h-2 rounded-full bg-brand-bg overflow-hidden">
         <div
-          className="h-full rounded-full bg-brand-accent transition-all duration-500"
+          className="h-full rounded-full bg-brand-accent text-primary-foreground transition-all duration-500"
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -365,7 +365,7 @@ export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvision
                 type="button"
                 onClick={handleUpload}
                 disabled={!selectedFile || uploading}
-                className="h-10 px-6 rounded-lg bg-brand-accent hover:bg-brand-accent-hover text-brand-bg text-sm font-bold disabled:opacity-40 transition-all flex items-center gap-2"
+                className="h-10 px-6 rounded-lg bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground text-sm font-bold disabled:opacity-40 transition-all flex items-center gap-2"
               >
                 {uploading ? (
                   <><span className="animate-spin inline-block w-4 h-4 border-2 border-brand-bg/30 border-t-brand-bg rounded-full" /> Uploading…</>
@@ -386,7 +386,7 @@ export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvision
                     <tbody>
                       {uploadPreview.map((row, i) => (
                         <tr key={i} className="border-b border-brand-border/50 last:border-0">
-                          <td className="px-3 py-2 text-brand-text font-mono">{row.phone_number}</td>
+                          <td className="px-3 py-2 text-brand-text font-body">{row.phone_number}</td>
                           <td className="px-3 py-2 text-brand-muted">{row.name ?? '—'}</td>
                         </tr>
                       ))}
@@ -441,7 +441,7 @@ export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvision
                               type="button"
                               onClick={() => handleStart(campaign.id)}
                               disabled={actionLoading === campaign.id}
-                              className="h-8 px-3 rounded-lg bg-brand-accent hover:bg-brand-accent-hover text-brand-bg text-xs font-bold disabled:opacity-50 flex items-center gap-1"
+                              className="h-8 px-3 rounded-lg bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground text-xs font-bold disabled:opacity-50 flex items-center gap-1"
                             >
                               {actionLoading === campaign.id ? '…' : '▶ Start'}
                             </button>
@@ -451,7 +451,7 @@ export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvision
                               type="button"
                               onClick={() => handlePause(campaign.id)}
                               disabled={actionLoading === campaign.id}
-                              className="h-8 px-3 rounded-lg bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/30 text-xs font-bold disabled:opacity-50 flex items-center gap-1"
+                              className="h-8 px-3 rounded-lg bg-yellow-500/20 border border-yellow-500/30 text-yellow-700 hover:bg-yellow-500/30 text-xs font-bold disabled:opacity-50 flex items-center gap-1"
                             >
                               {actionLoading === campaign.id ? '…' : '⏸ Pause'}
                             </button>
@@ -521,7 +521,7 @@ export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvision
                                         </div>
                                       </td>
                                       <td className="px-3 py-2 text-brand-text">{c.name ?? '—'}</td>
-                                      <td className="px-3 py-2 text-brand-text font-mono">{c.phone_number}</td>
+                                      <td className="px-3 py-2 text-brand-text font-body">{c.phone_number}</td>
                                       <td className="px-3 py-2"><LeadScoreBadge score={c.lead_score} /></td>
                                       <td className="px-3 py-2 text-brand-muted">
                                         {c.call_duration ? `${c.call_duration}s` : '—'}

@@ -99,7 +99,7 @@ export const CrmConnectionPanel: React.FC<CrmConnectionPanelProps> = ({ botId, s
             <h3 className="font-display font-bold text-brand-text text-lg flex items-center gap-2"><Icons.Globe /> CRM</h3>
             <p className="text-xs text-brand-muted mt-1">Leads captured by this agent are mirrored into your own CRM as they come in.</p>
           </div>
-          <button type="button" onClick={loadConnection} className="text-xs font-mono text-brand-accent hover:text-brand-accent-hover flex items-center gap-1">
+          <button type="button" onClick={loadConnection} className="text-xs font-body text-brand-accent hover:text-brand-accent-hover flex items-center gap-1">
             <Icons.Refresh /> Refresh
           </button>
         </div>
@@ -151,7 +151,7 @@ export const CrmConnectionPanel: React.FC<CrmConnectionPanelProps> = ({ botId, s
           </a>
 
           <div>
-            <label className="block text-[11px] font-mono font-bold uppercase tracking-wider text-brand-muted mb-1.5">Webhook URL</label>
+            <label className="block text-[11px] font-body font-bold uppercase tracking-wider text-brand-muted mb-1.5">Webhook URL</label>
             <input
               className="w-full h-10 bg-brand-bg border border-brand-border rounded-md px-3 text-sm text-brand-text placeholder:text-brand-muted/60 focus:outline-none focus:border-brand-accent transition"
               placeholder="https://your-crm.com/api/webhooks/website/..."
@@ -160,7 +160,7 @@ export const CrmConnectionPanel: React.FC<CrmConnectionPanelProps> = ({ botId, s
             />
           </div>
           <div>
-            <label className="block text-[11px] font-mono font-bold uppercase tracking-wider text-brand-muted mb-1.5">API Key</label>
+            <label className="block text-[11px] font-body font-bold uppercase tracking-wider text-brand-muted mb-1.5">API Key</label>
             <input
               type="password"
               className="w-full h-10 bg-brand-bg border border-brand-border rounded-md px-3 text-sm text-brand-text placeholder:text-brand-muted/60 focus:outline-none focus:border-brand-accent transition"
@@ -170,7 +170,7 @@ export const CrmConnectionPanel: React.FC<CrmConnectionPanelProps> = ({ botId, s
             />
           </div>
           <div>
-            <label className="block text-[11px] font-mono font-bold uppercase tracking-wider text-brand-muted mb-1.5">
+            <label className="block text-[11px] font-body font-bold uppercase tracking-wider text-brand-muted mb-1.5">
               Signing Secret <span className="text-brand-muted/70 font-normal normal-case tracking-normal">(Optional, recommended)</span>
             </label>
             <input
@@ -195,7 +195,7 @@ export const CrmConnectionPanel: React.FC<CrmConnectionPanelProps> = ({ botId, s
               type="button"
               onClick={handleConnect}
               disabled={saving}
-              className="h-10 px-5 bg-brand-accent hover:bg-brand-accent-hover text-brand-bg font-bold rounded-md transition disabled:opacity-50"
+              className="h-10 px-5 bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground font-bold rounded-md transition disabled:opacity-50"
             >
               Connect CRM
             </button>

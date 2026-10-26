@@ -149,7 +149,7 @@ export const OutboundDialerPanel: React.FC<OutboundDialerPanelProps> = ({
 
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-brand-bg border border-brand-border text-xs">
           <span className="text-brand-muted">Caller ID Line:</span>
-          <span className="font-mono font-bold text-emerald-400">
+          <span className="font-body font-bold text-emerald-700">
             {callerId || 'No Number Linked'}
           </span>
         </div>
@@ -237,11 +237,11 @@ export const OutboundDialerPanel: React.FC<OutboundDialerPanelProps> = ({
             {/* Success Notification Banner */}
             {lastCallResult && (
               <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-brand-text flex items-start gap-3 animate-in fade-in">
-                <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 font-bold">
+                <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-700 flex items-center justify-center shrink-0 font-bold">
                   ✓
                 </span>
                 <div className="space-y-0.5">
-                  <p className="font-bold text-emerald-300">Call Dispatched Successfully</p>
+                  <p className="font-bold text-emerald-700">Call Dispatched Successfully</p>
                   <p className="text-brand-muted">{lastCallResult}</p>
                 </div>
               </div>
@@ -251,9 +251,9 @@ export const OutboundDialerPanel: React.FC<OutboundDialerPanelProps> = ({
             {errorDiagnostic && (
               <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-2.5 animate-in fade-in">
                 <div className="flex items-start gap-2.5">
-                  <span className="text-amber-400 text-base shrink-0 mt-0.5">⚠️</span>
+                  <span className="text-amber-700 text-base shrink-0 mt-0.5">⚠️</span>
                   <div className="space-y-1">
-                    <h5 className="font-bold text-amber-300 text-xs tracking-tight">
+                    <h5 className="font-bold text-amber-700 text-xs tracking-tight">
                       {errorDiagnostic.title}
                     </h5>
                     <p className="text-brand-text leading-relaxed text-[11px]">
@@ -268,7 +268,7 @@ export const OutboundDialerPanel: React.FC<OutboundDialerPanelProps> = ({
                       href={errorDiagnostic.actionHref}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/30 text-[11px] font-bold transition"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-800 border border-amber-500/30 text-[11px] font-bold transition"
                     >
                       <span>{errorDiagnostic.actionText}</span>
                     </a>
@@ -296,7 +296,7 @@ export const OutboundDialerPanel: React.FC<OutboundDialerPanelProps> = ({
                 Interactive Dial Pad
               </span>
               <div className="mt-1 h-9 px-3 rounded-lg bg-brand-card border border-brand-border flex items-center justify-center">
-                <span className="text-sm font-mono font-bold text-brand-text truncate">
+                <span className="text-sm font-body font-bold text-brand-text truncate">
                   {dialNumber || '---'}
                 </span>
               </div>
@@ -321,7 +321,7 @@ export const OutboundDialerPanel: React.FC<OutboundDialerPanelProps> = ({
                 type="button"
                 onClick={handleClear}
                 disabled={calling || !dialNumber}
-                className="h-11 rounded-lg bg-brand-card hover:bg-rose-500/20 hover:text-rose-400 border border-brand-border text-xs font-bold text-brand-muted transition flex items-center justify-center active:scale-95 disabled:opacity-50"
+                className="h-11 rounded-lg bg-brand-card hover:bg-rose-500/20 hover:text-rose-700 border border-brand-border text-xs font-bold text-brand-muted transition flex items-center justify-center active:scale-95 disabled:opacity-50"
                 title="Clear all digits"
               >
                 Clear
@@ -339,7 +339,7 @@ export const OutboundDialerPanel: React.FC<OutboundDialerPanelProps> = ({
                 type="button"
                 onClick={handleBackspace}
                 disabled={calling || !dialNumber}
-                className="h-11 rounded-lg bg-brand-card hover:bg-amber-500/20 hover:text-amber-400 border border-brand-border text-sm font-bold text-brand-muted transition flex items-center justify-center active:scale-95 disabled:opacity-50"
+                className="h-11 rounded-lg bg-brand-card hover:bg-amber-500/20 hover:text-amber-700 border border-brand-border text-sm font-bold text-brand-muted transition flex items-center justify-center active:scale-95 disabled:opacity-50"
                 title="Backspace (delete last digit)"
               >
                 ⌫

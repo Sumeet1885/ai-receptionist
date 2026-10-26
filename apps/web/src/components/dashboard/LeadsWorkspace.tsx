@@ -40,10 +40,10 @@ export const LeadsWorkspace: React.FC<LeadsWorkspaceProps> = ({
           <button
             onClick={() => setSelectedBotId('all')}
             className={`w-full text-left px-3 py-3 rounded-md border transition ${
-              selectedBotId === 'all'
-                ? 'bg-brand-accent text-brand-bg border-brand-accent'
-                : 'bg-brand-bg/40 text-brand-text border-brand-border hover:border-brand-accent/60'
-            }`}
+ selectedBotId === 'all'
+ ? 'bg-brand-accent text-primary-foreground border-brand-accent'
+ : 'bg-brand-bg/40 border-brand-border hover:border-brand-accent/60'
+ }`}
           >
             <span className="block text-sm font-bold">All Agents</span>
             <span className={`block text-xs mt-1 ${selectedBotId === 'all' ? 'text-brand-bg/80' : 'text-brand-muted'}`}>
@@ -58,10 +58,10 @@ export const LeadsWorkspace: React.FC<LeadsWorkspaceProps> = ({
                 key={bot.id}
                 onClick={() => setSelectedBotId(bot.id)}
                 className={`w-full text-left px-3 py-3 rounded-md border transition ${
-                  isSelected
-                    ? 'bg-brand-accent text-brand-bg border-brand-accent'
-                    : 'bg-brand-bg/40 text-brand-text border-brand-border hover:border-brand-accent/60'
-                }`}
+ isSelected
+ ? 'bg-brand-accent text-primary-foreground border-brand-accent'
+ : 'bg-brand-bg/40 border-brand-border hover:border-brand-accent/60'
+ }`}
               >
                 <span className="block text-sm font-bold truncate">{bot.businessName}</span>
                 <span className={`block text-xs mt-1 ${isSelected ? 'text-brand-bg/80' : 'text-brand-muted'}`}>

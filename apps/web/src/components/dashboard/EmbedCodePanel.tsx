@@ -47,7 +47,7 @@ export const EmbedCodePanel: React.FC<EmbedCodePanelProps> = ({ activeBot, showT
             <h3 className="font-display font-bold text-xl text-brand-text">Website Install</h3>
             <p className="text-sm text-brand-muted mt-1">Add approved domains, then paste the widget script into the website.</p>
           </div>
-          <span className="text-[10px] text-brand-success border border-brand-success/30 bg-brand-success/10 px-2 py-1 rounded font-mono self-start sm:self-center">LIVE</span>
+          <span className="text-[10px] text-brand-success border border-brand-success/30 bg-brand-success/10 px-2 py-1 rounded font-body self-start sm:self-center">LIVE</span>
         </div>
 
         <div className="p-6 space-y-6">
@@ -62,7 +62,7 @@ export const EmbedCodePanel: React.FC<EmbedCodePanelProps> = ({ activeBot, showT
               <button
                 onClick={saveAllowedDomains}
                 disabled={isSavingDomains}
-                className="px-4 py-2.5 bg-brand-accent hover:bg-brand-accent-hover disabled:opacity-60 disabled:cursor-not-allowed text-brand-text rounded-lg text-sm font-bold transition"
+                className="px-4 py-2.5 bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground disabled:opacity-60 disabled:cursor-not-allowed rounded-lg text-sm font-bold transition"
               >
                 {isSavingDomains ? 'Saving...' : 'Save Domains'}
               </button>
@@ -111,8 +111,8 @@ export const EmbedCodePanel: React.FC<EmbedCodePanelProps> = ({ activeBot, showT
               </button>
             <div className="pt-5 border-t border-brand-border grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4 items-start">
               <div>
-                <p className="text-[10px] text-brand-muted font-mono uppercase tracking-wider">Hosted Chat Link</p>
-                <p className="text-sm text-brand-accent mt-2 break-all font-mono">
+                <p className="text-[10px] text-brand-muted font-body uppercase tracking-wider">Hosted Chat Link</p>
+                <p className="text-sm text-brand-accent mt-2 break-all font-body">
                   {appBaseUrl}/chats/{activeBot.subDomain}
                 </p>
               </div>
@@ -130,11 +130,11 @@ export const EmbedCodePanel: React.FC<EmbedCodePanelProps> = ({ activeBot, showT
             </div>
 
             <div className="pt-4 border-t border-brand-border space-y-2">
-              <p className="text-[10px] text-brand-muted font-mono uppercase tracking-wider">Current Allowed Domains</p>
+              <p className="text-[10px] text-brand-muted font-body uppercase tracking-wider">Current Allowed Domains</p>
               {normalizeDomains(domains).length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {normalizeDomains(domains).map(domain => (
-                    <span key={domain} className="px-2.5 py-1 bg-brand-bg border border-brand-border rounded-md text-xs font-mono text-brand-text">
+                    <span key={domain} className="px-2.5 py-1 bg-brand-bg border border-brand-border rounded-md text-xs font-body text-brand-text">
                       {domain}
                     </span>
                   ))}

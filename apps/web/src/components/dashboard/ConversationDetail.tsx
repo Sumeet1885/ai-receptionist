@@ -29,7 +29,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ session,
             <h3 className="font-display font-bold text-brand-text text-lg">
               Transcript: {session.visitorId}
             </h3>
-            <p className="text-xs text-brand-muted font-mono">{session.startedAt}</p>
+            <p className="text-xs text-brand-muted font-body">{session.startedAt}</p>
           </div>
         </div>
       </div>
@@ -47,12 +47,12 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ session,
           messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[80%] rounded-2xl p-4 font-sans text-sm shadow-sm ${
-                msg.sender === 'user' 
-                  ? 'bg-brand-accent text-brand-bg rounded-tr-sm' 
-                  : 'bg-brand-bg border border-brand-border text-brand-text rounded-tl-sm'
-              }`}>
+ msg.sender === 'user' 
+ ? 'bg-brand-accent text-primary-foreground rounded-tr-sm' 
+ : 'bg-brand-bg border border-brand-border rounded-tl-sm'
+ }`}>
                 <div className="whitespace-pre-wrap">{msg.text}</div>
-                <div className={`text-[10px] mt-2 font-mono ${msg.sender === 'user' ? 'text-brand-bg/70' : 'text-brand-muted/70'}`}>
+                <div className={`text-[10px] mt-2 font-body ${msg.sender === 'user' ? 'text-brand-bg/70' : 'text-brand-muted/70'}`}>
                   {msg.timestamp}
                 </div>
               </div>

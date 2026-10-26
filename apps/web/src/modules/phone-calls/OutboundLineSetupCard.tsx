@@ -180,7 +180,7 @@ export const OutboundLineSetupCard: React.FC<OutboundLineSetupCardProps> = ({
             <h4 className="text-base font-display font-extrabold text-brand-text">
               Outgoing Caller ID & Phone Line
             </h4>
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-sky-500/15 text-sky-400 border border-sky-500/30">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-sky-500/15 text-sky-700 border border-sky-500/30">
               {isDedicatedOutboundActive ? 'Dedicated Line' : 'Same as Receptionist Line'}
             </span>
           </div>
@@ -202,7 +202,7 @@ export const OutboundLineSetupCard: React.FC<OutboundLineSetupCardProps> = ({
       {/* Summary Card of currently active outbound line */}
       <div className="p-4 rounded-xl bg-brand-bg/60 border border-brand-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-400 flex items-center justify-center text-xl shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-700 flex items-center justify-center text-xl shrink-0">
             📤
           </div>
           <div>
@@ -210,11 +210,11 @@ export const OutboundLineSetupCard: React.FC<OutboundLineSetupCardProps> = ({
               <span className="text-[10px] font-bold uppercase tracking-wider text-brand-muted">
                 Active Outgoing Caller ID:
               </span>
-              <span className="px-2 py-0.2 rounded text-[10px] font-bold uppercase bg-brand-card border border-brand-border text-sky-400">
+              <span className="px-2 py-0.2 rounded text-[10px] font-bold uppercase bg-brand-card border border-brand-border text-sky-700">
                 {currentOutboundTelephony?.provider ? `Via ${currentOutboundTelephony.provider.toUpperCase()}` : 'Default Inbound Line'}
               </span>
             </div>
-            <span className="text-lg font-mono font-extrabold text-brand-text mt-0.5 block">
+            <span className="text-lg font-body font-extrabold text-brand-text mt-0.5 block">
               {currentOutboundNumber || 'No Line Configured Yet'}
             </span>
           </div>
@@ -222,9 +222,9 @@ export const OutboundLineSetupCard: React.FC<OutboundLineSetupCardProps> = ({
 
         <div className="text-xs text-brand-muted sm:text-right">
           {isDedicatedOutboundActive ? (
-            <p className="text-sky-400 font-semibold">Separate dedicated outbound number active</p>
+            <p className="text-sky-700 font-semibold">Separate dedicated outbound number active</p>
           ) : (
-            <p className="text-emerald-400 font-semibold">Using main receptionist line (Customers can call back)</p>
+            <p className="text-emerald-700 font-semibold">Using main receptionist line (Customers can call back)</p>
           )}
           <p className="text-[11px] text-brand-muted mt-0.5">Used for test calls and bulk campaigns</p>
         </div>
@@ -239,10 +239,10 @@ export const OutboundLineSetupCard: React.FC<OutboundLineSetupCardProps> = ({
               type="button"
               onClick={() => setSetupMode('same_as_inbound')}
               className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition whitespace-nowrap text-center ${
-                setupMode === 'same_as_inbound'
-                  ? 'bg-brand-accent text-brand-bg shadow-sm'
-                  : 'text-brand-muted hover:text-brand-text'
-              }`}
+ setupMode === 'same_as_inbound'
+ ? 'bg-brand-accent text-primary-foreground shadow-sm'
+ : 'text-brand-muted hover:text-brand-text'
+ }`}
             >
               🔄 Same as Receptionist Line
             </button>
@@ -252,10 +252,10 @@ export const OutboundLineSetupCard: React.FC<OutboundLineSetupCardProps> = ({
               type="button"
               onClick={() => setSetupMode('platform_default')}
               className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition whitespace-nowrap text-center ${
-                setupMode === 'platform_default'
-                  ? 'bg-brand-accent text-brand-bg shadow-sm'
-                  : 'text-brand-muted hover:text-brand-text'
-              }`}
+ setupMode === 'platform_default'
+ ? 'bg-brand-accent text-primary-foreground shadow-sm'
+ : 'text-brand-muted hover:text-brand-text'
+ }`}
             >
               ⚡ Priority 1: Given Platform Number
             </button>
@@ -265,10 +265,10 @@ export const OutboundLineSetupCard: React.FC<OutboundLineSetupCardProps> = ({
               type="button"
               onClick={() => setSetupMode('byot')}
               className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition whitespace-nowrap text-center ${
-                setupMode === 'byot'
-                  ? 'bg-brand-accent text-brand-bg shadow-sm'
-                  : 'text-brand-muted hover:text-brand-text'
-              }`}
+ setupMode === 'byot'
+ ? 'bg-brand-accent text-primary-foreground shadow-sm'
+ : 'text-brand-muted hover:text-brand-text'
+ }`}
             >
               ⚙️ Option 2: Configure Your Own Carrier
             </button>
@@ -301,7 +301,7 @@ export const OutboundLineSetupCard: React.FC<OutboundLineSetupCardProps> = ({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-sky-500/20 text-sky-400 border border-sky-500/30">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-sky-500/20 text-sky-700 border border-sky-500/30">
                       ✨ Priority 1 Ready
                     </span>
                     <span className="text-xs font-bold text-brand-text">Dedicated Outbound Platform Number</span>
@@ -316,8 +316,8 @@ export const OutboundLineSetupCard: React.FC<OutboundLineSetupCardProps> = ({
                 <div className="p-4 rounded-xl bg-brand-card border border-brand-border flex items-center justify-between gap-4">
                   <div>
                     <span className="text-[10px] font-bold uppercase tracking-wider text-brand-muted block">Candidate Outgoing Number</span>
-                    <span className="text-lg font-mono font-extrabold text-brand-text">{defaultCandidateNumber}</span>
-                    <span className="text-[11px] text-sky-400 block mt-0.5">Managed virtual line • 1-click activation</span>
+                    <span className="text-lg font-body font-extrabold text-brand-text">{defaultCandidateNumber}</span>
+                    <span className="text-[11px] text-sky-700 block mt-0.5">Managed virtual line • 1-click activation</span>
                   </div>
 
                   <button
@@ -332,7 +332,7 @@ export const OutboundLineSetupCard: React.FC<OutboundLineSetupCardProps> = ({
               ) : (
                 <div className="p-4 rounded-xl bg-brand-card border border-brand-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">No Pool Line Available</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 block">No Pool Line Available</span>
                     <span className="text-xs font-bold text-brand-text block mt-0.5">No shared platform outbound line provisioned</span>
                     <span className="text-[11px] text-brand-muted block mt-0.5">Please mirror your main receptionist line or connect a Twilio / Asterisk carrier.</span>
                   </div>
@@ -367,7 +367,7 @@ export const OutboundLineSetupCard: React.FC<OutboundLineSetupCardProps> = ({
                     onClick={() => setSelectedProvider(p)}
                     className={`px-4 py-2 rounded-xl text-xs font-bold border transition ${
                       selectedProvider === p
-                        ? 'bg-sky-500/15 border-sky-500/40 text-sky-400 shadow-sm'
+                        ? 'bg-sky-500/15 border-sky-500/40 text-sky-700 shadow-sm'
                         : 'bg-brand-card border-brand-border text-brand-muted hover:text-brand-text'
                     }`}
                   >
@@ -379,7 +379,7 @@ export const OutboundLineSetupCard: React.FC<OutboundLineSetupCardProps> = ({
               {/* Asterisk Form */}
               {selectedProvider === 'asterisk' && (
                 <div className="p-4 rounded-xl bg-brand-card border border-brand-border space-y-3">
-                  <h6 className="text-xs font-bold text-amber-400 uppercase tracking-wide">Asterisk ARI Outbound Settings</h6>
+                  <h6 className="text-xs font-bold text-amber-700 uppercase tracking-wide">Asterisk ARI Outbound Settings</h6>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <label className="flex flex-col gap-1 text-xs text-brand-muted">
                       ARI Base URL
@@ -428,7 +428,7 @@ export const OutboundLineSetupCard: React.FC<OutboundLineSetupCardProps> = ({
               {/* Twilio Form */}
               {selectedProvider === 'twilio' && (
                 <div className="p-4 rounded-xl bg-brand-card border border-brand-border space-y-3">
-                  <h6 className="text-xs font-bold text-rose-400 uppercase tracking-wide">Twilio Outbound Settings</h6>
+                  <h6 className="text-xs font-bold text-rose-700 uppercase tracking-wide">Twilio Outbound Settings</h6>
                   <div className="space-y-3">
                     <PhoneInputField
                       label="Your Twilio Outbound Phone Number"
@@ -475,7 +475,7 @@ export const OutboundLineSetupCard: React.FC<OutboundLineSetupCardProps> = ({
               {/* Plivo Form */}
               {selectedProvider === 'plivo' && (
                 <div className="p-4 rounded-xl bg-brand-card border border-brand-border space-y-3">
-                  <h6 className="text-xs font-bold text-sky-400 uppercase tracking-wide">Plivo Outbound Settings</h6>
+                  <h6 className="text-xs font-bold text-sky-700 uppercase tracking-wide">Plivo Outbound Settings</h6>
                   <div className="space-y-3">
                     <PhoneInputField
                       label="Your Plivo Outbound Phone Number"

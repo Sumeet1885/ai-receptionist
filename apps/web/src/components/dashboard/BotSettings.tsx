@@ -95,7 +95,7 @@ CRITICAL RULES:
 - Strictly adhere to facts in {{knowledge_base}}. Never invent pricing.`;
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="block text-[11px] font-mono font-bold uppercase tracking-wider text-brand-muted mb-1.5">{children}</label>;
+  return <label className="block text-[11px] font-body font-bold uppercase tracking-wider text-brand-muted mb-1.5">{children}</label>;
 }
 
 function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
@@ -129,7 +129,7 @@ function ColorControl({
     <label className="flex items-center justify-between gap-3 rounded-md border border-brand-border bg-brand-bg px-3 py-2 cursor-pointer hover:border-brand-muted transition">
       <span>
         <span className="block text-xs font-semibold text-brand-text">{label}</span>
-        <span className="block mt-0.5 text-[10px] font-mono uppercase text-brand-muted">{value}</span>
+        <span className="block mt-0.5 text-[10px] font-body uppercase text-brand-muted">{value}</span>
       </span>
       <input
         type="color"
@@ -159,10 +159,10 @@ function SelectControl<T extends string>({
           type="button"
           onClick={() => onChange(option.value)}
           className={`h-9 px-3 rounded-md border text-xs font-semibold transition ${
-            value === option.value
-              ? 'bg-brand-accent text-brand-bg border-brand-accent'
-              : 'bg-brand-bg text-brand-muted border-brand-border hover:text-brand-text'
-          }`}
+ value === option.value
+ ? 'bg-brand-accent text-primary-foreground border-brand-accent'
+ : 'bg-brand-bg text-brand-muted border-brand-border hover:text-brand-text'
+ }`}
         >
           {option.label}
         </button>
@@ -200,9 +200,9 @@ function Toggle({
       <span className="font-medium text-brand-text">{label}</span>
       <div className="flex items-center gap-2">
         <span
-          className={`text-[10px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+          className={`text-[10px] font-body font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
             statusLabel
-              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+              ? 'bg-amber-500/20 text-amber-700 border border-amber-500/30'
               : checked
                 ? 'bg-brand-accent/20 text-brand-accent'
                 : 'bg-brand-card text-brand-muted border border-brand-border'
@@ -210,7 +210,7 @@ function Toggle({
         >
           {statusLabel || (checked ? 'ON' : 'OFF')}
         </span>
-        <span className={`w-9 h-5 rounded-full p-0.5 transition ${checked ? 'bg-brand-accent' : 'bg-brand-border'}`}>
+        <span className={`w-9 h-5 rounded-full p-0.5 transition ${checked ? 'bg-brand-accent text-primary-foreground' : 'bg-brand-border'}`}>
           <span className={`block w-4 h-4 rounded-full bg-brand-text transition ${checked ? 'translate-x-4' : 'translate-x-0'}`} />
         </span>
       </div>
@@ -448,12 +448,12 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
             key={item.id}
             type="button"
             onClick={() => handleSectionChange(item.id)}
-            className={`w-full text-left px-3 py-2.5 rounded-md transition ${section === item.id ? 'bg-brand-accent text-brand-bg' : 'text-brand-muted hover:text-brand-text hover:bg-brand-bg'}`}
+            className={`w-full text-left px-3 py-2.5 rounded-md transition ${section === item.id ? 'bg-brand-accent text-primary-foreground ' : 'text-brand-muted hover:text-brand-text hover:bg-brand-bg'}`}
           >
             <div className="flex items-center justify-between">
               <span className="block text-sm font-bold">{item.label}</span>
               {item.id === 'behavior' && !loadingCalendar && calendarConnected === false && (
-                <span className="text-[10px] bg-amber-500/20 text-amber-300 font-semibold px-1.5 py-0.5 rounded border border-amber-500/30">
+                <span className="text-[10px] bg-amber-500/20 text-amber-700 font-semibold px-1.5 py-0.5 rounded border border-amber-500/30">
                   Calendar
                 </span>
               )}
@@ -470,14 +470,14 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
               <div>
                 <div className="flex justify-between items-center">
                   <FieldLabel>Business Name</FieldLabel>
-                  <span className="text-[10px] font-mono text-brand-muted">{(activeBot.businessName || '').length}/100</span>
+                  <span className="text-[10px] font-body text-brand-muted">{(activeBot.businessName || '').length}/100</span>
                 </div>
                 <TextInput maxLength={100} value={activeBot.businessName} onChange={(e) => patchActiveBot({ businessName: e.target.value })} />
               </div>
               <div>
                 <div className="flex justify-between items-center">
                   <FieldLabel>Industry</FieldLabel>
-                  <span className="text-[10px] font-mono text-brand-muted">{(activeBot.industry || '').length}/100</span>
+                  <span className="text-[10px] font-body text-brand-muted">{(activeBot.industry || '').length}/100</span>
                 </div>
                 <TextInput maxLength={100} value={activeBot.industry} onChange={(e) => patchActiveBot({ industry: e.target.value })} />
               </div>
@@ -485,7 +485,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
             <div>
               <div className="flex justify-between items-center">
                 <FieldLabel>Business Contact Phone</FieldLabel>
-                <span className="text-[10px] font-mono text-brand-muted">Optional</span>
+                <span className="text-[10px] font-body text-brand-muted">Optional</span>
               </div>
               <TextInput
                 maxLength={30}
@@ -498,7 +498,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
             <div>
               <div className="flex justify-between items-center">
                 <FieldLabel>Greeting</FieldLabel>
-                <span className="text-[10px] font-mono text-brand-muted">{(activeBot.greeting || '').length}/400</span>
+                <span className="text-[10px] font-body text-brand-muted">{(activeBot.greeting || '').length}/400</span>
               </div>
               <TextArea maxLength={400} rows={3} value={activeBot.greeting} onChange={(e) => patchActiveBot({ greeting: e.target.value })} />
             </div>
@@ -506,14 +506,14 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
               <div>
                 <div className="flex justify-between items-center">
                   <FieldLabel>Assistant Display Name</FieldLabel>
-                  <span className="text-[10px] font-mono text-brand-muted">{(activeBot.widgetConfig.assistantName || '').length}/50</span>
+                  <span className="text-[10px] font-body text-brand-muted">{(activeBot.widgetConfig.assistantName || '').length}/50</span>
                 </div>
                 <TextInput maxLength={50} placeholder={activeBot.businessName} value={activeBot.widgetConfig.assistantName} onChange={(e) => patchConfig({ assistantName: e.target.value })} />
               </div>
               <div>
                 <div className="flex justify-between items-center">
                   <FieldLabel>Avatar Text</FieldLabel>
-                  <span className="text-[10px] font-mono text-brand-muted">{(activeBot.widgetConfig.avatarText || '').length}/3</span>
+                  <span className="text-[10px] font-body text-brand-muted">{(activeBot.widgetConfig.avatarText || '').length}/3</span>
                 </div>
                 <TextInput maxLength={3} placeholder={activeBot.businessName.slice(0, 2).toUpperCase()} value={activeBot.widgetConfig.avatarText} onChange={(e) => patchConfig({ avatarText: e.target.value.toUpperCase() })} />
               </div>
@@ -553,7 +553,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
               <div>
                 <div className="flex justify-between items-center">
                   <FieldLabel>Launcher Text</FieldLabel>
-                  <span className="text-[10px] font-mono text-brand-muted">{(activeBot.widgetConfig.launcherText || '').length}/24</span>
+                  <span className="text-[10px] font-body text-brand-muted">{(activeBot.widgetConfig.launcherText || '').length}/24</span>
                 </div>
                 <TextInput maxLength={24} value={activeBot.widgetConfig.launcherText} onChange={(e) => patchConfig({ launcherText: e.target.value })} />
               </div>
@@ -583,7 +583,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-semibold text-brand-text">Calendar Booking</span>
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-brand-success/20 text-brand-success border border-brand-success/30">
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-body font-bold uppercase tracking-wider bg-brand-success/20 text-brand-success border border-brand-success/30">
                               ON
                             </span>
                           </div>
@@ -610,11 +610,11 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-semibold text-brand-text">Calendar Booking</span>
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-body font-bold uppercase tracking-wider bg-amber-500/20 text-amber-700 border border-amber-500/30">
                               OFF
                             </span>
                           </div>
-                          <p className="text-[11px] text-amber-300/80 truncate mt-0.5">
+                          <p className="text-[11px] text-amber-700/80 truncate mt-0.5">
                             {calendarConnected === false ? 'No calendar connected' : 'Turned OFF in Calendar'}
                           </p>
                         </div>
@@ -657,7 +657,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
             <div>
               <div className="flex justify-between items-center">
                 <FieldLabel>Input Placeholder</FieldLabel>
-                <span className="text-[10px] font-mono text-brand-muted">{(activeBot.widgetConfig.inputPlaceholder || '').length}/80</span>
+                <span className="text-[10px] font-body text-brand-muted">{(activeBot.widgetConfig.inputPlaceholder || '').length}/80</span>
               </div>
               <TextInput maxLength={80} value={activeBot.widgetConfig.inputPlaceholder} onChange={(e) => patchConfig({ inputPlaceholder: e.target.value })} />
             </div>
@@ -668,7 +668,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                   <div key={index} className="flex gap-2">
                     <div className="flex-1 relative flex items-center">
                       <TextInput maxLength={80} className="pr-12" value={prompt} onChange={(e) => updatePrompt(index, e.target.value)} placeholder="What are your fees?" />
-                      <span className="absolute right-3 text-[10px] font-mono text-brand-muted">{(prompt || '').length}/80</span>
+                      <span className="absolute right-3 text-[10px] font-body text-brand-muted">{(prompt || '').length}/80</span>
                     </div>
                     <button type="button" onClick={() => removePrompt(index)} className="h-10 px-3 rounded-md border border-brand-border text-brand-danger hover:border-brand-danger/50 transition">Delete</button>
                   </div>
@@ -686,7 +686,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                     key={field.id}
                     type="button"
                     onClick={() => toggleLeadField(field.id)}
-                    className={`h-9 px-3 rounded-md border text-xs font-bold transition ${activeBot.widgetConfig.requiredLeadFields.includes(field.id) ? 'bg-brand-accent text-brand-bg border-brand-accent' : 'bg-brand-bg text-brand-muted border-brand-border'}`}
+                    className={`h-9 px-3 rounded-md border text-xs font-bold transition ${activeBot.widgetConfig.requiredLeadFields.includes(field.id) ? 'bg-brand-accent text-primary-foreground border-brand-accent' : 'bg-brand-bg text-brand-muted border-brand-border'}`}
                   >
                     {field.label}
                   </button>
@@ -696,7 +696,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
             <div>
               <div className="flex justify-between items-center">
                 <FieldLabel>Additional Info to Collect (Optional)</FieldLabel>
-                <span className="text-[10px] font-mono text-brand-muted">{(activeBot.widgetConfig.additionalCollectInfo || '').length}/500</span>
+                <span className="text-[10px] font-body text-brand-muted">{(activeBot.widgetConfig.additionalCollectInfo || '').length}/500</span>
               </div>
               <TextInput
                 maxLength={500}
@@ -708,7 +708,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
             <div>
               <div className="flex justify-between items-center">
                 <FieldLabel>Human Handoff Text</FieldLabel>
-                <span className="text-[10px] font-mono text-brand-muted">{(activeBot.widgetConfig.handoffText || '').length}/180</span>
+                <span className="text-[10px] font-body text-brand-muted">{(activeBot.widgetConfig.handoffText || '').length}/180</span>
               </div>
               <TextArea maxLength={180} rows={2} value={activeBot.widgetConfig.handoffText} onChange={(e) => patchConfig({ handoffText: e.target.value })} />
             </div>
@@ -735,10 +735,10 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                 type="button"
                 onClick={() => setKbSubTab('inbound')}
                 className={`px-3.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-2 ${
-                  kbSubTab === 'inbound'
-                    ? 'bg-brand-accent text-brand-bg shadow-sm font-extrabold'
-                    : 'text-brand-muted hover:text-brand-text'
-                }`}
+ kbSubTab === 'inbound'
+ ? 'bg-brand-accent text-primary-foreground shadow-sm font-extrabold'
+ : 'text-brand-muted hover:text-brand-text'
+ }`}
               >
                 <span>📥</span>
                 <span>Inbound Call Prompt Template</span>
@@ -760,7 +760,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                 <span>📤</span>
                 <span>Outbound Telecaller Prompt Template</span>
                 <span className={`px-1.5 py-0.2 rounded text-[9px] uppercase font-bold ${
-                  kbSubTab === 'outbound' ? 'bg-white/30 text-white' : 'bg-blue-500/20 text-blue-400'
+                  kbSubTab === 'outbound' ? 'bg-white/30 text-white' : 'bg-blue-500/20 text-blue-700'
                 }`}>
                   Outbound Telecaller
                 </span>
@@ -772,13 +772,13 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                 {!loadingCalendar && calendarConnected === false && (
                   <div className="mb-4 p-3 bg-brand-bg border border-brand-border rounded-lg text-xs text-brand-muted flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-amber-400 text-sm">📅</span>
+                      <span className="text-amber-700 text-sm">📅</span>
                       <span>Want your receptionist to check availability and book visits? Connect your calendar first at <strong>Calendar Settings</strong>.</span>
                     </div>
                     <button
                       type="button"
                       onClick={navigateToCalendar}
-                      className="font-mono text-brand-accent hover:text-brand-accent-hover font-bold text-[11px] shrink-0 cursor-pointer"
+                      className="font-body text-brand-accent hover:text-brand-accent-hover font-bold text-[11px] shrink-0 cursor-pointer"
                     >
                       Connect Calendar →
                     </button>
@@ -789,7 +789,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                     <FieldLabel>Knowledge Base & Facts</FieldLabel>
                     <p className="text-xs text-brand-muted mb-2">Facts, pricing, property specifications, and FAQs used by both website chat and voice receptionists.</p>
                   </div>
-                  <span className="text-[10px] font-mono text-brand-muted self-start">{(activeBot.knowledgeBase || '').length}/3000</span>
+                  <span className="text-[10px] font-body text-brand-muted self-start">{(activeBot.knowledgeBase || '').length}/3000</span>
                 </div>
                 <TextArea maxLength={3000} rows={15} value={activeBot.knowledgeBase} onChange={(e) => patchActiveBot({ knowledgeBase: e.target.value })} />
               </div>
@@ -798,7 +798,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
             {kbSubTab === 'inbound' && (
               <div className="space-y-4">
                 {/* ✨ AI 1-Line Inbound Receptionist Prompt Architect */}
-                <div className="relative overflow-hidden rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/40 via-brand-card/90 to-brand-card p-4 sm:p-5 shadow-lg shadow-emerald-950/20 backdrop-blur-md">
+                <div className="relative overflow-hidden rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-50/40 via-brand-card/90 to-brand-card p-4 sm:p-5 shadow-lg shadow-emerald-950/20 backdrop-blur-md">
                   <div className="absolute -top-12 -right-12 w-44 h-44 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
                   <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-teal-500/10 rounded-full blur-2xl pointer-events-none" />
 
@@ -813,7 +813,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                             <h4 className="text-sm font-bold bg-gradient-to-r from-emerald-200 via-teal-100 to-cyan-200 bg-clip-text text-transparent">
                               AI 1-Line Receptionist Prompt Architect
                             </h4>
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider">
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-body font-bold bg-emerald-500/20 text-emerald-700 border border-emerald-500/30 uppercase tracking-wider">
                               Instant Auto-Craft
                             </span>
                           </div>
@@ -827,7 +827,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                           <button
                             type="button"
                             onClick={() => handleRevertPrompt('inbound')}
-                            className="text-xs font-mono text-amber-400 hover:text-amber-300 transition flex items-center gap-1.5 cursor-pointer bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg border border-amber-500/30"
+                            className="text-xs font-body text-amber-700 hover:text-amber-700 transition flex items-center gap-1.5 cursor-pointer bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg border border-amber-500/30"
                           >
                             <span>↺</span>
                             <span>Undo Generated Prompt</span>
@@ -864,7 +864,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                           disabled={isGeneratingPrompt || !aiPromptInstruction.trim()}
                           className={`absolute right-1.5 top-1.5 bottom-1.5 px-4 rounded-md text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm ${
                             isGeneratingPrompt
-                              ? 'bg-emerald-600/50 text-emerald-200 cursor-not-allowed'
+                              ? 'bg-emerald-600/50 text-emerald-800 cursor-not-allowed'
                               : !aiPromptInstruction.trim()
                                 ? 'bg-brand-border/60 text-brand-muted cursor-not-allowed'
                                 : 'bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-600/30 hover:scale-[1.02] active:scale-[0.98]'
@@ -872,7 +872,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                         >
                           {isGeneratingPrompt ? (
                             <>
-                              <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              <span className="w-3.5 h-3.5 border-2 border-brand-border border-t-white rounded-full animate-spin" />
                               <span>Crafting...</span>
                             </>
                           ) : (
@@ -886,7 +886,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
 
                       {/* Quick 1-Click Goal Inspiration Chips */}
                       <div className="mt-2.5 flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[10px] font-mono text-emerald-300/70 uppercase font-bold tracking-wider mr-1">
+                        <span className="text-[10px] font-body text-emerald-700/70 uppercase font-bold tracking-wider mr-1">
                           Try 1-Click Goal:
                         </span>
                         {inboundInspirations.map((chip) => (
@@ -896,7 +896,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                             onClick={() => {
                               setAiPromptInstruction(chip.text);
                             }}
-                            className="text-[11px] px-2.5 py-1 rounded-md bg-brand-bg/80 hover:bg-emerald-500/20 border border-emerald-500/20 hover:border-emerald-500/40 text-brand-muted hover:text-emerald-200 transition cursor-pointer flex items-center gap-1.5"
+                            className="text-[11px] px-2.5 py-1 rounded-md bg-brand-bg/80 hover:bg-emerald-500/20 border border-emerald-500/20 hover:border-emerald-500/40 text-brand-muted hover:text-emerald-800 transition cursor-pointer flex items-center gap-1.5"
                           >
                             <span>{chip.icon}</span>
                             <span>{chip.label}</span>
@@ -907,7 +907,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                       {/* Auto-Injected Runtime Variables inside Generator Card */}
                       <div className="mt-3 pt-3 border-t border-emerald-500/20 flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[10px] font-mono text-emerald-300 font-bold uppercase tracking-wider">
+                          <span className="text-[10px] font-body text-emerald-700 font-bold uppercase tracking-wider">
                             Auto-Injected Runtime Values:
                           </span>
                           {['{{business_name}}', '{{knowledge_base}}', '{{current_time}}', '{{lead_fields}}'].map((tag) => (
@@ -918,7 +918,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                                 const current = activeBot.widgetConfig.inboundPromptTemplate || '';
                                 patchConfig({ inboundPromptTemplate: current ? `${current}\n${tag}` : tag });
                               }}
-                              className="px-2 py-0.5 rounded bg-brand-bg hover:bg-emerald-500/20 border border-emerald-500/30 font-mono text-[10px] text-emerald-300 transition cursor-pointer"
+                              className="px-2 py-0.5 rounded bg-brand-bg hover:bg-emerald-500/20 border border-emerald-500/30 font-mono text-[10px] text-emerald-700 transition cursor-pointer"
                               title="Click to insert into template"
                             >
                               + {tag}
@@ -936,7 +936,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                 <div>
                   <div className="flex justify-between items-center mb-1.5">
                     <FieldLabel>Inbound Call Persona & Instructions</FieldLabel>
-                    <span className="text-[10px] font-mono text-brand-muted">
+                    <span className="text-[10px] font-body text-brand-muted">
                       {(activeBot.widgetConfig.inboundPromptTemplate || '').length}/5000
                     </span>
                   </div>
@@ -957,7 +957,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
             {kbSubTab === 'outbound' && (
               <div className="space-y-4">
                 {/* ✨ AI 1-Line Telecaller Prompt Architect */}
-                <div className="relative overflow-hidden rounded-xl border border-indigo-500/30 bg-gradient-to-br from-indigo-950/40 via-brand-card/90 to-brand-card p-4 sm:p-5 shadow-lg shadow-indigo-950/20 backdrop-blur-md">
+                <div className="relative overflow-hidden rounded-xl border border-indigo-500/30 bg-gradient-to-br from-indigo-50/40 via-brand-card/90 to-brand-card p-4 sm:p-5 shadow-lg shadow-indigo-950/20 backdrop-blur-md">
                   <div className="absolute -top-12 -right-12 w-44 h-44 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
                   <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-violet-500/10 rounded-full blur-2xl pointer-events-none" />
 
@@ -972,7 +972,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                             <h4 className="text-sm font-bold bg-gradient-to-r from-violet-200 via-indigo-100 to-sky-200 bg-clip-text text-transparent">
                               AI 1-Line Telecaller Prompt Architect
                             </h4>
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 uppercase tracking-wider">
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-body font-bold bg-indigo-500/20 text-indigo-700 border border-indigo-500/30 uppercase tracking-wider">
                               Instant Auto-Craft
                             </span>
                           </div>
@@ -986,7 +986,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                           <button
                             type="button"
                             onClick={() => handleRevertPrompt('outbound')}
-                            className="text-xs font-mono text-amber-400 hover:text-amber-300 transition flex items-center gap-1.5 cursor-pointer bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg border border-amber-500/30"
+                            className="text-xs font-body text-amber-700 hover:text-amber-700 transition flex items-center gap-1.5 cursor-pointer bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg border border-amber-500/30"
                           >
                             <span>↺</span>
                             <span>Undo Generated Script</span>
@@ -1023,7 +1023,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                           disabled={isGeneratingPrompt || !aiPromptInstruction.trim()}
                           className={`absolute right-1.5 top-1.5 bottom-1.5 px-4 rounded-md text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm ${
                             isGeneratingPrompt
-                              ? 'bg-indigo-600/50 text-indigo-200 cursor-not-allowed'
+                              ? 'bg-indigo-600/50 text-indigo-800 cursor-not-allowed'
                               : !aiPromptInstruction.trim()
                                 ? 'bg-brand-border/60 text-brand-muted cursor-not-allowed'
                                 : 'bg-gradient-to-r from-violet-600 via-indigo-600 to-sky-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-indigo-600/30 hover:scale-[1.02] active:scale-[0.98]'
@@ -1031,7 +1031,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                         >
                           {isGeneratingPrompt ? (
                             <>
-                              <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              <span className="w-3.5 h-3.5 border-2 border-brand-border border-t-white rounded-full animate-spin" />
                               <span>Crafting...</span>
                             </>
                           ) : (
@@ -1045,7 +1045,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
 
                       {/* Quick 1-Click Goal Inspiration Chips */}
                       <div className="mt-2.5 flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[10px] font-mono text-indigo-300/70 uppercase font-bold tracking-wider mr-1">
+                        <span className="text-[10px] font-body text-indigo-700/70 uppercase font-bold tracking-wider mr-1">
                           Try 1-Click Goal:
                         </span>
                         {outboundInspirations.map((chip) => (
@@ -1055,7 +1055,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                             onClick={() => {
                               setAiPromptInstruction(chip.text);
                             }}
-                            className="text-[11px] px-2.5 py-1 rounded-md bg-brand-bg/80 hover:bg-indigo-500/20 border border-indigo-500/20 hover:border-indigo-500/40 text-brand-muted hover:text-indigo-200 transition cursor-pointer flex items-center gap-1.5"
+                            className="text-[11px] px-2.5 py-1 rounded-md bg-brand-bg/80 hover:bg-indigo-500/20 border border-indigo-500/20 hover:border-indigo-500/40 text-brand-muted hover:text-indigo-800 transition cursor-pointer flex items-center gap-1.5"
                           >
                             <span>{chip.icon}</span>
                             <span>{chip.label}</span>
@@ -1066,7 +1066,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                       {/* Auto-Injected Runtime Variables inside Generator Card */}
                       <div className="mt-3 pt-3 border-t border-indigo-500/20 flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[10px] font-mono text-indigo-300 font-bold uppercase tracking-wider">
+                          <span className="text-[10px] font-body text-indigo-700 font-bold uppercase tracking-wider">
                             Auto-Injected Runtime Values:
                           </span>
                           {['{{business_name}}', '{{contact_name}}', '{{greeting}}', '{{knowledge_base}}', '{{current_time}}'].map((tag) => (
@@ -1077,7 +1077,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                                 const current = activeBot.widgetConfig.outboundPromptTemplate || '';
                                 patchConfig({ outboundPromptTemplate: current ? `${current}\n${tag}` : tag });
                               }}
-                              className="px-2 py-0.5 rounded bg-brand-bg hover:bg-blue-500/20 border border-indigo-500/30 font-mono text-[10px] text-blue-400 transition cursor-pointer"
+                              className="px-2 py-0.5 rounded bg-brand-bg hover:bg-blue-500/20 border border-indigo-500/30 font-mono text-[10px] text-blue-700 transition cursor-pointer"
                               title="Click to insert into template"
                             >
                               + {tag}
@@ -1095,7 +1095,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
                 <div>
                   <div className="flex justify-between items-center mb-1.5">
                     <FieldLabel>Outbound Telecaller Script & Instructions</FieldLabel>
-                    <span className="text-[10px] font-mono text-brand-muted">
+                    <span className="text-[10px] font-body text-brand-muted">
                       {(activeBot.widgetConfig.outboundPromptTemplate || '').length}/5000
                     </span>
                   </div>
@@ -1124,7 +1124,7 @@ export const BotSettings: React.FC<BotSettingsProps> = ({ bots, setBots, activeB
         )}
 
         <div className="mt-5 pt-4 border-t border-brand-border flex justify-end">
-          <button onClick={saveChanges} className="h-10 px-5 bg-brand-accent hover:bg-brand-accent-hover text-brand-bg font-bold rounded-md transition">
+          <button onClick={saveChanges} className="h-10 px-5 bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground font-bold rounded-md transition">
             Save Changes
           </button>
         </div>

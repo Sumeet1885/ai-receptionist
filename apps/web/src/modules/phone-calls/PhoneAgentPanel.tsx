@@ -539,7 +539,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
       tag: 'Mobile / SIM',
       desc: 'Forward calls from your personal or SIM number',
       icon: (
-        <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-sm">
+        <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-700 flex items-center justify-center font-bold text-sm">
           📱
         </div>
       ),
@@ -550,7 +550,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
       tag: 'BYOT',
       desc: 'Industry standard voice trunking & numbers',
       icon: (
-        <div className="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center font-bold text-sm">
+        <div className="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/20 text-red-700 flex items-center justify-center font-bold text-sm">
           TW
         </div>
       ),
@@ -561,7 +561,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
       tag: 'BYOT',
       desc: 'Global voice carrier with auto-app sync',
       icon: (
-        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm">
+        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 flex items-center justify-center font-bold text-sm">
           PL
         </div>
       ),
@@ -572,7 +572,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
       tag: 'BYOT',
       desc: 'Nexmo voice API with 16kHz audio',
       icon: (
-        <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-sm">
+        <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-700 flex items-center justify-center font-bold text-sm">
           VN
         </div>
       ),
@@ -583,7 +583,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
       tag: 'BYOT',
       desc: 'Call control API & private IP network',
       icon: (
-        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm">
+        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 flex items-center justify-center font-bold text-sm">
           TL
         </div>
       ),
@@ -594,7 +594,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
       tag: 'PBX / SIP',
       desc: 'Connect Asterisk PBX with ARI & Stasis media',
       icon: (
-        <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-sm">
+        <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 flex items-center justify-center font-bold text-sm">
           ⭐
         </div>
       ),
@@ -628,7 +628,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
             <div
               className={`w-12 h-12 rounded-xl border flex items-center justify-center shrink-0 ${
                 status?.provisioned
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700'
                   : 'bg-brand-bg border-brand-border text-brand-muted'
               }`}
             >
@@ -638,7 +638,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
               <div className="flex items-center gap-2.5">
                 <h3 className="text-lg font-display font-extrabold text-brand-text">Dograh Voice Agent</h3>
                 {status?.provisioned ? (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-700 border border-emerald-500/20">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     Provisioned & Ready
                   </span>
@@ -659,7 +659,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
               type="button"
               onClick={handleProvision}
               disabled={provisioning}
-              className="h-10 px-5 rounded-xl bg-brand-accent hover:bg-brand-accent-hover text-brand-bg text-xs font-bold transition flex items-center gap-2 shadow-sm disabled:opacity-50"
+              className="h-10 px-5 rounded-xl bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground text-xs font-bold transition flex items-center gap-2 shadow-sm disabled:opacity-50"
             >
               {provisioning ? (
                 <>
@@ -687,7 +687,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                 <span className="text-sm font-display font-extrabold text-brand-text flex items-center gap-2">
                   <span>📱</span> Connected Phone Numbers
                 </span>
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-700 border border-emerald-500/30">
                   {connectedLines.length} {connectedLines.length === 1 ? 'Number' : 'Numbers'} Active
                 </span>
               </div>
@@ -700,14 +700,14 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
               <button
                 type="button"
                 onClick={() => handleStartConnectLine('forwarding')}
-                className="px-3.5 py-1.5 rounded-xl bg-brand-accent hover:bg-brand-accent-hover text-brand-bg text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95"
+                className="px-3.5 py-1.5 rounded-xl bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground text-xs font-bold transition flex items-center gap-1.5 shadow-sm active:scale-95"
               >
                 <span>+</span> Connect Another Line
               </button>
               <button
                 type="button"
                 onClick={() => handleStartConnectLine('forwarding')}
-                className="px-2.5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-[11px] font-bold transition flex items-center gap-1 active:scale-95"
+                className="px-2.5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-700 border border-cyan-500/30 text-[11px] font-bold transition flex items-center gap-1 active:scale-95"
                 title="Forward your existing mobile or business SIM card"
               >
                 <span>📱</span> Mobile SIM
@@ -715,7 +715,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
               <button
                 type="button"
                 onClick={() => handleStartConnectLine('twilio')}
-                className="px-2.5 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-[11px] font-bold transition flex items-center gap-1 active:scale-95"
+                className="px-2.5 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-700 border border-red-500/30 text-[11px] font-bold transition flex items-center gap-1 active:scale-95"
                 title="Connect Twilio or VoIP carrier line"
               >
                 <span>☁️</span> VoIP Carrier
@@ -729,7 +729,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
               <button
                 type="button"
                 onClick={() => handleStartConnectLine('forwarding')}
-                className="px-3 py-1.5 rounded-lg bg-brand-accent hover:bg-brand-accent-hover text-brand-bg text-xs font-bold transition"
+                className="px-3 py-1.5 rounded-lg bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground text-xs font-bold transition"
               >
                 + Connect Your Number
               </button>
@@ -745,10 +745,10 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                     <div
                       className={`w-10 h-10 rounded-xl border flex items-center justify-center text-lg shrink-0 ${
                         line.type === 'forwarding'
-                          ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
+                          ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-700'
                           : line.type === 'outbound'
-                          ? 'bg-sky-500/10 border-sky-500/30 text-sky-400'
-                          : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                          ? 'bg-sky-500/10 border-sky-500/30 text-sky-700'
+                          : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700'
                       }`}
                     >
                       {line.type === 'forwarding' ? '📱' : line.type === 'outbound' ? '📤' : '📞'}
@@ -756,28 +756,28 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
 
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono text-sm sm:text-base font-extrabold text-brand-text truncate">
+                        <span className="font-body text-sm sm:text-base font-extrabold text-brand-text truncate">
                           {line.phoneNumber}
                         </span>
 
                         {/* Role Badges */}
                         {line.isPrimaryInbound && line.isPrimaryOutbound && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-purple-500/15 text-purple-700 border border-purple-500/30">
                             📞 Inbound & Outbound Primary
                           </span>
                         )}
                         {line.isPrimaryInbound && !line.isPrimaryOutbound && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-700 border border-emerald-500/30">
                             📥 Primary Inbound Line
                           </span>
                         )}
                         {line.isPrimaryOutbound && !line.isPrimaryInbound && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-sky-500/15 text-sky-400 border border-sky-500/30">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-sky-500/15 text-sky-700 border border-sky-500/30">
                             📤 Primary Outbound Caller ID
                           </span>
                         )}
                         {line.type === 'forwarding' && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-cyan-500/15 text-cyan-700 border border-cyan-500/30">
                             🔄 Carrier Forwarding (SIM)
                           </span>
                         )}
@@ -801,7 +801,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                       <div className="flex flex-wrap items-center gap-2 text-[11px] text-brand-muted mt-1">
                         <span>{line.label || 'Connected Line'}</span>
                         <span>•</span>
-                        <span className="flex items-center gap-1 text-emerald-400 font-semibold">
+                        <span className="flex items-center gap-1 text-emerald-700 font-semibold">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                           Live & Active
                         </span>
@@ -833,7 +833,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                         type="button"
                         disabled={settingPrimaryLineId === line.id}
                         onClick={() => handleSetPrimaryLine(line.id, 'inbound')}
-                        className="h-8 px-2.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 text-xs font-semibold transition disabled:opacity-50"
+                        className="h-8 px-2.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 border border-emerald-500/25 text-xs font-semibold transition disabled:opacity-50"
                       >
                         Set Primary Inbound
                       </button>
@@ -845,7 +845,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                         type="button"
                         disabled={settingPrimaryLineId === line.id}
                         onClick={() => handleSetPrimaryLine(line.id, 'outbound')}
-                        className="h-8 px-2.5 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/25 text-xs font-semibold transition disabled:opacity-50"
+                        className="h-8 px-2.5 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 border border-sky-500/25 text-xs font-semibold transition disabled:opacity-50"
                       >
                         Set Outbound Caller ID
                       </button>
@@ -856,7 +856,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                       type="button"
                       disabled={unlinkingLineId === line.id}
                       onClick={() => handleRemoveLine(line.id, line.phoneNumber)}
-                      className="h-8 px-2.5 rounded-lg hover:bg-rose-500/15 text-brand-muted hover:text-rose-400 border border-transparent hover:border-rose-500/30 text-xs font-semibold transition disabled:opacity-50"
+                      className="h-8 px-2.5 rounded-lg hover:bg-rose-500/15 text-brand-muted hover:text-rose-700 border border-transparent hover:border-rose-500/30 text-xs font-semibold transition disabled:opacity-50"
                       title="Unlink phone line"
                     >
                       <Icons.Trash />
@@ -869,7 +869,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
 
           {/* Reassurance banner */}
           <div className="p-3 rounded-xl bg-brand-bg/80 border border-brand-border flex items-center gap-2 text-xs text-brand-muted">
-            <span className="text-emerald-400 font-bold text-sm">💡</span>
+            <span className="text-emerald-700 font-bold text-sm">💡</span>
             <span>
               <strong>Saved Permanently:</strong> Your connected numbers persist across browser refreshes and tab switches. You do not need to re-configure them again.
             </span>
@@ -894,8 +894,8 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
               </h4>
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                 telephonyMode === 'byot'
-                  ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
-                  : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                  ? 'bg-cyan-500/15 text-cyan-700 border border-cyan-500/30'
+                  : 'bg-emerald-500/15 text-emerald-700 border border-emerald-500/30'
               }`}>
                 {telephonyMode === 'platform-default' ? 'Priority 1: Default Ready Line' : 'Connect Your Own Number'}
               </span>
@@ -916,10 +916,10 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                 setSelectedProvider('pool');
               }}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                telephonyMode === 'platform-default'
-                  ? 'bg-brand-accent text-brand-bg shadow-sm'
-                  : 'text-brand-muted hover:text-brand-text'
-              }`}
+ telephonyMode === 'platform-default'
+ ? 'bg-brand-accent text-primary-foreground shadow-sm'
+ : 'text-brand-muted hover:text-brand-text'
+ }`}
             >
               <span>⚡</span> Instant Ready Number
             </button>
@@ -931,10 +931,10 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                 if (selectedProvider === 'pool') setSelectedProvider('forwarding');
               }}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                telephonyMode === 'byot'
-                  ? 'bg-brand-accent text-brand-bg shadow-sm'
-                  : 'text-brand-muted hover:text-brand-text'
-              }`}
+ telephonyMode === 'byot'
+ ? 'bg-brand-accent text-primary-foreground shadow-sm'
+ : 'text-brand-muted hover:text-brand-text'
+ }`}
             >
               <span>⚙️</span> Connect Own Carrier / PBX
             </button>
@@ -948,7 +948,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-700 border border-emerald-500/30">
                       ✨ Ready Out-Of-The-Box
                     </span>
                     <span className="text-xs text-brand-muted">• Powered by Managed Telephony</span>
@@ -962,12 +962,12 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                 </div>
 
                 {isDefaultLineActive ? (
-                  <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold shrink-0 self-start md:self-auto shadow-sm">
+                  <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 text-xs font-bold shrink-0 self-start md:self-auto shadow-sm">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                     <span>Active & Connected</span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs font-bold shrink-0 self-start md:self-auto">
+                  <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-700 text-xs font-bold shrink-0 self-start md:self-auto">
                     <span className="w-2 h-2 rounded-full bg-amber-400" />
                     <span>Ready to Activate</span>
                   </div>
@@ -978,17 +978,17 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
               {status?.phoneNumber || defaultCandidateNumber ? (
                 <div className="p-5 rounded-xl bg-brand-card/95 border border-brand-border flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center text-2xl shrink-0">
+                    <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 flex items-center justify-center text-2xl shrink-0">
                       📞
                     </div>
                     <div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-brand-muted block">
                         {status?.phoneNumber && !assignedPoolNumber ? 'Active Receptionist Line' : 'Receptionist Line (Selected)'}
                       </span>
-                      <span className="text-xl sm:text-2xl font-mono font-extrabold text-brand-text block mt-0.5 tracking-wide">
+                      <span className="text-xl sm:text-2xl font-body font-extrabold text-brand-text block mt-0.5 tracking-wide">
                         {assignedPoolNumber || status?.phoneNumber || defaultCandidateNumber}
                       </span>
-                      <span className="text-[11px] text-emerald-400 font-medium block mt-0.5">
+                      <span className="text-[11px] text-emerald-700 font-medium block mt-0.5">
                         {status?.phoneNumber
                           ? 'Live incoming receptionist line ready for customers. You can test calling out to your phone in the 📤 Outgoing Calls tab above.'
                           : 'Pre-configured ready line — 1-click activation to connect directly to your receptionist.'}
@@ -1030,11 +1030,11 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
               ) : (
                 <div className="p-5 rounded-xl bg-brand-card/95 border border-brand-border flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center text-2xl shrink-0">
+                    <div className="w-12 h-12 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-700 flex items-center justify-center text-2xl shrink-0">
                       📱
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 block">
                         No Shared Virtual Line Available
                       </span>
                       <span className="text-sm font-bold text-brand-text block mt-0.5">
@@ -1051,7 +1051,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                       setTelephonyMode('byot');
                       setSelectedProvider('forwarding');
                     }}
-                    className="h-10 px-5 rounded-xl bg-brand-accent hover:bg-brand-accent-hover text-brand-bg text-xs font-bold transition flex items-center gap-1.5 shrink-0 shadow-sm"
+                    className="h-10 px-5 rounded-xl bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground text-xs font-bold transition flex items-center gap-1.5 shrink-0 shadow-sm"
                   >
                     <span>Connect Line →</span>
                   </button>
@@ -1136,8 +1136,8 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                     <div className="flex items-center justify-between">
                       {p.icon}
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                        isSelected ? 'bg-brand-accent text-brand-bg' : 'bg-brand-card text-brand-muted'
-                      }`}>
+ isSelected ? 'bg-brand-accent text-primary-foreground ' : 'bg-brand-card text-brand-muted'
+ }`}>
                         {p.tag}
                       </span>
                     </div>
@@ -1162,11 +1162,11 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                       <span className="font-sans text-xs font-bold text-brand-text">Advanced: Carrier Webhook URL</span>
                       <span className="text-[10px] text-brand-muted font-normal hidden sm:inline">(Only needed for manual Twilio / Plivo console routing)</span>
                     </span>
-                    <span className="text-[11px] font-mono text-brand-accent group-open:rotate-180 transition-transform">▼</span>
+                    <span className="text-[11px] font-body text-brand-accent group-open:rotate-180 transition-transform">▼</span>
                   </summary>
                   <div className="p-3.5 pt-2 border-t border-brand-border/60 space-y-2 bg-brand-card/40">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-brand-muted font-mono">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-brand-muted font-body">
                         Webhook Endpoint
                       </span>
                       <button
@@ -1178,11 +1178,11 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                         {copiedWebhook ? 'Copied!' : 'Copy Webhook URL'}
                       </button>
                     </div>
-                    <div className="p-2.5 rounded-lg bg-brand-bg font-mono text-xs text-brand-text break-all border border-brand-border select-all">
+                    <div className="p-2.5 rounded-lg bg-brand-bg font-body text-xs text-brand-text break-all border border-brand-border select-all">
                       {inboundWebhookUrl}
                     </div>
                     <p className="text-[11px] text-brand-muted leading-relaxed">
-                      HTTP Method: <span className="font-mono text-brand-text font-bold">POST</span>. When configuring your Twilio/Plivo number manually, paste this into your carrier console under &quot;A Call Comes In&quot;.
+                      HTTP Method: <span className="font-body text-brand-text font-bold">POST</span>. When configuring your Twilio/Plivo number manually, paste this into your carrier console under &quot;A Call Comes In&quot;.
                     </p>
                   </div>
                 </details>
@@ -1202,7 +1202,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                           href="https://docs.dograh.com/integrations/telephony/asterisk-ari"
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25 hover:bg-amber-500/20 transition"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-500/10 text-amber-700 border border-amber-500/25 hover:bg-amber-500/20 transition"
                         >
                           Asterisk ARI docs ↗
                         </a>
@@ -1234,7 +1234,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-brand-text mb-1.5">
-                        Configuration Name <span className="text-rose-400">*</span>
+                        Configuration Name <span className="text-rose-700">*</span>
                       </label>
                       <input
                         type="text"
@@ -1249,7 +1249,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
 
                     <div>
                       <label className="block text-xs font-bold text-brand-text mb-1.5">
-                        SIP Extensions / Numbers for Outbound Calls <span className="text-rose-400">*</span>
+                        SIP Extensions / Numbers for Outbound Calls <span className="text-rose-700">*</span>
                       </label>
                       <input
                         type="text"
@@ -1266,7 +1266,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
 
                     <div>
                       <label className="block text-xs font-bold text-brand-text mb-1.5">
-                        ARI Base URL <span className="text-rose-400">*</span>
+                        ARI Base URL <span className="text-rose-700">*</span>
                       </label>
                       <input
                         type="text"
@@ -1283,7 +1283,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
 
                     <div>
                       <label className="block text-xs font-bold text-brand-text mb-1.5">
-                        ARI Username <span className="text-rose-400">*</span>
+                        ARI Username <span className="text-rose-700">*</span>
                       </label>
                       <input
                         type="text"
@@ -1301,7 +1301,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
                         <label className="text-xs font-bold text-brand-text">
-                          App Password <span className="text-rose-400">*</span>
+                          App Password <span className="text-rose-700">*</span>
                         </label>
                         <button
                           type="button"
@@ -1326,7 +1326,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
 
                     <div>
                       <label className="block text-xs font-bold text-brand-text mb-1.5">
-                        WebSocket Client Name <span className="text-rose-400">*</span>
+                        WebSocket Client Name <span className="text-rose-700">*</span>
                       </label>
                       <input
                         type="text"
@@ -1364,8 +1364,8 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                     <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <span className="text-amber-400 font-bold text-xs uppercase tracking-wider">✨ Stasis Application Name</span>
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                          <span className="text-amber-700 font-bold text-xs uppercase tracking-wider">✨ Stasis Application Name</span>
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-body font-bold bg-amber-500/20 text-amber-700 border border-amber-500/30">
                             {stasisAppName || status?.telephony?.credentials?.stasisAppName}
                           </span>
                         </div>
@@ -1396,7 +1396,7 @@ exten => _X.,1,NoOp(Incoming call to \${EXTEN})
                       </div>
 
                       <p className="text-[11px] text-brand-muted">
-                        After saving, reload Asterisk dialplan: <code className="text-amber-300">asterisk -rx "dialplan reload"</code>
+                        After saving, reload Asterisk dialplan: <code className="text-amber-700">asterisk -rx "dialplan reload"</code>
                       </p>
                     </div>
                   )}
@@ -1428,7 +1428,7 @@ exten => _X.,1,NoOp(Incoming call to \${EXTEN})
                         helperText="Your Twilio purchased number with country code"
                       />
                       {isNumberAlreadyConnected(twilioPhone) && (
-                        <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-1.5 mt-2">
+                        <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 text-xs flex items-center gap-1.5 mt-2">
                           <span className="font-bold">✓ Already Connected:</span>
                           <span>This number is already active in your connected lines list above.</span>
                         </div>
@@ -1452,7 +1452,7 @@ exten => _X.,1,NoOp(Incoming call to \${EXTEN})
 
                     <div>
                       <label className="block text-xs font-bold text-brand-text mb-1.5">
-                        Account SID <span className="text-rose-400">*</span>
+                        Account SID <span className="text-rose-700">*</span>
                       </label>
                       <input
                         type="text"
@@ -1468,7 +1468,7 @@ exten => _X.,1,NoOp(Incoming call to \${EXTEN})
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
                         <label className="text-xs font-bold text-brand-text">
-                          Auth Token <span className="text-rose-400">*</span>
+                          Auth Token <span className="text-rose-700">*</span>
                         </label>
                         <button
                           type="button"
@@ -1528,7 +1528,7 @@ exten => _X.,1,NoOp(Incoming call to \${EXTEN})
                         helperText="Your active Plivo voice number with country code"
                       />
                       {isNumberAlreadyConnected(plivoPhone) && (
-                        <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-1.5 mt-2">
+                        <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 text-xs flex items-center gap-1.5 mt-2">
                           <span className="font-bold">✓ Already Connected:</span>
                           <span>This number is already active in your connected lines list above.</span>
                         </div>
@@ -1552,7 +1552,7 @@ exten => _X.,1,NoOp(Incoming call to \${EXTEN})
 
                     <div>
                       <label className="block text-xs font-bold text-brand-text mb-1.5">
-                        Auth ID <span className="text-rose-400">*</span>
+                        Auth ID <span className="text-rose-700">*</span>
                       </label>
                       <input
                         type="text"
@@ -1567,7 +1567,7 @@ exten => _X.,1,NoOp(Incoming call to \${EXTEN})
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
                         <label className="text-xs font-bold text-brand-text">
-                          Auth Token <span className="text-rose-400">*</span>
+                          Auth Token <span className="text-rose-700">*</span>
                         </label>
                         <button
                           type="button"
@@ -1632,7 +1632,7 @@ exten => _X.,1,NoOp(Incoming call to \${EXTEN})
 
                     <div>
                       <label className="block text-xs font-bold text-brand-text mb-1.5">
-                        API Key <span className="text-rose-400">*</span>
+                        API Key <span className="text-rose-700">*</span>
                       </label>
                       <input
                         type="text"
@@ -1647,7 +1647,7 @@ exten => _X.,1,NoOp(Incoming call to \${EXTEN})
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
                         <label className="text-xs font-bold text-brand-text">
-                          API Secret <span className="text-rose-400">*</span>
+                          API Secret <span className="text-rose-700">*</span>
                         </label>
                         <button
                           type="button"
@@ -1712,7 +1712,7 @@ exten => _X.,1,NoOp(Incoming call to \${EXTEN})
 
                     <div className="md:col-span-2">
                       <label className="block text-xs font-bold text-brand-text mb-1.5">
-                        API V2 Key <span className="text-rose-400">*</span>
+                        API V2 Key <span className="text-rose-700">*</span>
                       </label>
                       <input
                         type="text"
@@ -1752,7 +1752,7 @@ exten => _X.,1,NoOp(Incoming call to \${EXTEN})
                       helperText="The number your customers currently call. Calls will be forwarded to the AI receptionist."
                     />
                     {isNumberAlreadyConnected(forwardingPhone) && (
-                      <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2 mt-2">
+                      <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 text-xs flex items-center gap-2 mt-2">
                         <span className="font-bold">✓ Already Connected:</span>
                         <span>This mobile number is saved and active in your connected lines above. You do not need to re-add it after refresh.</span>
                       </div>
@@ -1769,12 +1769,12 @@ exten => _X.,1,NoOp(Incoming call to \${EXTEN})
                         </p>
                       </div>
                       {status?.phoneNumber ? (
-                        <div className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono font-bold flex items-center gap-2">
+                        <div className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 text-xs font-body font-bold flex items-center gap-2">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                           <span>AI Destination: {status.phoneNumber}</span>
                         </div>
                       ) : (
-                        <div className="px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px]">
+                        <div className="px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 text-[11px]">
                           ⚠️ Connect a virtual line above to generate dial codes
                         </div>
                       )}
@@ -1782,7 +1782,7 @@ exten => _X.,1,NoOp(Incoming call to \${EXTEN})
 
                     {/* Loop Warning if forwarding to own number */}
                     {forwardingPhone && status?.phoneNumber && forwardingPhone.replace(/\D/g, '') === status.phoneNumber.replace(/\D/g, '') && (
-                      <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-start gap-2">
+                      <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-700 text-xs flex items-start gap-2">
                         <span className="text-base shrink-0">⚠️</span>
                         <span>
                           <strong>Infinite Loop Warning:</strong> Your personal mobile number and the AI destination number cannot be the same. The AI Destination must be a separate cloud receptionist line (e.g., your Twilio virtual number) so your carrier knows where to send your missed calls.
@@ -1794,7 +1794,7 @@ exten => _X.,1,NoOp(Incoming call to \${EXTEN})
                       {/* Option 1: Fast GSM Dial Codes */}
                       <div className="p-3.5 rounded-xl bg-brand-bg border border-brand-border space-y-2.5">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-cyan-400 flex items-center gap-1.5">
+                          <span className="font-bold text-cyan-700 flex items-center gap-1.5">
                             ⚡ Option 1: Dial Codes (Instant)
                           </span>
                           <span className="text-[10px] text-brand-muted">Works on all GSM carriers</span>
@@ -1808,9 +1808,9 @@ exten => _X.,1,NoOp(Incoming call to \${EXTEN})
                           <div className="p-2 bg-brand-card border border-brand-border rounded-lg flex items-center justify-between gap-2">
                             <div className="min-w-0">
                               <span className="block text-[11px] font-semibold text-brand-text truncate">
-                                ⭐ If you don't answer <span className="text-emerald-400 text-[10px]">(Best)</span>
+                                ⭐ If you don't answer <span className="text-emerald-700 text-[10px]">(Best)</span>
                               </span>
-                              <span className="block font-mono text-[11px] text-brand-accent font-bold truncate">
+                              <span className="block font-body text-[11px] text-brand-accent font-bold truncate">
                                 *61*{status?.phoneNumber || '<AI_NUMBER>'}#
                               </span>
                             </div>
@@ -1829,14 +1829,14 @@ exten => _X.,1,NoOp(Incoming call to \${EXTEN})
                               <span className="block text-[11px] font-semibold text-brand-text truncate">
                                 If your line is busy
                               </span>
-                              <span className="block font-mono text-[11px] text-cyan-400 font-bold truncate">
+                              <span className="block font-body text-[11px] text-cyan-700 font-bold truncate">
                                 *67*{status?.phoneNumber || '<AI_NUMBER>'}#
                               </span>
                             </div>
                             <button
                               type="button"
                               onClick={() => handleCopyCode(`*67*${status?.phoneNumber || ''}#`)}
-                              className="px-2.5 py-1 rounded-md bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 text-[11px] font-bold border border-cyan-500/30 shrink-0 transition"
+                              className="px-2.5 py-1 rounded-md bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-700 text-[11px] font-bold border border-cyan-500/30 shrink-0 transition"
                             >
                               {copiedCode === `*67*${status?.phoneNumber || ''}#` ? 'Copied!' : 'Copy'}
                             </button>
@@ -1848,7 +1848,7 @@ exten => _X.,1,NoOp(Incoming call to \${EXTEN})
                               <span className="block text-[11px] font-semibold text-brand-text truncate">
                                 Forward 100% of calls (Vacation mode)
                               </span>
-                              <span className="block font-mono text-[11px] text-brand-muted font-bold truncate">
+                              <span className="block font-body text-[11px] text-brand-muted font-bold truncate">
                                 *21*{status?.phoneNumber || '<AI_NUMBER>'}#
                               </span>
                             </div>
@@ -1867,14 +1867,14 @@ exten => _X.,1,NoOp(Incoming call to \${EXTEN})
                               <span className="block text-[10px] text-brand-muted truncate">
                                 Turn off all forwarding anytime:
                               </span>
-                              <span className="block font-mono text-[11px] text-rose-400 font-bold">
+                              <span className="block font-body text-[11px] text-rose-700 font-bold">
                                 ##002#
                               </span>
                             </div>
                             <button
                               type="button"
                               onClick={() => handleCopyCode('##002#')}
-                              className="px-2.5 py-1 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-[11px] font-bold border border-rose-500/30 shrink-0 transition"
+                              className="px-2.5 py-1 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-700 text-[11px] font-bold border border-rose-500/30 shrink-0 transition"
                             >
                               {copiedCode === '##002#' ? 'Copied!' : 'Copy'}
                             </button>
@@ -1885,7 +1885,7 @@ exten => _X.,1,NoOp(Incoming call to \${EXTEN})
                       {/* Option 2: Smartphone Settings */}
                       <div className="p-3.5 rounded-xl bg-brand-bg border border-brand-border space-y-3 flex flex-col justify-between">
                         <div>
-                          <span className="font-bold text-emerald-400 block mb-2">
+                          <span className="font-bold text-emerald-700 block mb-2">
                             📱 Option 2: Mobile Operating System Settings
                           </span>
                           <div className="space-y-3">
@@ -1978,8 +1978,8 @@ exten => _X.,1,NoOp(Incoming call to \${EXTEN})
           {/* Inbound Limits */}
           <div className="p-4 rounded-xl bg-brand-bg border border-brand-border space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-emerald-400">📥 Incoming Protection (When Customers Call)</span>
-              <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Active</span>
+              <span className="text-xs font-bold text-emerald-700">📥 Incoming Protection (When Customers Call)</span>
+              <span className="text-[10px] text-emerald-700 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Active</span>
             </div>
             <p className="text-[11px] text-brand-muted">
               Protects your receptionist line against spam bursts. If maximum calls per hour are reached, callers hear a polite busy response.
@@ -2021,8 +2021,8 @@ exten => _X.,1,NoOp(Incoming call to \${EXTEN})
           {/* Outbound Limits */}
           <div className="p-4 rounded-xl bg-brand-bg border border-brand-border space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-sky-400">📤 Outgoing Pacing Guard (When AI Calls Out)</span>
-              <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Active</span>
+              <span className="text-xs font-bold text-sky-700">📤 Outgoing Pacing Guard (When AI Calls Out)</span>
+              <span className="text-[10px] text-emerald-700 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Active</span>
             </div>
             <p className="text-[11px] text-brand-muted">
               Paces outbound test dials and bulk campaigns to avoid carrier spam flagging or compliance blocks.

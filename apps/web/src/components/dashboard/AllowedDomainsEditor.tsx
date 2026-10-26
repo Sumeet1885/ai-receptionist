@@ -29,7 +29,7 @@ export const AllowedDomainsEditor: React.FC<AllowedDomainsEditorProps> = ({
     <div className="space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider mb-2 font-mono">
+          <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider mb-2 font-body">
             {label}
           </label>
           <p className="text-xs text-brand-muted font-sans">{description}</p>

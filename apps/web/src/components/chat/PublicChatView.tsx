@@ -98,7 +98,7 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
               <div className="w-3 h-3 rounded-full bg-brand-success/30 border border-brand-success"></div>
             </div>
 
-            <div className="bg-brand-card text-xs text-brand-text/75 px-4 py-1.5 rounded-lg flex items-center justify-center space-x-2 select-all font-mono tracking-wide w-1/2 mx-auto border border-brand-border">
+            <div className="bg-brand-card text-xs text-brand-text/75 px-4 py-1.5 rounded-lg flex items-center justify-center space-x-2 select-all font-body tracking-wide w-1/2 mx-auto border border-brand-border">
               <Icons.Globe />
               <span className="truncate">AI Receptionist/chats/{activeBot.subDomain}</span>
             </div>
@@ -115,7 +115,7 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
                   setView('dashboard');
                   showToast("Returned to Owner Dashboard Console");
                 }}
-                className="px-3.5 py-1 bg-brand-accent hover:bg-brand-accent-hover border border-brand-border rounded-lg text-xs font-semibold text-brand-text transition duration-200"
+                className="px-3.5 py-1 bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground border border-brand-border rounded-lg text-xs font-semibold transition duration-200"
               >
                 Console
               </button>
@@ -129,7 +129,7 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
             <div className={cn("w-full md:w-80 bg-brand-card border-r border-brand-border p-6 flex flex-col justify-between flex-shrink-0", isStandalone ? "hidden md:flex" : "flex")}>
               <div className="space-y-6">
                 <div>
-                  <span className="px-2.5 py-1 bg-brand-bg border border-brand-border text-brand-accent rounded-md text-[10px] font-mono uppercase tracking-wider font-semibold">
+                  <span className="px-2.5 py-1 bg-brand-bg border border-brand-border text-brand-accent rounded-md text-[10px] font-body uppercase tracking-wider font-semibold">
                     Autonomous Assistant
                   </span>
                   <h3 className="text-xl font-display font-bold mt-4 text-brand-text">{activeBot.businessName}</h3>
@@ -140,7 +140,7 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
 
               </div>
 
-              <div className="pt-6 border-t border-brand-border text-center font-mono">
+              <div className="pt-6 border-t border-brand-border text-center font-body">
                 <span className="text-[10px] text-brand-text/60 block uppercase tracking-widest">Powered by Agilewaters.com</span>
               </div>
             </div>
@@ -155,7 +155,7 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
                 </div>
                 <div>
                   <h4 className="text-sm font-display font-bold truncate max-w-[200px]">{activeBot.businessName}</h4>
-                  <span className="text-[10px] text-brand-success flex items-center font-mono mt-0.5">
+                  <span className="text-[10px] text-brand-success flex items-center font-body mt-0.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-brand-success mr-1.5 animate-ping"></span>
                     <span>Virtual Assistant is online</span>
                   </span>
@@ -172,11 +172,11 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
                 const isUser = msg.sender === 'user';
                 return (
                   <div key={msg.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] rounded-xl p-3 px-4 border ${isUser ? 'bg-brand-accent border-brand-accent text-brand-text rounded-tr-none' : 'bg-brand-card border-brand-border text-brand-text rounded-tl-none'} shadow-sm`}>
+                    <div className={`max-w-[80%] rounded-xl p-3 px-4 border ${isUser ? 'bg-brand-accent text-primary-foreground border-brand-accent rounded-tr-none' : 'bg-brand-card border-brand-border rounded-tl-none'} shadow-sm`}>
                       <p className="leading-relaxed text-xs md:text-sm whitespace-pre-wrap break-words">
                         {normalizeMessageText(msg.text)}
                       </p>
-                      <span className="text-[9px] text-brand-text/55 mt-1 block text-right font-mono">
+                      <span className="text-[9px] text-brand-text/55 mt-1 block text-right font-body">
                         {msg.timestamp}
                       </span>
                     </div>
@@ -187,9 +187,9 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
               {isBotResponding && (
                 <div className="flex justify-start">
                   <div className="bg-brand-card text-brand-text/70 border border-brand-border rounded-xl p-3.5 px-4 rounded-tl-none flex items-center space-x-1.5 shadow-sm">
-                    <span className="w-2 h-2 rounded-full bg-brand-accent animate-bounce"></span>
-                    <span className="w-2 h-2 rounded-full bg-brand-accent animate-bounce delay-100"></span>
-                    <span className="w-2 h-2 rounded-full bg-brand-accent animate-bounce delay-200"></span>
+                    <span className="w-2 h-2 rounded-full bg-brand-accent text-primary-foreground animate-bounce"></span>
+                    <span className="w-2 h-2 rounded-full bg-brand-accent text-primary-foreground animate-bounce delay-100"></span>
+                    <span className="w-2 h-2 rounded-full bg-brand-accent text-primary-foreground animate-bounce delay-200"></span>
                   </div>
                 </div>
               )}
@@ -232,7 +232,7 @@ export const PublicChatView: React.FC<PublicChatViewProps> = ({
               <button
                 type="submit"
                 disabled={isBotResponding || !chatInput.trim() || liveVoice.isVoiceActive}
-                className="p-3.5 bg-brand-accent hover:bg-brand-accent-hover border border-brand-border text-brand-text rounded-lg shadow-md transition disabled:opacity-50"
+                className="p-3.5 bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground border border-brand-border rounded-lg shadow-md transition disabled:opacity-50"
               >
                 <svg className="w-4 h-4 transform rotate-90" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />

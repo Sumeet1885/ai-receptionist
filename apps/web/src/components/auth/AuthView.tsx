@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Icons } from '../common/Icons';
+import { BrandLogo } from '../ui/brand-logo';
+import { Button } from '../ui/button';
+import { Input, Label } from '../ui/field';
+import { Card } from '../ui/layout';
 import { supabase } from '../../lib/supabaseClient';
 
 export type AuthMode = 'signin' | 'signup' | 'forgot' | 'reset';
@@ -144,68 +148,78 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
     }
   };
 
+  const titles: Record<AuthMode, { title: string; description: string }> = {
+    signin: { title: 'Welcome back', description: 'Sign in to your Bolega India workspace.' },
+    signup: { title: 'Create your account', description: 'Set up your business persona and start your first campaign.' },
+    forgot: { title: 'Reset password', description: 'Enter your account email to receive a password recovery link.' },
+    reset: { title: 'Create a new password', description: 'Please choose a secure new password for your account.' },
+  };
+
+  const backToSignIn = (
+    <button
+      type="button"
+      onClick={() => {
+        setResetSent(false);
+        setSessionError(null);
+        setMode('signin');
+      }}
+      className="font-medium text-primary hover:underline"
+    >
+      ← Back to sign in
+    </button>
+  );
+
   return (
-    <div className="flex-1 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden bg-black min-h-[calc(100vh-80px)]">
-      {/* Background decoration matching landing page */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] sm:w-[800px] h-[300px] sm:h-[600px] bg-emerald-500/10 blur-[120px] rounded-[100%] pointer-events-none" />
-      
-      <div className="w-full max-w-md relative z-10">
-        <div className="bg-brand-card/80 backdrop-blur-xl border border-brand-border p-6 sm:p-8 rounded-2xl shadow-2xl">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-display font-bold text-brand-text mb-2">
-              {mode === 'signin' && 'Welcome back'}
-              {mode === 'signup' && 'Create an account'}
-              {mode === 'forgot' && 'Reset password'}
-              {mode === 'reset' && 'Create new password'}
-            </h2>
-            <p className="text-brand-muted text-sm">
-              {mode === 'signin' && 'Sign in to access your virtual receptionist console.'}
-              {mode === 'signup' && 'Start building your AI employee today.'}
-              {mode === 'forgot' && 'Enter your account email to receive a password recovery link.'}
-              {mode === 'reset' && 'Please choose a secure new password for your account.'}
-            </p>
+    <div className="relative flex min-h-[calc(100vh-80px)] flex-1 items-center justify-center overflow-hidden bg-background p-4 sm:p-6">
+      {/* Soft lime glow, as behind the landing hero */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-1/2 top-1/2 h-[300px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-[100%] bg-accent-lime/30 blur-[120px] sm:h-[600px] sm:w-[800px]"
+      />
+
+      <div className="relative z-10 w-full max-w-md">
+        <Card variant="floating" padding="lg" className="rounded-large">
+          <div className="mb-8 text-center">
+            <BrandLogo className="mb-6 justify-center" />
+            <h1 className="mb-2 font-display text-3xl font-semibold tracking-[-0.04em] text-text">{titles[mode].title}</h1>
+            <p className="text-sm text-text-subtle">{titles[mode].description}</p>
           </div>
 
           {(mode === 'signin' || mode === 'signup') && (
             <>
-              <div className="space-y-4 mb-6">
-                <button 
-                  onClick={() => handleOAuth('google')}
-                  className="w-full py-3 px-4 bg-white text-black hover:bg-gray-100 rounded-lg font-semibold flex items-center justify-center space-x-3 transition duration-200"
-                >
+              <div className="mb-6 space-y-3">
+                <Button variant="secondary" size="lg" className="w-full" onClick={() => handleOAuth('google')}>
                   <Icons.Google />
                   <span>Continue with Google</span>
-                </button>
-                <button 
-                  onClick={() => handleOAuth('azure')}
-                  className="w-full py-3 px-4 bg-[#2f2f2f] text-white hover:bg-[#3f3f3f] border border-white/10 rounded-lg font-semibold flex items-center justify-center space-x-3 transition duration-200"
-                >
+                </Button>
+                <Button variant="secondary" size="lg" className="w-full" onClick={() => handleOAuth('azure')}>
                   <Icons.Microsoft />
                   <span>Continue with Microsoft</span>
-                </button>
+                </Button>
               </div>
 
-              <div className="flex items-center space-x-4 mb-6">
-                <div className="flex-1 h-px bg-brand-border"></div>
-                <span className="text-xs text-brand-muted uppercase tracking-wider">or email</span>
-                <div className="flex-1 h-px bg-brand-border"></div>
+              <div className="mb-6 flex items-center gap-4">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-subtle">or email</span>
+                <div className="h-px flex-1 bg-border" />
               </div>
 
               <form onSubmit={handleEmailAuth} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-brand-text mb-1.5">Email Address</label>
-                  <input
+                  <Label htmlFor="auth-email">Email address</Label>
+                  <Input
+                    id="auth-email"
                     type="email"
                     required
+                    autoComplete="email"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
-                    className="w-full bg-black border border-brand-border rounded-lg px-4 py-2.5 text-brand-text focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition"
                     placeholder="name@company.com"
                   />
                 </div>
                 <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-sm font-medium text-brand-text">Password</label>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <Label htmlFor="auth-password" className="mb-0">Password</Label>
                     {mode === 'signin' && (
                       <button
                         type="button"
@@ -213,35 +227,32 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
                           setResetSent(false);
                           setMode('forgot');
                         }}
-                        className="text-xs text-emerald-400 hover:underline"
+                        className="text-xs font-medium text-primary hover:underline"
                       >
                         Forgot password?
                       </button>
                     )}
                   </div>
-                  <input
+                  <Input
+                    id="auth-password"
                     type="password"
                     required
+                    autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    className="w-full bg-black border border-brand-border rounded-lg px-4 py-2.5 text-brand-text focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition"
                     placeholder="••••••••"
                   />
                 </div>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3 px-4 bg-emerald-400 hover:bg-emerald-300 text-black font-semibold rounded-lg shadow-md transition duration-200 mt-2 disabled:opacity-50"
-                >
-                  {loading ? 'Please wait...' : (mode === 'signin' ? 'Sign In' : 'Create Account')}
-                </button>
+                <Button type="submit" size="lg" className="mt-2 w-full" disabled={loading}>
+                  {loading ? 'Please wait…' : (mode === 'signin' ? 'Sign in' : 'Create account')}
+                </Button>
               </form>
 
-              <div className="mt-6 text-center text-sm text-brand-muted">
+              <div className="mt-6 text-center text-sm text-text-subtle">
                 {mode === 'signin' ? (
-                  <p>Don't have an account? <button onClick={() => setMode('signup')} className="text-emerald-400 hover:underline font-medium">Sign up</button></p>
+                  <p>Don&apos;t have an account? <button type="button" onClick={() => setMode('signup')} className="font-medium text-primary hover:underline">Sign up</button></p>
                 ) : (
-                  <p>Already have an account? <button onClick={() => setMode('signin')} className="text-emerald-400 hover:underline font-medium">Sign in</button></p>
+                  <p>Already have an account? <button type="button" onClick={() => setMode('signin')} className="font-medium text-primary hover:underline">Sign in</button></p>
                 )}
               </div>
             </>
@@ -250,131 +261,96 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
           {mode === 'forgot' && (
             <div className="space-y-4">
               {resetSent ? (
-                <div className="p-4 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-center space-y-2">
-                  <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto text-lg font-bold">
+                <div role="status" className="space-y-2 rounded-medium border border-success/30 bg-success-surface p-4 text-center">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-success/15 text-lg font-bold text-success" aria-hidden="true">
                     ✓
                   </div>
-                  <h3 className="text-sm font-bold text-emerald-300">Recovery Email Sent</h3>
-                  <p className="text-xs text-emerald-200/80">
-                    If an account exists for <span className="font-semibold text-white">{email}</span>, you will receive a password reset link shortly.
+                  <h2 className="text-sm font-bold text-success">Recovery email sent</h2>
+                  <p className="text-xs text-text">
+                    If an account exists for <span className="font-semibold">{email}</span>, you will receive a password reset link shortly.
                   </p>
                 </div>
               ) : (
                 <form onSubmit={handleForgotPassword} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-brand-text mb-1.5">Account Email</label>
-                    <input
+                    <Label htmlFor="auth-recovery-email">Account email</Label>
+                    <Input
+                      id="auth-recovery-email"
                       type="email"
                       required
+                      autoComplete="email"
                       value={email}
                       onChange={e => setEmail(e.target.value)}
-                      className="w-full bg-black border border-brand-border rounded-lg px-4 py-2.5 text-brand-text focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition"
                       placeholder="name@company.com"
                     />
                   </div>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full py-3 px-4 bg-emerald-400 hover:bg-emerald-300 text-black font-semibold rounded-lg shadow-md transition duration-200 disabled:opacity-50"
-                  >
-                    {loading ? 'Sending link...' : 'Send Reset Link'}
-                  </button>
+                  <Button type="submit" size="lg" className="w-full" disabled={loading}>
+                    {loading ? 'Sending link…' : 'Send reset link'}
+                  </Button>
                 </form>
               )}
 
-              <div className="mt-6 text-center text-sm text-brand-muted">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setResetSent(false);
-                    setMode('signin');
-                  }}
-                  className="text-emerald-400 hover:underline font-medium"
-                >
-                  ← Back to Sign In
-                </button>
-              </div>
+              <div className="mt-6 text-center text-sm">{backToSignIn}</div>
             </div>
           )}
 
           {mode === 'reset' && (
             sessionError ? (
-              <div className="p-5 rounded-xl bg-red-950/40 border border-red-500/30 text-center space-y-4">
-                <div className="w-10 h-10 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center mx-auto text-lg font-bold">
+              <div role="alert" className="space-y-4 rounded-medium border border-danger/30 bg-danger-surface p-5 text-center">
+                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-danger/15 text-lg font-bold text-danger" aria-hidden="true">
                   !
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-sm font-bold text-red-300">Session Expired or Missing</h3>
-                  <p className="text-xs text-red-200/80 leading-relaxed">
-                    {sessionError}
-                  </p>
+                  <h2 className="text-sm font-bold text-danger">Session expired or missing</h2>
+                  <p className="text-xs leading-relaxed text-text">{sessionError}</p>
                 </div>
-                <button
-                  type="button"
+                <Button
+                  className="w-full"
                   onClick={() => {
                     setSessionError(null);
                     setMode('forgot');
                   }}
-                  className="w-full py-2.5 px-4 bg-emerald-400 hover:bg-emerald-300 text-black font-semibold rounded-lg text-sm shadow-md transition duration-200"
                 >
-                  Request New Reset Link
-                </button>
-                <div className="pt-2 text-center text-sm text-brand-muted">
-                  <button
-                    type="button"
-                    onClick={() => setMode('signin')}
-                    className="text-emerald-400 hover:underline font-medium text-xs"
-                  >
-                    ← Back to Sign In
-                  </button>
-                </div>
+                  Request new reset link
+                </Button>
+                <div className="pt-2 text-center text-xs">{backToSignIn}</div>
               </div>
             ) : (
               <form onSubmit={handleResetPassword} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-brand-text mb-1.5">New Password</label>
-                  <input
+                  <Label htmlFor="auth-new-password">New password</Label>
+                  <Input
+                    id="auth-new-password"
                     type="password"
                     required
+                    autoComplete="new-password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    className="w-full bg-black border border-brand-border rounded-lg px-4 py-2.5 text-brand-text focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition"
                     placeholder="At least 6 characters"
                     minLength={6}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-brand-text mb-1.5">Confirm New Password</label>
-                  <input
+                  <Label htmlFor="auth-confirm-password">Confirm new password</Label>
+                  <Input
+                    id="auth-confirm-password"
                     type="password"
                     required
+                    autoComplete="new-password"
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
-                    className="w-full bg-black border border-brand-border rounded-lg px-4 py-2.5 text-brand-text focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition"
                     placeholder="Re-enter your new password"
                     minLength={6}
                   />
                 </div>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3 px-4 bg-emerald-400 hover:bg-emerald-300 text-black font-semibold rounded-lg shadow-md transition duration-200 mt-2 disabled:opacity-50"
-                >
-                  {loading ? 'Updating password...' : 'Update Password'}
-                </button>
-                <div className="mt-6 text-center text-sm text-brand-muted">
-                  <button
-                    type="button"
-                    onClick={() => setMode('signin')}
-                    className="text-emerald-400 hover:underline font-medium"
-                  >
-                    ← Back to Sign In
-                  </button>
-                </div>
+                <Button type="submit" size="lg" className="mt-2 w-full" disabled={loading}>
+                  {loading ? 'Updating password…' : 'Update password'}
+                </Button>
+                <div className="mt-6 text-center text-sm">{backToSignIn}</div>
               </form>
             )
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );

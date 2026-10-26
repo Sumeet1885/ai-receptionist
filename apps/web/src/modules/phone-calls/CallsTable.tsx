@@ -76,7 +76,7 @@ export const CallsTable: React.FC<CallsTableProps> = ({
         <div>
           <h3 className="font-display font-extrabold text-brand-text text-base lg:text-lg flex items-center gap-2">
             <span>Call History & Transcripts</span>
-            <span className="px-2 py-0.5 rounded-full text-xs font-mono bg-brand-bg border border-brand-border text-brand-muted">
+            <span className="px-2 py-0.5 rounded-full text-xs font-body bg-brand-bg border border-brand-border text-brand-muted">
               {calls.length} total
             </span>
           </h3>
@@ -106,13 +106,13 @@ export const CallsTable: React.FC<CallsTableProps> = ({
             type="button"
             onClick={() => setFilterDirection('all')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border ${
-              filterDirection === 'all'
-                ? 'bg-brand-accent text-brand-bg border-brand-accent shadow-sm'
-                : 'bg-brand-card text-brand-muted hover:text-brand-text border-brand-border'
-            }`}
+ filterDirection === 'all'
+ ? 'bg-brand-accent text-primary-foreground border-brand-accent shadow-sm'
+ : 'bg-brand-card text-brand-muted hover:text-brand-text border-brand-border'
+ }`}
           >
             <span>All Calls</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-black/20">{calls.length}</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-body bg-black/20">{calls.length}</span>
           </button>
 
           <button
@@ -121,11 +121,11 @@ export const CallsTable: React.FC<CallsTableProps> = ({
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border ${
               filterDirection === 'inbound'
                 ? 'bg-emerald-500 text-black border-emerald-400 shadow-sm'
-                : 'bg-brand-card text-brand-muted hover:text-emerald-400 border-brand-border'
+                : 'bg-brand-card text-brand-muted hover:text-emerald-700 border-brand-border'
             }`}
           >
             <span>📥 Incoming (Customers Called You)</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-black/20">{inboundCount}</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-body bg-black/20">{inboundCount}</span>
           </button>
 
           <button
@@ -134,11 +134,11 @@ export const CallsTable: React.FC<CallsTableProps> = ({
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border ${
               filterDirection === 'outbound'
                 ? 'bg-sky-500 text-black border-sky-400 shadow-sm'
-                : 'bg-brand-card text-brand-muted hover:text-sky-400 border-brand-border'
+                : 'bg-brand-card text-brand-muted hover:text-sky-700 border-brand-border'
             }`}
           >
             <span>📤 Outgoing (AI Called Customers)</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-black/20">{outboundCount}</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-body bg-black/20">{outboundCount}</span>
           </button>
         </div>
 
@@ -171,16 +171,16 @@ export const CallsTable: React.FC<CallsTableProps> = ({
                 type="button"
                 onClick={() => setFilterScore(score)}
                 className={`px-2.5 py-1 rounded-lg text-[11px] font-bold capitalize transition border ${
-                  filterScore === score
-                    ? score === 'hot'
-                      ? 'bg-rose-500 text-white border-rose-400 shadow-sm'
-                      : score === 'warm'
-                      ? 'bg-amber-500 text-black border-amber-400 shadow-sm'
-                      : score === 'cold'
-                      ? 'bg-cyan-500 text-black border-cyan-400 shadow-sm'
-                      : 'bg-brand-accent text-brand-bg border-brand-accent shadow-sm'
-                    : 'bg-brand-bg border-brand-border text-brand-muted hover:text-brand-text'
-                }`}
+ filterScore === score
+ ? score === 'hot'
+ ? 'bg-rose-500 border-rose-400 shadow-sm'
+ : score === 'warm'
+ ? 'bg-amber-500 border-amber-400 shadow-sm'
+ : score === 'cold'
+ ? 'bg-cyan-500 border-cyan-400 shadow-sm'
+ : 'bg-brand-accent text-primary-foreground border-brand-accent shadow-sm'
+ : 'bg-brand-bg border-brand-border text-brand-muted hover:text-brand-text'
+ }`}
               >
                 {score === 'cold' ? '❄️ Cold' : score === 'hot' ? '🔥 Hot' : score === 'warm' ? '⚡ Warm' : 'All'}
               </button>
@@ -232,10 +232,10 @@ export const CallsTable: React.FC<CallsTableProps> = ({
                 <div className="absolute inset-y-0 left-1/2 w-px bg-brand-accent/20" />
 
                 {/* Perimeter Azimuth Coordinate Ticks */}
-                <span className="absolute top-1 left-1/2 -translate-x-1/2 text-[9px] font-mono font-bold text-brand-accent/40 select-none">000°</span>
-                <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] font-mono font-bold text-brand-accent/40 select-none">090°</span>
-                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[9px] font-mono font-bold text-brand-accent/40 select-none">180°</span>
-                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-mono font-bold text-brand-accent/40 select-none">270°</span>
+                <span className="absolute top-1 left-1/2 -translate-x-1/2 text-[9px] font-body font-bold text-brand-accent/40 select-none">000°</span>
+                <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] font-body font-bold text-brand-accent/40 select-none">090°</span>
+                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[9px] font-body font-bold text-brand-accent/40 select-none">180°</span>
+                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[9px] font-body font-bold text-brand-accent/40 select-none">270°</span>
 
                 {/* Concentric Grid Rings */}
                 <div className="absolute inset-6 rounded-full border border-brand-accent/20" />
@@ -259,7 +259,7 @@ export const CallsTable: React.FC<CallsTableProps> = ({
 
                 {/* ⚡ Ghost Signal Blip 1: Top-Right (Sector ~045°), Emerald Phosphor Ping */}
                 <div
-                  className="absolute top-[26%] right-[28%] z-10 pointer-events-none flex items-center justify-center animate-radar-blip-1 text-emerald-400"
+                  className="absolute top-[26%] right-[28%] z-10 pointer-events-none flex items-center justify-center animate-radar-blip-1 text-emerald-700"
                   title="Echo frequency detected"
                 >
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 border border-white shadow-[0_0_8px_#10b981]" />
@@ -268,7 +268,7 @@ export const CallsTable: React.FC<CallsTableProps> = ({
 
                 {/* ⚡ Ghost Signal Blip 2: Bottom-Left (Sector ~210°), Cyan Echo Ping */}
                 <div
-                  className="absolute bottom-[28%] left-[24%] z-10 pointer-events-none flex items-center justify-center animate-radar-blip-2 text-cyan-400"
+                  className="absolute bottom-[28%] left-[24%] z-10 pointer-events-none flex items-center justify-center animate-radar-blip-2 text-cyan-700"
                   title="Echo frequency detected"
                 >
                   <span className="w-2 h-2 rounded-full bg-cyan-400 border border-white shadow-[0_0_8px_#06b6d4]" />
@@ -277,7 +277,7 @@ export const CallsTable: React.FC<CallsTableProps> = ({
 
                 {/* ⚡ Ghost Signal Blip 3: Top-Left (Sector ~315°), Rose/Amber Distant Ping */}
                 <div
-                  className="absolute top-[32%] left-[30%] z-10 pointer-events-none flex items-center justify-center animate-radar-blip-3 text-rose-400"
+                  className="absolute top-[32%] left-[30%] z-10 pointer-events-none flex items-center justify-center animate-radar-blip-3 text-rose-700"
                   title="Distant frequency echo"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-rose-400 border border-white shadow-[0_0_6px_#f43f5e]" />
@@ -291,7 +291,7 @@ export const CallsTable: React.FC<CallsTableProps> = ({
               </div>
 
               {/* Status Telemetry Pill */}
-              <div className="mt-6 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-bg/90 border border-brand-accent/30 text-[11px] font-mono font-bold text-brand-accent shadow-sm">
+              <div className="mt-6 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-bg/90 border border-brand-accent/30 text-[11px] font-body font-bold text-brand-accent shadow-sm">
                 <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
                 <span>RADAR SCAN COMPLETE: 0 AUDIO SIGNALS</span>
               </div>
@@ -320,7 +320,7 @@ export const CallsTable: React.FC<CallsTableProps> = ({
                   <button
                     type="button"
                     onClick={onPlaceTestCall}
-                    className="h-9 px-4 rounded-xl bg-brand-accent hover:bg-brand-accent-hover text-brand-bg text-xs font-bold transition flex items-center gap-2 shadow-[0_0_20px_rgba(25,233,157,0.3)] hover:scale-105"
+                    className="h-9 px-4 rounded-xl bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground text-xs font-bold transition flex items-center gap-2 shadow-[0_0_20px_rgba(25,233,157,0.3)] hover:scale-105"
                   >
                     <span>⚡</span>
                     <span>Dial "{searchQuery}" Now</span>
@@ -363,16 +363,16 @@ export const CallsTable: React.FC<CallsTableProps> = ({
                     <div className="flex items-center gap-2.5 flex-wrap">
                       {/* Direction Badge */}
                       {isOutbound ? (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-sky-500/15 border border-sky-500/30 text-sky-400 flex items-center gap-1">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-sky-500/15 border border-sky-500/30 text-sky-700 flex items-center gap-1">
                           <span>📤</span> Outgoing Call (AI Called Customer)
                         </span>
                       ) : (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center gap-1">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 flex items-center gap-1">
                           <span>📥</span> Incoming Call (Customer Called You)
                         </span>
                       )}
 
-                      <span className="text-sm font-bold font-mono text-brand-text">
+                      <span className="text-sm font-bold font-body text-brand-text">
                         {call.caller_number || 'Unknown'}
                       </span>
 
@@ -386,10 +386,10 @@ export const CallsTable: React.FC<CallsTableProps> = ({
                         <span
                           className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border shadow-sm ${
                             isLeadHot
-                              ? 'text-rose-200 border-rose-500/70 bg-rose-500/25 animate-hot-blink shadow-rose-950/60 font-extrabold'
+                              ? 'text-rose-800 border-rose-500/70 bg-rose-500/25 animate-hot-blink shadow-rose-950/60 font-extrabold'
                               : isLeadWarm
-                              ? 'text-amber-300 border-amber-500/40 bg-amber-500/15'
-                              : 'text-cyan-300 border-cyan-400/40 bg-cyan-500/15'
+                              ? 'text-amber-700 border-amber-500/40 bg-amber-500/15'
+                              : 'text-cyan-700 border-cyan-400/40 bg-cyan-500/15'
                           }`}
                         >
                           {isLeadHot ? (
@@ -405,14 +405,14 @@ export const CallsTable: React.FC<CallsTableProps> = ({
                           <span>{isLeadHot ? '🔥 HOT LEAD' : `${call.lead.lead_score} Lead`}</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border text-cyan-300/80 border-cyan-400/30 bg-cyan-500/10">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border text-cyan-700/80 border-cyan-400/30 bg-cyan-500/10">
                           <span className="w-1 h-1 rounded-full bg-cyan-400" />
                           <span>❄️ COLD CALL</span>
                         </span>
                       )}
 
                       {call.lead?.appointment_status && call.lead.appointment_status !== 'none' && (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 border border-emerald-500/30 text-emerald-700">
                           Booked: {call.lead.appointment_status}
                         </span>
                       )}
@@ -431,7 +431,7 @@ export const CallsTable: React.FC<CallsTableProps> = ({
 
                   <div className="md:text-right shrink-0 flex items-center gap-4 pt-2 md:pt-0 border-t md:border-t-0 border-brand-border/60">
                     <div>
-                      <p className="text-sm font-bold font-mono text-brand-text">
+                      <p className="text-sm font-bold font-body text-brand-text">
                         {formatDuration(call.duration_seconds)}
                       </p>
                       <p className="text-[11px] text-brand-muted mt-0.5">
@@ -489,12 +489,12 @@ export const CallsTable: React.FC<CallsTableProps> = ({
                 <div className="flex items-center gap-2">
                   <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
                     selectedCall.direction === 'outbound'
-                      ? 'bg-sky-500/15 border-sky-500/30 text-sky-400'
-                      : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                      ? 'bg-sky-500/15 border-sky-500/30 text-sky-700'
+                      : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-700'
                   }`}>
                     {selectedCall.direction === 'outbound' ? '📤 Outgoing Call' : '📥 Incoming Call'}
                   </span>
-                  <span className="text-sm font-mono font-bold text-brand-text">
+                  <span className="text-sm font-body font-bold text-brand-text">
                     {selectedCall.caller_number || 'Unknown'}
                   </span>
                 </div>
@@ -523,7 +523,7 @@ export const CallsTable: React.FC<CallsTableProps> = ({
                     <span className="text-xs font-bold text-brand-text flex items-center gap-1.5">
                       <span>🎧</span> Call Recording Playback
                     </span>
-                    <span className="text-xs font-mono font-bold text-brand-accent">
+                    <span className="text-xs font-body font-bold text-brand-accent">
                       {formatDuration(selectedCall.duration_seconds)}
                     </span>
                   </div>
@@ -546,15 +546,15 @@ export const CallsTable: React.FC<CallsTableProps> = ({
                   {selectedCall.lead?.lead_score ? (
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
                       selectedCall.lead.lead_score.toLowerCase() === 'hot'
-                        ? 'text-rose-400 border-rose-500/30 bg-rose-500/10'
+                        ? 'text-rose-700 border-rose-500/30 bg-rose-500/10'
                         : selectedCall.lead.lead_score.toLowerCase() === 'warm'
-                        ? 'text-amber-400 border-amber-500/30 bg-amber-500/10'
+                        ? 'text-amber-700 border-amber-500/30 bg-amber-500/10'
                         : 'text-brand-accent border-brand-accent/30 bg-brand-accent/10'
                     }`}>
                       {selectedCall.lead.lead_score} Lead
                     </span>
                   ) : (
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase border text-cyan-300 border-cyan-400/30 bg-cyan-500/10">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase border text-cyan-700 border-cyan-400/30 bg-cyan-500/10">
                       Cold / Unanswered Call
                     </span>
                   )}
@@ -567,7 +567,7 @@ export const CallsTable: React.FC<CallsTableProps> = ({
                 {selectedCall.lead?.appointment_status && selectedCall.lead.appointment_status !== 'none' && (
                   <div className="pt-2 border-t border-brand-border/60 flex items-center justify-between text-xs">
                     <span className="text-brand-muted">Appointment:</span>
-                    <span className="font-bold text-emerald-400">Booked ({selectedCall.lead.appointment_status})</span>
+                    <span className="font-bold text-emerald-700">Booked ({selectedCall.lead.appointment_status})</span>
                   </div>
                 )}
               </div>
@@ -582,7 +582,7 @@ export const CallsTable: React.FC<CallsTableProps> = ({
                 </div>
                 <div className="p-3 rounded-xl bg-brand-bg border border-brand-border space-y-1">
                   <span className="text-[10px] text-brand-muted uppercase tracking-wider block">Call Duration</span>
-                  <span className="font-mono font-bold text-brand-text block">
+                  <span className="font-body font-bold text-brand-text block">
                     {formatDuration(selectedCall.duration_seconds)}
                   </span>
                 </div>

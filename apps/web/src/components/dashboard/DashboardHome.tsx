@@ -54,7 +54,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {overviewCards.map(card => (
           <div key={card.label} className="bg-brand-card border border-brand-border rounded-lg p-5 shadow-sm">
-            <p className="text-xs font-mono font-bold uppercase tracking-wider text-brand-muted">{card.label}</p>
+            <p className="text-xs font-body font-bold uppercase tracking-wider text-brand-muted">{card.label}</p>
             <div className="flex items-end gap-2 mt-3">
               <span className={`text-4xl font-display font-extrabold ${card.tone}`}>{card.value}</span>
             </div>
@@ -100,10 +100,10 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
                     <p className="text-sm text-brand-muted mt-1 line-clamp-2">{lead.summary || lead.requirement}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs text-brand-muted font-mono">{lead.phone}</span>
+                    <span className="text-xs text-brand-muted font-body">{lead.phone}</span>
                     <button
                       onClick={() => navigate('/leads')}
-                      className="px-3 py-2 bg-brand-accent hover:bg-brand-accent-hover rounded-md text-xs font-bold text-brand-text transition"
+                      className="px-3 py-2 bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground rounded-md text-xs font-bold transition"
                     >
                       Open
                     </button>
@@ -120,11 +120,11 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
             {activeBot ? (
               <div className="space-y-4 mt-4">
                 <div>
-                  <p className="text-xs font-mono uppercase tracking-wider text-brand-muted">Active Agent</p>
+                  <p className="text-xs font-body uppercase tracking-wider text-brand-muted">Active Agent</p>
                   <p className="font-semibold text-brand-text mt-1">{activeBot.businessName}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-mono uppercase tracking-wider text-brand-muted">Public Link</p>
+                  <p className="text-xs font-body uppercase tracking-wider text-brand-muted">Public Link</p>
                   <p className="text-xs text-brand-accent mt-1 break-all">/chats/{activeBot.subDomain}</p>
                 </div>
                 <div className="flex gap-2 pt-2">
@@ -136,7 +136,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
                   </button>
                   <button
                     onClick={() => launchPublicChat(activeBot.id)}
-                    className="flex-1 px-3 py-2 bg-brand-accent hover:bg-brand-accent-hover rounded-md text-xs font-bold text-brand-text transition"
+                    className="flex-1 px-3 py-2 bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground rounded-md text-xs font-bold transition"
                   >
                     Preview
                   </button>
@@ -147,7 +147,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
                 <p>No receptionist agent exists yet.</p>
                 <button
                   onClick={() => navigate('/agents/new')}
-                  className="mt-4 px-4 py-2 bg-brand-accent hover:bg-brand-accent-hover rounded-md text-xs font-bold text-brand-text transition"
+                  className="mt-4 px-4 py-2 bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground rounded-md text-xs font-bold transition"
                 >
                   Create agent
                 </button>

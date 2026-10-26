@@ -49,7 +49,7 @@ export const AgentDetailPage: React.FC<AgentDetailPageProps> = ({
           <button
             key={item.id}
             onClick={() => navigate(item.id === 'overview' ? `/agents/${activeBot.id}` : `/agents/${activeBot.id}/${item.id}`)}
-            className={`px-4 py-2 rounded-md text-sm font-semibold transition ${tab === item.id ? 'bg-brand-accent text-brand-text' : 'text-brand-muted hover:text-brand-text hover:bg-brand-bg'}`}
+            className={`px-4 py-2 rounded-md text-sm font-semibold transition ${tab === item.id ? 'bg-brand-accent text-primary-foreground ' : 'text-brand-muted hover:text-brand-text hover:bg-brand-bg'}`}
           >
             {item.label}
           </button>
@@ -60,24 +60,24 @@ export const AgentDetailPage: React.FC<AgentDetailPageProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5">
           <section className="bg-brand-card border border-brand-border rounded-lg p-6 space-y-5">
             <div>
-              <p className="text-xs font-mono uppercase tracking-wider text-brand-muted">Agent</p>
+              <p className="text-xs font-body uppercase tracking-wider text-brand-muted">Agent</p>
               <h3 className="text-2xl font-display font-bold text-brand-text mt-1">{activeBot.businessName}</h3>
               <p className="text-sm text-brand-muted mt-2">{activeBot.greeting}</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="bg-brand-bg border border-brand-border rounded-md p-4">
-                <p className="text-[10px] font-mono uppercase tracking-wider text-brand-muted">Industry</p>
+                <p className="text-[10px] font-body uppercase tracking-wider text-brand-muted">Industry</p>
                 <p className="text-sm font-semibold text-brand-text mt-2">{activeBot.industry}</p>
               </div>
               <div className="bg-brand-bg border border-brand-border rounded-md p-4">
-                <p className="text-[10px] font-mono uppercase tracking-wider text-brand-muted">Widget Color</p>
+                <p className="text-[10px] font-body uppercase tracking-wider text-brand-muted">Widget Color</p>
                 <div className="flex items-center gap-2 mt-2">
                   <span className="w-4 h-4 rounded-full border border-brand-border" style={{ background: activeBot.widgetConfig.primaryColor }} />
                   <p className="text-sm font-semibold text-brand-text">{activeBot.widgetConfig.primaryColor}</p>
                 </div>
               </div>
               <div className="bg-brand-bg border border-brand-border rounded-md p-4">
-                <p className="text-[10px] font-mono uppercase tracking-wider text-brand-muted">Widget Domains</p>
+                <p className="text-[10px] font-body uppercase tracking-wider text-brand-muted">Widget Domains</p>
                 <p className="text-sm font-semibold text-brand-text mt-2">{activeBot.allowedDomains?.length || 0}</p>
               </div>
             </div>
@@ -94,7 +94,7 @@ export const AgentDetailPage: React.FC<AgentDetailPageProps> = ({
             <button onClick={() => navigate(`/agents/${activeBot.id}/crm`)} className="w-full text-left px-3 py-3 bg-brand-bg hover:bg-brand-border border border-brand-border rounded-md text-sm text-brand-text transition">
               Connect your CRM
             </button>
-            <button onClick={() => launchPublicChat(activeBot.id)} className="w-full text-left px-3 py-3 bg-brand-accent hover:bg-brand-accent-hover rounded-md text-sm font-bold text-brand-text transition">
+            <button onClick={() => launchPublicChat(activeBot.id)} className="w-full text-left px-3 py-3 bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground rounded-md text-sm font-bold transition">
               Preview visitor chat
             </button>
           </aside>
@@ -132,7 +132,7 @@ export const AgentDetailPage: React.FC<AgentDetailPageProps> = ({
           <p className="text-sm text-brand-muted max-w-md mx-auto">Open the public chat experience exactly as a visitor would see it.</p>
           <button
             onClick={() => launchPublicChat(activeBot.id)}
-            className="px-5 py-2.5 bg-brand-accent hover:bg-brand-accent-hover text-brand-text rounded-lg text-sm font-bold transition"
+            className="px-5 py-2.5 bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground rounded-lg text-sm font-bold transition"
           >
             Open Preview
           </button>
