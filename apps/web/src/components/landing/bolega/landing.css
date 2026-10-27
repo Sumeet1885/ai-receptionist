@@ -106,7 +106,7 @@ html.bi-landing-root {
 .bi-landing .nav-center {
   display: flex;
   gap: 26px;
-  font-size: 12px;
+  font-size: 15px;
 }
 .bi-landing .nav-center a {
   position: relative;
@@ -130,7 +130,7 @@ html.bi-landing-root {
   color: white;
   border-radius: 50px;
   padding: 15px 23px;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -181,7 +181,7 @@ html.bi-landing-root {
   top: 13%;
   width: 100%;
   text-align: center;
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 3px;
 }
 .bi-landing .hero-canvas {
@@ -207,13 +207,13 @@ html.bi-landing-root {
   left: 6%;
   top: 52%;
   max-width: 155px;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.5;
   z-index: 3;
 }
 .bi-landing .hero-note small {
   display: block;
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 1.8px;
   margin-bottom: 14px;
   color: var(--muted);
@@ -232,7 +232,7 @@ html.bi-landing-root {
   gap: 8px;
 }
 .bi-landing .lang-chip {
-  font-size: 13px;
+  font-size: 15.5px;
   padding: 10px 19px;
   border: 1px solid #c8d6be;
   border-radius: 30px;
@@ -281,7 +281,7 @@ html.bi-landing-root {
   font-weight: 400;
 }
 .bi-landing .eyebrow {
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 2px;
   color: var(--muted);
   text-transform: uppercase;
@@ -315,11 +315,11 @@ html.bi-landing-root {
   background: var(--orange);
   padding: 18px 30px;
   box-shadow: 0 10px 35px #dd805c2b;
-  font-size: 13px;
+  font-size: 15.5px;
 }
 .bi-landing .hero-action small {
   display: block;
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
   margin-top: 12px;
 }
@@ -328,7 +328,7 @@ html.bi-landing-root {
   top: 41%;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 8px;
+  font-size: 11.5px;
   letter-spacing: 2px;
   z-index: 2;
   pointer-events: none;
@@ -389,7 +389,7 @@ html.bi-landing-root {
   font-weight: 400;
 }
 .bi-landing .hint {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
 }
 .bi-landing .playground {
@@ -426,11 +426,11 @@ html.bi-landing-root {
     transform 0.3s;
 }
 .bi-landing .scenario-btn .n {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--muted);
 }
 .bi-landing .scenario-btn strong {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
 }
 .bi-landing .scenario-btn .arrow {
@@ -458,7 +458,7 @@ html.bi-landing-root {
 }
 .bi-landing .language {
   padding: 9px 13px;
-  font-size: 11px;
+  font-size: 14px;
   border-radius: 25px;
   background: none;
   border: 1px solid var(--line);
@@ -468,7 +468,7 @@ html.bi-landing-root {
   border-color: var(--lime);
 }
 .bi-landing .demo-disclaimer {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
   margin-top: 17px;
 }
@@ -523,7 +523,7 @@ html.bi-landing-root {
   display: flex;
   justify-content: space-between;
   padding: 16px 20px;
-  font-size: 9px;
+  font-size: 12px;
 }
 .bi-landing .phone-notch {
   background: #dfe6d7;
@@ -561,7 +561,7 @@ html.bi-landing-root {
   font-weight: 600;
 }
 .bi-landing .phone-state {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
   margin: 6px 0 20px;
 }
@@ -635,7 +635,7 @@ html.bi-landing-root {
   margin: 12px 0;
 }
 .bi-landing .phone-foot {
-  font-size: 8px;
+  font-size: 11.5px;
   letter-spacing: 1px;
   color: var(--muted);
   padding-bottom: 7px;
@@ -649,7 +649,7 @@ html.bi-landing-root {
   border-radius: 10px;
   padding: 14px 18px;
   box-shadow: 0 10px 25px #2244220b;
-  font-size: 11px;
+  font-size: 14px;
   transform: rotate(-5deg);
   animation: bi-float 5s infinite;
 }
@@ -661,7 +661,7 @@ html.bi-landing-root {
   position: absolute;
   top: 25px;
   left: 25px;
-  font-size: 8px;
+  font-size: 11.5px;
   letter-spacing: 2px;
   color: var(--muted);
 }
@@ -684,7 +684,7 @@ html.bi-landing-root {
   position: absolute;
   top: 45px;
   left: 6%;
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 2px;
 }
 .bi-landing .story-copy {
@@ -699,7 +699,7 @@ html.bi-landing-root {
   max-width: 550px;
 }
 .bi-landing .story-copy p {
-  font-size: 13px;
+  font-size: 15.5px;
   max-width: 230px;
   color: var(--muted);
   line-height: 1.7;
@@ -753,7 +753,7 @@ html.bi-landing-root {
   border-radius: 13px;
   border: 1px solid #d5dfcb;
   padding: 18px 22px;
-  font-size: 12px;
+  font-size: 15px;
   box-shadow: 0 15px 30px #4560350b;
   transition:
     transform 0.8s,
@@ -775,7 +775,7 @@ html.bi-landing-root {
   transform: rotate(-3deg);
 }
 .bi-landing .flow-card small {
-  font-size: 8px;
+  font-size: 11.5px;
   display: block;
   color: var(--muted);
   margin-bottom: 8px;
@@ -797,7 +797,7 @@ html.bi-landing-root {
   background: none;
   text-align: left;
   padding: 13px 0;
-  font-size: 10px;
+  font-size: 13px;
   color: var(--muted);
 }
 .bi-landing .story-step.active {
@@ -808,7 +808,7 @@ html.bi-landing-root {
   position: absolute;
   right: 6%;
   top: 45px;
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 1px;
   color: var(--muted);
 }
@@ -921,13 +921,13 @@ html.bi-landing-root {
   border-top: 1px solid var(--line);
 }
 .bi-landing .footer small {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
 }
 .bi-landing .footer-links {
   display: flex;
   gap: 20px;
-  font-size: 10px;
+  font-size: 13px;
 }
 .bi-landing .reveal {
   opacity: 0;
@@ -989,7 +989,7 @@ html.bi-landing-root {
   margin: 0 0 12px;
 }
 .bi-landing dialog p {
-  font-size: 12px;
+  font-size: 15px;
   line-height: 1.7;
   color: var(--muted);
 }
@@ -1013,7 +1013,7 @@ html.bi-landing-root {
   margin-top: 20px;
 }
 .bi-landing label {
-  font-size: 11px;
+  font-size: 14px;
   display: grid;
   gap: 6px;
 }
@@ -1026,14 +1026,14 @@ html.bi-landing-root {
   color: var(--ink);
 }
 .bi-landing .sound-label {
-  font-size: 9px;
+  font-size: 12px;
 }
 .bi-landing .faq-item {
   padding: 15px 0;
   border-bottom: 1px solid var(--line);
 }
 .bi-landing summary {
-  font-size: 13px;
+  font-size: 15.5px;
   cursor: pointer;
 }
 .bi-landing .progress {
@@ -1061,7 +1061,7 @@ html.bi-landing-root {
   }
   .bi-landing .nav .btn {
     padding: 11px 15px;
-    font-size: 10px;
+    font-size: 13px;
     gap: 12px;
   }
   .bi-landing .hero {
@@ -1071,7 +1071,7 @@ html.bi-landing-root {
   }
   .bi-landing .hero-kicker {
     top: 15%;
-    font-size: 8px;
+    font-size: 11.5px;
   }
   .bi-landing .hero-word {
     top: 20%;
@@ -1081,11 +1081,11 @@ html.bi-landing-root {
   .bi-landing .hero-note {
     top: 37%;
     left: 6%;
-    font-size: 11px;
+    font-size: 14px;
     max-width: 105px;
   }
   .bi-landing .hero-note small {
-    font-size: 7px;
+    font-size: 11px;
     letter-spacing: 1px;
   }
   .bi-landing .hero-note em {
@@ -1098,7 +1098,7 @@ html.bi-landing-root {
   }
   .bi-landing .lang-chip {
     padding: 8px 11px;
-    font-size: 10px;
+    font-size: 13px;
   }
   .bi-landing .hero-action {
     top: 71%;
@@ -1115,7 +1115,7 @@ html.bi-landing-root {
     letter-spacing: -0.9px;
   }
   .bi-landing .hero-bottom .eyebrow {
-    font-size: 7px;
+    font-size: 11px;
   }
   .bi-landing .round {
     height: 40px;
@@ -1124,7 +1124,7 @@ html.bi-landing-root {
   }
   .bi-landing .cursor-hint {
     top: 51%;
-    font-size: 6px;
+    font-size: 11px;
   }
   .bi-landing .ticker {
     padding: 17px 0;
@@ -1168,13 +1168,13 @@ html.bi-landing-root {
     display: none;
   }
   .bi-landing .scenario-btn strong {
-    font-size: 10px;
+    font-size: 13px;
   }
   .bi-landing .language-row {
     margin-top: 17px;
   }
   .bi-landing .demo-disclaimer {
-    font-size: 8px;
+    font-size: 11.5px;
   }
   .bi-landing .call-scene {
     min-height: 460px;
@@ -1189,7 +1189,7 @@ html.bi-landing-root {
   .bi-landing .outcome-tag {
     right: 8px;
     bottom: 35px;
-    font-size: 9px;
+    font-size: 12px;
   }
   .bi-landing .story {
     height: 230vh;
@@ -1202,7 +1202,7 @@ html.bi-landing-root {
   }
   .bi-landing .story-foot {
     top: 25px;
-    font-size: 7px;
+    font-size: 11px;
   }
   .bi-landing .story-copy {
     top: 13%;
@@ -1215,7 +1215,7 @@ html.bi-landing-root {
     letter-spacing: -2.5px;
   }
   .bi-landing .story-copy p {
-    font-size: 11px;
+    font-size: 14px;
     max-width: 260px;
     margin: 12px 0;
   }
@@ -1236,7 +1236,7 @@ html.bi-landing-root {
   }
   .bi-landing .flow-card {
     padding: 13px;
-    font-size: 10px;
+    font-size: 13px;
   }
   .bi-landing .flow-card.one {
     top: 13%;
@@ -1255,7 +1255,7 @@ html.bi-landing-root {
     gap: 10px;
   }
   .bi-landing .story-step {
-    font-size: 8px;
+    font-size: 11.5px;
   }
   .bi-landing .language-wall {
     padding: 65px 0;
@@ -1295,11 +1295,11 @@ html.bi-landing-root {
     gap: 20px;
   }
   .bi-landing .footer small {
-    font-size: 8px;
+    font-size: 11.5px;
   }
   .bi-landing .footer-links {
     gap: 15px;
-    font-size: 9px;
+    font-size: 12px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1323,7 +1323,7 @@ html.bi-landing-root {
   animation-play-state: paused !important;
 }
 .bi-landing .hero-kicker {
-  font-size: 10px;
+  font-size: 13px;
   letter-spacing: 2.2px;
 }
 .bi-landing .hero-bottom h1 {
@@ -1355,13 +1355,13 @@ html.bi-landing-root {
 }
 .bi-landing .workflow-tab small {
   display: block;
-  font-size: 8px;
+  font-size: 11.5px;
   letter-spacing: 1.5px;
   margin-bottom: 10px;
 }
 .bi-landing .workflow-tab strong {
   font-family: var(--font-display);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
 }
 .bi-landing .browser-shell {
@@ -1378,12 +1378,12 @@ html.bi-landing-root {
   justify-content: space-between;
   padding: 0 18px;
   background: #e9eedf;
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
   border-bottom: 1px solid var(--line);
 }
 .bi-landing .browser-dots {
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 3px;
   color: #a3b194;
 }
@@ -1401,17 +1401,17 @@ html.bi-landing-root {
   display: flex;
   justify-content: space-between;
   gap: 20px;
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
   margin-top: 20px;
   line-height: 1.6;
 }
 .bi-landing .small-label {
-  font-size: 9px;
+  font-size: 12px;
   white-space: nowrap;
 }
 .bi-landing .cta-sub {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
   margin-top: 19px;
 }
@@ -1424,13 +1424,13 @@ html.bi-landing-root {
     padding: 12px 0;
   }
   .bi-landing .workflow-tab strong {
-    font-size: 12px;
+    font-size: 15px;
   }
   .bi-landing .workflow-tab small {
-    font-size: 7px;
+    font-size: 11px;
   }
   .bi-landing .browser-bar {
-    font-size: 7px;
+    font-size: 11px;
     padding: 0 10px;
   }
   .bi-landing .browser-dots {
@@ -1441,30 +1441,30 @@ html.bi-landing-root {
   }
   .bi-landing .tour-caption {
     display: block;
-    font-size: 10px;
+    font-size: 13px;
   }
   .bi-landing .small-label {
     display: block;
     margin-top: 7px;
   }
   .bi-landing .hero-kicker {
-    font-size: 7px;
+    font-size: 11px;
     letter-spacing: 1.1px;
   }
   .bi-landing .hero-note {
     max-width: 110px;
   }
   .bi-landing .hero-action small {
-    font-size: 7px;
+    font-size: 11px;
   }
   .bi-landing .hero-bottom h1 {
     font-size: 23px;
   }
   .bi-landing .hero-bottom .eyebrow {
-    font-size: 6px;
+    font-size: 11px;
   }
   .bi-landing .outcome-tag {
-    font-size: 8px;
+    font-size: 11.5px;
     max-width: 180px;
   }
   .bi-landing .transcript {
@@ -1488,7 +1488,7 @@ html.bi-landing-root {
   left: 6%;
   width: 44%;
   text-align: left;
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 1.8px;
 }
 .bi-landing .hero-canvas {
@@ -1521,7 +1521,7 @@ html.bi-landing-root {
   display: none;
 }
 .bi-landing .hero-description {
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.85;
   color: var(--muted);
   max-width: 365px;
@@ -1536,10 +1536,10 @@ html.bi-landing-root {
 }
 .bi-landing .hero-action .btn {
   padding: 18px 26px;
-  font-size: 12px;
+  font-size: 15px;
 }
 .bi-landing .hero-action small {
-  font-size: 8px;
+  font-size: 11.5px;
   margin-top: 14px;
 }
 .bi-landing .hero-floor {
@@ -1560,7 +1560,7 @@ html.bi-landing-root {
 }
 .bi-landing .hero-lead-label {
   display: block;
-  font-size: 7px;
+  font-size: 11px;
   color: var(--muted);
   letter-spacing: 1.2px;
   margin-bottom: 12px;
@@ -1573,13 +1573,13 @@ html.bi-landing-root {
 }
 .bi-landing .hero-lead-status {
   display: block;
-  font-size: 10px;
+  font-size: 13px;
   color: var(--green);
   margin-top: 11px;
 }
 .bi-landing .hero-lead-card small {
   display: block;
-  font-size: 8px;
+  font-size: 11.5px;
   color: var(--muted);
   margin-top: 9px;
 }
@@ -1603,7 +1603,7 @@ html.bi-landing-root {
   display: flex;
   justify-content: space-between;
   gap: 20px;
-  font-size: 10px;
+  font-size: 13px;
   color: var(--muted);
   margin-top: 19px;
   line-height: 1.7;
@@ -1620,7 +1620,7 @@ html.bi-landing-root {
   padding-top: 60px;
 }
 .bi-landing .nav .btn {
-  font-size: 11px;
+  font-size: 14px;
 }
 @media (min-width: 1600px) {
   .bi-landing .hero-action {
@@ -1647,7 +1647,7 @@ html.bi-landing-root {
     top: 120px;
     left: 7%;
     width: 86%;
-    font-size: 7px;
+    font-size: 11px;
     letter-spacing: 1.2px;
   }
   .bi-landing .hero-bottom {
@@ -1662,7 +1662,7 @@ html.bi-landing-root {
     line-height: 1.06;
   }
   .bi-landing .hero-description {
-    font-size: 12px;
+    font-size: 15px;
     line-height: 1.8;
     max-width: 340px;
   }
@@ -1675,10 +1675,10 @@ html.bi-landing-root {
   }
   .bi-landing .hero-action .btn {
     padding: 16px 24px;
-    font-size: 11px;
+    font-size: 14px;
   }
   .bi-landing .hero-action small {
-    font-size: 7px;
+    font-size: 11px;
   }
   .bi-landing .hero-canvas {
     left: 0;
@@ -1707,7 +1707,7 @@ html.bi-landing-root {
   }
   .bi-landing .video-section .heading .hint {
     display: block;
-    font-size: 10px;
+    font-size: 13px;
     line-height: 1.7;
     max-width: 250px;
   }
@@ -1716,7 +1716,7 @@ html.bi-landing-root {
   }
   .bi-landing .video-caption {
     display: block;
-    font-size: 8px;
+    font-size: 11.5px;
   }
   .bi-landing .video-caption span {
     display: block;
@@ -1729,7 +1729,7 @@ html.bi-landing-root {
     padding-top: 30px;
   }
   .bi-landing .nav .btn {
-    font-size: 9px;
+    font-size: 12px;
     padding: 10px 13px;
   }
   .bi-landing .nav .brand {
@@ -1744,11 +1744,11 @@ html.bi-landing-root {
     top: 445px;
   }
   .bi-landing .hero-description {
-    font-size: 11px;
+    font-size: 14px;
   }
   .bi-landing .nav .btn {
     max-width: 130px;
-    font-size: 8px;
+    font-size: 11.5px;
   }
 }
 .bi-landing .walkthrough-player {
@@ -1776,7 +1776,7 @@ html.bi-landing-root {
   background: color-mix(in srgb, var(--color-surface) 93%, transparent);
   padding: 9px 13px;
   border-radius: 25px;
-  font-size: 10px;
+  font-size: 13px;
   color: var(--ink);
   white-space: nowrap;
 }
@@ -1792,7 +1792,7 @@ html.bi-landing-root {
   }
   .bi-landing .watch-film span {
     top: 57px;
-    font-size: 8px;
+    font-size: 11.5px;
     padding: 6px 10px;
   }
 }
@@ -1838,7 +1838,7 @@ html.bi-landing-root {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  font-size: 13px;
+  font-size: 15.5px;
   color: var(--ink);
   z-index: 2;
 }
@@ -1855,7 +1855,7 @@ html.bi-landing-root {
     right: 15px;
     width: 30px;
     height: 30px;
-    font-size: 11px;
+    font-size: 14px;
   }
   .bi-landing .walkthrough-player video {
     object-fit: contain;
@@ -1885,7 +1885,7 @@ html.bi-landing-root {
   position: static;
   width: auto;
   margin-bottom: 28px;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.6;
   text-align: left;
 }
@@ -1894,7 +1894,7 @@ html.bi-landing-root {
   margin: 0 0 26px;
 }
 .bi-landing .hero-description {
-  font-size: 14px;
+  font-size: 16px;
   max-width: 390px;
   line-height: 1.8;
 }
@@ -1943,7 +1943,7 @@ html.bi-landing-root {
 }
 @media (min-width: 1600px) {
   .bi-landing .hero-description {
-    font-size: 15px;
+    font-size: 16px;
     max-width: 440px;
   }
   .bi-landing .hero-visual {
@@ -1953,7 +1953,7 @@ html.bi-landing-root {
     bottom: auto;
   }
   .bi-landing .hero-kicker {
-    font-size: 10px;
+    font-size: 13px;
   }
 }
 @media (max-width: 800px) {
@@ -1976,7 +1976,7 @@ html.bi-landing-root {
   }
   .bi-landing .hero-kicker {
     position: static;
-    font-size: 7px;
+    font-size: 11px;
     width: 100%;
     margin-bottom: 21px;
     line-height: 1.7;
@@ -1987,7 +1987,7 @@ html.bi-landing-root {
     margin-bottom: 20px;
   }
   .bi-landing .hero-description {
-    font-size: 12px;
+    font-size: 15px;
     max-width: 360px;
   }
   .bi-landing .hero-action {
@@ -1998,7 +1998,7 @@ html.bi-landing-root {
     left: auto;
   }
   .bi-landing .hero-action small {
-    font-size: 7px;
+    font-size: 11px;
     max-width: 310px;
   }
   .bi-landing .hero-visual {
@@ -2021,10 +2021,10 @@ html.bi-landing-root {
     padding: 16px 20px;
   }
   .bi-landing .hero-lead-label {
-    font-size: 7px;
+    font-size: 11px;
   }
   .bi-landing .hero-lead-card strong {
-    font-size: 15px;
+    font-size: 16px;
   }
   .bi-landing .hero-backdrop {
     background: radial-gradient(ellipse at 50% 78%, #e2edcd, transparent 43%);
@@ -2098,7 +2098,7 @@ html.bi-landing-root {
   border: 1px solid #d9e2ce;
   background: color-mix(in srgb, var(--color-surface) 85%, transparent);
   border-radius: 30px;
-  font-size: 8px;
+  font-size: 11.5px;
   letter-spacing: 1px;
   color: var(--green);
 }
@@ -2130,7 +2130,7 @@ html.bi-landing-root {
     top: 12px;
     left: 12px;
     padding: 6px 9px;
-    font-size: 7px;
+    font-size: 11px;
   }
   .bi-landing .hero-visual:before {
     inset: 8% -10% 0;
@@ -2157,7 +2157,7 @@ html.bi-landing-root {
   z-index: 3;
 }
 .bi-landing .hero-kicker {
-  font-size: 9px;
+  font-size: 12px;
   margin-bottom: 18px;
   text-align: center;
   letter-spacing: 2px;
@@ -2169,7 +2169,7 @@ html.bi-landing-root {
   margin-bottom: 17px;
 }
 .bi-landing .hero-description {
-  font-size: 12px;
+  font-size: 15px;
   line-height: 1.8;
   max-width: 530px;
   margin: auto;
@@ -2236,7 +2236,7 @@ html.bi-landing-root {
   margin-top: 13px;
 }
 .bi-landing .persona-pills span {
-  font-size: 8px;
+  font-size: 11.5px;
   border: 1px solid #d8e2cc;
   border-radius: 20px;
   padding: 6px 8px;
@@ -2272,7 +2272,7 @@ html.bi-landing-root {
   z-index: 3;
 }
 .bi-landing .hero-lead-label {
-  font-size: 7px;
+  font-size: 11px;
   line-height: 1.6;
 }
 .bi-landing .hero-lead-card strong {
@@ -2280,11 +2280,11 @@ html.bi-landing-root {
   line-height: 1.5;
 }
 .bi-landing .hero-lead-status {
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.7;
 }
 .bi-landing .hero-lead-card small {
-  font-size: 8px;
+  font-size: 11.5px;
   line-height: 1.6;
 }
 .bi-landing .hero-orb-caption {
@@ -2292,7 +2292,7 @@ html.bi-landing-root {
   left: 50%;
   bottom: 4%;
   transform: translateX(-50%);
-  font-size: 8px;
+  font-size: 11.5px;
   letter-spacing: 1.5px;
   white-space: nowrap;
   z-index: 2;
@@ -2317,7 +2317,7 @@ html.bi-landing-root {
 }
 .bi-landing .hero-cta-bottom small {
   display: block;
-  font-size: 8px;
+  font-size: 11.5px;
   color: var(--muted);
   margin-top: 11px;
 }
@@ -2351,7 +2351,7 @@ html.bi-landing-root {
   color: var(--muted);
   border-radius: 25px;
   padding: 9px 13px;
-  font-size: 9px;
+  font-size: 12px;
   transition:
     background 0.25s,
     color 0.25s;
@@ -2389,7 +2389,7 @@ html.bi-landing-root {
     font-size: 68px;
   }
   .bi-landing .hero-description {
-    font-size: 14px;
+    font-size: 16px;
     max-width: 600px;
   }
   .bi-landing .hero-cta-bottom {
@@ -2413,10 +2413,10 @@ html.bi-landing-root {
     font-size: 16px;
   }
   .bi-landing .hero-lead-card strong {
-    font-size: 15px;
+    font-size: 16px;
   }
   .bi-landing .persona-pills span {
-    font-size: 7px;
+    font-size: 11px;
     padding: 4px;
   }
 }
@@ -2434,7 +2434,7 @@ html.bi-landing-root {
     text-align: center;
   }
   .bi-landing .hero-kicker {
-    font-size: 7px;
+    font-size: 11px;
     line-height: 1.7;
     margin-bottom: 18px;
   }
@@ -2444,7 +2444,7 @@ html.bi-landing-root {
     line-height: 1.12;
   }
   .bi-landing .hero-description {
-    font-size: 11px;
+    font-size: 14px;
     max-width: 320px;
   }
   .bi-landing .hero-visual {
@@ -2489,13 +2489,13 @@ html.bi-landing-root {
     margin: 9px 0;
   }
   .bi-landing .hero-input-card strong {
-    font-size: 14px;
+    font-size: 16px;
   }
   .bi-landing .hero-lead-card strong {
-    font-size: 13px;
+    font-size: 15.5px;
   }
   .bi-landing .hero-lead-label {
-    font-size: 6px;
+    font-size: 11px;
     letter-spacing: 0.7px;
   }
   .bi-landing .persona-pills {
@@ -2503,14 +2503,14 @@ html.bi-landing-root {
     margin-top: 9px;
   }
   .bi-landing .persona-pills span {
-    font-size: 6px;
+    font-size: 11px;
     padding: 4px 6px;
   }
   .bi-landing .hero-lead-status {
-    font-size: 7px;
+    font-size: 11px;
   }
   .bi-landing .hero-lead-card small {
-    font-size: 6px;
+    font-size: 11px;
   }
   .bi-landing .context-feed {
     margin-top: 10px;
@@ -2521,7 +2521,7 @@ html.bi-landing-root {
   .bi-landing .hero-orb-caption {
     bottom: auto;
     top: 55%;
-    font-size: 6px;
+    font-size: 11px;
     letter-spacing: 1px;
   }
   .bi-landing .hero-cta-bottom {
@@ -2529,10 +2529,10 @@ html.bi-landing-root {
   }
   .bi-landing .hero-cta-bottom .btn {
     padding: 16px 24px;
-    font-size: 11px;
+    font-size: 14px;
   }
   .bi-landing .hero-cta-bottom small {
-    font-size: 6px;
+    font-size: 11px;
   }
   .bi-landing .hero-brand-backdrop {
     top: 34%;
@@ -2548,7 +2548,7 @@ html.bi-landing-root {
     padding: 4px;
   }
   .bi-landing .film-chapters button {
-    font-size: 6px;
+    font-size: 11px;
     padding: 8px 6px;
   }
   .bi-landing .film-pause {
@@ -2558,11 +2558,11 @@ html.bi-landing-root {
     height: 26px;
   }
   .bi-landing .film-status {
-    font-size: 6px;
+    font-size: 11px;
     padding: 5px 8px;
   }
   .bi-landing .hero-input-card .hero-lead-label {
-    font-size: 6px;
+    font-size: 11px;
   }
   .bi-landing .hero-visual:before {
     inset: -10% 0 15%;
@@ -2579,7 +2579,7 @@ html.bi-landing-root {
     top: 400px;
   }
   .bi-landing .film-chapters button {
-    font-size: 5px;
+    font-size: 11px;
     padding: 8px 5px;
   }
 }
@@ -2608,7 +2608,7 @@ html.bi-landing-root {
 }
 .bi-landing .nav-center {
   gap: 23px;
-  font-size: 11px;
+  font-size: 14px;
 }
 .bi-landing .nav-center a.active {
   color: var(--green);
@@ -2622,7 +2622,7 @@ html.bi-landing-root {
   gap: 10px;
 }
 .bi-landing .nav .btn {
-  font-size: 11px;
+  font-size: 14px;
   padding: 13px 20px;
 }
 .bi-landing .mobile-menu-toggle {
@@ -2655,13 +2655,13 @@ html.bi-landing-root {
   justify-content: space-between;
   padding: 16px 0;
   border-bottom: 1px solid var(--line);
-  font-size: 15px;
+  font-size: 16px;
 }
 .bi-landing .mobile-menu a:last-child {
   border: 0;
 }
 .bi-landing .mobile-menu a span {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
 }
 .bi-landing .meaning-section {
@@ -2685,7 +2685,7 @@ html.bi-landing-root {
 .bi-landing .meaning-heading > p {
   max-width: 340px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 15px;
   line-height: 1.9;
   margin-bottom: 4px;
 }
@@ -2697,12 +2697,12 @@ html.bi-landing-root {
   border-top: 1px solid var(--line);
   padding-top: 22px;
   margin-top: 25px;
-  font-size: 10px;
+  font-size: 13px;
   color: var(--muted);
 }
 .bi-landing .meaning-bottom a {
   color: var(--green);
-  font-size: 11px;
+  font-size: 14px;
 }
 .bi-landing .persona-universe {
   position: relative;
@@ -2739,7 +2739,7 @@ html.bi-landing-root {
 }
 .bi-landing .context-tile span {
   display: block;
-  font-size: 8px;
+  font-size: 11.5px;
   letter-spacing: 1px;
   color: var(--muted);
 }
@@ -2751,7 +2751,7 @@ html.bi-landing-root {
 }
 .bi-landing .context-tile i {
   font-style: normal;
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
 }
 .bi-landing .context-tile.offering {
@@ -2802,7 +2802,7 @@ html.bi-landing-root {
   margin-top: 20px;
 }
 .bi-landing .persona-heart small {
-  font-size: 7px;
+  font-size: 11px;
   color: var(--muted);
   letter-spacing: 1.3px;
   display: block;
@@ -2829,13 +2829,13 @@ html.bi-landing-root {
   margin: 12px 0;
 }
 .bi-landing .system-station p {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
   line-height: 1.8;
   max-width: 260px;
 }
 .bi-landing .station-number {
-  font-size: 8px;
+  font-size: 11.5px;
   letter-spacing: 1.3px;
   color: var(--muted);
 }
@@ -2859,14 +2859,14 @@ html.bi-landing-root {
   background: var(--color-surface);
   border: 1px solid #d5dfc8;
   border-radius: 8px;
-  font-size: 10px;
+  font-size: 13px;
   display: flex;
   gap: 12px;
   align-items: center;
   animation: bi-rowNudge 5s infinite;
 }
 .bi-landing .contact-stack > div:first-child {
-  font-size: 13px;
+  font-size: 15.5px;
   background: #dfeacd;
   font-weight: 600;
 }
@@ -2883,7 +2883,7 @@ html.bi-landing-root {
 }
 .bi-landing .contact-stack i {
   font-style: normal;
-  font-size: 8px;
+  font-size: 11.5px;
   border-radius: 50%;
   background: #e4edd7;
   height: 20px;
@@ -2962,7 +2962,7 @@ html.bi-landing-root {
   border: 1px solid #d7e0cc;
   padding: 12px 18px;
   border-radius: 8px;
-  font-size: 10px;
+  font-size: 13px;
   rotate: 3deg;
 }
 @keyframes bi-clockHand {
@@ -2996,7 +2996,7 @@ html.bi-landing-root {
   border: 1px solid #d7e0cc;
   padding: 12px 18px;
   border-radius: 8px;
-  font-size: 9px;
+  font-size: 12px;
   rotate: -3deg;
 }
 .bi-landing .system-outcome {
@@ -3017,12 +3017,12 @@ html.bi-landing-root {
   font-size: 20px;
 }
 .bi-landing .system-outcome strong {
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 500;
 }
 .bi-landing .system-outcome small {
   display: block;
-  font-size: 10px;
+  font-size: 13px;
   color: var(--muted);
   margin-top: 7px;
 }
@@ -3049,10 +3049,10 @@ html.bi-landing-root {
   gap: 12px;
 }
 .bi-landing .result-card-top .eyebrow {
-  font-size: 7px;
+  font-size: 11px;
 }
 .bi-landing .ready-pill {
-  font-size: 8px;
+  font-size: 11.5px;
   color: var(--green);
   background: #e5eed9;
   padding: 7px 10px;
@@ -3081,7 +3081,7 @@ html.bi-landing-root {
   margin: 0 0 6px;
 }
 .bi-landing .result-person small {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
 }
 .bi-landing .lead-fact {
@@ -3101,13 +3101,13 @@ html.bi-landing-root {
 }
 .bi-landing .lead-fact > span {
   display: block;
-  font-size: 7px;
+  font-size: 11px;
   letter-spacing: 1.3px;
   color: var(--muted);
   margin-bottom: 9px;
 }
 .bi-landing .lead-fact strong {
-  font-size: 13px;
+  font-size: 15.5px;
   font-weight: 500;
   display: block;
   padding-right: 22px;
@@ -3117,11 +3117,11 @@ html.bi-landing-root {
   right: 16px;
   top: 34px;
   font-style: normal;
-  font-size: 10px;
+  font-size: 13px;
   color: #96a78a;
 }
 .bi-landing .result-footer {
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.7;
   color: var(--muted);
   margin-top: 25px;
@@ -3140,10 +3140,10 @@ html.bi-landing-root {
   margin-bottom: 25px;
 }
 .bi-landing .transcript-story-top .eyebrow {
-  font-size: 7px;
+  font-size: 11px;
 }
 .bi-landing .transcript-live {
-  font-size: 8px;
+  font-size: 11.5px;
   color: var(--muted);
   white-space: nowrap;
 }
@@ -3170,16 +3170,16 @@ html.bi-landing-root {
   border-color: #cbd8bb;
 }
 .bi-landing .transcript-role {
-  font-size: 7px;
+  font-size: 11px;
   letter-spacing: 1.4px;
   color: var(--muted);
 }
 .bi-landing .transcript-pair p {
-  font-size: 12px;
+  font-size: 15px;
   margin: 7px 0 10px;
 }
 .bi-landing .customer-quote {
-  font-size: 11px;
+  font-size: 14px;
   line-height: 1.65;
   background: #f8e8da;
   border-radius: 7px;
@@ -3226,7 +3226,7 @@ html.bi-landing-root {
   margin-bottom: 18px;
 }
 .bi-landing .industry-card .eyebrow {
-  font-size: 7px;
+  font-size: 11px;
 }
 .bi-landing .industry-card h3 {
   font: 500 18px/1.35 var(--font-display);
@@ -3235,7 +3235,7 @@ html.bi-landing-root {
   min-height: 49px;
 }
 .bi-landing .industry-card p {
-  font-size: 10px;
+  font-size: 13px;
   line-height: 1.9;
   color: var(--muted);
   min-height: 76px;
@@ -3244,7 +3244,7 @@ html.bi-landing-root {
   border-top: 1px solid var(--line);
   padding-top: 15px;
   margin-top: 15px;
-  font-size: 8px;
+  font-size: 11.5px;
   color: var(--green);
   line-height: 1.7;
 }
@@ -3256,7 +3256,7 @@ html.bi-landing-root {
   background: white;
   border: 1px solid #d4dfc8;
   border-radius: 25px;
-  font-size: 7px;
+  font-size: 11px;
   padding: 8px 12px;
   white-space: nowrap;
   animation: bi-float 6s infinite;
@@ -3367,7 +3367,7 @@ html.bi-landing-root {
   margin: 12px 0;
 }
 .bi-landing .direction-card p {
-  font-size: 11px;
+  font-size: 14px;
   line-height: 1.9;
   color: var(--muted);
   max-width: 290px;
@@ -3390,7 +3390,7 @@ html.bi-landing-root {
   border-radius: 8px;
   background: var(--color-surface);
   padding: 10px 14px;
-  font-size: 10px;
+  font-size: 13px;
   rotate: -2deg;
   animation: bi-rowNudge 5s infinite;
 }
@@ -3403,7 +3403,7 @@ html.bi-landing-root {
   gap: 7px;
 }
 .bi-landing .timing-visual > span {
-  font-size: 8px;
+  font-size: 11.5px;
   border: 1px solid #d5dfc9;
   border-radius: 8px;
   padding: 19px 9px;
@@ -3418,7 +3418,7 @@ html.bi-landing-root {
 }
 .bi-landing .timing-visual b {
   font-weight: 500;
-  font-size: 12px;
+  font-size: 15px;
   display: block;
   margin-top: 10px;
 }
@@ -3435,7 +3435,7 @@ html.bi-landing-root {
 .bi-landing .criteria-visual span {
   border-bottom: 1px solid var(--line);
   padding: 10px 2px;
-  font-size: 11px;
+  font-size: 14px;
   min-width: 190px;
   display: flex;
   justify-content: space-between;
@@ -3462,13 +3462,13 @@ html.bi-landing-root {
   font-size: clamp(36px, 4vw, 55px);
 }
 .bi-landing .questions-intro p {
-  font-size: 12px;
+  font-size: 15px;
   line-height: 1.9;
   color: var(--muted);
   margin: 24px 0;
 }
 .bi-landing .questions-intro .btn {
-  font-size: 10px;
+  font-size: 13px;
   padding: 13px 19px;
 }
 .bi-landing .questions-list details {
@@ -3479,7 +3479,7 @@ html.bi-landing-root {
   padding-top: 0;
 }
 .bi-landing .questions-list summary {
-  font-size: 13px;
+  font-size: 15.5px;
   list-style: none;
   display: flex;
   justify-content: space-between;
@@ -3497,7 +3497,7 @@ html.bi-landing-root {
   content: "−";
 }
 .bi-landing .questions-list details p {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
   line-height: 1.9;
   margin: 15px 30px 0 0;
@@ -3554,13 +3554,13 @@ html.bi-landing-root {
   }
   .bi-landing .nav-center {
     gap: 15px;
-    font-size: 10px;
+    font-size: 13px;
   }
   .bi-landing .brand {
     font-size: 20px;
   }
   .bi-landing .nav .btn {
-    font-size: 10px;
+    font-size: 13px;
     padding: 12px 16px;
   }
 }
@@ -3583,7 +3583,7 @@ html.bi-landing-root {
   }
   .bi-landing .nav .btn {
     padding: 11px 14px;
-    font-size: 9px;
+    font-size: 12px;
   }
   .bi-landing .nav .brand {
     font-size: 18px;
@@ -3604,7 +3604,7 @@ html.bi-landing-root {
     letter-spacing: -2px;
   }
   .bi-landing .meaning-heading > p {
-    font-size: 11px;
+    font-size: 14px;
     margin-top: 20px;
     max-width: 100%;
   }
@@ -3625,11 +3625,11 @@ html.bi-landing-root {
     margin: auto;
   }
   .bi-landing .persona-heart strong {
-    font-size: 14px;
+    font-size: 16px;
     margin-top: 12px;
   }
   .bi-landing .persona-heart small {
-    font-size: 6px;
+    font-size: 11px;
   }
   .bi-landing .context-tile {
     width: 46%;
@@ -3641,11 +3641,11 @@ html.bi-landing-root {
     margin: 8px 0;
   }
   .bi-landing .context-tile span {
-    font-size: 6px;
+    font-size: 11px;
     letter-spacing: 0.7px;
   }
   .bi-landing .context-tile i {
-    font-size: 7px;
+    font-size: 11px;
     line-height: 1.8;
     display: block;
   }
@@ -3666,12 +3666,12 @@ html.bi-landing-root {
     bottom: 5px;
   }
   .bi-landing .meaning-bottom {
-    font-size: 8px;
+    font-size: 11.5px;
     line-height: 1.8;
     gap: 15px;
   }
   .bi-landing .meaning-bottom a {
-    font-size: 9px;
+    font-size: 12px;
     white-space: nowrap;
   }
   .bi-landing .system-track {
@@ -3695,7 +3695,7 @@ html.bi-landing-root {
   .bi-landing .system-station .station-number {
     grid-column: 2;
     align-self: end;
-    font-size: 6px;
+    font-size: 11px;
     letter-spacing: 0.8px;
   }
   .bi-landing .system-station h3 {
@@ -3706,7 +3706,7 @@ html.bi-landing-root {
   }
   .bi-landing .system-station p {
     grid-column: 2;
-    font-size: 10px;
+    font-size: 13px;
     max-width: 100%;
   }
   .bi-landing .system-connector {
@@ -3715,16 +3715,16 @@ html.bi-landing-root {
   .bi-landing .contact-stack > div {
     width: 132px;
     padding: 10px 8px;
-    font-size: 7px;
+    font-size: 11px;
     gap: 6px;
   }
   .bi-landing .contact-stack > div:first-child {
-    font-size: 10px;
+    font-size: 13px;
   }
   .bi-landing .contact-stack i {
     height: 16px;
     width: 16px;
-    font-size: 7px;
+    font-size: 11px;
   }
   .bi-landing .mini-clock {
     width: 100px;
@@ -3737,7 +3737,7 @@ html.bi-landing-root {
     height: 26px;
   }
   .bi-landing .time-chip {
-    font-size: 7px;
+    font-size: 11px;
     padding: 8px 10px;
     bottom: 3px;
   }
@@ -3752,7 +3752,7 @@ html.bi-landing-root {
     height: 110px;
   }
   .bi-landing .call-art-chip {
-    font-size: 6px;
+    font-size: 11px;
     padding: 8px;
     bottom: 2px;
     white-space: nowrap;
@@ -3767,11 +3767,11 @@ html.bi-landing-root {
     font-size: 17px;
   }
   .bi-landing .system-outcome strong {
-    font-size: 11px;
+    font-size: 14px;
     line-height: 1.7;
   }
   .bi-landing .system-outcome small {
-    font-size: 8px;
+    font-size: 11.5px;
     line-height: 1.8;
   }
   .bi-landing .system-outcome a {
@@ -3789,10 +3789,10 @@ html.bi-landing-root {
     font-size: 19px;
   }
   .bi-landing .lead-fact strong {
-    font-size: 12px;
+    font-size: 15px;
   }
   .bi-landing .result-footer {
-    font-size: 8px;
+    font-size: 11.5px;
   }
   .bi-landing .autoplay-caption {
     display: none;
@@ -3808,7 +3808,7 @@ html.bi-landing-root {
     height: 150px;
   }
   .bi-landing .industry-card .eyebrow {
-    font-size: 6px;
+    font-size: 11px;
     letter-spacing: 1px;
   }
   .bi-landing .industry-card h3 {
@@ -3816,16 +3816,16 @@ html.bi-landing-root {
     min-height: 43px;
   }
   .bi-landing .industry-card p {
-    font-size: 9px;
+    font-size: 12px;
     line-height: 1.8;
     min-height: 80px;
   }
   .bi-landing .industry-outcome {
-    font-size: 7px;
+    font-size: 11px;
     line-height: 1.7;
   }
   .bi-landing .industry-float {
-    font-size: 6px;
+    font-size: 11px;
     padding: 7px 8px;
     bottom: 5px;
   }
@@ -3863,7 +3863,7 @@ html.bi-landing-root {
   .bi-landing .direction-card > .station-number {
     grid-column: 2;
     align-self: end;
-    font-size: 6px;
+    font-size: 11px;
     letter-spacing: 1px;
   }
   .bi-landing .direction-card h3 {
@@ -3873,11 +3873,11 @@ html.bi-landing-root {
   }
   .bi-landing .direction-card p {
     grid-column: 2;
-    font-size: 10px;
+    font-size: 13px;
     line-height: 1.8;
   }
   .bi-landing .questions-visual span {
-    font-size: 7px;
+    font-size: 11px;
     padding: 9px 7px;
   }
   .bi-landing .timing-visual {
@@ -3885,14 +3885,14 @@ html.bi-landing-root {
     flex-wrap: wrap;
   }
   .bi-landing .timing-visual > span {
-    font-size: 6px;
+    font-size: 11px;
     padding: 13px 6px;
   }
   .bi-landing .timing-visual b {
-    font-size: 8px;
+    font-size: 11.5px;
   }
   .bi-landing .criteria-visual span {
-    font-size: 9px;
+    font-size: 12px;
     min-width: 125px;
     gap: 20px;
   }
@@ -3904,14 +3904,14 @@ html.bi-landing-root {
     font-size: 40px;
   }
   .bi-landing .questions-intro p {
-    font-size: 11px;
+    font-size: 14px;
     margin: 20px 0;
   }
   .bi-landing .questions-list summary {
-    font-size: 12px;
+    font-size: 15px;
   }
   .bi-landing .questions-list details p {
-    font-size: 11px;
+    font-size: 14px;
     margin-right: 0;
   }
   .bi-landing .questions-list details {
@@ -3924,7 +3924,7 @@ html.bi-landing-root {
     bottom: 13px;
   }
   .bi-landing .meaning-heading .eyebrow {
-    font-size: 8px;
+    font-size: 11.5px;
   }
 }
 @media (max-width: 370px) {
@@ -3948,7 +3948,7 @@ html.bi-landing-root {
   }
   .bi-landing .contact-stack > div {
     width: 110px;
-    font-size: 6px;
+    font-size: 11px;
   }
   .bi-landing .context-tile {
     padding: 14px 10px;
@@ -4001,7 +4001,7 @@ html.bi-landing-root {
 .bi-landing .video-section .film-status {
   top: 78px;
   left: 20px;
-  font-size: 6px;
+  font-size: 11px;
   padding: 5px 9px;
 }
 .bi-landing .video-section .film-pause {
@@ -4019,7 +4019,7 @@ html.bi-landing-root {
   padding: 25px;
 }
 .bi-landing .brand-value-card .eyebrow {
-  font-size: 8px;
+  font-size: 11.5px;
 }
 .bi-landing .brand-value-card h3 {
   font: 500 21px/1.35 var(--font-display);
@@ -4027,7 +4027,7 @@ html.bi-landing-root {
   margin: 12px 0;
 }
 .bi-landing .brand-value-card p {
-  font-size: 11px;
+  font-size: 14px;
   line-height: 1.9;
   color: var(--muted);
   margin: 0;
@@ -4045,7 +4045,7 @@ html.bi-landing-root {
   position: absolute;
   bottom: 0;
   font-style: normal;
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
 }
 .bi-landing .voice-line {
@@ -4128,7 +4128,7 @@ html.bi-landing-root {
   background: #e2edcf;
   padding: 14px 16px;
   border-radius: 9px;
-  font-size: 12px;
+  font-size: 15px;
   display: flex;
   gap: 17px;
   align-items: center;
@@ -4156,7 +4156,7 @@ html.bi-landing-root {
   text-align: center;
 }
 .bi-landing .before-context .eyebrow {
-  font-size: 8px;
+  font-size: 11.5px;
 }
 .bi-landing .before-avatar {
   height: 65px;
@@ -4180,11 +4180,11 @@ html.bi-landing-root {
   margin: 25px 0;
 }
 .bi-landing .unclear-lines span {
-  font-size: 12px;
+  font-size: 15px;
   color: #8a9580;
 }
 .bi-landing .before-context > small {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
   line-height: 1.7;
   display: block;
@@ -4243,10 +4243,10 @@ html.bi-landing-root {
   margin-bottom: 24px;
 }
 .bi-landing .context-head .eyebrow {
-  font-size: 7px;
+  font-size: 11px;
 }
 .bi-landing .context-signal {
-  font-size: 7px;
+  font-size: 11px;
   padding: 7px 9px;
   background: #e6efd8;
   color: var(--green);
@@ -4269,17 +4269,17 @@ html.bi-landing-root {
 }
 .bi-landing .context-insight > span {
   display: block;
-  font-size: 7px;
+  font-size: 11px;
   letter-spacing: 1.2px;
   color: var(--muted);
   margin-bottom: 9px;
 }
 .bi-landing .context-insight > strong {
-  font-size: 13px;
+  font-size: 15.5px;
   font-weight: 500;
 }
 .bi-landing .context-foot {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--muted);
   margin-top: 23px;
   line-height: 1.8;
@@ -4309,7 +4309,7 @@ html.bi-landing-root {
   }
   .bi-landing .video-section .film-status {
     top: 74px;
-    font-size: 5px;
+    font-size: 11px;
     left: 10px;
     padding: 4px 7px;
   }
@@ -4333,7 +4333,7 @@ html.bi-landing-root {
   .bi-landing .brand-value-card > .eyebrow {
     grid-column: 2;
     align-self: end;
-    font-size: 6px;
+    font-size: 11px;
   }
   .bi-landing .brand-value-card h3 {
     grid-column: 2;
@@ -4342,11 +4342,11 @@ html.bi-landing-root {
   }
   .bi-landing .brand-value-card p {
     grid-column: 2;
-    font-size: 10px;
+    font-size: 13px;
     line-height: 1.8;
   }
   .bi-landing .brand-value-art > i {
-    font-size: 6px;
+    font-size: 11px;
     white-space: nowrap;
     bottom: 2px;
   }
@@ -4377,13 +4377,13 @@ html.bi-landing-root {
     width: 60px;
   }
   .bi-landing .clarity-focus {
-    font-size: 7px;
+    font-size: 11px;
     padding: 9px 7px;
     gap: 6px;
     white-space: nowrap;
   }
   .bi-landing .clarity-focus b {
-    font-size: 12px;
+    font-size: 15px;
   }
   .bi-landing .contrast-stage {
     grid-template-columns: 1fr;
@@ -4418,22 +4418,22 @@ html.bi-landing-root {
     gap: 9px;
   }
   .bi-landing .unclear-lines span {
-    font-size: 11px;
+    font-size: 14px;
   }
   .bi-landing .after-context {
     padding: 23px;
   }
   .bi-landing .context-insight > strong {
-    font-size: 12px;
+    font-size: 15px;
   }
   .bi-landing .context-head {
     gap: 8px;
   }
   .bi-landing .context-head .eyebrow {
-    font-size: 6px;
+    font-size: 11px;
   }
   .bi-landing .context-signal {
-    font-size: 6px;
+    font-size: 11px;
   }
   .bi-landing .lead-story-section .meaning-heading h2 {
     font-size: 38px;
@@ -4449,10 +4449,10 @@ html.bi-landing-root {
     font-size: 17px;
   }
   .bi-landing .brand-value-card p {
-    font-size: 9px;
+    font-size: 12px;
   }
   .bi-landing .brand-value-art > i {
-    font-size: 5px;
+    font-size: 11px;
   }
 }
 
@@ -4490,7 +4490,7 @@ html.bi-landing-root {
 }
 .bi-landing .listen-eyebrow {
   display: block;
-  font-size: 7px;
+  font-size: 11px;
   letter-spacing: 1.8px;
   color: var(--muted);
   margin-bottom: 5px;
@@ -4512,7 +4512,7 @@ html.bi-landing-root {
   border: 0;
   background: transparent;
   color: var(--green);
-  font-size: 10px;
+  font-size: 13px;
   border-radius: 20px;
   padding: 8px 13px;
   transition:
@@ -4536,7 +4536,7 @@ html.bi-landing-root {
   border-radius: 50%;
   background: var(--orange);
   color: white;
-  font-size: 15px;
+  font-size: 16px;
   flex-shrink: 0;
   display: grid;
   place-items: center;
@@ -4580,7 +4580,7 @@ html.bi-landing-root {
   border-radius: 3px;
 }
 .bi-landing .voice-time {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -4592,7 +4592,7 @@ html.bi-landing-root {
   border: 1px solid #d8e2cc;
   background: #f5f8ef;
   border-radius: 50%;
-  font-size: 13px;
+  font-size: 15.5px;
   display: grid;
   place-items: center;
 }
@@ -4609,12 +4609,12 @@ html.bi-landing-root {
   margin-top: 13px;
 }
 .bi-landing .listen-bottom > span {
-  font-size: 8px;
+  font-size: 11.5px;
   color: var(--muted);
   line-height: 1.6;
 }
 .bi-landing .listen-bottom > a {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--green);
   white-space: nowrap;
 }
@@ -4660,7 +4660,7 @@ html.bi-landing-root {
     gap: 9px;
   }
   .bi-landing .listen-eyebrow {
-    font-size: 6px;
+    font-size: 11px;
     letter-spacing: 1.2px;
     margin-bottom: 4px;
   }
@@ -4674,7 +4674,7 @@ html.bi-landing-root {
   }
   .bi-landing .listen-languages button {
     padding: 7px 9px;
-    font-size: 9px;
+    font-size: 12px;
   }
   .bi-landing .listen-playback {
     gap: 9px;
@@ -4683,18 +4683,18 @@ html.bi-landing-root {
   .bi-landing .voice-play {
     height: 37px;
     width: 37px;
-    font-size: 13px;
+    font-size: 15.5px;
   }
   .bi-landing .voice-wave-wrap {
     height: 35px;
   }
   .bi-landing .voice-time {
-    font-size: 7px;
+    font-size: 11px;
   }
   .bi-landing .voice-mute {
     height: 25px;
     width: 25px;
-    font-size: 11px;
+    font-size: 14px;
   }
   .bi-landing .listen-bottom {
     gap: 8px;
@@ -4702,14 +4702,14 @@ html.bi-landing-root {
     padding-top: 10px;
   }
   .bi-landing .listen-bottom > span {
-    font-size: 6px;
+    font-size: 11px;
     max-width: 180px;
   }
   .bi-landing .listen-bottom > a {
-    font-size: 7px;
+    font-size: 11px;
   }
   .bi-landing .hero-orb-caption {
-    font-size: 6px;
+    font-size: 11px;
   }
 }
 @media (max-width: 360px) {
@@ -4720,24 +4720,24 @@ html.bi-landing-root {
     padding: 15px 12px 12px;
   }
   .bi-landing .listen-top strong {
-    font-size: 14px;
+    font-size: 16px;
   }
   .bi-landing .listen-languages button {
     padding: 7px;
-    font-size: 8px;
+    font-size: 11.5px;
   }
   .bi-landing .listen-languages {
     gap: 0;
   }
   .bi-landing .voice-time {
-    font-size: 6px;
+    font-size: 11px;
   }
   .bi-landing .voice-mute {
     width: 23px;
     height: 23px;
   }
   .bi-landing .listen-bottom > a {
-    font-size: 6px;
+    font-size: 11px;
   }
 }
 
@@ -4914,7 +4914,7 @@ html.bi-landing-root {
 }
 .bi-landing .person-kicker {
   font-family: var(--font-body);
-  font-size: 7px;
+  font-size: 11px;
   letter-spacing: 1.1px;
   color: var(--muted);
   margin-bottom: 20px;
@@ -5065,7 +5065,7 @@ html.bi-landing-root {
   color: var(--green);
   padding: 8px 12px;
   border-radius: 25px;
-  font-size: 10px;
+  font-size: 13px;
   box-shadow: 0 7px 15px #415b2d08;
 }
 .bi-landing .conversation-person h3 {
@@ -5076,7 +5076,7 @@ html.bi-landing-root {
   margin: 0 0 8px;
 }
 .bi-landing .participant-label {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--muted);
   display: block;
 }
@@ -5085,7 +5085,7 @@ html.bi-landing-root {
   align-items: center;
   gap: 5px;
   justify-content: center;
-  font-size: 8px;
+  font-size: 11.5px;
   color: #849278;
   margin-top: 12px;
 }
@@ -5165,7 +5165,7 @@ html.bi-landing-root {
   letter-spacing: -1px;
 }
 .bi-landing .duo-stage .listen-eyebrow {
-  font-size: 7px;
+  font-size: 11px;
 }
 .bi-landing .duo-stage .listen-languages {
   width: max-content;
@@ -5173,7 +5173,7 @@ html.bi-landing-root {
   gap: 4px;
 }
 .bi-landing .duo-stage .listen-languages button {
-  font-size: 11px;
+  font-size: 14px;
   padding: 9px 17px;
 }
 .bi-landing .duo-stage .listen-playback {
@@ -5181,7 +5181,7 @@ html.bi-landing-root {
   gap: 11px;
 }
 .bi-landing .duo-stage .voice-time {
-  font-size: 8px;
+  font-size: 11.5px;
 }
 .bi-landing .duo-stage .listen-bottom {
   margin-top: 18px;
@@ -5189,12 +5189,12 @@ html.bi-landing-root {
   gap: 10px;
 }
 .bi-landing .duo-stage .listen-bottom > span {
-  font-size: 7px;
+  font-size: 11px;
   line-height: 1.7;
   max-width: 180px;
 }
 .bi-landing .duo-stage .listen-bottom > a {
-  font-size: 8px;
+  font-size: 11.5px;
 }
 .bi-landing .duo-disclaimer {
   position: absolute;
@@ -5202,7 +5202,7 @@ html.bi-landing-root {
   left: 0;
   width: 100%;
   text-align: center;
-  font-size: 8px;
+  font-size: 11.5px;
   color: var(--muted);
   letter-spacing: 0.2px;
 }
@@ -5292,10 +5292,10 @@ html.bi-landing-root {
     font-size: 19px;
   }
   .bi-landing .person-kicker {
-    font-size: 6px;
+    font-size: 11px;
   }
   .bi-landing .participant-label {
-    font-size: 8px;
+    font-size: 11.5px;
   }
   .bi-landing .duo-stage .hero-listen-dock {
     padding: 20px 17px 16px;
@@ -5304,14 +5304,14 @@ html.bi-landing-root {
     font-size: 23px;
   }
   .bi-landing .duo-stage .listen-languages button {
-    font-size: 10px;
+    font-size: 13px;
     padding: 8px 14px;
   }
   .bi-landing .duo-stage .listen-bottom > span {
-    font-size: 6px;
+    font-size: 11px;
   }
   .bi-landing .duo-stage .listen-bottom > a {
-    font-size: 7px;
+    font-size: 11px;
   }
 }
 @media (max-width: 800px) {
@@ -5340,7 +5340,7 @@ html.bi-landing-root {
     grid-row: 1;
   }
   .bi-landing .conversation-person .person-kicker {
-    font-size: 5px;
+    font-size: 11px;
     letter-spacing: 0.6px;
     white-space: normal;
     min-height: 16px;
@@ -5375,7 +5375,7 @@ html.bi-landing-root {
     right: 7px;
   }
   .bi-landing .customer-language-tag {
-    font-size: 8px;
+    font-size: 11.5px;
     padding: 6px 9px;
     right: -8px;
     bottom: -2px;
@@ -5385,12 +5385,12 @@ html.bi-landing-root {
     margin-bottom: 6px;
   }
   .bi-landing .participant-label {
-    font-size: 8px;
+    font-size: 11.5px;
     line-height: 1.5;
     min-height: 12px;
   }
   .bi-landing .participant-state {
-    font-size: 7px;
+    font-size: 11px;
     margin-top: 9px;
   }
   .bi-landing .duo-stage .hero-listen-dock {
@@ -5409,7 +5409,7 @@ html.bi-landing-root {
     font-size: 23px;
   }
   .bi-landing .duo-stage .listen-eyebrow {
-    font-size: 6px;
+    font-size: 11px;
     letter-spacing: 1.4px;
   }
   .bi-landing .duo-stage .listen-languages {
@@ -5418,25 +5418,25 @@ html.bi-landing-root {
   }
   .bi-landing .duo-stage .listen-languages button {
     padding: 8px 16px;
-    font-size: 10px;
+    font-size: 13px;
   }
   .bi-landing .duo-stage .listen-playback {
     margin-top: 16px;
     gap: 9px;
   }
   .bi-landing .duo-stage .voice-time {
-    font-size: 7px;
+    font-size: 11px;
   }
   .bi-landing .duo-stage .listen-bottom {
     margin-top: 14px;
     padding-top: 11px;
   }
   .bi-landing .duo-stage .listen-bottom > span {
-    font-size: 6px;
+    font-size: 11px;
     max-width: 180px;
   }
   .bi-landing .duo-stage .listen-bottom > a {
-    font-size: 7px;
+    font-size: 11px;
   }
   .bi-landing .conversation-wire {
     top: 90px;
@@ -5450,7 +5450,7 @@ html.bi-landing-root {
   .bi-landing .duo-disclaimer {
     position: static;
     grid-column: 1/-1;
-    font-size: 6px;
+    font-size: 11px;
     line-height: 1.8;
     max-width: 290px;
     justify-self: center;
@@ -5480,10 +5480,10 @@ html.bi-landing-root {
     font-size: 16px;
   }
   .bi-landing .participant-label {
-    font-size: 7px;
+    font-size: 11px;
   }
   .bi-landing .person-kicker {
-    font-size: 5px;
+    font-size: 11px;
   }
   .bi-landing .bot-shell {
     scale: 0.65;
@@ -5502,7 +5502,7 @@ html.bi-landing-root {
     padding: 8px 14px;
   }
   .bi-landing .duo-stage .listen-bottom > a {
-    font-size: 6px;
+    font-size: 11px;
   }
 }
 
@@ -5549,7 +5549,7 @@ html.bi-landing-root {
 .bi-landing .customer-person .customer-language-tag {
   right: 0;
   bottom: -7px;
-  font-size: 9px;
+  font-size: 12px;
   background: color-mix(in srgb, var(--color-surface) 96%, transparent);
   padding: 7px 11px;
   z-index: 2;
@@ -5560,13 +5560,13 @@ html.bi-landing-root {
 }
 .bi-landing .duo-stage .customer-person .person-kicker {
   letter-spacing: 0.8px;
-  font-size: 6px;
+  font-size: 11px;
 }
 .bi-landing .customer-person .participant-label {
-  font-size: 10px;
+  font-size: 13px;
 }
 .bi-landing .customer-person .participant-state {
-  font-size: 8px;
+  font-size: 11.5px;
 }
 .bi-landing .nav.scrolled .brand > img {
   width: 39px;
@@ -5597,11 +5597,11 @@ html.bi-landing-root {
     margin-bottom: 18px;
   }
   .bi-landing .customer-person .customer-language-tag {
-    font-size: 8px;
+    font-size: 11.5px;
     padding: 6px 9px;
   }
   .bi-landing .customer-person .participant-label {
-    font-size: 8px;
+    font-size: 11.5px;
   }
   .bi-landing .nav .brand > img {
     width: 37px;
@@ -5639,18 +5639,18 @@ html.bi-landing-root {
   .bi-landing .customer-person .customer-language-tag {
     right: -3px;
     bottom: -4px;
-    font-size: 7px;
+    font-size: 11px;
     padding: 5px 8px;
   }
   .bi-landing .duo-stage .customer-person .person-kicker {
-    font-size: 5px;
+    font-size: 11px;
     letter-spacing: 0.5px;
   }
   .bi-landing .customer-person .participant-label {
-    font-size: 8px;
+    font-size: 11.5px;
   }
   .bi-landing .customer-person .participant-state {
-    font-size: 7px;
+    font-size: 11px;
   }
   .bi-landing.hero-recording-active .customer-portrait:after {
     inset: 2px -2px -5px;
@@ -5675,10 +5675,10 @@ html.bi-landing-root {
     margin-left: calc(50% - 65.5px);
   }
   .bi-landing .customer-person .participant-label {
-    font-size: 7px;
+    font-size: 11px;
   }
   .bi-landing .customer-person .customer-language-tag {
-    font-size: 6px;
+    font-size: 11px;
     padding: 5px 7px;
   }
 }
@@ -5777,7 +5777,7 @@ html.bi-landing-root {
   text-align: center;
   z-index: 2;
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 16px;
   letter-spacing: 0.1px;
   color: #476858;
 }
@@ -5916,7 +5916,7 @@ html.bi-landing-root {
 @media (max-width: 800px) {
   .bi-landing .brand-promise {
     top: 474px;
-    font-size: 11px;
+    font-size: 14px;
     left: 4%;
     width: 92%;
   }
@@ -5927,13 +5927,13 @@ html.bi-landing-root {
     opacity: 0.12;
   }
   .bi-landing .sticker-hello {
-    font-size: 15px;
+    font-size: 16px;
     left: -17px;
     padding: 9px;
   }
   .bi-landing .sticker-note {
     right: -12px;
-    font-size: 9px;
+    font-size: 12px;
   }
   .bi-landing .sticker-wave {
     right: -9px;
@@ -5949,7 +5949,7 @@ html.bi-landing-root {
   .bi-landing .section-sticker {
     top: 16px;
     right: 4%;
-    font-size: 9px;
+    font-size: 12px;
     padding: 8px 12px;
   }
   .bi-landing .hero {
@@ -6040,11 +6040,11 @@ html.bi-landing-root {
   letter-spacing: 0;
 }
 .bi-landing .nav-center {
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 500;
 }
 .bi-landing .nav .btn {
-  font-size: 12px;
+  font-size: 15px;
 }
 .bi-landing .hero-bottom h1 {
   font-family: var(--font-display);
@@ -6071,7 +6071,7 @@ html.bi-landing-root {
   line-height: 1.45;
 }
 .bi-landing .hero-description {
-  font-size: 13px;
+  font-size: 15.5px;
   font-weight: 400;
   line-height: 1.8;
 }
@@ -6105,15 +6105,15 @@ html.bi-landing-root {
     font-size: 66px;
   }
   .bi-landing .hero-description {
-    font-size: 15px;
+    font-size: 16px;
   }
 }
 @media (max-width: 1100px) and (min-width: 801px) {
   .bi-landing .nav-center {
-    font-size: 11px;
+    font-size: 14px;
   }
   .bi-landing .nav .btn {
-    font-size: 11px;
+    font-size: 14px;
   }
 }
 @media (max-width: 800px) {
@@ -6123,14 +6123,14 @@ html.bi-landing-root {
     letter-spacing: -0.055em;
   }
   .bi-landing .hero-description {
-    font-size: 12px;
+    font-size: 15px;
     line-height: 1.8;
   }
   .bi-landing .nav .brand {
     font-size: 19px;
   }
   .bi-landing .nav .btn {
-    font-size: 10px;
+    font-size: 13px;
   }
   .bi-landing .hero-brand-backdrop {
     font-size: clamp(40px, 12vw, 60px);
@@ -6167,7 +6167,7 @@ html.bi-landing-root {
     font-size: 18px;
   }
   .bi-landing .listen-top strong {
-    font-size: 15px;
+    font-size: 16px;
   }
   .bi-landing .hero-brand-backdrop {
     font-size: 39px;
@@ -6197,29 +6197,31 @@ html.bi-landing-root {
 }
 .bi-landing .brand-promise {
   top: 477px;
+  font-size: 15px;
 }
 @media (min-width: 1600px) {
   .bi-landing .hero-brand-backdrop {
     top: 358px !important;
   }
   .bi-landing .brand-promise {
-    top: 500px;
+    top: 494px;
   }
 }
 @media (max-width: 800px) {
   .bi-landing .hero-brand-backdrop {
-    top: 356px !important;
-    height: 118px;
+    top: 388px !important;
+    height: 96px;
   }
   .bi-landing .hero-brand-backdrop .india-culture-art {
-    width: 49%;
-    height: 118px;
+    width: 44%;
+    height: 96px;
   }
   .bi-landing .hero-brand-backdrop span:last-child {
-    font-size: 14vw !important;
+    font-size: 12.5vw !important;
   }
   .bi-landing .brand-promise {
-    top: 484px;
+    top: 492px;
+    font-size: 14px;
   }
 }
 .bi-landing .hero-brand-backdrop {
