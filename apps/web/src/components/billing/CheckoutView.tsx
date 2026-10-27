@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, Eye, EyeOff, Loader2, Lock, MailCheck, Tag } from 'lucide-react';
 import { LIMITS, validateCheckoutContact, type CheckoutContactErrors, type CheckoutContactInput } from '@ai-receptionist/contracts';
 import { Button } from '../ui/button';
@@ -40,10 +40,9 @@ interface CheckoutViewProps {
 const EMPTY: CheckoutContactInput = { fullName: '', email: '', phone: '', businessName: '', password: '', consent: false };
 
 export const CheckoutView: React.FC<CheckoutViewProps> = ({ navigate }) => {
-  const params = new URLSearchParams(window.location.search);
-  const slug = params.get('plan') ?? '';
-  const currency: Currency = params.get('currency') === 'USD' ? 'USD' : 'INR';
-
+  const [slug, setSlug] = useState(() => new URLSearchParams(window.location.search).get('plan') ?? '');
+  const [currency, setCurrency] = useState<Currency>(() => (new URLSearchParams(window.location.search).get('currency') === 'USD' ? 'USD' : 'INR'));
+  const [plans, setPlans] = useState<PublicPlan[]>([]);
   const [plan, setPlan] = useState<PublicPlan | null>(null);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [loadError, setLoadError] = useState('');
@@ -60,12 +59,36 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ navigate }) => {
   const [showPassword, setShowPassword] = useState(false);
   const guard = usePublicFormGuard();
 
+  // Plans that can be bought online, for switching plan without leaving the page.
+  useEffect(() => {
+    billingApi.plans().then((data) => setPlans(data.plans.filter((p) => !p.contactSales))).catch(() => undefined);
+  }, []);
+
+  // Re-quote when the plan or currency changes, keeping the applied coupon if it still applies.
+  const appliedCoupon = useRef('');
+  appliedCoupon.current = quote?.coupon?.code ?? '';
   useEffect(() => {
     if (!slug) return setLoadError('Choose a plan first.');
-    billingApi.quote(slug, currency, '')
-      .then((data) => { setPlan(data.plan); setQuote(data.quote); })
-      .catch((err) => setLoadError((err as Error).message));
+    let cancelled = false;
+    const code = appliedCoupon.current;
+    billingApi.quote(slug, currency, code)
+      .catch((err) => {
+        if (!code) throw err;
+        setCouponError(`${code} was removed: ${(err as Error).message}`);
+        return billingApi.quote(slug, currency, '');
+      })
+      .then((data) => { if (!cancelled) { setPlan(data.plan); setQuote(data.quote); setLoadError(''); } })
+      .catch((err) => { if (!cancelled) setLoadError((err as Error).message); });
+    return () => { cancelled = true; };
   }, [slug, currency]);
+
+  function choosePlan(nextSlug: string, nextCurrency: Currency) {
+    setSlug(nextSlug);
+    setCurrency(nextCurrency);
+    setFormError('');
+    setCouponError('');
+    window.history.replaceState(null, '', `/checkout?${new URLSearchParams({ plan: nextSlug, currency: nextCurrency })}`);
+  }
 
   const set = <K extends keyof CheckoutContactInput>(key: K, value: CheckoutContactInput[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -94,7 +117,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ navigate }) => {
       setErrors(result.errors);
       return;
     }
-    const key = JSON.stringify({ ...result.value, coupon: quote?.coupon?.code ?? '' });
+    const key = JSON.stringify({ ...result.value, plan: slug, currency, coupon: quote?.coupon?.code ?? '' });
     if (order?.key === key) return setConfirming(true);
     if (!guard.captchaReady) return setFormError('Please complete the security check.');
 
@@ -146,7 +169,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ navigate }) => {
       modal: {
         ondismiss: () => {
           setPaying(false);
-          setFormError('Payment was not completed. Your details are saved: press Continue to try again.');
+          setFormError('Payment was not completed. Your details are saved: change the plan in the order summary if you like, then press Continue.');
           void billingApi.abandoned({ ...ids, reason: 'closed' });
         },
       },
@@ -297,9 +320,48 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ navigate }) => {
                 <div className="h-64 animate-pulse rounded-medium bg-surface-sunken" />
               ) : (
                 <>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-subtle">Order summary</p>
-                  <h2 className="mt-2 font-display text-2xl font-semibold tracking-[-0.03em] text-text">{plan.name}</h2>
-                  <p className="text-sm text-text-subtle">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-subtle">Order summary</p>
+                    {plan.price.INR > 0 && plan.price.USD > 0 && (
+                      <div className="inline-flex rounded-pill border border-border p-0.5 text-xs font-semibold" role="radiogroup" aria-label="Currency">
+                        {(['INR', 'USD'] as const).map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            role="radio"
+                            aria-checked={currency === c}
+                            disabled={paying}
+                            onClick={() => choosePlan(slug, c)}
+                            className={`rounded-pill px-2.5 py-1 ${currency === c ? 'bg-text text-background' : 'text-text-subtle hover:text-text'}`}
+                          >
+                            {c === 'INR' ? '₹ INR' : '$ USD'}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {plans.length > 1 ? (
+                    <fieldset className="mt-3 space-y-2" disabled={paying}>
+                      <legend className="sr-only">Plan</legend>
+                      {plans.filter((p) => p.price[currency] > 0).map((p) => (
+                        <label
+                          key={p.slug}
+                          className={`flex cursor-pointer items-center justify-between gap-3 rounded-medium border px-3.5 py-2.5 text-sm transition-colors ${p.slug === slug ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}`}
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <input type="radio" name="co-plan" className="h-4 w-4 accent-(--color-primary)" checked={p.slug === slug} onChange={() => choosePlan(p.slug, currency)} />
+                            <span className="font-semibold text-text">{p.name}</span>
+                            {p.featured && <span className="rounded-pill bg-accent-lime px-2 py-0.5 text-[10px] font-bold uppercase text-text">Popular</span>}
+                          </span>
+                          <span className="text-text-subtle">{formatMoney(p.price[currency], currency)}/mo</span>
+                        </label>
+                      ))}
+                    </fieldset>
+                  ) : (
+                    <h2 className="mt-2 font-display text-2xl font-semibold tracking-[-0.03em] text-text">{plan.name}</h2>
+                  )}
+                  <p className="mt-3 text-sm text-text-subtle">
                     {plan.monthlyMinutes?.toLocaleString('en-IN')} minutes/month · {plan.maxAgents} agents · {plan.maxConcurrentCalls} concurrent calls
                   </p>
 
