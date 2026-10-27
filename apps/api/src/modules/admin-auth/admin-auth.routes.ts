@@ -51,7 +51,7 @@ function describe(adminUser: AdminUser, roles: AdminRole[]) {
 }
 
 router.use(noStore);
-router.use(adminOriginGuard(config.admin.origin));
+router.use(adminOriginGuard(config.admin.origins));
 
 router.post('/auth/login', loginRateLimit, handle(async (req, res) => {
   const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';

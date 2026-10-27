@@ -37,10 +37,10 @@ export function noStore(_req: Request, res: Response, next: NextFunction) {
 }
 
 // CSRF defence on top of SameSite=Strict: state-changing requests must come from the admin origin.
-export function adminOriginGuard(allowedOrigin: string) {
+export function adminOriginGuard(allowedOrigins: string[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     if (SAFE_METHODS.has(req.method)) return next();
-    if (req.headers.origin !== allowedOrigin) {
+    if (!req.headers.origin || !allowedOrigins.includes(req.headers.origin)) {
       return res.status(403).json({ error: 'Forbidden' });
     }
     next();

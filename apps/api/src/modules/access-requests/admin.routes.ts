@@ -38,7 +38,7 @@ const PAGE_SIZE = 25;
 const handle = (fn: (req: AdminRequest, res: Response) => Promise<unknown>) => asyncRoute<AdminRequest>('AccessRequestAdmin', fn);
 
 router.use(noStore);
-router.use(adminOriginGuard(config.admin.origin));
+router.use(adminOriginGuard(config.admin.origins));
 router.use(requireAdminSession);
 
 function audit(req: AdminRequest, action: string, request: Pick<AccessRequestRow, 'id' | 'provisioned_user_id'>, outcome: 'succeeded' | 'failed' = 'succeeded', metadata: Record<string, unknown> = {}) {

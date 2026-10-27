@@ -40,7 +40,7 @@ export function createAdminEventsServer(): UpgradeHandler {
   });
 
   return (req, socket, head) => {
-    if (req.headers.origin !== config.admin.origin) {
+    if (!req.headers.origin || !config.admin.origins.includes(req.headers.origin)) {
       rejectUpgrade(socket, 403, 'Forbidden');
       return;
     }

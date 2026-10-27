@@ -84,7 +84,7 @@ test('admin origin guard blocks cross-origin state changes but allows reads', as
   process.env.SUPABASE_SERVICE_ROLE_KEY ||= 'test';
   process.env.GEMINI_API_KEY ||= 'test';
   const { adminOriginGuard } = await import('../src/modules/admin-auth/middleware');
-  const guard = adminOriginGuard('https://admin.example.com');
+  const guard = adminOriginGuard(['https://admin.example.com', 'http://127.0.0.1:3000']);
 
   const run = (method: string, origin?: string) => {
     let status = 0;
@@ -95,6 +95,7 @@ test('admin origin guard blocks cross-origin state changes but allows reads', as
   };
 
   assert.deepEqual(run('POST', 'https://admin.example.com'), { status: 0, passed: true });
+  assert.deepEqual(run('POST', 'http://127.0.0.1:3000'), { status: 0, passed: true });
   assert.deepEqual(run('POST', 'https://app.example.com'), { status: 403, passed: false });
   assert.deepEqual(run('POST'), { status: 403, passed: false });
   assert.deepEqual(run('GET', 'https://evil.example.com'), { status: 0, passed: true });
@@ -118,7 +119,7 @@ test('admin tables are private to the service role and audit is append-only', as
 test('admin routes check origin first, rate-limit login and never echo internal errors', async () => {
   const source = await readFile(fileURLToPath(routesUrl), 'utf8');
 
-  const guardPosition = source.indexOf('router.use(adminOriginGuard(config.admin.origin))');
+  const guardPosition = source.indexOf('router.use(adminOriginGuard(config.admin.origins))');
   const loginPosition = source.indexOf("router.post('/auth/login'");
   assert.ok(guardPosition >= 0 && guardPosition < loginPosition, 'origin guard must run before every route');
   assert.match(source, /router\.post\('\/auth\/login', loginRateLimit,/);
