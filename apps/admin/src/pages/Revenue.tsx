@@ -3,7 +3,7 @@ import { CreditCard, Loader2, TrendingUp, UserPlus } from 'lucide-react';
 import { billingAdminApi, formatMoney, type BillingOrder, type OrderStatus, type RevenueSummary } from '../api';
 import { useLive } from '../live';
 import { navigate } from '../router';
-import { Card, FilterTabs, Pager, cx, formatDate } from '../ui';
+import { Card, FilterTabs, PageError, Pager, cx, formatDate } from '../ui';
 
 const STATUS: Partial<Record<OrderStatus, { label: string; style: string; hint: string }>> = {
   paid: { label: 'Setting up', style: 'bg-info-surface text-info', hint: 'Paid; workspace being set up.' },
@@ -37,6 +37,8 @@ export function Revenue() {
   const [page, setPage] = useState(1);
   const [data, setData] = useState<{ rows: BillingOrder[]; total: number; pageSize: number } | null>(null);
   const [error, setError] = useState('');
+  const [reload, setReload] = useState(0);
+  const retry = () => { setError(''); setReload((n) => n + 1); };
 
   useEffect(() => {
     let cancelled = false;
@@ -44,7 +46,7 @@ export function Revenue() {
       .then((result) => { if (!cancelled) setSummary(result); })
       .catch((err) => { if (!cancelled) setError((err as Error).message); });
     return () => { cancelled = true; };
-  }, [version]);
+  }, [version, reload]);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,7 +54,7 @@ export function Revenue() {
       .then((result) => { if (!cancelled) { setData(result); setError(''); } })
       .catch((err) => { if (!cancelled) setError((err as Error).message); });
     return () => { cancelled = true; };
-  }, [status, page, version]);
+  }, [status, page, version, reload]);
 
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
   const peak = summary ? Math.max(1, ...summary.monthly.map((m) => m.INR)) : 1;
@@ -64,10 +66,10 @@ export function Revenue() {
         <p className="mt-1 text-sm text-subtle">Money received through Razorpay checkouts (first month plus setup fee, after discounts). Rupees and dollars are shown separately.</p>
       </div>
 
-      {error && <p role="alert" className="rounded-xl bg-danger-surface px-4 py-3 text-sm text-danger">{error}</p>}
+      {error && <PageError message={error} onRetry={retry} />}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {!summary ? [0, 1, 2, 3].map((i) => <div key={i} className="h-32 animate-pulse rounded-2xl bg-surface" />) : (
+        {!summary ? (error ? null : [0, 1, 2, 3].map((i) => <div key={i} className="h-32 animate-pulse rounded-2xl bg-surface" />)) : (
           <>
             <Card className="bg-ink p-5 text-white">
               <p className="text-xs font-semibold uppercase tracking-wider text-white/60">This month</p>

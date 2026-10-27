@@ -3,7 +3,7 @@ import { LIMITS, parseCouponInput } from '@ai-receptionist/contracts';
 import { Loader2, Pencil, Plus, TicketPercent } from 'lucide-react';
 import { ApiError, billingAdminApi, formatMoney, type Coupon, type CouponInput, type Plan } from '../api';
 import { useToast } from '../toast';
-import { ActiveBadge, Button, Card, Drawer, Field, INPUT, MONEY_INPUT_LENGTH, Toggle, cx, digitsFor, formatDate, toMajor, toMinor } from '../ui';
+import { ActiveBadge, Button, Card, Drawer, Field, INPUT, MONEY_INPUT_LENGTH, PageError, Toggle, cx, digitsFor, formatDate, toMajor, toMinor } from '../ui';
 
 const APPLIES_TO_LABELS: Record<Coupon['applies_to'], string> = {
   total: 'Whole order',
@@ -121,7 +121,7 @@ export function Coupons({ roles }: { roles: string[] }) {
         {canEdit && <Button onClick={() => setEditing({ coupon: null })}><Plus className="h-4 w-4" /> New coupon</Button>}
       </div>
 
-      {error && <p role="alert" className="rounded-xl bg-danger-surface px-4 py-3 text-sm text-danger">{error}</p>}
+      {error && <PageError message={error} onRetry={load} />}
 
       <Card className="overflow-hidden">
         {!coupons && !error && <div className="flex h-40 items-center justify-center text-subtle"><Loader2 className="h-5 w-5 animate-spin" /></div>}

@@ -1,4 +1,4 @@
-const expressUrl = import.meta.env.VITE_EXPRESS_SERVER_URL || 'http://localhost:4000';
+import { publicRequest } from './publicForm';
 
 export type Currency = 'INR' | 'USD';
 
@@ -56,15 +56,14 @@ export function formatMoney(minor: number, currency: Currency) {
 }
 
 async function call<T>(path: string, body?: unknown): Promise<T> {
-  const response = await fetch(`${expressUrl}/api/public${path}`, {
-    method: body === undefined ? 'GET' : 'POST',
-    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (response.status === 429) throw new BillingError('Too many attempts. Please wait a few minutes and try again.');
-  if (!response.ok) throw new BillingError(data.error || 'Something went wrong. Please try again.', data.field, data.fields);
-  return data as T;
+  let result;
+  try {
+    result = await publicRequest(path, body);
+  } catch (error) {
+    throw new BillingError((error as Error).message);
+  }
+  if (!result.ok) throw new BillingError(result.message, result.data.field, result.data.fields);
+  return result.data as T;
 }
 
 export const billingApi = {

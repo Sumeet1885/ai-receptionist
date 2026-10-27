@@ -12,7 +12,7 @@ import {
   type AccessRequestStatus,
 } from '../api';
 import { useLive } from '../live';
-import { Button, Card, CharCount, StatusBadge, STATUS_LABELS, cx, formatDate, initials, timeAgo } from '../ui';
+import { Button, Card, CharCount, PageError, STATUS_LABELS, StatusBadge, cx, formatDate, initials, timeAgo } from '../ui';
 
 const TABS: Array<AccessRequestStatus | 'all'> = ['pending', 'contacted', 'approved', 'rejected', 'all'];
 const VOLUME_LABELS: Record<string, string> = {
@@ -120,7 +120,7 @@ export function AccessRequests({ roles }: { roles: string[] }) {
 
       <div className={cx('grid items-start gap-5', selectedId && 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]')}>
         <Card className="overflow-hidden">
-          {listError && <p role="alert" className="m-4 rounded-xl bg-danger-surface px-4 py-3 text-sm text-danger">{listError}</p>}
+          {listError && <div className="m-4"><PageError message={listError} onRetry={() => void loadList()} /></div>}
           {!list && !listError && (
             <div className="space-y-2 p-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-16 animate-pulse rounded-xl bg-background" />)}</div>
           )}

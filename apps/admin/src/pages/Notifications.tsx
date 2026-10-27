@@ -3,7 +3,7 @@ import { Bell, Loader2, Pencil, Plus, Send, Trash2 } from 'lucide-react';
 import { LIMITS, NOTIFICATION_EVENTS, validateNotificationRecipient } from '@ai-receptionist/contracts';
 import { ApiError, notificationsApi, type NotificationRecipient, type NotificationRecipientInput } from '../api';
 import { useToast } from '../toast';
-import { ActiveBadge, Button, Card, Drawer, Field, INPUT, Toggle, cx } from '../ui';
+import { ActiveBadge, Button, Card, Drawer, Field, INPUT, PageError, Toggle, cx } from '../ui';
 
 const EMPTY: NotificationRecipientInput = { email: '', label: '', accessRequests: true, payments: true, signupLeads: true, isActive: true };
 
@@ -87,7 +87,7 @@ export function Notifications({ roles }: { roles: string[] }) {
         ))}
       </Card>
 
-      {error && <p role="alert" className="rounded-xl bg-danger-surface px-4 py-3 text-sm text-danger">{error}</p>}
+      {error && <PageError message={error} onRetry={load} />}
 
       <Card className="overflow-hidden">
         {!rows && !error && <div className="flex h-40 items-center justify-center text-subtle"><Loader2 className="h-5 w-5 animate-spin" /></div>}

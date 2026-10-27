@@ -3,7 +3,7 @@ import { LIMITS, parseFeatureList, parsePlanInput } from '@ai-receptionist/contr
 import { ArrowDown, ArrowUp, ListChecks, Loader2, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { ApiError, billingAdminApi, formatMoney, type Plan, type PlanFeature, type PlanInput } from '../api';
 import { useToast } from '../toast';
-import { ActiveBadge, Button, Card, Drawer, Field, INPUT, MONEY_INPUT_LENGTH, Toggle, cx, digitsFor, toMajor, toMinor } from '../ui';
+import { ActiveBadge, Button, Card, Drawer, Field, INPUT, MONEY_INPUT_LENGTH, PageError, Toggle, cx, digitsFor, toMajor, toMinor } from '../ui';
 
 type PlanForm = Omit<PlanInput, 'priceInr' | 'priceUsd' | 'setupFeeInr' | 'setupFeeUsd' | 'monthlyMinutes' | 'maxAgents' | 'maxConcurrentCalls' | 'sortOrder'> & {
   priceInr: string;
@@ -88,7 +88,7 @@ export function Plans({ roles }: { roles: string[] }) {
         )}
       </div>
 
-      {error && <p role="alert" className="rounded-xl bg-danger-surface px-4 py-3 text-sm text-danger">{error}</p>}
+      {error && <PageError message={error} onRetry={load} />}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {!plans && !error && [0, 1, 2, 3].map((i) => <div key={i} className="h-72 animate-pulse rounded-2xl bg-surface" />)}

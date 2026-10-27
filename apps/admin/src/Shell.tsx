@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Bell, Inbox, LayoutDashboard, LogOut, Menu, Package, ShieldCheck, TicketPercent, TrendingUp, UserPlus, X } from 'lucide-react';
+import { Bell, Building2, Inbox, LayoutDashboard, LogOut, Menu, Package, ShieldCheck, TicketPercent, TrendingUp, UserPlus, X } from 'lucide-react';
 import { accessRequestApi, adminApi, type AdminSession } from './api';
 import { LiveContext, type LiveState } from './live';
 import { navigate, PAGE_PATHS, type Page } from './router';
@@ -10,6 +10,7 @@ import { useAdminEvents } from './useAdminEvents';
 const NAV: Array<{ page: Page; label: string; icon: typeof Inbox }> = [
   { page: 'overview', label: 'Overview', icon: LayoutDashboard },
   { page: 'requests', label: 'Access requests', icon: Inbox },
+  { page: 'customers', label: 'Customers', icon: Building2 },
   { page: 'revenue', label: 'Revenue', icon: TrendingUp },
   { page: 'leads', label: 'Signup leads', icon: UserPlus },
   { page: 'plans', label: 'Plans & pricing', icon: Package },

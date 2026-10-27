@@ -145,6 +145,19 @@ export function ActiveBadge({ active }: { active: boolean }) {
   );
 }
 
+/** A page (or panel) that could not load: what went wrong and a way to try again. */
+export function PageError({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  return (
+    <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-danger/25 bg-danger-surface px-5 py-4">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-danger">Could not load this</p>
+        <p className="mt-0.5 text-sm text-danger/90">{message}</p>
+      </div>
+      {onRetry && <Button variant="dangerOutline" size="sm" onClick={onRetry}>Try again</Button>}
+    </div>
+  );
+}
+
 export function Pager({ page, pages, onPage }: { page: number; pages: number; onPage: (page: number) => void }) {
   if (pages <= 1) return null;
   return (

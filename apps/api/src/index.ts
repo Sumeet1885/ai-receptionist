@@ -23,6 +23,7 @@ async function bootstrap(): Promise<void> {
   const { accountRoutes, accountPublicRoutes } = await import('./modules/accounts');
   const { billingPublicRoutes, billingAdminRoutes, razorpayWebhook, startCheckoutReminders } = await import('./modules/billing');
   const { notificationAdminRoutes } = await import('./modules/notifications');
+  const { customerAdminRoutes } = await import('./modules/customers');
   const { routeUpgrades }      = await import('./utils/upgradeRouter');
   const { dograhRoutes, phoneToolsRoutes, campaignRoutes, startCallPoller, startCampaign } =
     await import('./modules/phone-calls');
@@ -64,6 +65,7 @@ async function bootstrap(): Promise<void> {
   app.use('/api/public',   billingPublicRoutes);
   app.use('/api/admin/billing', billingAdminRoutes);
   app.use('/api/admin/notifications', notificationAdminRoutes);
+  app.use('/api/admin/customers', customerAdminRoutes);
   app.use('/api/account',  accountRoutes);
 
   app.get('/health', (_req, res) => {

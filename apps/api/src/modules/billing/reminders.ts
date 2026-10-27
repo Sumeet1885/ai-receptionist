@@ -1,5 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { config } from '../../config';
+import { isSchemaOutOfDate } from '../../utils/asyncRoute';
 import { logger } from '../../services/cloudwatchLogger';
 import { emailTemplates, maskEmail, sendEmailSafely } from '../../services/email';
 import { supabase } from '../../services/db';
@@ -83,10 +84,19 @@ async function sendDueReminders(now = new Date()) {
 }
 
 let timer: NodeJS.Timeout | undefined;
+let warnedSchema = false;
 
 export function startCheckoutReminders() {
   if (timer) return;
-  const tick = () => sendDueReminders().catch((error) => logger.error('[billing] reminder sweep failed', { error: error?.message }));
+  const tick = () => sendDueReminders().catch((error) => {
+    // Until the reminders migration is applied there is nothing to send; say so once, not every minute.
+    if (isSchemaOutOfDate(error)) {
+      if (!warnedSchema) logger.warn('[billing] payment reminders paused: run the pending database migrations', { error: error?.message });
+      warnedSchema = true;
+      return;
+    }
+    logger.error('[billing] reminder sweep failed', { error: error?.message });
+  });
   timer = setInterval(tick, SWEEP_EVERY_MS);
   timer.unref();
   void tick();

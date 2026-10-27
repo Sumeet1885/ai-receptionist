@@ -34,7 +34,7 @@ function ErrorNote({ message }: { message: string }) {
   );
 }
 
-export function LoginScreen({ onSignedIn }: { onSignedIn: (session: AdminSession) => void }) {
+export function LoginScreen({ onSignedIn, notice }: { onSignedIn: (session: AdminSession) => void; notice?: string }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -62,6 +62,7 @@ export function LoginScreen({ onSignedIn }: { onSignedIn: (session: AdminSession
           <h1 className="font-display text-2xl font-bold tracking-tight">Admin sign in</h1>
           <p className="mt-1 text-sm text-subtle">Review access requests and manage workspaces.</p>
         </div>
+        {notice && !error && <p role="status" className="rounded-xl bg-info-surface px-3 py-2 text-sm text-info">{notice}</p>}
         <ErrorNote message={error} />
         <label className="block space-y-1.5">
           <span className="text-sm font-medium">Email</span>

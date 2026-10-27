@@ -3,7 +3,7 @@ import { ArrowUpRight, CheckCircle2, ChevronRight, Clock3, Inbox, PhoneCall, Spa
 import { accessRequestApi, type AccessRequestList, type AccessRequestStatus, type AdminSession } from '../api';
 import { useLive } from '../live';
 import { navigate } from '../router';
-import { Button, Card, StatusBadge, STATUS_LABELS, initials, timeAgo, cx } from '../ui';
+import { Button, Card, PageError, STATUS_LABELS, StatusBadge, cx, initials, timeAgo } from '../ui';
 
 const KPIS: Array<{ status: AccessRequestStatus; icon: typeof Inbox; tone: string; bar: string }> = [
   { status: 'pending', icon: Clock3, tone: 'bg-warning-surface text-warning', bar: 'bg-orange' },
@@ -21,12 +21,13 @@ export function Overview({ session }: { session: AdminSession }) {
   const { version } = useLive();
   const [data, setData] = useState<AccessRequestList | null>(null);
   const [error, setError] = useState('');
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     accessRequestApi.list({ status: 'pending' })
       .then((list) => { setData(list); setError(''); })
       .catch((err) => setError((err as Error).message));
-  }, [version]);
+  }, [version, reload]);
 
   const counts = data?.counts;
   const total = counts ? Object.values(counts).reduce((sum, n) => sum + n, 0) : 0;
@@ -56,7 +57,7 @@ export function Overview({ session }: { session: AdminSession }) {
         </div>
       </section>
 
-      {error && <p role="alert" className="rounded-xl bg-danger-surface px-4 py-3 text-sm text-danger">{error}</p>}
+      {error && <PageError message={error} onRetry={() => setReload((n) => n + 1)} />}
 
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {KPIS.map(({ status, icon: Icon, tone }) => (

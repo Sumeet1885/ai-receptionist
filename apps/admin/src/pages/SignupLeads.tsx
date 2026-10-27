@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Loader2, Mail, Phone, UserPlus } from 'lucide-react';
 import { billingAdminApi, formatMoney, type BillingOrder, type LeadStage } from '../api';
 import { useLive } from '../live';
-import { Card, FilterTabs, Pager, cx, formatDate, timeAgo } from '../ui';
+import { Card, FilterTabs, PageError, Pager, cx, formatDate, timeAgo } from '../ui';
 
 // Unpaid checkouts: people who chose a plan and entered their details but did not pay. Once a lead
 // pays it moves to Revenue.
@@ -26,6 +26,7 @@ export function SignupLeads() {
   const [page, setPage] = useState(1);
   const [data, setData] = useState<{ rows: BillingOrder[]; total: number; pageSize: number } | null>(null);
   const [error, setError] = useState('');
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -33,7 +34,7 @@ export function SignupLeads() {
       .then((result) => { if (!cancelled) { setData(result); setError(''); } })
       .catch((err) => { if (!cancelled) setError((err as Error).message); });
     return () => { cancelled = true; };
-  }, [stage, page, version]);
+  }, [stage, page, version, reload]);
 
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
@@ -46,7 +47,7 @@ export function SignupLeads() {
 
       <FilterTabs tabs={TABS} value={stage} onChange={(value) => { setStage(value); setPage(1); }} />
 
-      {error && <p role="alert" className="rounded-xl bg-danger-surface px-4 py-3 text-sm text-danger">{error}</p>}
+      {error && <PageError message={error} onRetry={() => { setError(''); setReload((n) => n + 1); }} />}
 
       <Card className="overflow-hidden">
         {!data && !error && <div className="flex h-40 items-center justify-center text-subtle"><Loader2 className="h-5 w-5 animate-spin" /></div>}

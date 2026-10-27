@@ -36,15 +36,45 @@ export function usePublicFormGuard() {
   };
 }
 
-export async function postPublic<T>(path: string, body: Record<string, unknown>): Promise<T> {
-  const response = await fetch(`${expressUrl}/api/public${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(response.status === 429 ? 'Too many attempts. Please wait a few minutes and try again.' : data.error || 'Something went wrong. Please try again.');
+const TIMEOUT_MS = 20_000;
+
+/**
+ * One request to /api/public with the failures people actually hit turned into clear messages:
+ * no connection, a slow server, rate limits, and server errors (with the log reference).
+ * Returns the parsed body for successful and validation (4xx) answers alike.
+ */
+export async function publicRequest(path: string, body?: unknown): Promise<{ ok: boolean; status: number; data: any; message: string }> {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(`${expressUrl}/api/public${path}`, {
+      method: body === undefined ? 'GET' : 'POST',
+      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch {
+    throw new Error(controller.signal.aborted
+      ? 'This is taking too long. Check your connection and try again.'
+      : 'We could not reach our servers. Check your internet connection and try again.');
+  } finally {
+    window.clearTimeout(timer);
   }
-  return data as T;
+  // Some proxy errors are HTML; never show a parse error.
+  const data = await response.json().catch(() => ({}));
+  let message = '';
+  if (!response.ok) {
+    if (response.status === 429) message = 'Too many attempts. Please wait a few minutes and try again.';
+    else if (data.error) message = data.reference ? `${data.error} (Reference ${data.reference})` : data.error;
+    else if (response.status >= 500) message = 'Our service is having trouble right now. Please try again in a few minutes.';
+    else message = 'Something went wrong. Please try again.';
+  }
+  return { ok: response.ok, status: response.status, data, message };
+}
+
+export async function postPublic<T>(path: string, body: Record<string, unknown>): Promise<T> {
+  const result = await publicRequest(path, body);
+  if (!result.ok) throw new Error(result.message);
+  return result.data as T;
 }

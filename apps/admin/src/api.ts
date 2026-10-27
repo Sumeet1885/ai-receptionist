@@ -9,22 +9,65 @@ export interface AdminSession {
 }
 
 export class ApiError extends Error {
-  // Per-field messages from the API's validation, for forms.
-  constructor(public status: number, message: string, public fields: Record<string, string> = {}) {
+  constructor(
+    public status: number,
+    message: string,
+    // Per-field messages from the API's validation, for forms.
+    public fields: Record<string, string> = {},
+    // Server log reference for unexpected failures, to quote when reporting a problem.
+    public reference?: string,
+    public code?: string,
+  ) {
     super(message);
   }
 }
 
+/** Fired when the session has ended, so the app returns to the sign-in screen. */
+export const SESSION_EXPIRED_EVENT = 'admin:session-expired';
+const TIMEOUT_MS = 20_000;
+
+// A clear message for every way a call can fail; the server's own message wins when it has one.
+function failureMessage(status: number, serverMessage: string | undefined, isAuthCall: boolean) {
+  // Sign-in calls keep the server's wording ("Invalid email or password").
+  if (status === 401) return isAuthCall && serverMessage ? serverMessage : 'Your session has ended. Please sign in again.';
+  if (status === 403) return serverMessage || 'Your role does not allow this. Ask a super admin.';
+  if (status === 404) return serverMessage || 'Not found. It may have been removed.';
+  if (status === 429) return 'Too many attempts. Wait a minute and try again.';
+  if (serverMessage) return serverMessage;
+  if (status === 502 || status === 503 || status === 504) return 'The server is not responding right now. Try again in a moment.';
+  return 'Something went wrong on our side. Please try again.';
+}
+
 // The session lives in an httpOnly cookie; nothing auth-related is kept in browser storage.
 async function request<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
-  const response = await fetch(`/api/admin${path}`, {
-    method: init.method ?? 'GET',
-    credentials: 'same-origin',
-    headers: init.body === undefined ? undefined : { 'Content-Type': 'application/json' },
-    body: init.body === undefined ? undefined : JSON.stringify(init.body),
-  });
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(`/api/admin${path}`, {
+      method: init.method ?? 'GET',
+      credentials: 'same-origin',
+      headers: init.body === undefined ? undefined : { 'Content-Type': 'application/json' },
+      body: init.body === undefined ? undefined : JSON.stringify(init.body),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    throw new ApiError(0, controller.signal.aborted
+      ? 'The server took too long to respond. Check your connection and try again.'
+      : 'Cannot reach the server. Check your connection, or try again in a moment.');
+  } finally {
+    window.clearTimeout(timer);
+  }
+
+  // Proxies answer some failures with HTML; never let that surface as a parse error.
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new ApiError(response.status, data.error || 'Request failed', data.fields);
+  if (!response.ok) {
+    // An ended session sends everyone back to sign in, except the calls that check the session.
+    const isAuthCall = path.startsWith('/auth/');
+    if (response.status === 401 && !isAuthCall) window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+    const message = failureMessage(response.status, data.error, isAuthCall);
+    throw new ApiError(response.status, data.reference ? `${message} (Reference ${data.reference})` : message, data.fields, data.reference, data.code);
+  }
   return data as T;
 }
 
@@ -277,4 +320,36 @@ export const adminApi = {
   logout: () => request<{ ok: true }>('/auth/logout', { method: 'POST', body: {} }),
   changePassword: (currentPassword: string, newPassword: string) =>
     request<AdminSession>('/auth/password', { method: 'POST', body: { currentPassword, newPassword } }),
+};
+
+// ── customers ────────────────────────────────────────────────────────────────
+
+export type CustomerStage = 'verify_email' | 'set_password' | 'onboarding' | 'active' | 'suspended';
+
+export interface Customer {
+  userId: string;
+  email: string;
+  name: string | null;
+  businessName: string | null;
+  status: 'active' | 'suspended';
+  stage: CustomerStage;
+  source: 'paid' | 'access_request' | 'existing';
+  plan: { name: string; currency: string | null; periodEnd: string | null } | null;
+  agents: number;
+  createdAt: string;
+  emailConfirmedAt: string | null;
+  lastSignInAt: string | null;
+}
+
+export const customersApi = {
+  list: (params: { stage?: CustomerStage; search?: string; page?: number }) => {
+    const query = new URLSearchParams();
+    if (params.stage) query.set('stage', params.stage);
+    if (params.search) query.set('search', params.search);
+    if (params.page) query.set('page', String(params.page));
+    return request<{ rows: Customer[]; total: number; page: number; pageSize: number; counts: Record<'all' | CustomerStage, number> }>(`/customers?${query.toString()}`);
+  },
+  setStatus: (userId: string, status: 'active' | 'suspended') =>
+    request<{ ok: true; status: string }>(`/customers/${encodeURIComponent(userId)}/status`, { method: 'POST', body: { status } }),
+  resend: (userId: string) => request<{ ok: true }>(`/customers/${encodeURIComponent(userId)}/resend`, { method: 'POST' }),
 };

@@ -17,12 +17,13 @@ export const PricingView: React.FC<PricingViewProps> = ({ navigate }) => {
   const [plans, setPlans] = useState<PublicPlan[] | null>(null);
   const [features, setFeatures] = useState<PlanFeature[]>([]);
   const [error, setError] = useState('');
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     billingApi.plans()
-      .then((data) => { setPlans(data.plans); setFeatures(data.features); })
+      .then((data) => { setPlans(data.plans); setFeatures(data.features); setError(''); })
       .catch((err) => setError((err as Error).message));
-  }, []);
+  }, [reload]);
 
   const choose = (plan: PublicPlan) => {
     if (plan.contactSales) navigate('/request-access');
@@ -66,7 +67,13 @@ export const PricingView: React.FC<PricingViewProps> = ({ navigate }) => {
           </div>
         </div>
 
-        {error && <p role="alert" className="mx-auto mt-10 max-w-md rounded-medium bg-danger-surface px-4 py-3 text-center text-sm text-danger">{error}</p>}
+        {error && (
+          <div role="alert" className="mx-auto mt-10 max-w-md rounded-medium bg-danger-surface px-4 py-4 text-center text-sm text-danger">
+            <p className="font-semibold">We could not load our plans</p>
+            <p className="mt-1">{error}</p>
+            <Button variant="secondary" size="sm" className="mt-3" onClick={() => { setError(''); setReload((n) => n + 1); }}>Try again</Button>
+          </div>
+        )}
 
         <div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           {!plans && !error && [0, 1, 2, 3].map((i) => <div key={i} className="h-96 animate-pulse rounded-large bg-surface-sunken" />)}
