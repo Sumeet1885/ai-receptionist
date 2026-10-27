@@ -317,47 +317,20 @@ This installs every workspace (`apps/*`, `packages/*`, listed in `pnpm-workspace
 
 ### Configure environment
 
-Create `apps/web/.env`:
+Each app has one env file, copied from the template next to it:
 
-```dotenv
-VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
-VITE_EXPRESS_SERVER_URL=http://localhost:4000
-VITE_WIDGET_BASE_URL=http://localhost:4000
+| App | Local file | Template | Holds |
+| --- | --- | --- | --- |
+| API | `apps/api/.env` | `apps/api/.env.example` | every backend setting and secret (Supabase secret key, Gemini, SES, Turnstile secret, OAuth, Dograh) |
+| Web | `apps/web/.env.local` | `apps/web/.env.example` | the five public `VITE_*` values only |
+| Admin | none | — | the admin console only calls the API |
+
+```bash
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env.local
 ```
 
-Create `apps/api/.env`:
-
-```dotenv
-SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY
-GEMINI_API_KEY=YOUR_GEMINI_KEY
-GROQ_API_KEY=
-
-PORT=4000
-CLIENT_URL=http://localhost:3000
-EXPRESS_SERVER_URL=http://localhost:4000
-WIDGET_BASE_URL=http://localhost:4000
-
-ALLOW_ALL_WIDGET_DOMAINS=false
-WIDGET_RATE_LIMIT_PER_MINUTE=120
-CHAT_RATE_LIMIT_PER_MINUTE=60
-LIVE_VOICE_RATE_LIMIT_PER_MINUTE=20
-
-# Optional Gemini typed-chat tuning
-GEMINI_MODEL=gemini-2.5-flash-lite
-GEMINI_MAX_RETRIES=2
-
-# Optional provider credentials
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_REDIRECT_URI=
-MICROSOFT_CLIENT_ID=
-MICROSOFT_CLIENT_SECRET=
-MICROSOFT_REDIRECT_URI=
-```
-
-Use the exact variable names in the repository `.env.example` files if they change. Never commit `.env` files or real credentials.
+Use the same Supabase project in both: Project URL (without `/rest/v1`) in `SUPABASE_URL` and `VITE_SUPABASE_URL`, the secret key in `SUPABASE_SERVICE_ROLE_KEY`, the publishable key in `VITE_SUPABASE_PUBLISHABLE_KEY`. There is no root `.env` for local development; the root `.env.example` is only the template for the EC2 host's compose `.env`. Never commit `.env` files or real credentials, and never put backend secrets in `apps/web`.
 
 ### Apply the database
 
