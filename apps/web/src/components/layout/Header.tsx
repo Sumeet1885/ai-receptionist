@@ -51,10 +51,10 @@ export const Header: React.FC<HeaderProps> = ({
     return routeName === key;
   };
   const actions = publicActions(routeName);
-  const navClass = (active: boolean) => `rounded-pill px-3.5 py-1.5 transition-colors duration-[var(--duration-fast)] ${
+  const navClass = (active: boolean) => `rounded-pill min-h-11 px-4 py-2 text-base transition-colors duration-[var(--duration-fast)] ${
     active ? 'bg-accent-lime font-semibold text-text' : 'font-medium text-text-subtle hover:bg-surface-sunken hover:text-text'
   }`;
-  const mobileClass = (active: boolean) => `w-full rounded-small px-4 py-3 text-left text-sm font-medium transition ${
+  const mobileClass = (active: boolean) => `w-full rounded-small px-4 py-3 text-left text-base font-medium transition ${
     active ? 'bg-accent-lime text-text' : 'text-text-subtle hover:bg-surface-sunken hover:text-text'
   }`;
   const go = (path: string) => {
@@ -88,7 +88,7 @@ export const Header: React.FC<HeaderProps> = ({
         <BrandLogo />
       </a>
 
-      <nav aria-label="Main" className="hidden lg:flex items-center gap-1 rounded-pill border border-border bg-surface p-1 text-xs shadow-card">
+      <nav aria-label="Main" className="hidden 2xl:flex items-center gap-1 rounded-pill border border-border bg-surface p-1 text-base shadow-card">
         {(user ? authedNav : publicNav).map(item => (
           <button
             key={item.key}
@@ -104,21 +104,21 @@ export const Header: React.FC<HeaderProps> = ({
 
       <div className="flex items-center gap-2 sm:gap-4">
         {user ? (
-          <div className="hidden lg:flex items-center gap-3">
-            <span className="max-w-[180px] truncate text-xs text-text-subtle">{user.email}</span>
-            <Button variant="secondary" size="sm" onClick={handleSignOut}>
+          <div className="hidden 2xl:flex items-center gap-3">
+            <span className="max-w-[200px] truncate text-sm text-text-subtle">{user.email}</span>
+            <Button variant="secondary" size="md" className="text-base" onClick={handleSignOut}>
               Sign out
             </Button>
           </div>
         ) : (
-          <div className="hidden lg:flex items-center gap-2">
+          <div className="hidden 2xl:flex items-center gap-2">
             {actions.signIn && (
-              <Button variant={actions.getStarted ? 'ghost' : 'secondary'} size="sm" onClick={() => navigate('/auth?mode=signin')}>
+              <Button variant={actions.getStarted ? 'ghost' : 'secondary'} size="md" className="text-base" onClick={() => navigate('/auth?mode=signin')}>
                 Sign in
               </Button>
             )}
             {actions.getStarted && (
-              <Button size="sm" onClick={() => navigate('/request-access')}>
+              <Button size="md" className="text-base" onClick={() => navigate('/request-access')}>
                 Get started ↗
               </Button>
             )}
@@ -128,7 +128,7 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           type="button"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="rounded-pill border border-border bg-surface p-2 text-text transition hover:bg-surface-sunken lg:hidden"
+          className="rounded-pill border border-border bg-surface p-2 text-text transition hover:bg-surface-sunken 2xl:hidden"
           aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
           aria-expanded={mobileMenuOpen}
           aria-controls="app-mobile-menu"
@@ -147,7 +147,7 @@ export const Header: React.FC<HeaderProps> = ({
         <nav
           id="app-mobile-menu"
           aria-label="Mobile"
-          className="absolute left-0 right-0 top-full z-50 space-y-1 border-b border-border bg-background/95 px-4 py-4 shadow-floating backdrop-blur-md lg:hidden"
+          className="absolute left-0 right-0 top-full z-50 space-y-1 border-b border-border bg-background/95 px-4 py-4 shadow-floating backdrop-blur-md 2xl:hidden"
         >
           {user ? (
             <>
@@ -163,11 +163,11 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
               ))}
               <div className="space-y-1 border-t border-border pt-2">
-                <p className="truncate px-4 py-2 text-xs text-text-subtle">{user.email}</p>
+                <p className="truncate px-4 py-2 text-sm text-text-subtle">{user.email}</p>
                 <button
                   type="button"
                   onClick={handleSignOut}
-                  className="w-full rounded-small px-4 py-3 text-left text-sm font-medium text-danger transition hover:bg-danger-surface"
+                  className="w-full rounded-small px-4 py-3 text-left text-base font-medium text-danger transition hover:bg-danger-surface"
                 >
                   Sign out
                 </button>

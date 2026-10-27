@@ -6,11 +6,8 @@ import { LandingDialog } from './LandingDialog';
 import { useInView, useLanding } from './LandingContext';
 import { Reveal } from './Reveal';
 
-// [shown text, "romanised · language", BCP 47 language] for every supported language, plus English.
-const allGreetings: [string, string, string][] = [
-  ['Hello', 'English', 'en'],
-  ...SUPPORTED_LANGUAGES.map((l): [string, string, string] => [l.greeting, `${l.romanised} · ${l.name}`, l.code]),
-];
+// [shown text, "romanised · language", BCP 47 language] for the 11 landing-page languages.
+const allGreetings = SUPPORTED_LANGUAGES.map((l): [string, string, string] => [l.greeting, `${l.romanised} · ${l.name}`, l.code]);
 const greetings = allGreetings.slice(0, 6);
 const greetingsReverse = allGreetings.slice(6);
 
@@ -53,7 +50,7 @@ export function LanguageWall() {
       <div className="hint" id="greeting-note" role="status">
         {note}
       </div>
-      <p className="hint">Supported languages: English, {SUPPORTED_LANGUAGE_LIST}.</p>
+      <p className="hint">Supported languages: {SUPPORTED_LANGUAGE_LIST}.</p>
     </section>
   );
 }
@@ -235,7 +232,7 @@ const clarity = [
   },
   {
     q: 'Which languages are supported?',
-    a: `English, ${SUPPORTED_LANGUAGE_LIST}, as well as everyday mixes like Hinglish.`,
+    a: `${SUPPORTED_LANGUAGE_LIST}.`,
   },
 ];
 

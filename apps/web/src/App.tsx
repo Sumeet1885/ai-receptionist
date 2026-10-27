@@ -178,6 +178,7 @@ export default function App() {
       'auth-signup': '/request-access',
       'request-access': '/request-access',
       onboarding: '/agents/new',
+      agents: '/agents',
       dashboard: '/dashboard',
       'public-chat': '/dashboard'
     };
@@ -422,7 +423,7 @@ export default function App() {
     <div className={`bg-brand-bg text-brand-text font-sans antialiased flex flex-col ${isStandaloneChat ? 'h-screen overflow-hidden' : isAuthScreen ? 'min-h-screen lg:h-dvh lg:overflow-hidden' : 'min-h-screen'}`}>
       {toast && <Toast toast={toast} />}
 
-      {!isStandaloneChat && route.name !== 'landing' && (
+      {!isStandaloneChat && route.name !== 'landing' && route.name !== 'agent-new' && (
         <Header
           routeName={route.name}
           navigate={navigate}
@@ -466,6 +467,7 @@ export default function App() {
 
         {route.name === 'agent-new' && (
           <OnboardingView
+            isInitialSetup={account.stage === 'onboarding'}
             newBotName={newBotName}
             setNewBotName={setNewBotName}
             newBotIndustry={newBotIndustry}
@@ -645,7 +647,7 @@ export default function App() {
       </main>
       )}
 
-      {!isStandaloneChat && !isAuthScreen && route.name !== 'landing' && <Footer showToast={(msg) => showToast(msg, 'success')} />}
+      {!isStandaloneChat && !isAuthScreen && route.name !== 'landing' && route.name !== 'agent-new' && <Footer showToast={(msg) => showToast(msg, 'success')} />}
 
       {newlyCreatedBotId && (
         <DeploymentSuccessModal

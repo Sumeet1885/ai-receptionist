@@ -1,8 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { ArrowLeft, ArrowRight, Check, LoaderCircle } from 'lucide-react';
+import { BrandLogo } from '../ui/brand-logo';
 import { BUSINESS_TEMPLATES, BusinessTemplate } from '../../lib/businessTemplates';
 import { LeadField } from '../../types';
 
 interface OnboardingViewProps {
+  isInitialSetup?: boolean;
   newBotName: string;
   setNewBotName: (name: string) => void;
   newBotIndustry: string;
@@ -19,7 +22,7 @@ interface OnboardingViewProps {
   setNewBotPrompts: (prompts: string[]) => void;
   onSelectTemplate?: (template: BusinessTemplate) => void;
   setView: (view: string) => void;
-  handleCreateBot: (e: React.FormEvent) => void;
+  handleCreateBot: (e: React.FormEvent) => void | Promise<void>;
 }
 
 const LEAD_FIELD_OPTIONS: { id: LeadField; label: string; icon: string; desc: string }[] = [
@@ -31,6 +34,7 @@ const LEAD_FIELD_OPTIONS: { id: LeadField; label: string; icon: string; desc: st
 ];
 
 export const OnboardingView: React.FC<OnboardingViewProps> = ({
+  isInitialSetup = false,
   newBotName,
   setNewBotName,
   newBotIndustry,
@@ -49,15 +53,33 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
   setView,
   handleCreateBot
 }) => {
-  const formRef = useRef<HTMLDivElement>(null);
-  const [highlightForm, setHighlightForm] = useState<boolean>(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const [step, setStep] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+  const steps = ['Business type', 'Business details', 'Greeting & appearance', 'Customer details', 'Business knowledge'];
+  useEffect(() => {
+    headingRef.current?.focus({ preventScroll: true });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [step]);
+
+  const submitStep = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (submitting) return;
+    if (step < steps.length - 1) {
+      if (formRef.current?.reportValidity()) setStep(step + 1);
+      return;
+    }
+    if (!newBotName.trim()) { setStep(1); return; }
+    setSubmitting(true);
+    try { await handleCreateBot(event); }
+    finally { setSubmitting(false); }
+  };
 
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(() => {
     const match = BUSINESS_TEMPLATES.find(t => t.industry === newBotIndustry);
     return match ? match.id : 'healthcare';
   });
-
-  const [notification, setNotification] = useState<string | null>(null);
 
   const handleTemplateClick = (template: BusinessTemplate) => {
     setSelectedTemplateId(template.id);
@@ -72,27 +94,11 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
     if (onSelectTemplate) {
       onSelectTemplate(template);
     }
-
-    setNotification(`Loaded "${template.name}" template — pre-filled fields ready below!`);
-    setHighlightForm(true);
-
-    // Smooth scroll down to the pre-filled configuration form
-    setTimeout(() => {
-      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 60);
-
-    setTimeout(() => {
-      setHighlightForm(false);
-    }, 2200);
-
-    setTimeout(() => {
-      setNotification(null);
-    }, 6000);
   };
 
   const toggleLeadField = (fieldId: LeadField) => {
     if (newBotLeadFields.includes(fieldId)) {
-      // Don't allow deselecting both name and phone
+      // Keep at least one customer detail selected.
       if (newBotLeadFields.length <= 1) return;
       setNewBotLeadFields(newBotLeadFields.filter(f => f !== fieldId));
     } else {
@@ -101,35 +107,54 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 w-full space-y-8">
+    <div className="max-w-5xl mx-auto px-4 sm:px-8 py-8 sm:py-12 w-full space-y-8 text-base">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <BrandLogo className="h-9" />
+        <span className="text-sm font-semibold text-brand-muted">{isInitialSetup ? 'Set up your workspace' : 'New receptionist'}</span>
+      </div>
+      <nav aria-label="Setup progress">
+        <ol className="grid grid-cols-5 gap-2 sm:gap-4">
+          {steps.map((label, index) => (
+            <li key={label} aria-current={step === index ? 'step' : undefined}>
+              <div className={`h-1.5 rounded-full mb-3 ${index <= step ? 'bg-brand-accent' : 'bg-brand-border'}`} />
+              <div className={`flex items-center gap-2 text-sm font-semibold ${index === step ? 'text-brand-text' : 'text-brand-muted'}`}>
+                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${index <= step ? 'bg-brand-accent text-primary-foreground border-brand-accent' : 'border-brand-border'}`}>
+                  {index < step ? <Check size={16} aria-label="Completed" /> : index + 1}
+                </span>
+                <span className="sr-only sm:not-sr-only">{label}</span>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </nav>
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-brand-card via-brand-card/95 to-brand-bg rounded-2xl border border-brand-border p-6 lg:p-8 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-brand-accent/10 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-accent/10 border border-brand-accent/30 text-brand-accent text-xs font-body font-semibold uppercase tracking-wider mb-3">
-            <span>⚡ 1-Click Business Templates</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-accent/10 border border-brand-accent/30 text-brand-accent text-sm font-body font-semibold uppercase tracking-wider mb-3">
+            <span>Step {step + 1} of {steps.length}</span>
             <span className="w-1.5 h-1.5 rounded-full bg-brand-accent text-primary-foreground animate-pulse" />
           </div>
-          <h1 className="text-3xl sm:text-4xl font-display font-extrabold text-brand-text tracking-tight">
-            Create Your AI Receptionist
+          <h1 ref={headingRef} tabIndex={-1} className="outline-none text-3xl sm:text-4xl font-display font-extrabold text-brand-text tracking-tight">
+            {steps[step]}
           </h1>
           <p className="text-sm sm:text-base text-brand-muted mt-2 max-w-2xl leading-relaxed">
-            Choose a pre-trained business persona below to instantly load industry-specific conversational flows, appointment handling, and lead extraction fields in one click.
+            {['Choose a starting template for your business. You can review and edit every detail before creating your receptionist.', 'Tell us which business your receptionist will represent.', 'Choose how your receptionist welcomes customers and how your chat widget looks.', 'Choose the information to collect from customers during calls and chats.', 'Review the sample content and replace it with your actual services, prices, hours and policies.'][step]}
           </p>
         </div>
       </div>
 
       {/* Template Selector Cards */}
-      <div className="space-y-4">
+      {step === 0 && <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-display font-bold text-brand-text flex items-center gap-2">
-              <span>Choose a Business Persona</span>
-              <span className="text-xs font-body font-normal text-brand-muted px-2 py-0.5 rounded bg-brand-bg border border-brand-border">
-                1-Click Pre-fill
+              <span>Choose your business type</span>
+              <span className="text-sm font-body font-normal text-brand-muted px-2 py-0.5 rounded bg-brand-bg border border-brand-border">
+                Starting templates
               </span>
             </h2>
-            <p className="text-xs text-brand-muted mt-0.5">
+            <p className="text-sm text-brand-muted mt-0.5">
               Click any card to pre-fill AI instructions, greeting, extraction fields, and theme.
             </p>
           </div>
@@ -142,6 +167,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
               <div
                 key={tmpl.id}
                 role="button"
+                aria-pressed={isSelected}
                 tabIndex={0}
                 onClick={() => handleTemplateClick(tmpl)}
                 onKeyDown={(e) => {
@@ -168,25 +194,25 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                           {tmpl.name}
                         </h3>
                       </div>
-                      <span className="text-[11px] font-body text-brand-accent uppercase tracking-wider font-semibold">
+                      <span className="text-sm font-body text-brand-accent uppercase tracking-wider font-semibold">
                         {tmpl.badge}
                       </span>
                     </div>
                   </div>
 
                   {isSelected ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-body font-bold px-2 py-0.5 rounded-full bg-brand-success/15 border border-brand-success/40 text-brand-success">
+                    <span className="inline-flex items-center gap-1 text-sm font-body font-bold px-2 py-0.5 rounded-full bg-brand-success/15 border border-brand-success/40 text-brand-success">
                       ✓ Active
                     </span>
                   ) : (
-                    <span className="text-[11px] font-body text-brand-muted group-hover:text-brand-text transition-colors">
+                    <span className="text-sm font-body text-brand-muted group-hover:text-brand-text transition-colors">
                       Select →
                     </span>
                   )}
                 </div>
 
                 {/* Tagline */}
-                <p className="text-xs text-brand-muted leading-relaxed mb-4">
+                <p className="text-sm text-brand-muted leading-relaxed mb-4">
                   {tmpl.tagline}
                 </p>
 
@@ -195,7 +221,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                   {tmpl.features.map((feat, idx) => (
                     <span
                       key={idx}
-                      className="text-[10px] font-sans px-2 py-0.5 rounded-md bg-brand-bg/90 border border-brand-border/80 text-brand-text/90"
+                      className="text-sm font-sans px-2 py-0.5 rounded-md bg-brand-bg/90 border border-brand-border/80 text-brand-text/90"
                     >
                       {feat}
                     </span>
@@ -203,10 +229,10 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                 </div>
 
                 {/* Footer preview note */}
-                <div className="pt-3 border-t border-brand-border/60 flex items-center justify-between text-[11px] text-brand-muted font-body">
+                <div className="pt-3 border-t border-brand-border/60 flex items-center justify-between text-sm text-brand-muted font-body">
                   <span>Pre-fills: Instructions + Extraction + Theme</span>
                   <span className={`font-semibold flex items-center gap-1 ${isSelected ? 'text-brand-accent' : 'text-brand-muted group-hover:text-brand-accent'}`}>
-                    {isSelected ? 'Pre-filled below ↓' : 'Apply & View Fields ↓'}
+                    {isSelected ? 'Selected' : 'Use this template'}
                   </span>
                 </div>
               </div>
@@ -214,98 +240,71 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
           })}
         </div>
 
-        {/* Dynamic Notification Pill */}
-        {notification && (
-          <div className="p-3.5 rounded-xl bg-brand-accent/10 border border-brand-accent/30 flex items-center justify-between text-xs text-brand-text animate-fadeIn">
-            <div className="flex items-center gap-2">
-              <span className="text-brand-accent text-sm">✨</span>
-              <span>{notification}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                className="text-brand-accent hover:underline font-body text-xs flex items-center gap-1 font-semibold"
-              >
-                Jump to Fields ↓
-              </button>
-              <button
-                type="button"
-                onClick={() => setNotification(null)}
-                className="text-brand-muted hover:text-brand-text font-body text-xs px-1"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+        <div className="flex justify-end pt-4">
+          <button type="button" onClick={() => setStep(1)} className="inline-flex min-h-12 items-center gap-2 rounded-lg bg-brand-accent px-6 py-3 text-base font-semibold text-primary-foreground hover:bg-brand-accent-hover">
+            Continue <ArrowRight size={18} />
+          </button>
+        </div>
+      </div>}
 
-      {/* Main Configuration Form */}
-      <div
-        ref={formRef}
-        id="prefilled-fields-section"
-        className={`bg-brand-card rounded-2xl border transition-all duration-500 p-6 lg:p-10 shadow-xl relative scroll-mt-6 ${
-          highlightForm
-            ? 'border-brand-accent ring-4 ring-brand-accent/40 shadow-2xl shadow-brand-accent/20'
-            : 'border-brand-border'
-        }`}
-      >
+      {step > 0 && <div className="bg-brand-card rounded-2xl border border-brand-border p-6 sm:p-8 shadow-sm">
         {/* Pre-filled Status Banner */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 mb-6 rounded-xl bg-brand-accent/10 border border-brand-accent/30 text-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 mb-6 rounded-xl bg-brand-accent/10 border border-brand-accent/30 text-sm">
           <div className="flex items-center gap-2.5">
             <span className="text-brand-accent text-base">✨</span>
             <div>
-              <span className="font-bold text-brand-text">Persona Applied: </span>
+              <span className="font-bold text-brand-text">Starting template: </span>
               <span className="text-brand-accent font-semibold">
                 {BUSINESS_TEMPLATES.find(t => t.id === selectedTemplateId)?.name || newBotIndustry}
               </span>
               <span className="text-brand-muted ml-1.5 hidden md:inline">
-                — All fields below are pre-populated. Tweak anything or click Generate to launch immediately.
+                Review the sample details and make them your own.
               </span>
             </div>
           </div>
-          <span className="text-[11px] font-body text-brand-success bg-brand-success/15 border border-brand-success/30 px-2.5 py-0.5 rounded-full font-bold self-start sm:self-auto shrink-0">
-            ✓ Pre-filled Ready
+          <span className="text-sm font-body text-brand-success bg-brand-success/15 border border-brand-success/30 px-2.5 py-0.5 rounded-full font-bold self-start sm:self-auto shrink-0">
+            ✓ Sample details loaded
           </span>
         </div>
-        <form onSubmit={handleCreateBot} className="space-y-8">
+        <form ref={formRef} onSubmit={submitStep} aria-busy={submitting} className="space-y-8">
           {/* Section 1: Core Profile */}
-          <div className="space-y-4">
+          <fieldset hidden={step !== 1} disabled={step !== 1 || submitting} className="space-y-4">
             <div className="border-b border-brand-border pb-3 flex items-center justify-between">
               <h3 className="text-lg font-display font-bold text-brand-text flex items-center gap-2">
-                <span>1. Business Profile</span>
+                <span>Business details</span>
               </h3>
-              <span className="text-xs font-body text-brand-muted">Step 1 of 4</span>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider font-body">
+                  <label htmlFor="setup-business-name" className="block text-sm font-semibold text-brand-muted uppercase tracking-wider font-body">
                     Business / Clinic / Agency Name
                   </label>
-                  <span className="text-[10px] font-body text-brand-muted">{(newBotName || '').length}/100</span>
+                  <span className="text-sm font-body text-brand-muted">{(newBotName || '').length}/100</span>
                 </div>
                 <input
+                  id="setup-business-name"
                   type="text"
                   required
                   maxLength={100}
+                  pattern={'.*\\S.*'}
+                  title="Enter your business name"
                   value={newBotName}
                   onChange={(e) => setNewBotName(e.target.value)}
                   placeholder="e.g., SmileCare Dental & Wellness Clinic"
-                  className="w-full bg-brand-bg border border-brand-border focus:border-brand-accent rounded-lg px-4 py-3 text-brand-text placeholder-brand-muted/40 focus:outline-none transition duration-200 font-sans text-sm focus:ring-1 focus:ring-brand-accent"
+                  className="w-full bg-brand-bg border border-brand-border focus:border-brand-accent rounded-lg px-4 py-3 text-brand-text placeholder-brand-muted/40 focus:outline-none transition duration-200 font-sans text-base focus:ring-1 focus:ring-brand-accent"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider mb-2 font-body">
+                <label htmlFor="setup-industry" className="block text-sm font-semibold text-brand-muted uppercase tracking-wider mb-2 font-body">
                   Industry Sector
                 </label>
-                <select
+                <select id="setup-industry"
                   value={newBotIndustry}
                   onChange={(e) => setNewBotIndustry(e.target.value)}
-                  className="w-full bg-brand-bg border border-brand-border focus:border-brand-accent rounded-lg px-4 py-3 text-brand-text focus:outline-none transition duration-200 font-sans text-sm focus:ring-1 focus:ring-brand-accent"
+                  className="w-full bg-brand-bg border border-brand-border focus:border-brand-accent rounded-lg px-4 py-3 text-brand-text focus:outline-none transition duration-200 font-sans text-base focus:ring-1 focus:ring-brand-accent"
                 >
                   <option value="Healthcare">Healthcare & Dental Clinics</option>
                   <option value="Real Estate">Real Estate & Properties</option>
@@ -317,40 +316,39 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                 </select>
               </div>
             </div>
-          </div>
+          </fieldset>
 
           {/* Section 2: Chatbot Branding & Tone */}
-          <div className="space-y-4">
+          <fieldset hidden={step !== 2} disabled={step !== 2 || submitting} className="space-y-4">
             <div className="border-b border-brand-border pb-3 flex items-center justify-between">
               <h3 className="text-lg font-display font-bold text-brand-text">
-                2. AI Greeting & Branding
+                Greeting and appearance
               </h3>
-              <span className="text-xs font-body text-brand-muted">Step 2 of 4</span>
             </div>
             
             <div>
               <div className="flex justify-between items-center mb-2">
-                <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider font-body">
+                <label htmlFor="setup-greeting" className="block text-sm font-semibold text-brand-muted uppercase tracking-wider font-body">
                   AI Receptionist Greeting Message
                 </label>
-                <span className="text-[10px] font-body text-brand-muted">{(newBotGreeting || '').length}/400</span>
+                <span className="text-sm font-body text-brand-muted">{(newBotGreeting || '').length}/400</span>
               </div>
-              <textarea
+              <textarea id="setup-greeting"
                 rows={3}
                 maxLength={400}
                 value={newBotGreeting}
                 onChange={(e) => setNewBotGreeting(e.target.value)}
                 placeholder="Welcome to our business! I am your virtual receptionist..."
-                className="w-full bg-brand-bg border border-brand-border focus:border-brand-accent rounded-lg px-4 py-3 text-brand-text placeholder-brand-muted/40 focus:outline-none transition duration-200 font-sans text-sm leading-relaxed focus:ring-1 focus:ring-brand-accent"
+                className="w-full bg-brand-bg border border-brand-border focus:border-brand-accent rounded-lg px-4 py-3 text-brand-text placeholder-brand-muted/40 focus:outline-none transition duration-200 font-sans text-base leading-relaxed focus:ring-1 focus:ring-brand-accent"
               />
-              <p className="text-[11px] text-brand-muted mt-1.5 font-sans">
+              <p className="text-sm text-brand-muted mt-1.5 font-sans">
                 This is spoken as the opening line for incoming voice calls and shown as the initial greeting in web chat.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
               <div>
-                <label className="block text-xs font-semibold text-brand-muted uppercase tracking-wider mb-2 font-body">
+                <label className="block text-sm font-semibold text-brand-muted uppercase tracking-wider mb-2 font-body">
                   Primary Theme Color
                 </label>
                 <div className="flex items-center space-x-3 mt-1.5">
@@ -365,30 +363,31 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                       type="button"
                       onClick={() => setNewBotColor(c.id)}
                       title={c.label}
+                      aria-label={c.label}
+                      aria-pressed={newBotColor === c.id}
                       className={`w-10 h-10 rounded-full border-2 transition duration-200 flex items-center justify-center ${
                         newBotColor === c.id ? 'border-brand-text scale-110 shadow-md ring-2 ring-brand-text/30' : 'border-transparent opacity-80 hover:opacity-100'
                       } ${c.bg}`}
                     >
-                      {newBotColor === c.id && <span className="text-white text-xs font-bold">✓</span>}
+                      {newBotColor === c.id && <span className="text-white text-sm font-bold">✓</span>}
                     </button>
                   ))}
                 </div>
               </div>
             </div>
-          </div>
+          </fieldset>
 
           {/* Section 3: Lead & Appointment Extraction Fields */}
-          <div className="space-y-4">
+          <fieldset hidden={step !== 3} disabled={step !== 3 || submitting} className="space-y-4">
             <div className="border-b border-brand-border pb-3 flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-display font-bold text-brand-text flex items-center gap-2">
-                  <span>3. Caller Qualification & Extraction Fields</span>
+                  <span>Customer details to collect</span>
                 </h3>
               </div>
-              <span className="text-xs font-body text-brand-muted">Step 3 of 4</span>
             </div>
 
-            <p className="text-xs text-brand-muted leading-relaxed font-sans">
+            <p className="text-sm text-brand-muted leading-relaxed font-sans">
               Choose the details your receptionist automatically extracts during phone calls and chats. These are saved to your CRM leads table and passed to live agent handover.
             </p>
 
@@ -400,6 +399,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                     key={field.id}
                     type="button"
                     onClick={() => toggleLeadField(field.id)}
+                    aria-pressed={isActive}
                     className={`flex items-start gap-3 p-3.5 rounded-xl border text-left transition-all ${
                       isActive
                         ? 'bg-brand-accent/10 border-brand-accent text-brand-text shadow-sm'
@@ -411,14 +411,14 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
-                        <span className="text-xs font-bold font-sans text-brand-text">
+                        <span className="text-sm font-bold font-sans text-brand-text">
                           {field.label}
                         </span>
-                        <span className={`text-[11px] font-body ${isActive ? 'text-brand-accent font-bold' : 'text-brand-muted'}`}>
+                        <span className={`text-sm font-body ${isActive ? 'text-brand-accent font-bold' : 'text-brand-muted'}`}>
                           {isActive ? '✓ ON' : 'OFF'}
                         </span>
                       </div>
-                      <p className="text-[11px] text-brand-muted mt-0.5 truncate">
+                      <p className="text-sm text-brand-muted mt-0.5 truncate">
                         {field.desc}
                       </p>
                     </div>
@@ -426,40 +426,36 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                 );
               })}
             </div>
-          </div>
+          </fieldset>
 
           {/* Section 4: Training Knowledge Base & FAQ */}
-          <div className="space-y-4">
+          <fieldset hidden={step !== 4} disabled={step !== 4 || submitting} className="space-y-4">
             <div className="border-b border-brand-border pb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-display font-bold text-brand-text">
-                  4. Knowledge Base & Domain Training
+                  Business knowledge
                 </h3>
-                <span className="text-[10px] text-brand-accent font-body tracking-widest bg-brand-accent/10 border border-brand-accent/30 px-2 py-0.5 rounded uppercase">
-                  RAG Engine Ready
-                </span>
               </div>
-              <span className="text-xs font-body text-brand-muted">Step 4 of 4</span>
             </div>
             
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <p className="text-xs text-brand-muted leading-relaxed font-sans">
+              <p className="text-sm text-brand-muted leading-relaxed font-sans">
                 The AI receptionist uses this domain knowledge to answer complex caller questions, check doctor/agent schedules, give accurate pricing, and triage emergency calls.
               </p>
-              <span className="text-[10px] font-body text-brand-muted shrink-0">
+              <span className="text-sm font-body text-brand-muted shrink-0">
                 {(newBotKB || '').length}/3000
               </span>
             </div>
             
             <div>
-              <textarea
+              <textarea aria-label="Business knowledge"
                 rows={8}
                 required
                 maxLength={3000}
                 value={newBotKB}
                 onChange={(e) => setNewBotKB(e.target.value)}
                 placeholder="Enter services, pricing, provider schedules, policies, emergency protocol, location, and hours..."
-                className="w-full bg-brand-bg border border-brand-border focus:border-brand-accent rounded-lg px-4 py-3 text-brand-text placeholder-brand-muted/40 focus:outline-none transition duration-200 font-sans text-sm leading-relaxed font-body text-xs focus:ring-1 focus:ring-brand-accent"
+                className="w-full bg-brand-bg border border-brand-border focus:border-brand-accent rounded-lg px-4 py-3 text-brand-text placeholder-brand-muted/40 focus:outline-none transition duration-200 font-sans text-base leading-relaxed focus:ring-1 focus:ring-brand-accent"
               />
             </div>
 
@@ -467,16 +463,15 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
             {newBotPrompts && newBotPrompts.length > 0 && (
               <div className="bg-brand-bg/50 border border-brand-border rounded-xl p-3.5 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-body uppercase tracking-wider text-brand-muted font-semibold">
-                    Pre-configured Starter Prompts (Shown to Callers & Chatters)
+                  <span className="text-sm font-body uppercase tracking-wider text-brand-muted font-semibold">
+                    Suggested questions for your customers
                   </span>
-                  <span className="text-[10px] font-body text-brand-accent">Auto-generated</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {newBotPrompts.map((prompt, idx) => (
                     <span
                       key={idx}
-                      className="text-xs px-2.5 py-1 rounded-md bg-brand-card border border-brand-border text-brand-text/90 flex items-center gap-1.5"
+                      className="text-sm px-2.5 py-1 rounded-md bg-brand-card border border-brand-border text-brand-text/90 flex items-center gap-1.5"
                     >
                       <span className="text-brand-accent">💬</span>
                       <span>"{prompt}"</span>
@@ -485,33 +480,21 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({
                 </div>
               </div>
             )}
-          </div>
+          </fieldset>
 
-          {/* Create CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-brand-border">
-            <div className="text-xs text-brand-muted flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-brand-success" />
-              <span>Ready for immediate deployment upon generation</span>
-            </div>
-
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <button
-                type="button"
-                onClick={() => setView('landing')}
-                className="w-full sm:w-auto px-6 py-2.5 bg-brand-bg hover:bg-brand-card border border-brand-border text-brand-text font-sans font-semibold text-sm rounded-lg transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="w-full sm:w-auto px-8 py-2.5 bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground border border-brand-border font-sans font-bold text-sm rounded-lg shadow-lg hover:shadow-brand-accent/20 transition flex items-center justify-center gap-2"
-              >
-                <span>⚡ Generate Live AI Receptionist</span>
+          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-brand-border pt-6">
+            <button type="button" disabled={submitting} onClick={() => setStep(step - 1)} className="inline-flex min-h-12 items-center gap-2 rounded-lg border border-brand-border px-5 py-3 text-base font-semibold disabled:opacity-50">
+              <ArrowLeft size={18} /> Back
+            </button>
+            <div className="flex flex-wrap items-center gap-4">
+              {!isInitialSetup && <button type="button" disabled={submitting} onClick={() => setView('agents')} className="min-h-12 px-3 text-base text-brand-muted">Cancel</button>}
+              <button type="submit" disabled={submitting} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-brand-accent px-6 py-3 text-base font-semibold text-primary-foreground hover:bg-brand-accent-hover disabled:opacity-60">
+                {submitting ? <><LoaderCircle size={18} className="animate-spin" /> Creating receptionist...</> : step === steps.length - 1 ? 'Create receptionist' : <>Continue <ArrowRight size={18} /></>}
               </button>
             </div>
           </div>
         </form>
-      </div>
+      </div>}
     </div>
   );
 };
