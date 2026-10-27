@@ -26,6 +26,7 @@ export interface BillingOrderRow {
   password_hash: string | null;
   checkout_dismissed_at: string | null;
   payment_error: string | null;
+  lead_notified_at: string | null;
   razorpay_order_id: string | null;
   razorpay_payment_id: string | null;
   paid_at: string | null;
@@ -108,7 +109,7 @@ export async function redeemCoupon(couponId: string) {
 
 // ── orders ───────────────────────────────────────────────────────────────────
 
-export async function insertOrder(row: Omit<BillingOrderRow, 'id' | 'status' | 'failure_reason' | 'checkout_dismissed_at' | 'payment_error' | 'razorpay_order_id' | 'razorpay_payment_id' | 'paid_at' | 'provisioned_user_id' | 'provisioned_at' | 'created_at' | 'updated_at'> & { ip: string; user_agent: string | null }) {
+export async function insertOrder(row: Omit<BillingOrderRow, 'id' | 'status' | 'failure_reason' | 'checkout_dismissed_at' | 'payment_error' | 'lead_notified_at' | 'razorpay_order_id' | 'razorpay_payment_id' | 'paid_at' | 'provisioned_user_id' | 'provisioned_at' | 'created_at' | 'updated_at'> & { ip: string; user_agent: string | null }) {
   return check(await supabase.from('billing_orders').insert(row).select('*').single<BillingOrderRow>(), 'create order');
 }
 
@@ -132,6 +133,21 @@ export async function transitionOrder(id: string, from: OrderStatus[], changes: 
   );
 }
 
+/** Marks an unpaid order's lead alert as sent; null when it already was (or the order is paid). */
+export async function claimLeadNotification(id: string) {
+  return check(
+    await supabase
+      .from('billing_orders')
+      .update({ lead_notified_at: now() })
+      .eq('id', id)
+      .eq('status', 'created')
+      .is('lead_notified_at', null)
+      .select('*')
+      .maybeSingle<BillingOrderRow>(),
+    'claim lead notification',
+  );
+}
+
 export async function findLatestProvisionedOrderByEmail(email: string) {
   return check(
     await supabase
@@ -146,16 +162,47 @@ export async function findLatestProvisionedOrderByEmail(email: string) {
   );
 }
 
-export async function listOrders(filters: { status?: OrderStatus; page: number; pageSize: number }) {
+export type LeadStage = 'started' | 'closed' | 'failed';
+export const PAID_STATUSES: OrderStatus[] = ['paid', 'provisioned', 'review'];
+
+/**
+ * Orders for the admin tables. `paidOnly` leaves out unpaid checkouts (the revenue page); a lead
+ * stage narrows unpaid checkouts (the signup leads page).
+ */
+export async function listOrders(filters: { status?: OrderStatus; paidOnly?: boolean; lead?: LeadStage; page: number; pageSize: number }) {
   let query = supabase
     .from('billing_orders')
     .select('id,status,currency,total,discount,coupon_code,full_name,email,phone,business_name,plan_snapshot,razorpay_payment_id,paid_at,created_at,failure_reason,checkout_dismissed_at,payment_error', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range((filters.page - 1) * filters.pageSize, filters.page * filters.pageSize - 1);
   if (filters.status) query = query.eq('status', filters.status);
+  else if (filters.paidOnly) query = query.in('status', PAID_STATUSES);
+  if (filters.lead) {
+    query = query.eq('status', 'created');
+    if (filters.lead === 'failed') query = query.not('payment_error', 'is', null);
+    else query = query.is('payment_error', null);
+    if (filters.lead === 'closed') query = query.not('checkout_dismissed_at', 'is', null);
+    if (filters.lead === 'started') query = query.is('checkout_dismissed_at', null);
+  }
   const { data, error, count } = await query;
   if (error) throw new Error(`list orders: ${error.message}`);
   return { rows: data ?? [], total: count ?? 0 };
+}
+
+// Inputs for the revenue summary. Fine at today's volumes; move to SQL aggregates if orders grow
+// into the tens of thousands.
+export async function listPaidOrdersForRevenue() {
+  return (check(
+    await supabase.from('billing_orders').select('total,currency,paid_at,plan_snapshot->name').in('status', PAID_STATUSES).not('paid_at', 'is', null).limit(20_000),
+    'list paid orders',
+  ) ?? []).map((row: any) => ({ total: row.total, currency: row.currency, paid_at: row.paid_at, plan_snapshot: { name: row.name } }));
+}
+
+export async function listOpenLeads() {
+  return (check(
+    await supabase.from('billing_orders').select('created_at,checkout_dismissed_at,payment_error').eq('status', 'created').limit(20_000),
+    'list open leads',
+  ) ?? []) as Array<{ created_at: string; checkout_dismissed_at: string | null; payment_error: string | null }>;
 }
 
 export async function setCustomerPlan(userId: string, order: BillingOrderRow) {

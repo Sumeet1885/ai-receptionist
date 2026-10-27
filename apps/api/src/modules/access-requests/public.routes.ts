@@ -6,7 +6,7 @@ import { emailTemplates, sendEmailSafely } from '../../services/email';
 import { publishAdminEvent } from '../../services/adminEvents';
 import { asyncRoute } from '../../utils/asyncRoute';
 import { getClientIp } from '../../utils/security';
-import { listActiveSuperAdminEmails } from '../admin-auth/repository';
+import { notifyAdmins as sendAdminAlert } from '../notifications';
 import { authEmailExists, findOpenRequestByEmail, insertAccessRequest } from './repository';
 
 const router = Router();
@@ -19,7 +19,6 @@ const ACKNOWLEDGED = {
 };
 
 async function notifyAdmins(request: { id: string; fullName: string; email: string; phone: string; businessName: string; industry: string }) {
-  const recipients = config.email.adminNotifications.length ? config.email.adminNotifications : await listActiveSuperAdminEmails();
   const content = emailTemplates.adminNewAccessRequest({
     name: request.fullName,
     email: request.email,
@@ -28,7 +27,7 @@ async function notifyAdmins(request: { id: string; fullName: string; email: stri
     industry: request.industry,
     consoleUrl: `${config.admin.origin}${config.admin.basePath}?request=${request.id}`,
   });
-  for (const to of recipients) await sendEmailSafely(to, content, 'admin_new_access_request');
+  await sendAdminAlert('access_requests', content, 'admin_new_access_request');
 }
 
 router.post(

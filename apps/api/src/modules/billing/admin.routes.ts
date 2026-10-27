@@ -9,13 +9,17 @@ import {
   createPlan,
   listCoupons,
   listFeatures,
+  listOpenLeads,
   listOrders,
+  listPaidOrdersForRevenue,
   listPlans,
   replaceFeatures,
   updateCoupon,
   updatePlan,
+  type LeadStage,
   type OrderStatus,
 } from './repository';
+import { summariseRevenue } from './revenue';
 import { parseCouponInput, parseFeatureList, parsePlanInput } from './validation';
 
 // Plans, comparison rows, coupons and payments, mounted at /api/admin/billing.
@@ -24,6 +28,7 @@ import { parseCouponInput, parseFeatureList, parsePlanInput } from './validation
 const router = Router();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ORDER_STATUSES: OrderStatus[] = ['created', 'paid', 'provisioned', 'failed', 'review'];
+const LEAD_STAGES: LeadStage[] = ['started', 'closed', 'failed'];
 const handle = (fn: (req: AdminRequest, res: Response) => Promise<unknown>) => asyncRoute<AdminRequest>('BillingAdmin', fn);
 
 router.use(noStore);
@@ -115,11 +120,21 @@ router.put('/coupons/:id', requireAdminRole('super_admin'), handle(async (req, r
 
 // ── payments ─────────────────────────────────────────────────────────────────
 
+// `view=revenue` lists paid orders; `view=leads` unpaid checkouts, optionally by `stage`.
 router.get('/orders', requireAdminRole('read_only'), handle(async (req, res) => {
   const status = ORDER_STATUSES.includes(req.query.status as OrderStatus) ? req.query.status as OrderStatus : undefined;
   const page = Math.max(1, Math.min(1000, Number.parseInt(String(req.query.page ?? '1'), 10) || 1));
-  const { rows, total } = await listOrders({ status, page, pageSize: 25 });
+  const view = req.query.view;
+  const stage = LEAD_STAGES.includes(req.query.stage as LeadStage) ? req.query.stage as LeadStage : undefined;
+  const { rows, total } = view === 'leads'
+    ? await listOrders({ lead: stage, page, pageSize: 25, status: stage ? undefined : 'created' })
+    : await listOrders({ status, paidOnly: view === 'revenue', page, pageSize: 25 });
   res.json({ rows, total, page, pageSize: 25 });
+}));
+
+router.get('/revenue', requireAdminRole('read_only'), handle(async (_req, res) => {
+  const [paid, leads] = await Promise.all([listPaidOrdersForRevenue(), listOpenLeads()]);
+  res.json(summariseRevenue(paid, leads));
 }));
 
 export default router;

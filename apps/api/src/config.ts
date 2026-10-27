@@ -55,11 +55,6 @@ export const config = {
     region: (process.env.AWS_SES_REGION || process.env.AWS_REGION || 'ap-south-1').trim(),
     // Must match Supabase Auth → Email → "Email OTP expiration" (Supabase default: 1 hour).
     linkExpiryHours: Number(process.env.AUTH_LINK_EXPIRY_HOURS || 1),
-    // Who hears about new access requests; falls back to every active super_admin.
-    adminNotifications: (process.env.ADMIN_NOTIFICATION_EMAILS || '')
-      .split(',')
-      .map((address) => address.trim().toLowerCase())
-      .filter(Boolean),
   },
   razorpay: {
     // Key id is public (sent to the browser to open Checkout); the secrets stay server-side.

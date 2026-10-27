@@ -78,7 +78,9 @@ export function timeAgo(value: string) {
   return `${Math.floor(seconds / 86400)} d ago`;
 }
 
-export const LOGO = '/bolegaindia/images/bolegaindia-logo.svg';
+// Served by the web app (same domain). LOGO for light surfaces, LOGO_WHITE for the dark sign-in screen.
+export const LOGO = '/bolegaindia/brand/bolegaindia-logo.png';
+export const LOGO_WHITE = '/bolegaindia/brand/bolegaindia-logo-white.png';
 
 // ── form pieces ──────────────────────────────────────────────────────────────
 
@@ -139,6 +141,35 @@ export function ActiveBadge({ active }: { active: boolean }) {
       <span className="h-1.5 w-1.5 rounded-full bg-current" />
       {active ? 'Active' : 'Off'}
     </span>
+  );
+}
+
+export function Pager({ page, pages, onPage }: { page: number; pages: number; onPage: (page: number) => void }) {
+  if (pages <= 1) return null;
+  return (
+    <div className="flex items-center justify-end gap-2 text-sm text-subtle">
+      <span>Page {page} of {pages}</span>
+      <Button variant="secondary" size="sm" aria-label="Previous page" disabled={page <= 1} onClick={() => onPage(page - 1)}>‹</Button>
+      <Button variant="secondary" size="sm" aria-label="Next page" disabled={page >= pages} onClick={() => onPage(page + 1)}>›</Button>
+    </div>
+  );
+}
+
+/** Pill tabs used to filter tables. */
+export function FilterTabs<T>({ tabs, value, onChange }: { tabs: Array<{ value: T; label: string }>; value: T; onChange: (value: T) => void }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {tabs.map((tab) => (
+        <button
+          key={tab.label}
+          type="button"
+          onClick={() => onChange(tab.value)}
+          className={cx('cursor-pointer rounded-full px-3 py-1.5 text-xs font-semibold transition-colors', value === tab.value ? 'bg-ink text-white' : 'bg-surface text-subtle hover:text-ink')}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
   );
 }
 

@@ -5,12 +5,14 @@ import { config } from '../../config';
 import { createRateLimit } from '../../middleware/rateLimit';
 import { publicFormGuards, publicHeaders } from '../../middleware/publicFormGuards';
 import { publishAdminEvent } from '../../services/adminEvents';
+import { emailTemplates } from '../../services/email';
+import { notifyAdmins } from '../notifications';
 import { logger } from '../../services/cloudwatchLogger';
 import { asyncRoute } from '../../utils/asyncRoute';
 import { getClientIp } from '../../utils/security';
 import { authEmailExists } from '../access-requests/repository';
 import { fulfilPaidOrder } from './fulfil';
-import { computeQuote, CURRENCIES, isPurchasable, type Currency, type PlanRow } from './pricing';
+import { computeQuote, CURRENCIES, formatMoney, isPurchasable, type Currency, type PlanRow } from './pricing';
 import {
   capturePayment,
   createRazorpayOrder,
@@ -20,6 +22,7 @@ import {
   verifyWebhookSignature,
 } from './razorpay';
 import {
+  claimLeadNotification,
   getCouponByCode,
   getOrder,
   getOrderByRazorpayOrderId,
@@ -202,9 +205,29 @@ router.post('/checkout/abandoned', publicHeaders, abandonLimit, asyncRoute('Bill
     ? { checkout_dismissed_at: new Date().toISOString() }
     : { payment_error: typeof message === 'string' && message.trim() ? message.trim().slice(0, 300) : 'Payment failed' };
   const updated = await transitionOrder(order.id, ['created'], changes);
-  if (updated) publishAdminEvent({ type: 'billing_order.updated', id: updated.id, status: reason === 'closed' ? 'abandoned' : 'payment_failed' });
+  if (updated) {
+    publishAdminEvent({ type: 'billing_order.updated', id: updated.id, status: reason === 'closed' ? 'abandoned' : 'payment_failed' });
+    void alertLead(updated.id, reason, 'payment_error' in changes ? changes.payment_error : undefined);
+  }
   res.json({ ok: true });
 }));
+
+// One email per checkout, the first time it is closed or fails, to whoever gets signup-lead alerts.
+async function alertLead(orderId: string, outcome: 'closed' | 'failed', reason?: string) {
+  const lead = await claimLeadNotification(orderId).catch(() => null);
+  if (!lead) return;
+  await notifyAdmins('signup_leads', emailTemplates.adminSignupLead({
+    name: lead.full_name,
+    email: lead.email,
+    phone: lead.phone,
+    businessName: lead.business_name,
+    planName: lead.plan_snapshot.name,
+    amount: formatMoney(lead.total, lead.currency),
+    outcome,
+    reason,
+    consoleUrl: `${config.admin.origin}${config.admin.basePath}signup-leads`,
+  }), 'admin_signup_lead');
+}
 
 /**
  * POST /api/public/razorpay/webhook, mounted before express.json with a raw body (the signature

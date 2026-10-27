@@ -6,7 +6,7 @@ import { supabase } from '../../services/db';
 import { createVerificationLink } from '../accounts/links';
 import { createCustomerAccount, markCustomerAccount } from '../accounts/repository';
 import { authEmailExists } from '../access-requests/repository';
-import { listActiveSuperAdminEmails } from '../admin-auth/repository';
+import { notifyAdmins as sendAdminAlert } from '../notifications';
 import { formatMoney } from './pricing';
 import { getOrder, redeemCoupon, setCustomerPlan, transitionOrder, updateOrder, type BillingOrderRow } from './repository';
 
@@ -91,14 +91,13 @@ export async function fulfilPaidOrder(order: BillingOrderRow, razorpayPaymentId:
 }
 
 async function notifyAdmins(order: BillingOrderRow, amount: string) {
-  const recipients = config.email.adminNotifications.length ? config.email.adminNotifications : await listActiveSuperAdminEmails();
   const content = emailTemplates.adminNewPayment({
     name: order.full_name,
     email: order.email,
     businessName: order.business_name,
     planName: order.plan_snapshot.name,
     amount,
-    consoleUrl: `${config.admin.origin}${config.admin.basePath}payments`,
+    consoleUrl: `${config.admin.origin}${config.admin.basePath}revenue`,
   });
-  for (const to of recipients) await sendEmailSafely(to, content, 'admin_new_payment');
+  await sendAdminAlert('payments', content, 'admin_new_payment');
 }

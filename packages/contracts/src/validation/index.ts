@@ -8,6 +8,7 @@
 //   checkout.ts        paid checkout details
 //   access-review.ts   admin notes and decline reason
 //   billing-admin.ts   plans, comparison rows and coupons
+//   notifications.ts   who gets the admin alert emails
 export { LIMITS, type LimitName } from './limits';
 export { type FieldErrors, type Validated } from './fields';
 export { validateContactInput, type ContactField } from './contact';
@@ -33,3 +34,9 @@ export {
   type FeatureColumns,
   type PlanColumns,
 } from './billing-admin';
+export {
+  NOTIFICATION_EVENTS,
+  validateNotificationRecipient,
+  type NotificationEvent,
+  type NotificationRecipientColumns,
+} from './notifications';

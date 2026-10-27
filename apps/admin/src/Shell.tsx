@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { CreditCard, Inbox, LayoutDashboard, LogOut, Menu, Package, ShieldCheck, TicketPercent, X } from 'lucide-react';
+import { Bell, Inbox, LayoutDashboard, LogOut, Menu, Package, ShieldCheck, TicketPercent, TrendingUp, UserPlus, X } from 'lucide-react';
 import { accessRequestApi, adminApi, type AdminSession } from './api';
 import { LiveContext, type LiveState } from './live';
 import { navigate, PAGE_PATHS, type Page } from './router';
@@ -10,9 +10,11 @@ import { useAdminEvents } from './useAdminEvents';
 const NAV: Array<{ page: Page; label: string; icon: typeof Inbox }> = [
   { page: 'overview', label: 'Overview', icon: LayoutDashboard },
   { page: 'requests', label: 'Access requests', icon: Inbox },
+  { page: 'revenue', label: 'Revenue', icon: TrendingUp },
+  { page: 'leads', label: 'Signup leads', icon: UserPlus },
   { page: 'plans', label: 'Plans & pricing', icon: Package },
   { page: 'coupons', label: 'Coupons', icon: TicketPercent },
-  { page: 'payments', label: 'Payments', icon: CreditCard },
+  { page: 'notifications', label: 'Notifications', icon: Bell },
 ];
 
 const ROLE_LABELS: Record<string, string> = { super_admin: 'Super admin', support: 'Support', read_only: 'Read only' };
@@ -51,7 +53,16 @@ export function Shell({ session, page, onSignedOut, children }: {
         tone: event.status === 'provisioned' ? 'success' : 'info',
         title: event.status === 'provisioned' ? 'New paid signup' : 'Payment needs review',
         description: event.status === 'provisioned' ? 'A customer paid and their workspace was created.' : 'Paid, but the email already has a login.',
-        action: { label: 'View payments', onClick: () => navigate('payments') },
+        action: { label: 'View revenue', onClick: () => navigate('revenue') },
+      });
+    }
+    if (event.type === 'billing_order.updated' && (event.status === 'abandoned' || event.status === 'payment_failed')) {
+      playChime();
+      toast({
+        tone: 'info',
+        title: 'New signup lead',
+        description: event.status === 'abandoned' ? 'Someone closed the checkout without paying.' : 'A payment attempt failed.',
+        action: { label: 'View leads', onClick: () => navigate('leads') },
       });
     }
   });
@@ -67,10 +78,9 @@ export function Shell({ session, page, onSignedOut, children }: {
   const sidebar = (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2.5 px-5 pb-5 pt-6">
-        <img src={LOGO} alt="" className="h-9 w-9 rounded-xl" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
         <div className="min-w-0">
-          <p className="font-display text-base font-bold leading-tight tracking-tight">Bolega India</p>
-          <p className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-primary"><ShieldCheck className="h-3 w-3" /> Admin console</p>
+          <img src={LOGO} alt="Bolega India" className="h-8 w-auto" />
+          <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-primary"><ShieldCheck className="h-3 w-3" /> Admin console</p>
         </div>
       </div>
 
@@ -131,7 +141,7 @@ export function Shell({ session, page, onSignedOut, children }: {
     <LiveContext.Provider value={{ connected, ...live }}>
       <div className="flex h-full flex-col overflow-hidden md:flex-row">
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-line bg-surface px-4 md:hidden">
-          <p className="flex items-center gap-2 font-display font-bold"><ShieldCheck className="h-4 w-4 text-primary" /> Bolega Admin</p>
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary"><img src={LOGO} alt="Bolega India" className="h-6 w-auto" /> Admin</p>
           <button type="button" aria-label="Open menu" className="rounded-lg p-2 hover:bg-background" onClick={() => setMobileOpen(true)}>
             <Menu className="h-5 w-5" />
           </button>

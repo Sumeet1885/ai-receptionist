@@ -139,12 +139,57 @@ export const billingAdminApi = {
   coupons: () => request<{ coupons: Coupon[] }>('/billing/coupons'),
   createCoupon: (body: CouponInput) => request<{ coupon: Coupon }>('/billing/coupons', { method: 'POST', body }),
   updateCoupon: (id: string, body: CouponInput) => request<{ coupon: Coupon }>(`/billing/coupons/${encodeURIComponent(id)}`, { method: 'PUT', body }),
-  orders: (params: { status?: OrderStatus; page?: number }) => {
-    const query = new URLSearchParams();
+  // view=revenue: paid orders; view=leads: unpaid checkouts, optionally one stage.
+  orders: (params: { view: 'revenue' | 'leads'; status?: OrderStatus; stage?: LeadStage; page?: number }) => {
+    const query = new URLSearchParams({ view: params.view });
     if (params.status) query.set('status', params.status);
+    if (params.stage) query.set('stage', params.stage);
     if (params.page) query.set('page', String(params.page));
     return request<{ rows: BillingOrder[]; total: number; page: number; pageSize: number }>(`/billing/orders?${query.toString()}`);
   },
+  revenue: () => request<RevenueSummary>('/billing/revenue'),
+};
+
+export type LeadStage = 'started' | 'closed' | 'failed';
+type Money = Record<Currency, number>;
+
+export interface RevenueSummary {
+  totals: { allTime: Money; thisMonth: Money; last30Days: Money };
+  counts: { allTime: number; thisMonth: number; last30Days: number };
+  monthly: Array<{ month: string; count: number } & Money>;
+  byPlan: Array<{ plan: string; count: number } & Money>;
+  leads: { open: number; closed: number; failed: number; last30Days: number };
+  conversionLast30Days: number | null;
+}
+
+// ── alert email recipients ───────────────────────────────────────────────────
+
+export interface NotificationRecipient {
+  id: string;
+  email: string;
+  label: string | null;
+  notify_access_requests: boolean;
+  notify_payments: boolean;
+  notify_signup_leads: boolean;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface NotificationRecipientInput {
+  email: string;
+  label: string;
+  accessRequests: boolean;
+  payments: boolean;
+  signupLeads: boolean;
+  isActive: boolean;
+}
+
+export const notificationsApi = {
+  list: () => request<{ recipients: NotificationRecipient[]; fallback: string[] }>('/notifications/recipients'),
+  create: (body: NotificationRecipientInput) => request<{ recipient: NotificationRecipient }>('/notifications/recipients', { method: 'POST', body }),
+  update: (id: string, body: NotificationRecipientInput) => request<{ recipient: NotificationRecipient }>(`/notifications/recipients/${encodeURIComponent(id)}`, { method: 'PUT', body }),
+  remove: (id: string) => request<{ ok: true }>(`/notifications/recipients/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  test: (id: string) => request<{ delivered: boolean }>(`/notifications/recipients/${encodeURIComponent(id)}/test`, { method: 'POST' }),
 };
 
 export function formatMoney(minor: number, currency: Currency) {

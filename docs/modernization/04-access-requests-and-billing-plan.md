@@ -96,7 +96,7 @@ Required: full name, work email, phone (validated with the existing `libphonenum
 | 3 | Supabase → Authentication → Email | Keep "Email OTP expiration" equal to `AUTH_LINK_EXPIRY_HOURS` (default 1 hour; up to 24 hours is reasonable for activation). Optionally point Supabase SMTP at SES so any remaining Supabase-sent mail also comes from our domain. |
 | 4 | AWS SES | Verify the `bolegaindia.ai` domain (DKIM), request production access (leave the sandbox), and allow `ses:SendEmail` for the EC2 instance role. Set `EMAIL_FROM` (e.g. `no-reply@bolegaindia.ai`). |
 | 5 | Cloudflare Turnstile | Create a widget for `bolegaindia.ai` (+ staging host). Secret → SSM `/ai-receptionist/<env>/TURNSTILE_SECRET_KEY`; site key → `VITE_TURNSTILE_SITE_KEY` in `apps/web/Dockerfile.staging` / `.prod`. |
-| 6 | API env (host `server/.env`) | `ADMIN_ORIGIN`, `EMAIL_FROM`, `EMAIL_FROM_NAME`, `ADMIN_NOTIFICATION_EMAILS`, `AUTH_LINK_EXPIRY_HOURS`. |
+| 6 | API env (host `server/.env`) | `ADMIN_ORIGIN`, `EMAIL_FROM`, `EMAIL_FROM_NAME`, `AUTH_LINK_EXPIRY_HOURS`. Alert recipients are managed in the admin console (Notifications). |
 | 7 | Admin hosting | The admin console is not in Compose or Caddy yet: it needs its own domain, a Caddy site block serving `apps/admin/dist` and proxying `/api/admin/*` (including WebSocket) to `api:4000`, and an image build. Separate change. |
 | 8 | Existing customers | Every existing login is kept (backfilled as active). Anyone who only used Google/Microsoft sign-in must use "Forgot password" once to set a password. |
 

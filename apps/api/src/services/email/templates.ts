@@ -1,6 +1,8 @@
 // Transactional email content. Every template returns a subject plus matching HTML and text
 // bodies; all interpolated values are escaped for HTML.
 
+import { config } from '../../config';
+
 export interface EmailContent {
   subject: string;
   html: string;
@@ -8,6 +10,8 @@ export interface EmailContent {
 }
 
 const BRAND = 'Bolega India';
+// Hosted by the web app; mail clients that block images show the alt text instead.
+const LOGO_URL = () => `${config.clientUrl}/bolegaindia/brand/bolegaindia-logo.png`;
 
 export function escapeHtml(value: string) {
   return value
@@ -37,7 +41,7 @@ function render({ heading, paragraphs, action, footnote }: Layout): { html: stri
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f6ef;padding:24px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fffdf8;border:1px solid #dce1d2;border-radius:16px;padding:32px">
 <tr><td>
-<p style="margin:0 0 24px;font-weight:700;color:#24695b">${BRAND}</p>
+<p style="margin:0 0 24px"><img src="${escapeHtml(LOGO_URL())}" alt="${BRAND}" width="160" height="35" style="display:block;border:0;height:35px;width:160px;font-weight:700;color:#24695b"></p>
 <h1 style="margin:0 0 16px;font-size:22px;line-height:1.3">${escapeHtml(heading)}</h1>
 ${body}${button}${note}
 </td></tr></table>
@@ -132,7 +136,44 @@ export function adminNewPayment(input: { name: string; email: string; businessNa
         `${input.name} from ${input.businessName} bought ${input.planName} and paid ${input.amount}.`,
         `Email: ${input.email}. Their workspace was created and the email confirmation sent.`,
       ],
-      action: { label: 'View payments', url: input.consoleUrl },
+      action: { label: 'View revenue', url: input.consoleUrl },
+    }),
+  };
+}
+
+export function adminSignupLead(input: {
+  name: string;
+  email: string;
+  phone: string;
+  businessName: string;
+  planName: string;
+  amount: string;
+  outcome: 'closed' | 'failed';
+  reason?: string;
+  consoleUrl: string;
+}): EmailContent {
+  const what = input.outcome === 'closed' ? 'closed the checkout without paying' : 'tried to pay, but the payment failed';
+  return {
+    subject: `Signup lead: ${input.businessName} (${input.planName})`,
+    ...render({
+      heading: 'New signup lead to follow up',
+      paragraphs: [
+        `${input.name} from ${input.businessName} chose ${input.planName} (${input.amount}) and ${what}.`,
+        ...(input.reason ? [`Reason given by the payment provider: ${input.reason}`] : []),
+        `Email: ${input.email} · Phone: ${input.phone}`,
+      ],
+      action: { label: 'View signup leads', url: input.consoleUrl },
+    }),
+  };
+}
+
+export function adminTestAlert(input: { consoleUrl: string }): EmailContent {
+  return {
+    subject: `Test alert from ${BRAND}`,
+    ...render({
+      heading: 'Alerts are working',
+      paragraphs: ['This is a test from the admin console. This address will receive the alerts selected for it in Notifications.'],
+      action: { label: 'Open notification settings', url: input.consoleUrl },
     }),
   };
 }

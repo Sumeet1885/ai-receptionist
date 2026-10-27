@@ -4,14 +4,16 @@ import { useEffect, useState } from 'react';
 // /super-admin/* path, so deep links work on reload).
 export const BASE = '/super-admin';
 
-export type Page = 'overview' | 'requests' | 'plans' | 'coupons' | 'payments';
+export type Page = 'overview' | 'requests' | 'revenue' | 'leads' | 'plans' | 'coupons' | 'notifications';
 
 export const PAGE_PATHS: Record<Page, string> = {
   overview: `${BASE}/`,
   requests: `${BASE}/requests`,
+  revenue: `${BASE}/revenue`,
+  leads: `${BASE}/signup-leads`,
   plans: `${BASE}/plans`,
   coupons: `${BASE}/coupons`,
-  payments: `${BASE}/payments`,
+  notifications: `${BASE}/notifications`,
 };
 
 function currentPage(): Page {
