@@ -254,7 +254,7 @@ export function LandingFooter({ onToggleMotion }: { onToggleMotion: () => void }
     <>
       <footer className="footer">
         <a className="brand" href="#" aria-label="Bolega India, back to top">
-          <BrandLogo bare mark="logo" />
+          <BrandLogo bare />
         </a>
         <div className="footer-links">
           <button className="language" id="motion-toggle" type="button" aria-pressed={motionPaused} onClick={onToggleMotion}>

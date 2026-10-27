@@ -60,6 +60,25 @@ type AppRoute =
 
 const agentTabs: AgentTab[] = ['overview', 'knowledge', 'install', 'crm', 'preview'];
 
+// Browser tab titles; the landing page keeps the default one from index.html.
+const PAGE_TITLES: Partial<Record<AppRoute['name'], string>> = {
+  auth: 'Sign in',
+  'auth-confirm': 'Confirm your email',
+  'request-access': 'Request free access',
+  pricing: 'Pricing',
+  checkout: 'Checkout',
+  dashboard: 'Dashboard',
+  leads: 'Leads',
+  inbox: 'Inbox',
+  calendar: 'Calendar',
+  calls: 'Calls',
+  agents: 'Agents',
+  plans: 'Plans',
+  'agent-new': 'New agent',
+  'agent-detail': 'Agent',
+  'public-chat': 'Chat',
+};
+
 function parseRoute(): AppRoute {
   const path = window.location.pathname;
   const params = new URLSearchParams(window.location.search);
@@ -189,6 +208,11 @@ export default function App() {
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
+
+  useEffect(() => {
+    const page = PAGE_TITLES[route.name];
+    document.title = page ? `${page} — Bolega India` : 'Bolega India — Ab business bolega.';
+  }, [route.name]);
 
   useEffect(() => {
     // Wait for the initial session restore to settle before deciding anything -

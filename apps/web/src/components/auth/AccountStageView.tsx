@@ -20,7 +20,7 @@ function Shell({ title, description, children }: { title: string; description: R
       <div className="relative z-10 w-full max-w-md">
         <Card variant="floating" padding="lg" className="rounded-large">
           <div className="mb-6 text-center">
-            <BrandLogo className="mb-6 justify-center" />
+            <BrandLogo className="mx-auto mb-6 block" />
             <h1 className="mb-2 font-display text-3xl font-semibold tracking-[-0.04em] text-text">{title}</h1>
             <p className="text-sm text-text-subtle">{description}</p>
           </div>

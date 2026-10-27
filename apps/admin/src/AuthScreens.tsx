@@ -2,7 +2,7 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { checkAdminPassword, LIMITS } from '@ai-receptionist/contracts';
 import { AlertCircle, KeyRound, Loader2, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { ApiError, adminApi, type AdminSession } from './api';
-import { Button, LOGO } from './ui';
+import { Button, LOGO_WHITE } from './ui';
 
 const INPUT = 'h-11 w-full rounded-xl border border-line bg-white px-3.5 text-sm text-ink placeholder:text-subtle/70 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20';
 
@@ -13,8 +13,7 @@ function Frame({ children }: { children: ReactNode }) {
       <div className="pointer-events-none absolute -bottom-40 -right-24 h-[28rem] w-[28rem] rounded-full bg-primary/40 blur-3xl" />
       <div className="relative w-full max-w-md">
         <div className="mb-6 flex items-center justify-center gap-2.5 text-white">
-          <img src={LOGO} alt="" className="h-9 w-9 rounded-xl bg-white/90 p-1" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-          <span className="font-display text-xl font-bold tracking-tight">Bolega India</span>
+          <img src={LOGO_WHITE} alt="Bolega India" className="h-9 w-auto" />
           <span className="rounded-full bg-lime px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-ink">Admin</span>
         </div>
         {children}

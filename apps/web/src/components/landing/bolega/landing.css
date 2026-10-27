@@ -98,10 +98,8 @@ html.bi-landing-root {
   letter-spacing: -1px;
 }
 .bi-landing .brand img {
-  width: 36px;
-}
-.bi-landing .brand b {
-  font-weight: 500;
+  height: 40px;
+  width: auto;
 }
 .bi-landing .nav-center {
   display: flex;
@@ -1057,7 +1055,7 @@ html.bi-landing-root {
     font-size: 20px;
   }
   .bi-landing .brand img {
-    width: 31px;
+    height: 36px;
   }
   .bi-landing .nav .btn {
     padding: 11px 15px;
@@ -1736,7 +1734,7 @@ html.bi-landing-root {
     font-size: 18px;
   }
   .bi-landing .nav .brand img {
-    width: 28px;
+    height: 32px;
   }
 }
 @media (max-width: 360px) {
@@ -3589,7 +3587,7 @@ html.bi-landing-root {
     font-size: 18px;
   }
   .bi-landing .nav .brand img {
-    width: 28px;
+    height: 32px;
   }
   .bi-landing .meaning-section {
     padding: 65px 6%;
@@ -5510,7 +5508,7 @@ html.bi-landing-root {
   gap: 9px;
 }
 .bi-landing .nav .brand > img {
-  width: 43px;
+  width: auto;
   height: 43px;
 }
 .bi-landing .india-word-art {
@@ -5569,7 +5567,7 @@ html.bi-landing-root {
   font-size: 11.5px;
 }
 .bi-landing .nav.scrolled .brand > img {
-  width: 39px;
+  width: auto;
   height: 39px;
 }
 @keyframes bi-audienceFloat {
@@ -5604,18 +5602,18 @@ html.bi-landing-root {
     font-size: 11.5px;
   }
   .bi-landing .nav .brand > img {
-    width: 37px;
+    width: auto;
     height: 37px;
   }
   .bi-landing .nav.scrolled .brand > img {
-    width: 35px;
+    width: auto;
     height: 35px;
   }
 }
 @media (max-width: 800px) {
   .bi-landing .nav .brand > img,
   .bi-landing .nav.scrolled .brand > img {
-    width: 35px;
+    width: auto;
     height: 35px;
   }
   .bi-landing .nav .brand {
@@ -5662,7 +5660,7 @@ html.bi-landing-root {
 @media (max-width: 360px) {
   .bi-landing .nav .brand > img,
   .bi-landing .nav.scrolled .brand > img {
-    width: 32px;
+    width: auto;
     height: 32px;
   }
   .bi-landing .nav .brand {

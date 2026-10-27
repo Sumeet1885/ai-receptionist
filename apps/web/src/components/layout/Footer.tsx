@@ -9,7 +9,7 @@ export const Footer: React.FC<FooterProps> = ({ showToast }: FooterProps) => {
   return (
     <footer className="flex flex-col items-center justify-between gap-4 border-t border-border bg-background px-4 py-6 text-xs text-text-subtle sm:px-6 md:flex-row">
       <div className="flex flex-col items-center gap-2 md:flex-row md:gap-4">
-        <BrandLogo mark="logo" className="text-base" markClassName="h-7 w-7" />
+        <BrandLogo className="h-7" />
         <p className="text-center md:text-left">© 2026 Bolega India · bolegaindia.ai</p>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4">

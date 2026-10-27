@@ -1,7 +1,7 @@
 const base = '/bolegaindia';
 
 export const landingAssets = {
-  logo: `${base}/images/bolegaindia-logo.svg`,
+  logo: `${base}/brand/bolegaindia-logo.png`,
   brandWeave: `${base}/images/bolegaindia-brand-weave.svg`,
   heroIndiaArtwork: `${base}/images/hero-india-culture-artwork.svg`,
   heroAiAssistant: `${base}/images/hero-ai-human-assistant.webp`,

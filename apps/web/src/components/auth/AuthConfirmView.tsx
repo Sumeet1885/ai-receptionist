@@ -48,7 +48,7 @@ export const AuthConfirmView: React.FC<AuthConfirmViewProps> = ({ navigate }) =>
     <div className="relative flex min-h-[calc(100vh-80px)] flex-1 items-center justify-center overflow-hidden bg-background p-4 sm:p-6">
       <div className="relative z-10 w-full max-w-md">
         <Card variant="floating" padding="lg" className="rounded-large text-center">
-          <BrandLogo className="mb-6 justify-center" />
+          <BrandLogo className="mx-auto mb-6 block" />
           {failed ? (
             <>
               <h1 className="mb-2 font-display text-3xl font-semibold tracking-[-0.04em] text-text">This link has expired</h1>

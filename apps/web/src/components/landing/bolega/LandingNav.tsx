@@ -86,7 +86,7 @@ export function LandingNav({ navigate, signedIn }: LandingNavProps) {
       <div className="progress" aria-hidden="true" style={{ width: `${progress}%` }} />
       <header className={`nav${scrolled ? ' scrolled' : ''}`}>
         <a className="brand" href="#" aria-label="Bolega India home">
-          <BrandLogo bare mark="weave" />
+          <BrandLogo bare />
         </a>
         <nav className="nav-center" aria-label="Main navigation">
           {sections.map(({ id, label }) => (
