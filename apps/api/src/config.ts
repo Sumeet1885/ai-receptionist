@@ -37,6 +37,18 @@ export const config = {
     callbackBaseUrl: (process.env.PHONE_TOOLS_CALLBACK_BASE_URL || 'http://host.docker.internal:4000').trim().replace(/\/+$/, ''),
   },
   defaultPhoneNumber: (process.env.DEFAULT_PLATFORM_PHONE_NUMBER || process.env.PLATFORM_PHONE_NUMBER || '').trim(),
+  email: {
+    // Verified SES sender. Without it, development logs emails instead of sending them.
+    from: (process.env.EMAIL_FROM || '').trim(),
+    fromName: (process.env.EMAIL_FROM_NAME || 'Bolega India').trim(),
+    replyTo: (process.env.EMAIL_REPLY_TO || '').trim(),
+    region: (process.env.AWS_SES_REGION || process.env.AWS_REGION || 'ap-south-1').trim(),
+    // Who hears about new access requests; falls back to every active super_admin.
+    staffNotifications: (process.env.STAFF_NOTIFICATION_EMAILS || '')
+      .split(',')
+      .map((address) => address.trim().toLowerCase())
+      .filter(Boolean),
+  },
   turnstile: {
     // Cloudflare Turnstile secret for public forms. Required outside development.
     secretKey: (process.env.TURNSTILE_SECRET_KEY || '').trim(),

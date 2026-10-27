@@ -11,6 +11,7 @@ const SSM_MANAGED_KEYS = new Set<string>([
   'MICROSOFT_CLIENT_SECRET',
   'DOGRAH_API_KEY',
   'PHONE_TOOLS_API_KEY',
+  'TURNSTILE_SECRET_KEY',
 ]);
 
 export async function loadSecrets(): Promise<void> {
