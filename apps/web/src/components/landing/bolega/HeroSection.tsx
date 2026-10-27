@@ -61,7 +61,7 @@ export function HeroSection({ onSpeakingChange }: { onSpeakingChange: (speaking:
         <article className="conversation-person bot-person">
           <div className="person-kicker">YOUR BUSINESS, SPEAKING</div>
           <div className="bot-portrait photo-bot" aria-hidden="true">
-            <img src={landingAssets.heroAiAssistant} alt="" width={900} height={675} />
+            <img src={landingAssets.heroAiAssistant} alt="" width={800} height={800} />
             <span className="portrait-status-dot" />
           </div>
           <h3>Bolega AI</h3>

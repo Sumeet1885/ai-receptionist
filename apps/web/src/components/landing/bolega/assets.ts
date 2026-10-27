@@ -4,7 +4,7 @@ export const landingAssets = {
   logo: `${base}/images/bolegaindia-logo.svg`,
   brandWeave: `${base}/images/bolegaindia-brand-weave.svg`,
   heroIndiaArtwork: `${base}/images/hero-india-culture-artwork.svg`,
-  heroAiAssistant: `${base}/images/hero-ai-assistant.webp`,
+  heroAiAssistant: `${base}/images/hero-ai-human-assistant.webp`,
   heroCustomerGroup: `${base}/images/hero-customer-group-transparent.webp`,
   conversationAudio: `${base}/audio/bolegaindia-conversation.mp3`,
   productStoryWide: `${base}/video/product-story-wide.mp4`,
