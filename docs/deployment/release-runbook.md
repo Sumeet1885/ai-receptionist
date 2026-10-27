@@ -193,11 +193,11 @@ In addition to the steps above, the first release of branch `feat/admin-auth` ne
 | Where | Action |
 | --- | --- |
 | Migrations | `20261027120000_admin_auth`, `20261027130000_access_requests`, `20261027140000_customer_accounts` (Step 3). The last one adds a `customer_accounts` row for every existing login so current customers keep working. |
-| Host `server/.env` (both) | `EMAIL_FROM`, `EMAIL_FROM_NAME`, `ADMIN_NOTIFICATION_EMAILS`, `ADMIN_ORIGIN`, `AUTH_LINK_EXPIRY_HOURS` (see `apps/api/.env.example`). |
+| Host `server/.env` (both) | `EMAIL_FROM`, `EMAIL_FROM_NAME`, `ADMIN_NOTIFICATION_EMAILS`, `AUTH_LINK_EXPIRY_HOURS`, and `ADMIN_ORIGIN=https://<app domain>` (the same origin as `CLIENT_URL`, because the admin console is served at `/super-admin/` on the app domain). See `apps/api/.env.example`. |
 | SSM `/ai-receptionist/<env>/` | `TURNSTILE_SECRET_KEY`. |
 | Web Dockerfiles | `VITE_TURNSTILE_SITE_KEY` for that environment's domain in `apps/web/Dockerfile.staging` / `.prod`. |
 | AWS | SES: verified sending domain, production access, `ses:SendEmail` on the EC2 instance role. |
 | Supabase Auth (both) | Turn off "Allow new users to sign up"; disable the Google and Azure providers. |
 | First admin (after Step 3) | `pnpm --filter @ai-receptionist/api admin:create --email … --name … --role super_admin --confirm-project <project-ref>` from a machine whose `apps/api/.env` points at that project. Prints a one-time password. |
 
-The admin console itself (`apps/admin`) is not in the compose files yet; hosting it (own domain, Caddy block proxying `/api/admin/*` including WebSockets) is a separate change.
+The admin console ships inside the web image and is served by the same Caddy at **`https://<app domain>/super-admin/`**: no extra container, port, DNS record or compose change. Its API calls go to `/api/admin/*` through the existing `/api/*` proxy (including the live-update WebSocket). After deploying, open `/super-admin/` and sign in with the account from `admin:create`.

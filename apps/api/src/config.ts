@@ -57,7 +57,10 @@ export const config = {
   },
   admin: {
     // Exact origin of the admin console; state-changing /api/admin requests must come from it.
-    // Default matches `npm run dev:admin` (vite --host 127.0.0.1 --port 3001).
+    // Deployed, the console is served at /super-admin/ on the app domain, so this equals the
+    // CLIENT_URL origin. Default matches `pnpm dev:admin` (vite --host 127.0.0.1 --port 3001).
     origin: (process.env.ADMIN_ORIGIN || 'http://127.0.0.1:3001').trim().replace(/\/+$/, ''),
+    // Path the console is served under (apps/admin vite `base`), used for links in emails.
+    basePath: '/super-admin/',
   },
 };

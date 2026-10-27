@@ -13,6 +13,20 @@
         reverse_proxy api:4000
     }
 
+    # Admin console (apps/admin, built into /srv/super-admin). Its API calls go to /api/admin/*
+    # through the /api/* rule above, so it is same-origin with the API.
+    handle /super-admin* {
+        header X-Robots-Tag "noindex, nofollow"
+        header X-Frame-Options "DENY"
+        # Pages are never cached (fresh session state); hashed assets may be.
+        @adminPage not path /super-admin/assets/*
+        header @adminPage Cache-Control "no-store"
+        root * /srv
+        encode gzip
+        try_files {path} /super-admin/index.html
+        file_server
+    }
+
     # Everything else → Vite-built React SPA
     handle {
         root * /srv

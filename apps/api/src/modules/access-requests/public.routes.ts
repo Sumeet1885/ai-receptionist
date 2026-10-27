@@ -26,7 +26,7 @@ async function notifyAdmins(request: { id: string; fullName: string; email: stri
     phone: request.phone,
     businessName: request.businessName,
     industry: request.industry,
-    consoleUrl: `${config.admin.origin}/?request=${request.id}`,
+    consoleUrl: `${config.admin.origin}${config.admin.basePath}?request=${request.id}`,
   });
   for (const to of recipients) await sendEmailSafely(to, content, 'admin_new_access_request');
 }

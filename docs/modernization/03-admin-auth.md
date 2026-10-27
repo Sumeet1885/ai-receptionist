@@ -11,6 +11,7 @@ Companions: [01-repository-setup-plan.md](01-repository-setup-plan.md), [02-data
 > - Scripts implemented: `admin:create`, `admin:reset-password`. Suspend / revoke-role come with the admin user-management screen. Instead of a production-ref check, every script requires `--confirm-project <ref>` matching `SUPABASE_URL`.
 > - The `localStorage` boundary rule is not added; the admin app stores nothing in browser storage.
 > - Development: `ADMIN_ORIGIN` defaults to `http://127.0.0.1:3001` (the `dev:admin` bind address) and the cookie is `admin_session` without `Secure`; elsewhere it is `__Host-admin_session` with `Secure`.
+> - **Hosting (owner decision 2026-10-27): same domain, path `/super-admin/`**, not a separate admin subdomain. The web image builds `apps/admin` into `/srv/super-admin` and Caddy serves it there (noindex, no framing, pages not cached); `ADMIN_ORIGIN` equals the app origin. Trade-off accepted: the customer site and the admin console share an origin, so an XSS bug in the customer app could make requests to `/api/admin/*` with a signed-in admin's cookie. Mitigations: httpOnly cookie, short sessions, role checks and audit on every route; MFA (phase 2) and a strict Content-Security-Policy on the customer app are recommended before wider admin use. Moving to a subdomain later only changes `ADMIN_ORIGIN`, the Caddy block and the Vite `base`.
 
 Scope: how admin sign in to `apps/admin` and how the API authorizes them. Customer (user-side) authentication is unchanged here and is covered by a separate document after this one is agreed.
 

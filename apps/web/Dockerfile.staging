@@ -28,10 +28,12 @@ COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 COPY apps/admin/package.json apps/admin/
 COPY packages/contracts/package.json packages/contracts/
-RUN pnpm install --frozen-lockfile --filter "@ai-receptionist/web..."
+# The image also serves the admin console at /super-admin (see Caddyfile).
+RUN pnpm install --frozen-lockfile --filter "@ai-receptionist/web..." --filter "@ai-receptionist/admin..."
 
 COPY packages/contracts packages/contracts
 COPY apps/web apps/web
+COPY apps/admin apps/admin
 
 # ── STAGING build-time config (baked into the bundle) ────────────────────────
 # These VITE_* values are embedded into the JS bundle by Vite at build time.
@@ -41,11 +43,12 @@ ENV VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_OvMrb8UfqZdi3XmztPdniQ_1nwecsPy
 ENV VITE_EXPRESS_SERVER_URL=https://test.ai-receptionist.agilewaters.com
 ENV VITE_WIDGET_BASE_URL=https://test.ai-receptionist.agilewaters.com
 
-RUN pnpm --filter @ai-receptionist/web build
+RUN pnpm --filter @ai-receptionist/web build && pnpm --filter @ai-receptionist/admin build
 
 # ── Stage 2: Serve with Caddy ─────────────────────────────────────────────────
 # Caddy serves the built SPA and reverse-proxies /api/* and /widget/* to the api
 # container — one image, automatic HTTPS, no nginx/certbot config to maintain.
 FROM caddy:2-alpine
 COPY --from=build /repo/apps/web/dist /srv
+COPY --from=build /repo/apps/admin/dist /srv/super-admin
 COPY apps/web/Caddyfile /etc/caddy/Caddyfile

@@ -382,7 +382,7 @@ pnpm dev:admin
 Default URLs (the ports are fixed; a dev server stops with an error if its port is taken, because the API trusts these exact origins):
 
 - Client: `http://127.0.0.1:3000`
-- Admin console: `http://127.0.0.1:3001`
+- Admin console: `http://127.0.0.1:3001/super-admin/` (deployed: `https://<app domain>/super-admin/`)
 - Express: `http://localhost:4000`
 - Health check: `http://localhost:4000/health`
 
