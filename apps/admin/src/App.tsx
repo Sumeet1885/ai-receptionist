@@ -1,13 +1,20 @@
 // Admin console. Authentication is server-side (apps/api /api/admin, httpOnly session cookie);
 // this app never talks to Supabase. See docs/modernization/03-admin-auth.md.
-import { useEffect, useState, type FormEvent } from 'react';
-import { AccessRequests } from './AccessRequests';
-import { ApiError, adminApi, type AdminSession } from './api';
+import { useEffect, useState } from 'react';
+import { Loader2 } from 'lucide-react';
+import { adminApi, type AdminSession } from './api';
+import { ChangePasswordScreen, LoginScreen } from './AuthScreens';
+import { AccessRequests } from './pages/AccessRequests';
+import { Overview } from './pages/Overview';
+import { usePage } from './router';
+import { Shell } from './Shell';
+import { ToastProvider } from './toast';
 
 type View = { name: 'loading' } | { name: 'signed-out' } | { name: 'signed-in'; session: AdminSession };
 
 export default function App() {
   const [view, setView] = useState<View>({ name: 'loading' });
+  const page = usePage();
 
   useEffect(() => {
     adminApi.me()
@@ -15,146 +22,24 @@ export default function App() {
       .catch(() => setView({ name: 'signed-out' }));
   }, []);
 
-  if (view.name === 'loading') return <main className="center"><p className="muted">Loading…</p></main>;
-  if (view.name === 'signed-out') {
-    return <LoginForm onSignedIn={(session) => setView({ name: 'signed-in', session })} />;
-  }
-  if (view.session.adminUser.mustChangePassword) {
+  const signedIn = (session: AdminSession) => setView({ name: 'signed-in', session });
+  const signedOut = () => setView({ name: 'signed-out' });
+
+  if (view.name === 'loading') {
     return (
-      <ChangePasswordForm
-        forced
-        onChanged={(session) => setView({ name: 'signed-in', session })}
-        onSignOut={() => setView({ name: 'signed-out' })}
-      />
+      <main className="flex h-full items-center justify-center text-subtle">
+        <Loader2 className="h-5 w-5 animate-spin" />
+      </main>
     );
   }
-  return <Console session={view.session} onSignedOut={() => setView({ name: 'signed-out' })} />;
-}
-
-function Brand() {
-  return (
-    <p className="brand">
-      Bolega India <span>Admin console</span>
-    </p>
-  );
-}
-
-function LoginForm({ onSignedIn }: { onSignedIn: (session: AdminSession) => void }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setError('');
-    try {
-      onSignedIn(await adminApi.login(email, password));
-    } catch (err) {
-      setError(err instanceof ApiError && err.status === 429 ? 'Too many attempts. Try again in a few minutes.' : (err as Error).message);
-      setPassword('');
-    } finally {
-      setBusy(false);
-    }
-  }
+  if (view.name === 'signed-out') return <LoginScreen onSignedIn={signedIn} />;
+  if (view.session.adminUser.mustChangePassword) return <ChangePasswordScreen onChanged={signedIn} onSignOut={signedOut} />;
 
   return (
-    <main className="center">
-      <form className="card" onSubmit={submit}>
-        <Brand />
-        <h1>Sign in</h1>
-        <label>
-          Email
-          <input type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
-        </label>
-        <label>
-          Password
-          <input type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-        </label>
-        {error && <p className="error" role="alert">{error}</p>}
-        <button type="submit" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
-        <p className="muted small">Admin accounts are created by a super admin. There is no self-signup.</p>
-      </form>
-    </main>
-  );
-}
-
-function ChangePasswordForm({ forced, onChanged, onSignOut }: {
-  forced?: boolean;
-  onChanged: (session: AdminSession) => void;
-  onSignOut: () => void;
-}) {
-  const [current, setCurrent] = useState('');
-  const [next, setNext] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (next !== confirm) return setError('The new passwords do not match.');
-    setBusy(true);
-    setError('');
-    try {
-      onChanged(await adminApi.changePassword(current, next));
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function signOut() {
-    await adminApi.logout().catch(() => undefined);
-    onSignOut();
-  }
-
-  return (
-    <main className="center">
-      <form className="card" onSubmit={submit}>
-        <Brand />
-        <h1>Set a new password</h1>
-        {forced && <p className="muted">You signed in with a temporary password. Choose your own to continue.</p>}
-        <label>
-          Current password
-          <input type="password" autoComplete="current-password" required value={current} onChange={(e) => setCurrent(e.target.value)} />
-        </label>
-        <label>
-          New password <span className="muted small">(at least 12 characters)</span>
-          <input type="password" autoComplete="new-password" required minLength={12} maxLength={128} value={next} onChange={(e) => setNext(e.target.value)} />
-        </label>
-        <label>
-          Confirm new password
-          <input type="password" autoComplete="new-password" required value={confirm} onChange={(e) => setConfirm(e.target.value)} />
-        </label>
-        {error && <p className="error" role="alert">{error}</p>}
-        <button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save password'}</button>
-        <button type="button" className="link" onClick={signOut}>Sign out</button>
-      </form>
-    </main>
-  );
-}
-
-function Console({ session, onSignedOut }: { session: AdminSession; onSignedOut: () => void }) {
-  async function signOut() {
-    await adminApi.logout().catch(() => undefined);
-    onSignedOut();
-  }
-
-  return (
-    <div className="shell">
-      <header>
-        <Brand />
-        <div className="who">
-          <span>{session.adminUser.displayName}</span>
-          <span className="muted small">{session.roles.join(', ') || 'no role'}</span>
-          <button type="button" className="secondary" onClick={signOut}>Sign out</button>
-        </div>
-      </header>
-      <main>
-        <AccessRequests roles={session.roles} />
-      </main>
-    </div>
+    <ToastProvider>
+      <Shell session={view.session} page={page} onSignedOut={signedOut}>
+        {page === 'requests' ? <AccessRequests key="requests" roles={view.session.roles} /> : <Overview session={view.session} />}
+      </Shell>
+    </ToastProvider>
   );
 }
