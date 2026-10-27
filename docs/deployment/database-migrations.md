@@ -27,7 +27,7 @@ If earlier migrations were applied by pasting SQL into the dashboard, the databa
      pnpm exec supabase migration repair --status applied <timestamp> --db-url "<connection string>"
      ```
 
-     The timestamp is the number at the start of the file name, e.g. `20261027120000` for `20261027120000_staff_auth.sql`; legacy files use `001`, `002`, `003`, `004`.
+     The timestamp is the number at the start of the file name, e.g. `20261027120000` for `20261027120000_admin_auth.sql`; legacy files use `001`, `002`, `003`, `004`.
 3. Run **status** again until only the genuinely new files are pending.
 
 Only do this once per environment. After that, never apply SQL by hand again.

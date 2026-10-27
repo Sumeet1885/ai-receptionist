@@ -190,7 +190,7 @@ Lead records are upserted by session. If `GROQ_API_KEY` is absent or Groq fails,
 │   │   ├── tests/                  Backend integration and regression tests
 │   │   ├── scripts/                One-off operational scripts
 │   │   └── legacy/                 Unused pre-`src/` controllers kept for reference
-│   └── admin/                      Staff console scaffold (not deployed; no auth/data yet)
+│   └── admin/                      Admin console scaffold (not deployed; no auth/data yet)
 ├── packages/
 │   └── contracts/                  Browser-safe shared types and validators
 ├── supabase/
@@ -366,7 +366,7 @@ Apply every SQL file in `supabase/migrations/` in filename order. The final poli
 ### Run
 
 ```bash
-# Web app, API and staff console together, one terminal
+# Web app, API and admin console together, one terminal
 pnpm dev
 
 # Or one process at a time
@@ -382,7 +382,7 @@ pnpm dev:admin
 Default URLs (the ports are fixed; a dev server stops with an error if its port is taken, because the API trusts these exact origins):
 
 - Client: `http://127.0.0.1:3000`
-- Staff console: `http://127.0.0.1:3001`
+- Admin console: `http://127.0.0.1:3001`
 - Express: `http://localhost:4000`
 - Health check: `http://localhost:4000/health`
 

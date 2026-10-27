@@ -38,14 +38,14 @@ test('upgrade router dispatches by exact path and refuses unknown paths', async 
 
 test('both WebSocket servers are registered through the router, not attached to the HTTP server', async () => {
   const source = await readFile(fileURLToPath(indexUrl), 'utf8');
-  assert.match(source, /routeUpgrades\(server, \{\s*'\/api\/chat\/live': setupWebSocketServer\(\),\s*'\/api\/admin\/events': createStaffEventsServer\(\),/);
+  assert.match(source, /routeUpgrades\(server, \{\s*'\/api\/chat\/live': setupWebSocketServer\(\),\s*'\/api\/admin\/events': createAdminEventsServer\(\),/);
   const live = await readFile(fileURLToPath(new URL('../src/controllers/liveChatController.ts', import.meta.url)), 'utf8');
   assert.match(live, /new WebSocketServer\(\{ noServer: true \}\)/);
 });
 
-test('staff events socket refuses other origins before looking at the session', async () => {
-  const { createStaffEventsServer } = await import('../src/modules/staff-auth/events.socket');
-  const handler = createStaffEventsServer();
+test('admin events socket refuses other origins before looking at the session', async () => {
+  const { createAdminEventsServer } = await import('../src/modules/admin-auth/events.socket');
+  const handler = createAdminEventsServer();
   const socket = fakeSocket();
   handler({ headers: { origin: 'https://evil.example', cookie: 'admin_session=x' } } as any, socket as any, Buffer.alloc(0));
   assert.match(socket.written, /^HTTP\/1\.1 403 /);
@@ -54,14 +54,14 @@ test('staff events socket refuses other origins before looking at the session', 
 
 test('review routes require a session and the right role for each action', async () => {
   const source = await readFile(fileURLToPath(adminRoutesUrl), 'utf8');
-  assert.match(source, /router\.use\(adminOriginGuard\(config\.admin\.origin\)\);\s*router\.use\(requireStaffSession\);/);
-  assert.match(source, /router\.get\('\/', requireStaffRole\('read_only'\)/);
-  assert.match(source, /router\.get\('\/:id', requireStaffRole\('read_only'\)/);
-  assert.match(source, /router\.patch\('\/:id', requireStaffRole\('support'\)/);
-  assert.match(source, /router\.post\('\/:id\/reject', requireStaffRole\('support'\)/);
-  assert.match(source, /router\.post\('\/:id\/approve', requireStaffRole\('super_admin'\)/);
-  assert.match(source, /router\.post\('\/:id\/resend-activation', requireStaffRole\('support'\)/);
-  // Decisions are compare-and-set on the current status, so two staff members cannot both act.
+  assert.match(source, /router\.use\(adminOriginGuard\(config\.admin\.origin\)\);\s*router\.use\(requireAdminSession\);/);
+  assert.match(source, /router\.get\('\/', requireAdminRole\('read_only'\)/);
+  assert.match(source, /router\.get\('\/:id', requireAdminRole\('read_only'\)/);
+  assert.match(source, /router\.patch\('\/:id', requireAdminRole\('support'\)/);
+  assert.match(source, /router\.post\('\/:id\/reject', requireAdminRole\('support'\)/);
+  assert.match(source, /router\.post\('\/:id\/approve', requireAdminRole\('super_admin'\)/);
+  assert.match(source, /router\.post\('\/:id\/resend-activation', requireAdminRole\('support'\)/);
+  // Decisions are compare-and-set on the current status, so two admins cannot both act.
   assert.match(source, /transitionAccessRequest\(request\.id, \[request\.status\], \{\s*status: 'approved'/);
   assert.match(source, /transitionAccessRequest\(request\.id, OPEN_STATUSES, \{\s*status: 'rejected'/);
 });

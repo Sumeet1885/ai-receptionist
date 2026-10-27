@@ -3,12 +3,12 @@ import { config } from '../../config';
 import { createRateLimit } from '../../middleware/rateLimit';
 import { asyncRoute } from '../../utils/asyncRoute';
 import { getClientIp } from '../../utils/security';
-import { adminOriginGuard, noStore, requireStaffSession, type StaffRequest } from './middleware';
+import { adminOriginGuard, noStore, requireAdminSession, type AdminRequest } from './middleware';
 import { checkPasswordPolicy, getDummyHash, hashPassword, verifyPassword } from './password';
 import {
   createSession,
-  findPrincipalByEmail,
-  findPrincipalById,
+  findAdminUserByEmail,
+  findAdminUserById,
   getActiveRoles,
   recordAudit,
   recordLoginFailure,
@@ -16,7 +16,7 @@ import {
   revokeOtherSessions,
   revokeSession,
   setPassword,
-  type StaffPrincipal,
+  type AdminUser,
 } from './repository';
 import {
   hashSessionToken,
@@ -24,7 +24,7 @@ import {
   sessionCookieName,
   sessionCookieOptions,
   SESSION_ABSOLUTE_MS,
-  type StaffRole,
+  type AdminRole,
 } from './session';
 
 const router = Router();
@@ -33,18 +33,18 @@ const INVALID_CREDENTIALS = { error: 'Invalid email or password' };
 const cookieName = sessionCookieName(config.environment);
 const cookieOptions = sessionCookieOptions(config.environment);
 
-const loginRateLimit = createRateLimit({ keyPrefix: 'staff-login', limit: 10, windowMs: 15 * 60_000 });
-const passwordRateLimit = createRateLimit({ keyPrefix: 'staff-password', limit: 10, windowMs: 15 * 60_000 });
+const loginRateLimit = createRateLimit({ keyPrefix: 'admin-login', limit: 10, windowMs: 15 * 60_000 });
+const passwordRateLimit = createRateLimit({ keyPrefix: 'admin-password', limit: 10, windowMs: 15 * 60_000 });
 
-const handle = (fn: (req: StaffRequest, res: Response) => Promise<unknown>) => asyncRoute<StaffRequest>('StaffAuth', fn);
+const handle = (fn: (req: AdminRequest, res: Response) => Promise<unknown>) => asyncRoute<AdminRequest>('AdminAuth', fn);
 
-function describe(principal: StaffPrincipal, roles: StaffRole[]) {
+function describe(adminUser: AdminUser, roles: AdminRole[]) {
   return {
-    principal: {
-      id: principal.id,
-      email: principal.email,
-      displayName: principal.display_name,
-      mustChangePassword: principal.must_change_password,
+    adminUser: {
+      id: adminUser.id,
+      email: adminUser.email,
+      displayName: adminUser.display_name,
+      mustChangePassword: adminUser.must_change_password,
     },
     roles,
   };
@@ -61,28 +61,28 @@ router.post('/auth/login', loginRateLimit, handle(async (req, res) => {
   }
 
   const ip = getClientIp(req);
-  const principal = await findPrincipalByEmail(email);
+  const adminUser = await findAdminUserByEmail(email);
   // Always run one scrypt verify, so unknown emails take as long as known ones.
-  const valid = await verifyPassword(password, principal?.password_hash ?? await getDummyHash());
-  const locked = Boolean(principal?.locked_until && Date.parse(principal.locked_until) > Date.now());
+  const valid = await verifyPassword(password, adminUser?.password_hash ?? await getDummyHash());
+  const locked = Boolean(adminUser?.locked_until && Date.parse(adminUser.locked_until) > Date.now());
 
-  if (!principal || principal.status !== 'active' || locked || !valid) {
-    if (principal) await recordLoginFailure(principal.id);
+  if (!adminUser || adminUser.status !== 'active' || locked || !valid) {
+    if (adminUser) await recordLoginFailure(adminUser.id);
     await recordAudit({
       action: 'login',
       decision: 'denied',
       outcome: 'failed',
-      actor_principal_id: principal?.id ?? null,
-      reason: !principal ? 'unknown_email' : principal.status !== 'active' ? `status_${principal.status}` : locked ? 'locked' : 'bad_password',
+      actor_admin_user_id: adminUser?.id ?? null,
+      reason: !adminUser ? 'unknown_email' : adminUser.status !== 'active' ? `status_${adminUser.status}` : locked ? 'locked' : 'bad_password',
       ip,
     });
     return res.status(401).json(INVALID_CREDENTIALS);
   }
 
-  await recordLoginSuccess(principal.id);
+  await recordLoginSuccess(adminUser.id);
   const token = newSessionToken();
   const session = await createSession({
-    principalId: principal.id,
+    adminUserId: adminUser.id,
     tokenHash: hashSessionToken(token),
     expiresAt: new Date(Date.now() + SESSION_ABSOLUTE_MS),
     ip,
@@ -92,72 +92,72 @@ router.post('/auth/login', loginRateLimit, handle(async (req, res) => {
     action: 'login',
     decision: 'allowed',
     outcome: 'succeeded',
-    actor_principal_id: principal.id,
+    actor_admin_user_id: adminUser.id,
     actor_session_id: session.id,
     ip,
   });
 
   res.cookie(cookieName, token, { ...cookieOptions, maxAge: SESSION_ABSOLUTE_MS });
-  res.json(describe(principal, await getActiveRoles(principal.id)));
+  res.json(describe(adminUser, await getActiveRoles(adminUser.id)));
 }));
 
-router.post('/auth/logout', requireStaffSession, handle(async (req, res) => {
-  const staff = req.staff!;
-  await revokeSession(staff.sessionId);
+router.post('/auth/logout', requireAdminSession, handle(async (req, res) => {
+  const admin = req.admin!;
+  await revokeSession(admin.sessionId);
   await recordAudit({
     action: 'logout',
     decision: 'allowed',
     outcome: 'succeeded',
-    actor_principal_id: staff.principal.id,
-    actor_session_id: staff.sessionId,
+    actor_admin_user_id: admin.adminUser.id,
+    actor_session_id: admin.sessionId,
     ip: getClientIp(req),
   });
   res.clearCookie(cookieName, cookieOptions);
   res.json({ ok: true });
 }));
 
-router.get('/auth/me', requireStaffSession, handle(async (req, res) => {
-  const staff = req.staff!;
-  res.json(describe(staff.principal, staff.roles));
+router.get('/auth/me', requireAdminSession, handle(async (req, res) => {
+  const admin = req.admin!;
+  res.json(describe(admin.adminUser, admin.roles));
 }));
 
-router.post('/auth/password', passwordRateLimit, requireStaffSession, handle(async (req, res) => {
-  const staff = req.staff!;
+router.post('/auth/password', passwordRateLimit, requireAdminSession, handle(async (req, res) => {
+  const admin = req.admin!;
   const currentPassword = typeof req.body?.currentPassword === 'string' ? req.body.currentPassword : '';
   const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
   const ip = getClientIp(req);
 
-  if (!(await verifyPassword(currentPassword, staff.principal.password_hash))) {
-    await recordLoginFailure(staff.principal.id);
+  if (!(await verifyPassword(currentPassword, admin.adminUser.password_hash))) {
+    await recordLoginFailure(admin.adminUser.id);
     await recordAudit({
       action: 'password.change',
       decision: 'denied',
       outcome: 'failed',
-      actor_principal_id: staff.principal.id,
-      actor_session_id: staff.sessionId,
+      actor_admin_user_id: admin.adminUser.id,
+      actor_session_id: admin.sessionId,
       reason: 'bad_current_password',
       ip,
     });
     return res.status(403).json({ error: 'Current password is incorrect' });
   }
 
-  const policyError = checkPasswordPolicy(newPassword, staff.principal.email)
+  const policyError = checkPasswordPolicy(newPassword, admin.adminUser.email)
     ?? (newPassword === currentPassword ? 'Choose a password you have not used here.' : null);
   if (policyError) return res.status(400).json({ error: policyError });
 
-  await setPassword(staff.principal.id, await hashPassword(newPassword), false);
-  await revokeOtherSessions(staff.principal.id, staff.sessionId);
+  await setPassword(admin.adminUser.id, await hashPassword(newPassword), false);
+  await revokeOtherSessions(admin.adminUser.id, admin.sessionId);
   await recordAudit({
     action: 'password.change',
     decision: 'allowed',
     outcome: 'succeeded',
-    actor_principal_id: staff.principal.id,
-    actor_session_id: staff.sessionId,
+    actor_admin_user_id: admin.adminUser.id,
+    actor_session_id: admin.sessionId,
     ip,
   });
 
-  const updated = await findPrincipalById(staff.principal.id);
-  res.json(describe(updated!, staff.roles));
+  const updated = await findAdminUserById(admin.adminUser.id);
+  res.json(describe(updated!, admin.roles));
 }));
 
 export default router;

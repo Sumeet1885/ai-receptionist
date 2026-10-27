@@ -6,8 +6,8 @@ export const SESSION_ABSOLUTE_MS = 8 * 60 * 60_000;
 // last_seen_at is written at most this often, not on every request.
 export const SESSION_TOUCH_INTERVAL_MS = 60_000;
 
-export const STAFF_ROLES = ['read_only', 'support', 'super_admin'] as const;
-export type StaffRole = (typeof STAFF_ROLES)[number];
+export const ADMIN_ROLES = ['read_only', 'support', 'super_admin'] as const;
+export type AdminRole = (typeof ADMIN_ROLES)[number];
 
 export function newSessionToken() {
   return randomBytes(32).toString('base64url');
@@ -59,7 +59,7 @@ export function isSessionUsable(session: SessionTimes, now = Date.now()) {
     && Date.parse(session.last_seen_at) + SESSION_IDLE_MS > now;
 }
 
-export function hasRole(roles: StaffRole[], minimum: StaffRole) {
-  const required = STAFF_ROLES.indexOf(minimum);
-  return roles.some((role) => STAFF_ROLES.indexOf(role) >= required);
+export function hasRole(roles: AdminRole[], minimum: AdminRole) {
+  const required = ADMIN_ROLES.indexOf(minimum);
+  return roles.some((role) => ADMIN_ROLES.indexOf(role) >= required);
 }

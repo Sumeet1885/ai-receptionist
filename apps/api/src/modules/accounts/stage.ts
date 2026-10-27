@@ -5,7 +5,7 @@ import type { CustomerAccount } from './repository';
  * so leaving halfway and coming back resumes exactly where they stopped.
  *
  *   not_provisioned → login exists but was never approved (e.g. created before signup was closed)
- *   suspended       → blocked by staff
+ *   suspended       → blocked by an admin
  *   verify_email    → email not confirmed yet: no access to anything else
  *   set_password    → activation link used, password not chosen yet
  *   onboarding      → first-time setup (currently: create the first receptionist)
@@ -22,7 +22,7 @@ export function computeAccountStage(account: Pick<CustomerAccount, 'status' | 'p
   return 'active';
 }
 
-// Customer passwords (staff have a stricter policy). Returns an error message or null.
+// Customer passwords (admins have a stricter policy). Returns an error message or null.
 export function checkCustomerPassword(password: unknown, email: string | undefined): string | null {
   if (typeof password !== 'string' || password.length < 8) return 'Use at least 8 characters.';
   if (password.length > 128) return 'Use at most 128 characters.';

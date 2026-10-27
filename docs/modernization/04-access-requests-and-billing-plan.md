@@ -45,11 +45,11 @@ Each package is one PR, with its own tests, and leaves `pnpm verify` green. Migr
 
 | # | Package | Contents | Needs from you |
 | --- | --- | --- | --- |
-| **P1** | Admin auth | As designed in doc 03: staff tables, scrypt, cookie sessions, `staff:create` seed script, admin login UI | Doc 03 decisions D1–D5 |
+| **P1** | Admin auth | As designed in doc 03: admin tables, scrypt, cookie sessions, `admin:create` seed script, admin login UI | Doc 03 decisions D1–D5 |
 | **P2** | Public-form protection | `middleware/botGuard.ts` (honeypot field + minimum fill time 3 s), `middleware/turnstile.ts` (siteverify, 5 s timeout, hostname must equal our app host, **fails closed** outside development), per-IP and per-email limits on top of the existing `middleware/rateLimit.ts`; `publicFormGuards` chain in own-crm's order: flood limit → bot guard → Turnstile → hourly IP → hourly email. Web: `<Turnstile>` component + hidden honeypot + fill-time hook. Security headers (`Cache-Control: no-store`, `Referrer-Policy`) and Origin check on public POSTs | Cloudflare Turnstile site key + secret (per environment) |
 | **P3** | Access request form | Migration `access_requests` (RLS on, no policies, grants revoked: API-only). `POST /api/public/access-requests` (zod-style validation, duplicate check on email/phone while pending/contacted/approved, IP + UA stored). Web page `/request-access`; landing and header "Get started" point to it | Which fields to collect (§4) |
 | **P4** | SES email module | `apps/api/src/services/email/` — SESv2 client (instance role on EC2, static keys/assumed role only in development), templated HTML + text, one `sendEmail()` entry point, `email_messages` log table (status, provider message id, no body), bounce/complaint suppression later. Templates: request received, new-request notification, workspace ready (activation), password reset | SES region, verified sending domain/address, production access (out of sandbox), IAM permission on the EC2 role |
-| **P5** | Super-admin review + provisioning | Admin pages: list (filters by status, search), detail, mark contacted, reject with reason (optional email), approve → provision. Provisioning: `auth.admin.createUser` + `generateLink('invite')` → SES activation email; resend activation; every action written to `staff_audit_events`. Notification-recipient list stored in a settings row | Who receives "new request" emails |
+| **P5** | Super-admin review + provisioning | Admin pages: list (filters by status, search), detail, mark contacted, reject with reason (optional email), approve → provision. Provisioning: `auth.admin.createUser` + `generateLink('invite')` → SES activation email; resend activation; every action written to `admin_audit_log`. Notification-recipient list stored in a settings row | Who receives "new request" emails |
 | **P6** | Close open self-signup | Remove the public sign-up form, route "Sign up" to `/request-access`; set-password page for activation links. Supabase settings (you change them): disable "Allow new users to sign up" — this also stops Google/Microsoft sign-in from creating new accounts; existing users still sign in. Point Supabase Auth's own emails (password reset) at SES SMTP so all mail comes from our domain | Approval to close self-signup; keep Google/Microsoft sign-in for existing users? |
 | P7 | Onboarding | Later, separately designed | — |
 | P8 | Plans + Razorpay | `plans` (server-side prices), `checkout_requests`, `payment_orders` (status machine: created → captured / failed / review), Razorpay order creation, signature check, webhook with `X-Razorpay-Signature` HMAC and idempotency, reconciliation job, provisioning reuse from P5, kill switch `PAID_SIGNUP_ENABLED` | Razorpay account + keys + webhook secret; plan names and prices |
@@ -65,7 +65,7 @@ P2 and P4 do not depend on each other; P3 needs P2; P5 needs P1, P3 and P4; P6 n
 3. **No enumeration:** public responses never reveal whether an email has an account. (own-crm returns 409 `TENANT_EXISTS`; we return the same "request received" message and handle duplicates by email to the owner instead.)
 4. **Secrets server-side only:** Turnstile secret, AWS credentials, Razorpay secret and webhook secret live in `apps/api` env/SSM; `check:boundaries` is extended to fail on them in the web bundle.
 5. **Payments:** the server sets prices; the browser's success callback never grants anything; webhook signature + idempotency keys; amount and currency re-checked against the order.
-6. **Audit:** every super-admin decision and every provisioning step is in `staff_audit_events`.
+6. **Audit:** every super-admin decision and every provisioning step is in `admin_audit_log`.
 7. **No PII in logs:** request bodies of public routes are not logged; emails are masked in log lines.
 
 ---
@@ -91,12 +91,12 @@ Required: full name, work email, phone (validated with the existing `libphonenum
 
 | # | Where | Action |
 | --- | --- | --- |
-| 1 | Database | Apply the three migrations (`20261027120000_staff_auth`, `20261027130000_access_requests`, `20261027140000_customer_accounts`) with the **Database - Migrate** workflow ([database-migrations.md](../deployment/database-migrations.md)). Order matters: deploy the API only after they are applied. |
+| 1 | Database | Apply the three migrations (`20261027120000_admin_auth`, `20261027130000_access_requests`, `20261027140000_customer_accounts`) with the **Database - Migrate** workflow ([database-migrations.md](../deployment/database-migrations.md)). Order matters: deploy the API only after they are applied. |
 | 2 | Supabase → Authentication → Sign In / Providers | Turn **off** "Allow new users to sign up", and disable the Google and Azure providers. Admin-created invites keep working. Until this is done, the Supabase API still accepts direct sign-ups; such logins land on "Your workspace is not set up yet". |
 | 3 | Supabase → Authentication → Email | Keep "Email OTP expiration" equal to `AUTH_LINK_EXPIRY_HOURS` (default 1 hour; up to 24 hours is reasonable for activation). Optionally point Supabase SMTP at SES so any remaining Supabase-sent mail also comes from our domain. |
 | 4 | AWS SES | Verify the `bolegaindia.ai` domain (DKIM), request production access (leave the sandbox), and allow `ses:SendEmail` for the EC2 instance role. Set `EMAIL_FROM` (e.g. `no-reply@bolegaindia.ai`). |
 | 5 | Cloudflare Turnstile | Create a widget for `bolegaindia.ai` (+ staging host). Secret → SSM `/ai-receptionist/<env>/TURNSTILE_SECRET_KEY`; site key → `VITE_TURNSTILE_SITE_KEY` in `apps/web/Dockerfile.staging` / `.prod`. |
-| 6 | API env (host `server/.env`) | `ADMIN_ORIGIN`, `EMAIL_FROM`, `EMAIL_FROM_NAME`, `STAFF_NOTIFICATION_EMAILS`, `AUTH_LINK_EXPIRY_HOURS`. |
+| 6 | API env (host `server/.env`) | `ADMIN_ORIGIN`, `EMAIL_FROM`, `EMAIL_FROM_NAME`, `ADMIN_NOTIFICATION_EMAILS`, `AUTH_LINK_EXPIRY_HOURS`. |
 | 7 | Admin hosting | The admin console is not in Compose or Caddy yet: it needs its own domain, a Caddy site block serving `apps/admin/dist` and proxying `/api/admin/*` (including WebSocket) to `api:4000`, and an image build. Separate change. |
 | 8 | Existing customers | Every existing login is kept (backfilled as active). Anyone who only used Google/Microsoft sign-in must use "Forgot password" once to set a password. |
 
@@ -104,12 +104,12 @@ Known limit: the gate is enforced by the web app and the new API routes. Databas
 
 ## 7. Local test walkthrough
 
-Prerequisite: the migrations are applied to the project in `apps/api/.env`, and you have created a super admin (`pnpm --filter @ai-receptionist/api staff:create … --confirm-project <ref>`).
+Prerequisite: the migrations are applied to the project in `apps/api/.env`, and you have created a super admin (`pnpm --filter @ai-receptionist/api admin:create … --confirm-project <ref>`).
 
 > **Warning:** `pnpm dev` / `pnpm dev:api` start the call poller and **resumes paused outbound campaigns** in whatever Supabase project `apps/api/.env` points at (audit S09). Check `call_campaigns` for `paused` rows first, or point the API at a non-production project.
 
-1. `pnpm dev` (web http://127.0.0.1:3000, staff console http://127.0.0.1:3001, API http://localhost:4000, all logging into one terminal).
-2. Web → **Get started** → fill the request form (Turnstile appears) → "Request received"; the requester gets a confirmation email and staff get a notification email.
+1. `pnpm dev` (web http://127.0.0.1:3000, admin console http://127.0.0.1:3001, API http://localhost:4000, all logging into one terminal).
+2. Web → **Get started** → fill the request form (Turnstile appears) → "Request received"; the requester gets a confirmation email and admin get a notification email.
 3. Admin → sign in → the new request appears live (green "Live updates on" dot) → open it → **Approve and provision**.
 4. The requester's email has **Activate my workspace** → `/auth/confirm` → **Activate** → **Choose your password** → lands on **create your receptionist** (onboarding). Close the tab, sign in again: it resumes at the same step.
 5. Create the receptionist → dashboard (stage `active`).

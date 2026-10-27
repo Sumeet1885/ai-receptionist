@@ -7,8 +7,8 @@
     "start": "tsx src/index.ts",
     "test": "tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "staff:create": "tsx scripts/staff-create.ts",
-    "staff:reset-password": "tsx scripts/staff-reset-password.ts"
+    "admin:create": "tsx scripts/admin-create.ts",
+    "admin:reset-password": "tsx scripts/admin-reset-password.ts"
   },
   "dependencies": {
     "@ai-receptionist/contracts": "workspace:*",

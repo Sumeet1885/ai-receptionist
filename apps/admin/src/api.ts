@@ -1,5 +1,5 @@
-export interface StaffSession {
-  principal: {
+export interface AdminSession {
+  adminUser: {
     id: string;
     email: string;
     displayName: string;
@@ -49,7 +49,7 @@ export interface AccessRequestDetail extends AccessRequestSummary {
   use_case: string | null;
   ip: string | null;
   user_agent: string | null;
-  staff_notes: string | null;
+  admin_notes: string | null;
   rejection_reason: string | null;
   provisioned_user_id: string | null;
   provisioned_at: string | null;
@@ -84,8 +84,8 @@ export const accessRequestApi = {
     request<{ request: AccessRequestDetail; account: AccessRequestAccount | null }>(`/access-requests/${encodeURIComponent(id)}`),
   markContacted: (id: string) =>
     request<{ request: AccessRequestDetail }>(`/access-requests/${encodeURIComponent(id)}`, { method: 'PATCH', body: { status: 'contacted' } }),
-  saveNotes: (id: string, staffNotes: string) =>
-    request<{ request: AccessRequestDetail }>(`/access-requests/${encodeURIComponent(id)}`, { method: 'PATCH', body: { staffNotes } }),
+  saveNotes: (id: string, adminNotes: string) =>
+    request<{ request: AccessRequestDetail }>(`/access-requests/${encodeURIComponent(id)}`, { method: 'PATCH', body: { adminNotes } }),
   reject: (id: string, reason: string, notify: boolean) =>
     request<{ request: AccessRequestDetail }>(`/access-requests/${encodeURIComponent(id)}/reject`, { method: 'POST', body: { reason, notify } }),
   approve: (id: string) =>
@@ -94,11 +94,11 @@ export const accessRequestApi = {
     request<{ request: AccessRequestDetail }>(`/access-requests/${encodeURIComponent(id)}/resend-activation`, { method: 'POST', body: {} }),
 };
 
-export const staffApi = {
-  me: () => request<StaffSession>('/auth/me'),
+export const adminApi = {
+  me: () => request<AdminSession>('/auth/me'),
   login: (email: string, password: string) =>
-    request<StaffSession>('/auth/login', { method: 'POST', body: { email, password } }),
+    request<AdminSession>('/auth/login', { method: 'POST', body: { email, password } }),
   logout: () => request<{ ok: true }>('/auth/logout', { method: 'POST', body: {} }),
   changePassword: (currentPassword: string, newPassword: string) =>
-    request<StaffSession>('/auth/password', { method: 'POST', body: { currentPassword, newPassword } }),
+    request<AdminSession>('/auth/password', { method: 'POST', body: { currentPassword, newPassword } }),
 };

@@ -1,7 +1,7 @@
 import { Router, type Response } from 'express';
 import { config } from '../../config';
 import { emailTemplates, sendEmail, sendEmailSafely } from '../../services/email';
-import { publishStaffEvent } from '../../services/staffEvents';
+import { publishAdminEvent } from '../../services/adminEvents';
 import { asyncRoute } from '../../utils/asyncRoute';
 import { getClientIp } from '../../utils/security';
 import { createActivationLink } from '../accounts/links';
@@ -9,11 +9,11 @@ import { createCustomerAccount, getCustomerAccount } from '../accounts/repositor
 import {
   adminOriginGuard,
   noStore,
-  requireStaffRole,
-  requireStaffSession,
-  type StaffRequest,
-} from '../staff-auth/middleware';
-import { recordAudit } from '../staff-auth/repository';
+  requireAdminRole,
+  requireAdminSession,
+  type AdminRequest,
+} from '../admin-auth/middleware';
+import { recordAudit } from '../admin-auth/repository';
 import {
   authEmailExists,
   countByStatus,
@@ -26,7 +26,7 @@ import {
   type AccessRequestStatus,
 } from './repository';
 
-// Staff review of free-access requests, mounted at /api/admin/access-requests.
+// Admin review of free-access requests, mounted at /api/admin/access-requests.
 // Reading needs read_only; triage (contacted, notes, reject, resend) needs support;
 // approving, which creates a customer login, needs super_admin.
 
@@ -35,19 +35,19 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STATUSES: AccessRequestStatus[] = ['pending', 'contacted', 'approved', 'rejected'];
 const PAGE_SIZE = 25;
 
-const handle = (fn: (req: StaffRequest, res: Response) => Promise<unknown>) => asyncRoute<StaffRequest>('AccessRequestAdmin', fn);
+const handle = (fn: (req: AdminRequest, res: Response) => Promise<unknown>) => asyncRoute<AdminRequest>('AccessRequestAdmin', fn);
 
 router.use(noStore);
 router.use(adminOriginGuard(config.admin.origin));
-router.use(requireStaffSession);
+router.use(requireAdminSession);
 
-function audit(req: StaffRequest, action: string, request: Pick<AccessRequestRow, 'id' | 'provisioned_user_id'>, outcome: 'succeeded' | 'failed' = 'succeeded', metadata: Record<string, unknown> = {}) {
+function audit(req: AdminRequest, action: string, request: Pick<AccessRequestRow, 'id' | 'provisioned_user_id'>, outcome: 'succeeded' | 'failed' = 'succeeded', metadata: Record<string, unknown> = {}) {
   return recordAudit({
     action,
     decision: 'allowed',
     outcome,
-    actor_principal_id: req.staff!.principal.id,
-    actor_session_id: req.staff!.sessionId,
+    actor_admin_user_id: req.admin!.adminUser.id,
+    actor_session_id: req.admin!.sessionId,
     tenant_owner_id: request.provisioned_user_id,
     resource_type: 'access_request',
     resource_id: request.id,
@@ -56,7 +56,7 @@ function audit(req: StaffRequest, action: string, request: Pick<AccessRequestRow
   });
 }
 
-async function loadRequest(req: StaffRequest, res: Response) {
+async function loadRequest(req: AdminRequest, res: Response) {
   if (!UUID.test(req.params.id)) {
     res.status(404).json({ error: 'Request not found' });
     return null;
@@ -81,7 +81,7 @@ async function sendActivation(request: AccessRequestRow) {
   return link.userId;
 }
 
-router.get('/', requireStaffRole('read_only'), handle(async (req, res) => {
+router.get('/', requireAdminRole('read_only'), handle(async (req, res) => {
   const status = STATUSES.includes(req.query.status as AccessRequestStatus) ? req.query.status as AccessRequestStatus : undefined;
   const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
   const page = Math.max(1, Math.min(1000, Number.parseInt(String(req.query.page ?? '1'), 10) || 1));
@@ -92,7 +92,7 @@ router.get('/', requireStaffRole('read_only'), handle(async (req, res) => {
   res.json({ rows, total, page, pageSize: PAGE_SIZE, counts });
 }));
 
-router.get('/:id', requireStaffRole('read_only'), handle(async (req, res) => {
+router.get('/:id', requireAdminRole('read_only'), handle(async (req, res) => {
   const request = await loadRequest(req, res);
   if (!request) return;
   const account = request.provisioned_user_id ? await getCustomerAccount(request.provisioned_user_id) : null;
@@ -106,16 +106,16 @@ router.get('/:id', requireStaffRole('read_only'), handle(async (req, res) => {
   });
 }));
 
-router.patch('/:id', requireStaffRole('support'), handle(async (req, res) => {
+router.patch('/:id', requireAdminRole('support'), handle(async (req, res) => {
   const request = await loadRequest(req, res);
   if (!request) return;
 
   const changes: Partial<AccessRequestRow> = {};
-  if (req.body?.staffNotes !== undefined) {
-    if (typeof req.body.staffNotes !== 'string' || req.body.staffNotes.length > 2000) {
+  if (req.body?.adminNotes !== undefined) {
+    if (typeof req.body.adminNotes !== 'string' || req.body.adminNotes.length > 2000) {
       return res.status(400).json({ error: 'Notes must be text under 2,000 characters' });
     }
-    changes.staff_notes = req.body.staffNotes.trim() || null;
+    changes.admin_notes = req.body.adminNotes.trim() || null;
   }
 
   let updated: AccessRequestRow | null = request;
@@ -123,7 +123,7 @@ router.patch('/:id', requireStaffRole('support'), handle(async (req, res) => {
     updated = await transitionAccessRequest(request.id, ['pending'], {
       ...changes,
       status: 'contacted',
-      reviewed_by: req.staff!.principal.id,
+      reviewed_by: req.admin!.adminUser.id,
       reviewed_at: new Date().toISOString(),
     });
     if (!updated) return res.status(409).json({ error: 'Only pending requests can be marked as contacted' });
@@ -133,12 +133,12 @@ router.patch('/:id', requireStaffRole('support'), handle(async (req, res) => {
     updated = await updateAccessRequest(request.id, changes);
   }
 
-  await audit(req, 'access_request.update', request, 'succeeded', { status: updated.status, notesChanged: 'staff_notes' in changes });
-  publishStaffEvent({ type: 'access_request.updated', id: request.id, status: updated.status });
+  await audit(req, 'access_request.update', request, 'succeeded', { status: updated.status, notesChanged: 'admin_notes' in changes });
+  publishAdminEvent({ type: 'access_request.updated', id: request.id, status: updated.status });
   res.json({ request: updated });
 }));
 
-router.post('/:id/reject', requireStaffRole('support'), handle(async (req, res) => {
+router.post('/:id/reject', requireAdminRole('support'), handle(async (req, res) => {
   const request = await loadRequest(req, res);
   if (!request) return;
   const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim().slice(0, 1000) : '';
@@ -146,7 +146,7 @@ router.post('/:id/reject', requireStaffRole('support'), handle(async (req, res) 
   const updated = await transitionAccessRequest(request.id, OPEN_STATUSES, {
     status: 'rejected',
     rejection_reason: reason || null,
-    reviewed_by: req.staff!.principal.id,
+    reviewed_by: req.admin!.adminUser.id,
     reviewed_at: new Date().toISOString(),
   });
   if (!updated) return res.status(409).json({ error: 'This request has already been decided' });
@@ -155,11 +155,11 @@ router.post('/:id/reject', requireStaffRole('support'), handle(async (req, res) 
     await sendEmailSafely(request.email, emailTemplates.accessRequestDeclined({ name: request.full_name, reason: reason || undefined }), 'access_request_declined');
   }
   await audit(req, 'access_request.reject', request, 'succeeded', { notified: req.body?.notify === true });
-  publishStaffEvent({ type: 'access_request.updated', id: request.id, status: 'rejected' });
+  publishAdminEvent({ type: 'access_request.updated', id: request.id, status: 'rejected' });
   res.json({ request: updated });
 }));
 
-router.post('/:id/approve', requireStaffRole('super_admin'), handle(async (req, res) => {
+router.post('/:id/approve', requireAdminRole('super_admin'), handle(async (req, res) => {
   const request = await loadRequest(req, res);
   if (!request) return;
   if (!OPEN_STATUSES.includes(request.status)) return res.status(409).json({ error: 'This request has already been decided' });
@@ -170,7 +170,7 @@ router.post('/:id/approve', requireStaffRole('super_admin'), handle(async (req, 
   // Claim first so a second approver cannot provision the same request twice.
   const claimed = await transitionAccessRequest(request.id, [request.status], {
     status: 'approved',
-    reviewed_by: req.staff!.principal.id,
+    reviewed_by: req.admin!.adminUser.id,
     reviewed_at: new Date().toISOString(),
   });
   if (!claimed) return res.status(409).json({ error: 'This request has already been decided' });
@@ -193,7 +193,7 @@ router.post('/:id/approve', requireStaffRole('super_admin'), handle(async (req, 
       error: String(error?.message ?? error).slice(0, 300),
     });
     if (provisioned?.provisioned_user_id) {
-      publishStaffEvent({ type: 'access_request.updated', id: request.id, status: 'approved' });
+      publishAdminEvent({ type: 'access_request.updated', id: request.id, status: 'approved' });
       return res.status(502).json({ error: 'The workspace was created but the activation email could not be sent. Use "Resend activation".' });
     }
     // Nothing was created: put the request back so it can be approved again.
@@ -206,11 +206,11 @@ router.post('/:id/approve', requireStaffRole('super_admin'), handle(async (req, 
     activation_send_count: request.activation_send_count + 1,
   });
   await audit(req, 'access_request.approve', updated);
-  publishStaffEvent({ type: 'access_request.updated', id: request.id, status: 'approved' });
+  publishAdminEvent({ type: 'access_request.updated', id: request.id, status: 'approved' });
   res.json({ request: updated });
 }));
 
-router.post('/:id/resend-activation', requireStaffRole('support'), handle(async (req, res) => {
+router.post('/:id/resend-activation', requireAdminRole('support'), handle(async (req, res) => {
   const request = await loadRequest(req, res);
   if (!request) return;
   if (request.status !== 'approved' || !request.provisioned_user_id) {
@@ -226,7 +226,7 @@ router.post('/:id/resend-activation', requireStaffRole('support'), handle(async 
     activation_send_count: request.activation_send_count + 1,
   });
   await audit(req, 'access_request.resend_activation', updated);
-  publishStaffEvent({ type: 'access_request.updated', id: request.id, status: updated.status });
+  publishAdminEvent({ type: 'access_request.updated', id: request.id, status: updated.status });
   res.json({ request: updated });
 }));
 

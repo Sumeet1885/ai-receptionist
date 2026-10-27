@@ -1,7 +1,7 @@
 /**
- * Create a staff (admin console) account. There is no public signup for staff.
+ * Create a admin (admin console) account. There is no public signup for admin.
  *
- *   pnpm --filter @ai-receptionist/api staff:create --email ops@example.com --name "Ops" --role super_admin \
+ *   pnpm --filter @ai-receptionist/api admin:create --email ops@example.com --name "Ops" --role super_admin \
  *     --confirm-project <supabase-project-ref> [--granted-by admin@example.com]
  *
  * Prints a one-time temporary password; the console forces a change at first sign-in.
@@ -10,17 +10,17 @@
  */
 import 'dotenv/config';
 import { parseArgs } from 'node:util';
-import { generateTemporaryPassword, hashPassword } from '../src/modules/staff-auth/password';
-import { STAFF_ROLES, type StaffRole } from '../src/modules/staff-auth/session';
+import { generateTemporaryPassword, hashPassword } from '../src/modules/admin-auth/password';
+import { ADMIN_ROLES, type AdminRole } from '../src/modules/admin-auth/session';
 import { supabase } from '../src/services/db';
 import {
-  createPrincipal,
-  findPrincipalByEmail,
+  createAdminUser,
+  findAdminUserByEmail,
   getActiveRoles,
   grantRole,
   recordAudit,
-} from '../src/modules/staff-auth/repository';
-import { requireConfirmedProject } from './staff-cli';
+} from '../src/modules/admin-auth/repository';
+import { requireConfirmedProject } from './admin-cli';
 
 async function main() {
   const { values } = parseArgs({
@@ -35,28 +35,28 @@ async function main() {
 
   const email = values.email?.trim().toLowerCase();
   const name = values.name?.trim();
-  const role = values.role as StaffRole | undefined;
-  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || !name || !role || !STAFF_ROLES.includes(role)) {
-    console.error(`Usage: --email <email> --name <name> --role <${STAFF_ROLES.join('|')}> --confirm-project <ref> [--granted-by <email>]`);
+  const role = values.role as AdminRole | undefined;
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || !name || !role || !ADMIN_ROLES.includes(role)) {
+    console.error(`Usage: --email <email> --name <name> --role <${ADMIN_ROLES.join('|')}> --confirm-project <ref> [--granted-by <email>]`);
     process.exit(1);
   }
   requireConfirmedProject(values['confirm-project']);
 
-  if (await findPrincipalByEmail(email)) {
-    console.error(`A staff account for ${email} already exists. Use staff:reset-password to issue a new password.`);
+  if (await findAdminUserByEmail(email)) {
+    console.error(`A admin account for ${email} already exists. Use admin:reset-password to issue a new password.`);
     process.exit(1);
   }
 
   let grantedBy: string | null = null;
   if (values['granted-by']) {
-    const granter = await findPrincipalByEmail(values['granted-by'].trim().toLowerCase());
+    const granter = await findAdminUserByEmail(values['granted-by'].trim().toLowerCase());
     if (!granter || granter.status !== 'active' || !(await getActiveRoles(granter.id)).includes('super_admin')) {
       console.error('--granted-by must be an active super_admin.');
       process.exit(1);
     }
     grantedBy = granter.id;
   } else {
-    const { count, error } = await supabase.from('staff_principals').select('id', { count: 'exact', head: true });
+    const { count, error } = await supabase.from('admin_users').select('id', { count: 'exact', head: true });
     if (error) throw new Error(error.message);
     if ((count ?? 0) > 0 || role !== 'super_admin') {
       console.error('Only the first account (a super_admin) may be created without --granted-by.');
@@ -65,19 +65,19 @@ async function main() {
   }
 
   const password = generateTemporaryPassword();
-  const principal = await createPrincipal({ email, displayName: name, passwordHash: await hashPassword(password) });
-  await grantRole({ principalId: principal.id, role, grantedBy, reason: grantedBy ? 'staff:create' : 'bootstrap seed' });
+  const adminUser = await createAdminUser({ email, displayName: name, passwordHash: await hashPassword(password) });
+  await grantRole({ adminUserId: adminUser.id, role, grantedBy, reason: grantedBy ? 'admin:create' : 'bootstrap seed' });
   await recordAudit({
-    action: 'staff.create',
+    action: 'admin.create',
     decision: 'allowed',
     outcome: 'succeeded',
-    actor_principal_id: grantedBy,
-    resource_type: 'staff_principal',
-    resource_id: principal.id,
+    actor_admin_user_id: grantedBy,
+    resource_type: 'admin_user',
+    resource_id: adminUser.id,
     metadata: { role, via: 'cli' },
   });
 
-  console.log(`Created ${role} ${email} (${principal.id}).`);
+  console.log(`Created ${role} ${email} (${adminUser.id}).`);
   console.log(`Temporary password (shown once): ${password}`);
   process.exit(0);
 }

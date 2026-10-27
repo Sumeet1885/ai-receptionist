@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-export type StaffEvent =
+export type AdminEvent =
   | { type: 'access_request.created'; id: string }
   | { type: 'access_request.updated'; id: string; status: string };
 
@@ -8,7 +8,7 @@ export type StaffEvent =
  * Live connection to /api/admin/events (same origin, authenticated by the session cookie).
  * Reconnects with backoff; the server closes it when the session ends.
  */
-export function useStaffEvents(onEvent: (event: StaffEvent) => void) {
+export function useAdminEvents(onEvent: (event: AdminEvent) => void) {
   const [connected, setConnected] = useState(false);
   const onEventRef = useRef(onEvent);
   onEventRef.current = onEvent;

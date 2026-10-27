@@ -6,7 +6,7 @@ import {
   type AccessRequestList,
   type AccessRequestStatus,
 } from './api';
-import { useStaffEvents } from './useStaffEvents';
+import { useAdminEvents } from './useAdminEvents';
 
 const STATUS_LABELS: Record<AccessRequestStatus, string> = {
   pending: 'Pending',
@@ -57,7 +57,7 @@ export function AccessRequests({ roles }: { roles: string[] }) {
   }, [loadList]);
 
   const [detailVersion, setDetailVersion] = useState(0);
-  const live = useStaffEvents((event) => {
+  const live = useAdminEvents((event) => {
     if (event.type === 'access_request.created') setNotice('New access request received.');
     void loadList();
     if (event.id === selectedId) setDetailVersion((v) => v + 1);
@@ -191,7 +191,7 @@ function RequestDetail({ id, version, canTriage, canApprove, onClose, onChanged 
       .then((data) => {
         setRequest(data.request);
         setAccount(data.account);
-        setNotes(data.request.staff_notes ?? '');
+        setNotes(data.request.admin_notes ?? '');
         setError('');
       })
       .catch((err) => setError((err as Error).message));
@@ -274,7 +274,7 @@ function RequestDetail({ id, version, canTriage, canApprove, onClose, onChanged 
           <button
             type="button"
             className="secondary"
-            disabled={busy || notes === (request.staff_notes ?? '')}
+            disabled={busy || notes === (request.admin_notes ?? '')}
             onClick={() => run(() => accessRequestApi.saveNotes(id, notes), 'Notes saved.')}
           >
             Save notes

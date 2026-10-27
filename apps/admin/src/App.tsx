@@ -1,16 +1,16 @@
-// Staff console. Authentication is server-side (apps/api /api/admin, httpOnly session cookie);
+// Admin console. Authentication is server-side (apps/api /api/admin, httpOnly session cookie);
 // this app never talks to Supabase. See docs/modernization/03-admin-auth.md.
 import { useEffect, useState, type FormEvent } from 'react';
 import { AccessRequests } from './AccessRequests';
-import { ApiError, staffApi, type StaffSession } from './api';
+import { ApiError, adminApi, type AdminSession } from './api';
 
-type View = { name: 'loading' } | { name: 'signed-out' } | { name: 'signed-in'; session: StaffSession };
+type View = { name: 'loading' } | { name: 'signed-out' } | { name: 'signed-in'; session: AdminSession };
 
 export default function App() {
   const [view, setView] = useState<View>({ name: 'loading' });
 
   useEffect(() => {
-    staffApi.me()
+    adminApi.me()
       .then((session) => setView({ name: 'signed-in', session }))
       .catch(() => setView({ name: 'signed-out' }));
   }, []);
@@ -19,7 +19,7 @@ export default function App() {
   if (view.name === 'signed-out') {
     return <LoginForm onSignedIn={(session) => setView({ name: 'signed-in', session })} />;
   }
-  if (view.session.principal.mustChangePassword) {
+  if (view.session.adminUser.mustChangePassword) {
     return (
       <ChangePasswordForm
         forced
@@ -34,12 +34,12 @@ export default function App() {
 function Brand() {
   return (
     <p className="brand">
-      Bolega India <span>Staff console</span>
+      Bolega India <span>Admin console</span>
     </p>
   );
 }
 
-function LoginForm({ onSignedIn }: { onSignedIn: (session: StaffSession) => void }) {
+function LoginForm({ onSignedIn }: { onSignedIn: (session: AdminSession) => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -50,7 +50,7 @@ function LoginForm({ onSignedIn }: { onSignedIn: (session: StaffSession) => void
     setBusy(true);
     setError('');
     try {
-      onSignedIn(await staffApi.login(email, password));
+      onSignedIn(await adminApi.login(email, password));
     } catch (err) {
       setError(err instanceof ApiError && err.status === 429 ? 'Too many attempts. Try again in a few minutes.' : (err as Error).message);
       setPassword('');
@@ -74,7 +74,7 @@ function LoginForm({ onSignedIn }: { onSignedIn: (session: StaffSession) => void
         </label>
         {error && <p className="error" role="alert">{error}</p>}
         <button type="submit" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
-        <p className="muted small">Staff accounts are created by an administrator. There is no self-signup.</p>
+        <p className="muted small">Admin accounts are created by a super admin. There is no self-signup.</p>
       </form>
     </main>
   );
@@ -82,7 +82,7 @@ function LoginForm({ onSignedIn }: { onSignedIn: (session: StaffSession) => void
 
 function ChangePasswordForm({ forced, onChanged, onSignOut }: {
   forced?: boolean;
-  onChanged: (session: StaffSession) => void;
+  onChanged: (session: AdminSession) => void;
   onSignOut: () => void;
 }) {
   const [current, setCurrent] = useState('');
@@ -97,7 +97,7 @@ function ChangePasswordForm({ forced, onChanged, onSignOut }: {
     setBusy(true);
     setError('');
     try {
-      onChanged(await staffApi.changePassword(current, next));
+      onChanged(await adminApi.changePassword(current, next));
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -106,7 +106,7 @@ function ChangePasswordForm({ forced, onChanged, onSignOut }: {
   }
 
   async function signOut() {
-    await staffApi.logout().catch(() => undefined);
+    await adminApi.logout().catch(() => undefined);
     onSignOut();
   }
 
@@ -136,9 +136,9 @@ function ChangePasswordForm({ forced, onChanged, onSignOut }: {
   );
 }
 
-function Console({ session, onSignedOut }: { session: StaffSession; onSignedOut: () => void }) {
+function Console({ session, onSignedOut }: { session: AdminSession; onSignedOut: () => void }) {
   async function signOut() {
-    await staffApi.logout().catch(() => undefined);
+    await adminApi.logout().catch(() => undefined);
     onSignedOut();
   }
 
@@ -147,7 +147,7 @@ function Console({ session, onSignedOut }: { session: StaffSession; onSignedOut:
       <header>
         <Brand />
         <div className="who">
-          <span>{session.principal.displayName}</span>
+          <span>{session.adminUser.displayName}</span>
           <span className="muted small">{session.roles.join(', ') || 'no role'}</span>
           <button type="button" className="secondary" onClick={signOut}>Sign out</button>
         </div>

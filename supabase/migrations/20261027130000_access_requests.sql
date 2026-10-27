@@ -1,4 +1,4 @@
--- Free-access requests from the public form, reviewed by staff in the admin console.
+-- Free-access requests from the public form, reviewed by admins in the admin console.
 -- API-only (service role): RLS on with no policies, grants revoked from customer roles.
 -- Plan: docs/modernization/04-access-requests-and-billing-plan.md
 
@@ -18,8 +18,8 @@ CREATE TABLE IF NOT EXISTS public.access_requests (
   use_case TEXT,
   ip TEXT,
   user_agent TEXT,
-  staff_notes TEXT,
-  reviewed_by UUID REFERENCES public.staff_principals(id),
+  admin_notes TEXT,
+  reviewed_by UUID REFERENCES public.admin_users(id),
   reviewed_at TIMESTAMPTZ,
   rejection_reason TEXT,
   provisioned_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,

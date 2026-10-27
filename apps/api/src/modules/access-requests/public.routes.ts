@@ -3,10 +3,10 @@ import { validateAccessRequest } from '@ai-receptionist/contracts';
 import { config } from '../../config';
 import { publicFormGuards } from '../../middleware/publicFormGuards';
 import { emailTemplates, sendEmailSafely } from '../../services/email';
-import { publishStaffEvent } from '../../services/staffEvents';
+import { publishAdminEvent } from '../../services/adminEvents';
 import { asyncRoute } from '../../utils/asyncRoute';
 import { getClientIp } from '../../utils/security';
-import { listActiveSuperAdminEmails } from '../staff-auth/repository';
+import { listActiveSuperAdminEmails } from '../admin-auth/repository';
 import { authEmailExists, findOpenRequestByEmail, insertAccessRequest } from './repository';
 
 const router = Router();
@@ -18,9 +18,9 @@ const ACKNOWLEDGED = {
   message: 'Thanks! We have received your request. Check your inbox for a confirmation email.',
 };
 
-async function notifyStaff(request: { id: string; fullName: string; email: string; phone: string; businessName: string; industry: string }) {
-  const recipients = config.email.staffNotifications.length ? config.email.staffNotifications : await listActiveSuperAdminEmails();
-  const content = emailTemplates.staffNewAccessRequest({
+async function notifyAdmins(request: { id: string; fullName: string; email: string; phone: string; businessName: string; industry: string }) {
+  const recipients = config.email.adminNotifications.length ? config.email.adminNotifications : await listActiveSuperAdminEmails();
+  const content = emailTemplates.adminNewAccessRequest({
     name: request.fullName,
     email: request.email,
     phone: request.phone,
@@ -28,7 +28,7 @@ async function notifyStaff(request: { id: string; fullName: string; email: strin
     industry: request.industry,
     consoleUrl: `${config.admin.origin}/?request=${request.id}`,
   });
-  for (const to of recipients) await sendEmailSafely(to, content, 'staff_new_access_request');
+  for (const to of recipients) await sendEmailSafely(to, content, 'admin_new_access_request');
 }
 
 router.post(
@@ -57,9 +57,9 @@ router.post(
     }
 
     await sendEmailSafely(value.email, emailTemplates.accessRequestReceived({ name: value.fullName }), 'access_request_received');
-    publishStaffEvent({ type: 'access_request.created', id: created.id });
-    // Staff emails must not slow down or fail the visitor's request.
-    void notifyStaff({ id: created.id, ...value }).catch(() => undefined);
+    publishAdminEvent({ type: 'access_request.created', id: created.id });
+    // Admin emails must not slow down or fail the visitor's request.
+    void notifyAdmins({ id: created.id, ...value }).catch(() => undefined);
 
     res.status(202).json(ACKNOWLEDGED);
   }),

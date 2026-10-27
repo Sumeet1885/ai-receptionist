@@ -8,7 +8,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { accountApi } from '../../lib/accountApi';
 import { postPublic, usePublicFormGuard } from '../../lib/publicForm';
 
-// There is no self-signup: workspaces are created when staff approve an access request.
+// There is no self-signup: workspaces are created when admin approve an access request.
 export type AuthMode = 'signin' | 'forgot' | 'reset' | 'resend';
 
 interface AuthViewProps {

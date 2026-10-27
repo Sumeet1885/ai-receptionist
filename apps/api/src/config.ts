@@ -46,7 +46,7 @@ export const config = {
     // Must match Supabase Auth → Email → "Email OTP expiration" (Supabase default: 1 hour).
     linkExpiryHours: Number(process.env.AUTH_LINK_EXPIRY_HOURS || 1),
     // Who hears about new access requests; falls back to every active super_admin.
-    staffNotifications: (process.env.STAFF_NOTIFICATION_EMAILS || '')
+    adminNotifications: (process.env.ADMIN_NOTIFICATION_EMAILS || '')
       .split(',')
       .map((address) => address.trim().toLowerCase())
       .filter(Boolean),
@@ -56,7 +56,7 @@ export const config = {
     secretKey: (process.env.TURNSTILE_SECRET_KEY || '').trim(),
   },
   admin: {
-    // Exact origin of the staff console; state-changing /api/admin requests must come from it.
+    // Exact origin of the admin console; state-changing /api/admin requests must come from it.
     // Default matches `npm run dev:admin` (vite --host 127.0.0.1 --port 3001).
     origin: (process.env.ADMIN_ORIGIN || 'http://127.0.0.1:3001').trim().replace(/\/+$/, ''),
   },

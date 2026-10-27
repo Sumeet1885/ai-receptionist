@@ -7,7 +7,7 @@ import {
   generateTemporaryPassword,
   hashPassword,
   verifyPassword,
-} from '../src/modules/staff-auth/password';
+} from '../src/modules/admin-auth/password';
 import {
   hasRole,
   hashSessionToken,
@@ -17,10 +17,10 @@ import {
   sessionCookieName,
   sessionCookieOptions,
   SESSION_IDLE_MS,
-} from '../src/modules/staff-auth/session';
+} from '../src/modules/admin-auth/session';
 
-const migrationUrl = new URL('../../../supabase/migrations/20261027120000_staff_auth.sql', import.meta.url);
-const routesUrl = new URL('../src/modules/staff-auth/staff-auth.routes.ts', import.meta.url);
+const migrationUrl = new URL('../../../supabase/migrations/20261027120000_admin_auth.sql', import.meta.url);
+const routesUrl = new URL('../src/modules/admin-auth/admin-auth.routes.ts', import.meta.url);
 
 test('scrypt hashes verify only the original password and carry their parameters', async () => {
   const hash = await hashPassword('correct horse battery staple');
@@ -83,7 +83,7 @@ test('admin origin guard blocks cross-origin state changes but allows reads', as
   process.env.SUPABASE_URL ||= 'http://localhost:54321';
   process.env.SUPABASE_SERVICE_ROLE_KEY ||= 'test';
   process.env.GEMINI_API_KEY ||= 'test';
-  const { adminOriginGuard } = await import('../src/modules/staff-auth/middleware');
+  const { adminOriginGuard } = await import('../src/modules/admin-auth/middleware');
   const guard = adminOriginGuard('https://admin.example.com');
 
   const run = (method: string, origin?: string) => {
@@ -100,19 +100,19 @@ test('admin origin guard blocks cross-origin state changes but allows reads', as
   assert.deepEqual(run('GET', 'https://evil.example.com'), { status: 0, passed: true });
 });
 
-test('staff tables are private to the service role and audit is append-only', async () => {
+test('admin tables are private to the service role and audit is append-only', async () => {
   const sql = await readFile(fileURLToPath(migrationUrl), 'utf8');
 
-  for (const table of ['staff_principals', 'staff_role_assignments', 'staff_sessions', 'staff_audit_events']) {
+  for (const table of ['admin_users', 'admin_role_assignments', 'admin_sessions', 'admin_audit_log']) {
     assert.match(sql, new RegExp(`ALTER TABLE public\\.${table} ENABLE ROW LEVEL SECURITY`, 'i'));
     assert.match(sql, new RegExp(`REVOKE ALL ON TABLE public\\.${table} FROM anon, authenticated`, 'i'));
   }
-  assert.doesNotMatch(sql, /CREATE POLICY/i, 'no policy may expose staff tables to customer roles');
-  assert.doesNotMatch(sql, /REFERENCES auth\.users/i, 'staff identity must not link to customer auth');
-  assert.match(sql, /REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public\.staff_audit_events FROM service_role/i);
-  assert.match(sql, /BEFORE UPDATE OR DELETE ON public\.staff_audit_events/i);
-  assert.match(sql, /GRANT EXECUTE ON FUNCTION public\.staff_record_login_failure\(UUID\) TO service_role/i);
-  assert.match(sql, /REVOKE ALL ON FUNCTION public\.staff_record_login_failure\(UUID\) FROM authenticated/i);
+  assert.doesNotMatch(sql, /CREATE POLICY/i, 'no policy may expose admin tables to customer roles');
+  assert.doesNotMatch(sql, /REFERENCES auth\.users/i, 'admin identity must not link to customer auth');
+  assert.match(sql, /REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public\.admin_audit_log FROM service_role/i);
+  assert.match(sql, /BEFORE UPDATE OR DELETE ON public\.admin_audit_log/i);
+  assert.match(sql, /GRANT EXECUTE ON FUNCTION public\.admin_record_login_failure\(UUID\) TO service_role/i);
+  assert.match(sql, /REVOKE ALL ON FUNCTION public\.admin_record_login_failure\(UUID\) FROM authenticated/i);
 });
 
 test('admin routes check origin first, rate-limit login and never echo internal errors', async () => {
@@ -122,7 +122,7 @@ test('admin routes check origin first, rate-limit login and never echo internal 
   const loginPosition = source.indexOf("router.post('/auth/login'");
   assert.ok(guardPosition >= 0 && guardPosition < loginPosition, 'origin guard must run before every route');
   assert.match(source, /router\.post\('\/auth\/login', loginRateLimit,/);
-  assert.match(source, /router\.post\('\/auth\/password', passwordRateLimit, requireStaffSession,/);
-  assert.match(source, /verifyPassword\(password, principal\?\.password_hash \?\? await getDummyHash\(\)\)/);
-  assert.match(source, /asyncRoute<StaffRequest>\('StaffAuth', fn\)/);
+  assert.match(source, /router\.post\('\/auth\/password', passwordRateLimit, requireAdminSession,/);
+  assert.match(source, /verifyPassword\(password, adminUser\?\.password_hash \?\? await getDummyHash\(\)\)/);
+  assert.match(source, /asyncRoute<AdminRequest>\('AdminAuth', fn\)/);
 });

@@ -12,7 +12,7 @@ const load = async () => ({
 });
 
 test('templates escape user-supplied values in HTML', async () => {
-  const { accessRequestReceived, staffNewAccessRequest, escapeHtml } = await load();
+  const { accessRequestReceived, adminNewAccessRequest, escapeHtml } = await load();
   const hostile = '<script>alert(1)</script>"&';
 
   const received = accessRequestReceived({ name: hostile });
@@ -20,11 +20,11 @@ test('templates escape user-supplied values in HTML', async () => {
   assert.ok(received.html.includes(escapeHtml(hostile)));
   assert.ok(received.text.includes(hostile), 'plain text keeps the value as typed');
 
-  const staff = staffNewAccessRequest({
+  const admin = adminNewAccessRequest({
     name: hostile, email: 'a@b.co', phone: '+919876543210', businessName: hostile, industry: 'Healthcare', consoleUrl: 'https://admin.example/x?a=1&b=2',
   });
-  assert.ok(!staff.html.includes('<script>'));
-  assert.ok(staff.html.includes('href="https://admin.example/x?a=1&amp;b=2"'));
+  assert.ok(!admin.html.includes('<script>'));
+  assert.ok(admin.html.includes('href="https://admin.example/x?a=1&amp;b=2"'));
 });
 
 test('action emails carry the link in both HTML and text, with expiry', async () => {

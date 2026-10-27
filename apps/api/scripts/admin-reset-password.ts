@@ -1,18 +1,18 @@
 /**
- * Issue a new temporary password for a staff account, unlock it and sign out all its sessions.
+ * Issue a new temporary password for a admin account, unlock it and sign out all its sessions.
  *
- *   pnpm --filter @ai-receptionist/api staff:reset-password --email ops@example.com --confirm-project <ref>
+ *   pnpm --filter @ai-receptionist/api admin:reset-password --email ops@example.com --confirm-project <ref>
  */
 import 'dotenv/config';
 import { parseArgs } from 'node:util';
-import { generateTemporaryPassword, hashPassword } from '../src/modules/staff-auth/password';
+import { generateTemporaryPassword, hashPassword } from '../src/modules/admin-auth/password';
 import {
-  findPrincipalByEmail,
+  findAdminUserByEmail,
   recordAudit,
   revokeOtherSessions,
   setPassword,
-} from '../src/modules/staff-auth/repository';
-import { requireConfirmedProject } from './staff-cli';
+} from '../src/modules/admin-auth/repository';
+import { requireConfirmedProject } from './admin-cli';
 
 async function main() {
   const { values } = parseArgs({
@@ -29,21 +29,21 @@ async function main() {
   }
   requireConfirmedProject(values['confirm-project']);
 
-  const principal = await findPrincipalByEmail(email);
-  if (!principal) {
-    console.error(`No staff account for ${email}.`);
+  const adminUser = await findAdminUserByEmail(email);
+  if (!adminUser) {
+    console.error(`No admin account for ${email}.`);
     process.exit(1);
   }
 
   const password = generateTemporaryPassword();
-  await setPassword(principal.id, await hashPassword(password), true);
-  await revokeOtherSessions(principal.id, null);
+  await setPassword(adminUser.id, await hashPassword(password), true);
+  await revokeOtherSessions(adminUser.id, null);
   await recordAudit({
-    action: 'staff.reset_password',
+    action: 'admin.reset_password',
     decision: 'allowed',
     outcome: 'succeeded',
-    resource_type: 'staff_principal',
-    resource_id: principal.id,
+    resource_type: 'admin_user',
+    resource_id: adminUser.id,
     metadata: { via: 'cli' },
   });
 

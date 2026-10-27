@@ -17,7 +17,7 @@ async function bootstrap(): Promise<void> {
   const { isTrustedCorsOrigin }= await import('./utils/corsPolicy');
   const widgetRoutes           = (await import('./routes/widget.routes')).default;
   const crmRoutes              = (await import('./routes/crm.routes')).default;
-  const { staffAuthRoutes, createStaffEventsServer } = await import('./modules/staff-auth');
+  const { adminAuthRoutes, createAdminEventsServer } = await import('./modules/admin-auth');
   const { accessRequestPublicRoutes, accessRequestAdminRoutes } = await import('./modules/access-requests');
   const { accountRoutes, accountPublicRoutes } = await import('./modules/accounts');
   const { routeUpgrades }      = await import('./utils/upgradeRouter');
@@ -52,7 +52,7 @@ async function bootstrap(): Promise<void> {
   app.use('/api/phone-tools', phoneToolsRoutes);
   app.use('/api/crm',      crmRoutes);
   app.use('/api/campaigns', campaignRoutes);
-  app.use('/api/admin',    staffAuthRoutes);
+  app.use('/api/admin',    adminAuthRoutes);
   app.use('/api/admin/access-requests', accessRequestAdminRoutes);
   app.use('/api/public',   accessRequestPublicRoutes);
   app.use('/api/public',   accountPublicRoutes);
@@ -107,7 +107,7 @@ async function bootstrap(): Promise<void> {
 
   routeUpgrades(server, {
     '/api/chat/live': setupWebSocketServer(),
-    '/api/admin/events': createStaffEventsServer(),
+    '/api/admin/events': createAdminEventsServer(),
   });
 
   startCallPoller(supabase);

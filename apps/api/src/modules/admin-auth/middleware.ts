@@ -3,12 +3,12 @@ import { config } from '../../config';
 import { logger } from '../../services/cloudwatchLogger';
 import { getClientIp } from '../../utils/security';
 import {
-  findPrincipalById,
+  findAdminUserById,
   findSessionByTokenHash,
   getActiveRoles,
   recordAudit,
   touchSession,
-  type StaffPrincipal,
+  type AdminUser,
 } from './repository';
 import {
   hasRole,
@@ -17,14 +17,14 @@ import {
   readCookie,
   sessionCookieName,
   SESSION_TOUCH_INTERVAL_MS,
-  type StaffRole,
+  type AdminRole,
 } from './session';
 
-export interface StaffRequest extends Request {
-  staff?: {
+export interface AdminRequest extends Request {
+  admin?: {
     sessionId: string;
-    principal: StaffPrincipal;
-    roles: StaffRole[];
+    adminUser: AdminUser;
+    roles: AdminRole[];
   };
 }
 
@@ -47,51 +47,51 @@ export function adminOriginGuard(allowedOrigin: string) {
   };
 }
 
-// Resolves the session cookie to an active staff member, or null. Shared by REST and WebSocket.
-export async function resolveStaffSession(cookieHeader: string | undefined): Promise<StaffRequest['staff'] | null> {
+// Resolves the session cookie to an active admin, or null. Shared by REST and WebSocket.
+export async function resolveAdminSession(cookieHeader: string | undefined): Promise<AdminRequest['admin'] | null> {
   const token = readCookie(cookieHeader, sessionCookieName(config.environment));
   if (!token) return null;
 
   const session = await findSessionByTokenHash(hashSessionToken(token));
   if (!session || !isSessionUsable(session)) return null;
 
-  const principal = await findPrincipalById(session.principal_id);
-  if (!principal || principal.status !== 'active') return null;
+  const adminUser = await findAdminUserById(session.admin_user_id);
+  if (!adminUser || adminUser.status !== 'active') return null;
 
   if (Date.parse(session.last_seen_at) + SESSION_TOUCH_INTERVAL_MS < Date.now()) {
     await touchSession(session.id);
   }
 
-  return { sessionId: session.id, principal, roles: await getActiveRoles(principal.id) };
+  return { sessionId: session.id, adminUser, roles: await getActiveRoles(adminUser.id) };
 }
 
-export async function requireStaffSession(req: StaffRequest, res: Response, next: NextFunction) {
+export async function requireAdminSession(req: AdminRequest, res: Response, next: NextFunction) {
   try {
-    const staff = await resolveStaffSession(req.headers.cookie);
-    if (!staff) return res.status(401).json({ error: 'Not signed in' });
-    req.staff = staff;
+    const admin = await resolveAdminSession(req.headers.cookie);
+    if (!admin) return res.status(401).json({ error: 'Not signed in' });
+    req.admin = admin;
     next();
   } catch (error: any) {
-    logger.error('[StaffAuth] session check failed', { error: error?.message });
+    logger.error('[AdminAuth] session check failed', { error: error?.message });
     res.status(500).json({ error: 'Authentication failed' });
   }
 }
 
 // Deny by default: every admin feature route declares the minimum role it needs.
-export function requireStaffRole(minimum: StaffRole) {
-  return async (req: StaffRequest, res: Response, next: NextFunction) => {
-    const staff = req.staff;
-    if (!staff) return res.status(401).json({ error: 'Not signed in' });
-    if (staff.principal.must_change_password) {
+export function requireAdminRole(minimum: AdminRole) {
+  return async (req: AdminRequest, res: Response, next: NextFunction) => {
+    const admin = req.admin;
+    if (!admin) return res.status(401).json({ error: 'Not signed in' });
+    if (admin.adminUser.must_change_password) {
       return res.status(403).json({ error: 'Change your password to continue', code: 'PASSWORD_CHANGE_REQUIRED' });
     }
-    if (!hasRole(staff.roles, minimum)) {
+    if (!hasRole(admin.roles, minimum)) {
       await recordAudit({
         action: `${req.method} ${req.baseUrl}${req.route?.path ?? ''}`,
         decision: 'denied',
         outcome: 'failed',
-        actor_principal_id: staff.principal.id,
-        actor_session_id: staff.sessionId,
+        actor_admin_user_id: admin.adminUser.id,
+        actor_session_id: admin.sessionId,
         reason: `requires ${minimum}`,
         ip: getClientIp(req),
       });

@@ -21,7 +21,7 @@ export interface AccessRequestRow {
   use_case: string | null;
   ip: string | null;
   user_agent: string | null;
-  staff_notes: string | null;
+  admin_notes: string | null;
   reviewed_by: string | null;
   reviewed_at: string | null;
   rejection_reason: string | null;
@@ -148,7 +148,7 @@ export async function findLatestRequestForUser(userId: string) {
   );
 }
 
-// Compare-and-set: updates only while the row is still in one of `fromStatuses`, so two staff
+// Compare-and-set: updates only while the row is still in one of `fromStatuses`, so two admin
 // members acting at once cannot both approve or reject. Returns null when the state moved on.
 export async function transitionAccessRequest(
   id: string,

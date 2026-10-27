@@ -102,7 +102,7 @@ export function accessRequestStatus(input: { name: string; status: 'open' | 'app
   };
 }
 
-export function staffNewAccessRequest(input: {
+export function adminNewAccessRequest(input: {
   name: string;
   email: string;
   phone: string;
@@ -118,7 +118,7 @@ export function staffNewAccessRequest(input: {
         `${input.name} from ${input.businessName} (${input.industry}) has requested access.`,
         `Email: ${input.email} · Phone: ${input.phone}`,
       ],
-      action: { label: 'Review in the staff console', url: input.consoleUrl },
+      action: { label: 'Review in the admin console', url: input.consoleUrl },
     }),
   };
 }

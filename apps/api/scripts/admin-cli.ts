@@ -1,4 +1,4 @@
-// Shared guard for the staff:* account scripts: they write straight to the database, so the
+// Shared guard for the admin:* account scripts: they write straight to the database, so the
 // operator must name the Supabase project they mean to change.
 import { config } from '../src/config';
 
