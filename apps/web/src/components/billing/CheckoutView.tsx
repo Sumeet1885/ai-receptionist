@@ -280,12 +280,12 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ navigate }) => {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <Label htmlFor="co-fullName">Full name</Label>
-                    <Input id="co-fullName" autoComplete="name" maxLength={LIMITS.personName.max} value={form.fullName} onChange={(e) => set('fullName', e.target.value)} {...fieldProps('fullName')} />
+                    <Input id="co-fullName" autoComplete="name" minLength={LIMITS.personName.min} maxLength={LIMITS.personName.max} value={form.fullName} onChange={(e) => set('fullName', e.target.value)} {...fieldProps('fullName')} />
                     {fieldError('fullName')}
                   </div>
                   <div>
                     <Label htmlFor="co-businessName">Business name</Label>
-                    <Input id="co-businessName" autoComplete="organization" maxLength={LIMITS.businessName.max} value={form.businessName} onChange={(e) => set('businessName', e.target.value)} {...fieldProps('businessName')} />
+                    <Input id="co-businessName" autoComplete="organization" minLength={LIMITS.businessName.min} maxLength={LIMITS.businessName.max} value={form.businessName} onChange={(e) => set('businessName', e.target.value)} {...fieldProps('businessName')} />
                     {fieldError('businessName')}
                   </div>
                   <div>

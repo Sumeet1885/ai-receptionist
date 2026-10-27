@@ -3,7 +3,7 @@ import { LIMITS, parseCouponInput } from '@ai-receptionist/contracts';
 import { Loader2, Pencil, Plus, TicketPercent } from 'lucide-react';
 import { ApiError, billingAdminApi, formatMoney, type Coupon, type CouponInput, type Plan } from '../api';
 import { useToast } from '../toast';
-import { ActiveBadge, Button, Card, Drawer, Field, INPUT, Toggle, cx, formatDate, toMajor, toMinor } from '../ui';
+import { ActiveBadge, Button, Card, Drawer, Field, INPUT, MONEY_INPUT_LENGTH, Toggle, cx, digitsFor, formatDate, toMajor, toMinor } from '../ui';
 
 const APPLIES_TO_LABELS: Record<Coupon['applies_to'], string> = {
   total: 'Whole order',
@@ -243,10 +243,10 @@ function CouponDrawer({ coupon, plans, onClose, onSaved }: { coupon: Coupon | nu
       {error && <p role="alert" className="rounded-xl bg-danger-surface px-3 py-2 text-sm text-danger">{error}</p>}
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Code" hint="(3–32: A–Z, 0–9, - or _)" error={errors.code}>
-          <input className={cx(INPUT, 'font-mono uppercase')} maxLength={LIMITS.couponCode.max} value={form.code} onChange={(e) => set('code', e.target.value.toUpperCase())} placeholder="LAUNCH20" />
+          <input className={cx(INPUT, 'font-mono uppercase')} minLength={LIMITS.couponCode.min} maxLength={LIMITS.couponCode.max} value={form.code} onChange={(e) => set('code', e.target.value.toUpperCase())} placeholder="LAUNCH20" />
         </Field>
         <Field label="Usage limit" hint="(blank = unlimited)" error={errors.maxRedemptions}>
-          <input className={INPUT} inputMode="numeric" value={form.maxRedemptions} onChange={(e) => set('maxRedemptions', e.target.value)} />
+          <input className={INPUT} inputMode="numeric" maxLength={digitsFor(LIMITS.couponRedemptions.max)} value={form.maxRedemptions} onChange={(e) => set('maxRedemptions', e.target.value)} />
         </Field>
       </div>
       <Field label="Internal note" error={errors.description}>
@@ -270,15 +270,15 @@ function CouponDrawer({ coupon, plans, onClose, onSaved }: { coupon: Coupon | nu
         </div>
         {form.discountType === 'percent' ? (
           <Field label="Percent off" error={errors.percentOff}>
-            <input className={cx(INPUT, 'max-w-40')} inputMode="decimal" value={form.percentOff} onChange={(e) => set('percentOff', e.target.value)} placeholder="20" />
+            <input className={cx(INPUT, 'max-w-40')} inputMode="decimal" maxLength={6} value={form.percentOff} onChange={(e) => set('percentOff', e.target.value)} placeholder="20" />
           </Field>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Amount off (INR)" error={errors.amountOffInr}>
-              <input className={INPUT} inputMode="decimal" value={form.amountOffInr} onChange={(e) => set('amountOffInr', e.target.value)} placeholder="₹" />
+              <input className={INPUT} inputMode="decimal" maxLength={MONEY_INPUT_LENGTH} value={form.amountOffInr} onChange={(e) => set('amountOffInr', e.target.value)} placeholder="₹" />
             </Field>
             <Field label="Amount off (USD)" error={errors.amountOffUsd}>
-              <input className={INPUT} inputMode="decimal" value={form.amountOffUsd} onChange={(e) => set('amountOffUsd', e.target.value)} placeholder="$" />
+              <input className={INPUT} inputMode="decimal" maxLength={MONEY_INPUT_LENGTH} value={form.amountOffUsd} onChange={(e) => set('amountOffUsd', e.target.value)} placeholder="$" />
             </Field>
           </div>
         )}

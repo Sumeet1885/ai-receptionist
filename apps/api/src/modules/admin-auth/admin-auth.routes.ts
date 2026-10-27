@@ -1,4 +1,5 @@
 import { Router, type Response } from 'express';
+import { LIMITS } from '@ai-receptionist/contracts';
 import { config } from '../../config';
 import { createRateLimit } from '../../middleware/rateLimit';
 import { asyncRoute } from '../../utils/asyncRoute';
@@ -56,7 +57,7 @@ router.use(adminOriginGuard(config.admin.origins));
 router.post('/auth/login', loginRateLimit, handle(async (req, res) => {
   const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
   const password = typeof req.body?.password === 'string' ? req.body.password : '';
-  if (!email || !password || email.length > 254 || password.length > 256) {
+  if (!email || !password || email.length > LIMITS.email.max || password.length > LIMITS.adminPassword.max) {
     return res.status(400).json({ error: 'Email and password are required' });
   }
 
@@ -126,6 +127,8 @@ router.post('/auth/password', passwordRateLimit, requireAdminSession, handle(asy
   const currentPassword = typeof req.body?.currentPassword === 'string' ? req.body.currentPassword : '';
   const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
   const ip = getClientIp(req);
+  // Never hash arbitrarily long input.
+  if (currentPassword.length > LIMITS.adminPassword.max) return res.status(400).json({ error: 'Current password is incorrect' });
 
   if (!(await verifyPassword(currentPassword, admin.adminUser.password_hash))) {
     await recordLoginFailure(admin.adminUser.id);

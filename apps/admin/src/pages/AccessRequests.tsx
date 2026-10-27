@@ -12,7 +12,7 @@ import {
   type AccessRequestStatus,
 } from '../api';
 import { useLive } from '../live';
-import { Button, Card, StatusBadge, STATUS_LABELS, cx, formatDate, initials, timeAgo } from '../ui';
+import { Button, Card, CharCount, StatusBadge, STATUS_LABELS, cx, formatDate, initials, timeAgo } from '../ui';
 
 const TABS: Array<AccessRequestStatus | 'all'> = ['pending', 'contacted', 'approved', 'rejected', 'all'];
 const VOLUME_LABELS: Record<string, string> = {
@@ -86,7 +86,7 @@ export function AccessRequests({ roles }: { roles: string[] }) {
         >
           <label className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" />
-            <input type="search" className={cx(FIELD, 'h-10 pl-9')} placeholder="Search name, email, business, phone" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search requests" />
+            <input type="search" className={cx(FIELD, 'h-10 pl-9')} placeholder="Search name, email, business, phone" maxLength={LIMITS.search.max} value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search requests" />
           </label>
           <Button type="submit" variant="secondary">Search</Button>
         </form>
@@ -317,6 +317,7 @@ function RequestDetail({ id, version, canTriage, canApprove, onClose, onChanged 
           <div>
             <label htmlFor="admin-notes" className="text-[11px] font-semibold uppercase tracking-wider text-subtle">Internal notes</label>
             <textarea id="admin-notes" rows={3} maxLength={LIMITS.adminNotes.max} className={cx(FIELD, 'mt-1.5 resize-y')} placeholder="Only admins see these notes." value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <CharCount value={notes} max={LIMITS.adminNotes.max} />
             {notes !== (request.admin_notes ?? '') && (
               <Button variant="secondary" size="sm" className="mt-2" disabled={busy} onClick={() => run(() => accessRequestApi.saveNotes(id, notes), 'Notes saved.')}>Save notes</Button>
             )}
@@ -350,6 +351,7 @@ function RequestDetail({ id, version, canTriage, canApprove, onClose, onChanged 
             <label className="block">
               <span className="text-sm font-semibold">Reason <span className="font-normal text-subtle">(optional; included in the email if sent)</span></span>
               <textarea rows={3} maxLength={LIMITS.rejectionReason.max} className={cx(FIELD, 'mt-1.5')} value={reason} onChange={(e) => setReason(e.target.value)} />
+              <CharCount value={reason} max={LIMITS.rejectionReason.max} />
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" className="h-4 w-4 accent-[var(--color-primary)]" checked={notify} onChange={(e) => setNotify(e.target.checked)} /> Email the requester

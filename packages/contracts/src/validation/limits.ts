@@ -21,6 +21,9 @@ export const LIMITS = {
   adminNotes: { max: 2000 },
   rejectionReason: { max: 1000 },
   recipientLabel: { max: 80 },
+  search: { max: 100 },
+  // Alert emails added in one go.
+  recipientBatch: { max: 20 },
 
   // Plans and the pricing comparison table
   planName: { min: 2, max: 80 },

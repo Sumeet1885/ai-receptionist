@@ -4,6 +4,7 @@ import {
   ACCESS_REQUEST_LANGUAGES,
   ACCESS_REQUEST_LIMITS,
   ACCESS_REQUEST_VOLUMES,
+  LIMITS,
   validateAccessRequest,
   type AccessRequestErrors,
   type AccessRequestInput,
@@ -11,6 +12,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
 import { fieldClassName, Input, Label, Textarea } from '../ui/field';
+import { CharCount } from '../ui/char-count';
 import { PhoneField } from '../ui/phone-field';
 import { Honeypot } from '../security/Honeypot';
 import { Turnstile } from '../security/Turnstile';
@@ -140,12 +142,12 @@ export const RequestAccessView: React.FC<RequestAccessViewProps> = ({ navigate }
         <div className="grid gap-3 sm:grid-cols-2 [@media(max-height:800px)]:gap-y-2">
           <div>
             <Label htmlFor="ra-fullName" className="mb-1">Full name</Label>
-            <Input id="ra-fullName" className={COMPACT} autoComplete="name" required maxLength={ACCESS_REQUEST_LIMITS.name} value={form.fullName} onChange={(e) => set('fullName', e.target.value)} {...fieldProps('fullName')} />
+            <Input id="ra-fullName" className={COMPACT} autoComplete="name" required minLength={LIMITS.personName.min} maxLength={ACCESS_REQUEST_LIMITS.name} value={form.fullName} onChange={(e) => set('fullName', e.target.value)} {...fieldProps('fullName')} />
             <FieldError id="ra-fullName-error" message={errors.fullName} />
           </div>
           <div>
             <Label htmlFor="ra-email" className="mb-1">Work email</Label>
-            <Input id="ra-email" className={COMPACT} type="email" autoComplete="email" required value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="name@company.com" {...fieldProps('email')} />
+            <Input id="ra-email" className={COMPACT} type="email" autoComplete="email" required maxLength={LIMITS.email.max} value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="name@company.com" {...fieldProps('email')} />
             <FieldError id="ra-email-error" message={errors.email} />
           </div>
           <div>
@@ -155,7 +157,7 @@ export const RequestAccessView: React.FC<RequestAccessViewProps> = ({ navigate }
           </div>
           <div>
             <Label htmlFor="ra-businessName" className="mb-1">Business name</Label>
-            <Input id="ra-businessName" className={COMPACT} autoComplete="organization" required maxLength={ACCESS_REQUEST_LIMITS.business} value={form.businessName} onChange={(e) => set('businessName', e.target.value)} {...fieldProps('businessName')} />
+            <Input id="ra-businessName" className={COMPACT} autoComplete="organization" required minLength={LIMITS.businessName.min} maxLength={ACCESS_REQUEST_LIMITS.business} value={form.businessName} onChange={(e) => set('businessName', e.target.value)} {...fieldProps('businessName')} />
             <FieldError id="ra-businessName-error" message={errors.businessName} />
           </div>
           <div>
@@ -176,7 +178,7 @@ export const RequestAccessView: React.FC<RequestAccessViewProps> = ({ navigate }
           </div>
           <div>
             <Label htmlFor="ra-website" className="mb-1">Website<Optional /></Label>
-            <Input id="ra-website" className={COMPACT} type="url" inputMode="url" autoComplete="url" value={form.website} onChange={(e) => set('website', e.target.value)} placeholder="example.com" {...fieldProps('website')} />
+            <Input id="ra-website" className={COMPACT} type="url" inputMode="url" autoComplete="url" maxLength={ACCESS_REQUEST_LIMITS.website} value={form.website} onChange={(e) => set('website', e.target.value)} placeholder="example.com" {...fieldProps('website')} />
             <FieldError id="ra-website-error" message={errors.website} />
           </div>
           <div>
@@ -210,7 +212,7 @@ export const RequestAccessView: React.FC<RequestAccessViewProps> = ({ navigate }
         <div>
           <Label htmlFor="ra-useCase" className="mb-1">What should your receptionist do?<Optional /></Label>
           <Textarea id="ra-useCase" rows={2} className="min-h-0 py-2" maxLength={ACCESS_REQUEST_LIMITS.useCase} value={form.useCase} onChange={(e) => set('useCase', e.target.value)} placeholder="For example: answer patient calls in Hindi and English, and book appointments." {...fieldProps('useCase')} />
-          <FieldError id="ra-useCase-error" message={errors.useCase} />
+          {errors.useCase ? <FieldError id="ra-useCase-error" message={errors.useCase} /> : <CharCount value={form.useCase ?? ''} max={ACCESS_REQUEST_LIMITS.useCase} className="-mt-0.5" />}
         </div>
 
         <div>

@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { LIMITS } from '@ai-receptionist/contracts';
 import type { AccessRequestStatus } from './api';
 
 export function cx(...classes: Array<string | false | null | undefined>) {
@@ -172,6 +173,16 @@ export function FilterTabs<T>({ tabs, value, onChange }: { tabs: Array<{ value: 
     </div>
   );
 }
+
+/** "120 / 2000" under a text box; turns red at the limit. */
+export function CharCount({ value, max }: { value: string; max: number }) {
+  return <p className={cx('mt-1 text-right text-[11px] tabular-nums', value.length >= max ? 'text-danger' : 'text-subtle')}>{value.length} / {max}</p>;
+}
+
+/** maxLength for a number box: the digits of the largest allowed value. */
+export const digitsFor = (max: number) => String(Math.floor(max)).length;
+/** maxLength for a whole-rupee/dollar box with optional paise/cents (amounts are minor units). */
+export const MONEY_INPUT_LENGTH = digitsFor(LIMITS.amount.max / 100) + 3;
 
 /** Whole rupees/dollars in a form ↔ minor units in the API. */
 export const toMinor = (major: string) => (major.trim() === '' ? 0 : Math.round(Number(major) * 100));

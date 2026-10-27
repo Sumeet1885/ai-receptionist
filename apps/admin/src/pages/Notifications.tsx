@@ -75,7 +75,7 @@ export function Notifications({ roles }: { roles: string[] }) {
           <h1 className="font-display text-3xl font-bold tracking-tight">Notifications</h1>
           <p className="mt-1 text-sm text-subtle">Who gets an email when something needs attention. Each address can choose its alerts.</p>
         </div>
-        {canEdit && <Button onClick={() => setEditing({ row: null })}><Plus className="h-4 w-4" /> Add email</Button>}
+        {canEdit && <Button onClick={() => setEditing({ row: null })}><Plus className="h-4 w-4" /> Add emails</Button>}
       </div>
 
       <Card className="grid gap-3 p-5 sm:grid-cols-3">
@@ -129,10 +129,10 @@ export function Notifications({ roles }: { roles: string[] }) {
         <RecipientDrawer
           row={editing.row}
           onClose={() => setEditing(null)}
-          onSaved={(saved) => {
+          onSaved={(message) => {
             setEditing(null);
             load();
-            toast({ tone: 'success', title: `${saved.email} saved` });
+            toast({ tone: 'success', title: message });
           }}
         />
       )}
@@ -140,8 +140,13 @@ export function Notifications({ roles }: { roles: string[] }) {
   );
 }
 
-function RecipientDrawer({ row, onClose, onSaved }: { row: NotificationRecipient | null; onClose: () => void; onSaved: (row: NotificationRecipient) => void }) {
+/** Addresses typed one per line or separated by commas, semicolons or spaces. */
+const splitEmails = (text: string) => [...new Set(text.split(/[\s,;]+/).map((e) => e.trim().toLowerCase()).filter(Boolean))];
+
+function RecipientDrawer({ row, onClose, onSaved }: { row: NotificationRecipient | null; onClose: () => void; onSaved: (message: string) => void }) {
   const [form, setForm] = useState<NotificationRecipientInput>(row ? toInput(row) : EMPTY);
+  // New recipients: several addresses at once, all with the same alerts.
+  const [emailList, setEmailList] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -149,6 +154,7 @@ function RecipientDrawer({ row, onClose, onSaved }: { row: NotificationRecipient
 
   async function save() {
     setError('');
+    if (!row) return saveMany();
     const check = validateNotificationRecipient(form);
     if (!check.ok) {
       setErrors(check.errors);
@@ -157,8 +163,8 @@ function RecipientDrawer({ row, onClose, onSaved }: { row: NotificationRecipient
     setErrors({});
     setBusy(true);
     try {
-      const result = row ? await notificationsApi.update(row.id, form) : await notificationsApi.create(form);
-      onSaved(result.recipient);
+      const result = await notificationsApi.update(row.id, form);
+      onSaved(`${result.recipient.email} saved`);
     } catch (err) {
       setError((err as Error).message);
       if (err instanceof ApiError) setErrors(err.fields);
@@ -167,9 +173,50 @@ function RecipientDrawer({ row, onClose, onSaved }: { row: NotificationRecipient
     }
   }
 
+  async function saveMany() {
+    const emails = splitEmails(emailList);
+    const { max } = LIMITS.recipientBatch;
+    if (!emails.length) return setErrors({ email: 'Enter at least one email address.' });
+    if (emails.length > max) return setErrors({ email: `Add at most ${max} addresses at a time.` });
+
+    // Check every address and the shared settings before saving any.
+    const checks = emails.map((email) => ({ email, check: validateNotificationRecipient({ ...form, email }) }));
+    const invalid = checks.filter(({ check }) => 'errors' in check && check.errors.email).map(({ email }) => email);
+    // Name and alert choices are the same for every address; take their messages from one check.
+    const first = checks[0].check;
+    const shared = 'errors' in first ? Object.fromEntries(Object.entries(first.errors).filter(([field]) => field !== 'email')) : {};
+    if (invalid.length || Object.keys(shared).length) {
+      setErrors({ ...shared, ...(invalid.length ? { email: `Not valid: ${invalid.join(', ')}` } : {}) });
+      return setError('Please fix the highlighted fields.');
+    }
+
+    setErrors({});
+    setBusy(true);
+    const added: string[] = [];
+    const skipped: string[] = [];
+    try {
+      for (const email of emails) {
+        try {
+          await notificationsApi.create({ ...form, email });
+          added.push(email);
+        } catch (err) {
+          if (err instanceof ApiError && err.status === 409) skipped.push(email);
+          else throw err;
+        }
+      }
+      onSaved(added.length
+        ? `Added ${added.length} address${added.length === 1 ? '' : 'es'}${skipped.length ? ` (${skipped.length} already on the list)` : ''}`
+        : 'Those addresses are already on the list');
+    } catch (err) {
+      setError(`${(err as Error).message}${added.length ? ` Added before the error: ${added.join(', ')}.` : ''}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <Drawer
-      title={row ? `Edit ${row.email}` : 'Add alert email'}
+      title={row ? `Edit ${row.email}` : 'Add alert emails'}
       subtitle="Alerts link straight to the right page in this console."
       onClose={onClose}
       footer={<>
@@ -178,10 +225,24 @@ function RecipientDrawer({ row, onClose, onSaved }: { row: NotificationRecipient
       </>}
     >
       {error && <p role="alert" className="rounded-xl bg-danger-surface px-3 py-2 text-sm text-danger">{error}</p>}
-      <Field label="Email" error={errors.email}>
-        <input className={INPUT} type="email" maxLength={LIMITS.email.max} value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="sales@yourcompany.com" />
-      </Field>
-      <Field label="Name" hint="(optional, e.g. Sales team)" error={errors.label}>
+      {row ? (
+        <Field label="Email" error={errors.email}>
+          <input className={INPUT} type="email" maxLength={LIMITS.email.max} value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="sales@yourcompany.com" />
+        </Field>
+      ) : (
+        <Field label="Emails" hint={`(one per line or comma-separated, up to ${LIMITS.recipientBatch.max})`} error={errors.email}>
+          <textarea
+            className={cx(INPUT, 'h-auto min-h-28 resize-y py-2')}
+            rows={4}
+            maxLength={(LIMITS.email.max + 2) * LIMITS.recipientBatch.max}
+            value={emailList}
+            onChange={(e) => setEmailList(e.target.value)}
+            placeholder={'sales@yourcompany.com\nowner@yourcompany.com'}
+          />
+          <span className="block text-right text-[11px] text-subtle">{splitEmails(emailList).length} / {LIMITS.recipientBatch.max} addresses</span>
+        </Field>
+      )}
+      <Field label="Name" hint={row ? '(optional, e.g. Sales team)' : '(optional, applied to all)'} error={errors.label}>
         <input className={INPUT} maxLength={LIMITS.recipientLabel.max} value={form.label} onChange={(e) => set('label', e.target.value)} />
       </Field>
       <div className="space-y-2">

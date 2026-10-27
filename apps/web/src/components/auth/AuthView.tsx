@@ -52,6 +52,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return showToast("Please enter email and password", "error");
+    if (email.length > LIMITS.email.max || password.length > LIMITS.customerPassword.max) return showToast("Email or password is too long", "error");
     
     setLoading(true);
     try {
@@ -165,6 +166,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
                     id="auth-email"
                     type="email"
                     required
+                    maxLength={LIMITS.email.max}
                     autoComplete="email"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
@@ -189,6 +191,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
                     id="auth-password"
                     type="password"
                     required
+                    maxLength={LIMITS.customerPassword.max}
                     autoComplete="current-password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
@@ -230,6 +233,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
                       id="auth-recovery-email"
                       type="email"
                       required
+                      maxLength={LIMITS.email.max}
                       autoComplete="email"
                       value={email}
                       onChange={e => setEmail(e.target.value)}

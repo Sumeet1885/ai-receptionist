@@ -70,7 +70,7 @@ export const AccountStageView: React.FC<AccountStageViewProps> = ({ stage, email
           </div>
           <div>
             <Label htmlFor="stage-confirm">Confirm password</Label>
-            <Input id="stage-confirm" type="password" autoComplete="new-password" required value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+            <Input id="stage-confirm" type="password" autoComplete="new-password" required maxLength={LIMITS.customerPassword.max} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
           </div>
           {error && <p role="alert" className="text-sm text-danger">{error}</p>}
           <Button type="submit" size="lg" className="w-full" disabled={busy}>{busy ? 'Saving…' : 'Save password and continue'}</Button>

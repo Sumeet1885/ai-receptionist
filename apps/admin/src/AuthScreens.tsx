@@ -69,7 +69,7 @@ export function LoginScreen({ onSignedIn }: { onSignedIn: (session: AdminSession
         </label>
         <label className="block space-y-1.5">
           <span className="text-sm font-medium">Password</span>
-          <input className={INPUT} type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input className={INPUT} type="password" autoComplete="current-password" required maxLength={LIMITS.adminPassword.max} value={password} onChange={(e) => setPassword(e.target.value)} />
         </label>
         <Button type="submit" className="h-11 w-full" disabled={busy}>
           {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Signing in…</> : 'Sign in'}
@@ -120,7 +120,7 @@ export function ChangePasswordScreen({ onChanged, onSignOut }: { onChanged: (ses
         <ErrorNote message={error} />
         <label className="block space-y-1.5">
           <span className="text-sm font-medium">Temporary password</span>
-          <input className={INPUT} type="password" autoComplete="current-password" required value={current} onChange={(e) => setCurrent(e.target.value)} />
+          <input className={INPUT} type="password" autoComplete="current-password" required maxLength={LIMITS.adminPassword.max} value={current} onChange={(e) => setCurrent(e.target.value)} />
         </label>
         <label className="block space-y-1.5">
           <span className="text-sm font-medium">New password <span className="font-normal text-subtle">(at least 12 characters)</span></span>
@@ -128,7 +128,7 @@ export function ChangePasswordScreen({ onChanged, onSignOut }: { onChanged: (ses
         </label>
         <label className="block space-y-1.5">
           <span className="text-sm font-medium">Confirm new password</span>
-          <input className={INPUT} type="password" autoComplete="new-password" required value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+          <input className={INPUT} type="password" autoComplete="new-password" required maxLength={LIMITS.adminPassword.max} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
         </label>
         <Button type="submit" className="h-11 w-full" disabled={busy}>
           {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : 'Save password and continue'}

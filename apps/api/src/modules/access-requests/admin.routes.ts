@@ -1,5 +1,5 @@
 import { Router, type Response } from 'express';
-import { validateAdminNotes, validateRejectionReason } from '@ai-receptionist/contracts';
+import { LIMITS, validateAdminNotes, validateRejectionReason } from '@ai-receptionist/contracts';
 import { config } from '../../config';
 import { emailTemplates, sendEmail, sendEmailSafely } from '../../services/email';
 import { publishAdminEvent } from '../../services/adminEvents';
@@ -84,7 +84,7 @@ async function sendActivation(request: AccessRequestRow) {
 
 router.get('/', requireAdminRole('read_only'), handle(async (req, res) => {
   const status = STATUSES.includes(req.query.status as AccessRequestStatus) ? req.query.status as AccessRequestStatus : undefined;
-  const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+  const search = typeof req.query.search === 'string' ? req.query.search.trim().slice(0, LIMITS.search.max) : '';
   const page = Math.max(1, Math.min(1000, Number.parseInt(String(req.query.page ?? '1'), 10) || 1));
   const [{ rows, total }, counts] = await Promise.all([
     listAccessRequests({ status, search, page, pageSize: PAGE_SIZE }),

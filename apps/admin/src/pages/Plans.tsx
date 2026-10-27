@@ -3,7 +3,7 @@ import { LIMITS, parseFeatureList, parsePlanInput } from '@ai-receptionist/contr
 import { ArrowDown, ArrowUp, ListChecks, Loader2, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { ApiError, billingAdminApi, formatMoney, type Plan, type PlanFeature, type PlanInput } from '../api';
 import { useToast } from '../toast';
-import { ActiveBadge, Button, Card, Drawer, Field, INPUT, Toggle, cx, toMajor, toMinor } from '../ui';
+import { ActiveBadge, Button, Card, Drawer, Field, INPUT, MONEY_INPUT_LENGTH, Toggle, cx, digitsFor, toMajor, toMinor } from '../ui';
 
 type PlanForm = Omit<PlanInput, 'priceInr' | 'priceUsd' | 'setupFeeInr' | 'setupFeeUsd' | 'monthlyMinutes' | 'maxAgents' | 'maxConcurrentCalls' | 'sortOrder'> & {
   priceInr: string;
@@ -184,7 +184,7 @@ function PlanDrawer({ plan, features, onClose, onSaved }: { plan: Plan | null; f
     <Field label={label} error={errors[key]}>
       <div className="relative">
         <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-subtle">{symbol}</span>
-        <input className={cx(INPUT, 'pl-7')} inputMode="decimal" value={form[key]} onChange={(e) => set(key, e.target.value)} aria-invalid={errors[key] ? true : undefined} />
+        <input className={cx(INPUT, 'pl-7')} inputMode="decimal" maxLength={MONEY_INPUT_LENGTH} value={form[key]} onChange={(e) => set(key, e.target.value)} aria-invalid={errors[key] ? true : undefined} />
       </div>
     </Field>
   );
@@ -201,9 +201,9 @@ function PlanDrawer({ plan, features, onClose, onSaved }: { plan: Plan | null; f
     >
       {error && <p role="alert" className="rounded-xl bg-danger-surface px-3 py-2 text-sm text-danger">{error}</p>}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Name" error={errors.name}><input className={INPUT} maxLength={LIMITS.planName.max} value={form.name} onChange={(e) => set('name', e.target.value)} /></Field>
+        <Field label="Name" error={errors.name}><input className={INPUT} minLength={LIMITS.planName.min} maxLength={LIMITS.planName.max} value={form.name} onChange={(e) => set('name', e.target.value)} /></Field>
         <Field label="Slug" hint="(used in links)" error={errors.slug}>
-          <input className={INPUT} maxLength={LIMITS.planSlug.max} value={form.slug} onChange={(e) => set('slug', e.target.value.toLowerCase())} placeholder="ai-starter" />
+          <input className={INPUT} minLength={LIMITS.planSlug.min} maxLength={LIMITS.planSlug.max} value={form.slug} onChange={(e) => set('slug', e.target.value.toLowerCase())} placeholder="ai-starter" />
         </Field>
       </div>
       <Field label="Tagline" error={errors.tagline}><input className={INPUT} maxLength={LIMITS.planTagline.max} value={form.tagline} onChange={(e) => set('tagline', e.target.value)} /></Field>
@@ -224,9 +224,9 @@ function PlanDrawer({ plan, features, onClose, onSaved }: { plan: Plan | null; f
       )}
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Minutes / month" error={errors.monthlyMinutes}><input className={INPUT} inputMode="numeric" value={form.monthlyMinutes} onChange={(e) => set('monthlyMinutes', e.target.value)} /></Field>
-        <Field label="Agents" error={errors.maxAgents}><input className={INPUT} inputMode="numeric" value={form.maxAgents} onChange={(e) => set('maxAgents', e.target.value)} /></Field>
-        <Field label="Concurrent calls" error={errors.maxConcurrentCalls}><input className={INPUT} inputMode="numeric" value={form.maxConcurrentCalls} onChange={(e) => set('maxConcurrentCalls', e.target.value)} /></Field>
+        <Field label="Minutes / month" error={errors.monthlyMinutes}><input className={INPUT} inputMode="numeric" maxLength={digitsFor(LIMITS.planMinutes.max)} value={form.monthlyMinutes} onChange={(e) => set('monthlyMinutes', e.target.value)} /></Field>
+        <Field label="Agents" error={errors.maxAgents}><input className={INPUT} inputMode="numeric" maxLength={digitsFor(LIMITS.planSeats.max)} value={form.maxAgents} onChange={(e) => set('maxAgents', e.target.value)} /></Field>
+        <Field label="Concurrent calls" error={errors.maxConcurrentCalls}><input className={INPUT} inputMode="numeric" maxLength={digitsFor(LIMITS.planSeats.max)} value={form.maxConcurrentCalls} onChange={(e) => set('maxConcurrentCalls', e.target.value)} /></Field>
       </div>
 
       {features.length > 0 && (
@@ -249,7 +249,7 @@ function PlanDrawer({ plan, features, onClose, onSaved }: { plan: Plan | null; f
       )}
 
       <Field label="Display order" hint="(lower first)" error={errors.sortOrder}>
-        <input className={cx(INPUT, 'max-w-32')} inputMode="numeric" value={form.sortOrder} onChange={(e) => set('sortOrder', e.target.value)} />
+        <input className={cx(INPUT, 'max-w-32')} inputMode="numeric" maxLength={digitsFor(LIMITS.planSortOrder.max)} value={form.sortOrder} onChange={(e) => set('sortOrder', e.target.value)} />
       </Field>
     </Drawer>
   );
