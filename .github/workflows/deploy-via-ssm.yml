@@ -6,9 +6,26 @@ on:
       commit_sha:
         description: "Full Commit SHA to deploy"
         required: true
+      allow_paused_campaigns:
+        description: "Allow paused outbound campaigns to resume dialing after the restart"
+        type: boolean
+        default: false
 
 jobs:
+  # Database first: pending migrations are applied before the new containers start, and the
+  # deploy stops if a migration fails or paused campaigns would resume without confirmation.
+  migrate:
+    uses: ./.github/workflows/database-migrate.yml
+    with:
+      environment: staging
+      action: apply
+      commit_sha: ${{ github.event.inputs.commit_sha }}
+      block_on_paused_campaigns: true
+      allow_paused_campaigns: ${{ inputs.allow_paused_campaigns }}
+    secrets: inherit
+
   deploy:
+    needs: migrate
     runs-on: ubuntu-latest
     environment: staging
 

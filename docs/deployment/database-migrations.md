@@ -1,8 +1,16 @@
 # Database migrations (Supabase)
 
-Schema changes live as SQL files in `supabase/migrations/` (one file per change, never edited after it has been applied). The **Database - Migrate (Supabase)** GitHub workflow applies them, so nobody has to paste SQL into the Supabase dashboard.
+Schema changes live as SQL files in `supabase/migrations/` (one file per change, never edited after it has been applied). **They are applied automatically by the deploy workflows**, so nobody has to paste SQL into the Supabase dashboard.
 
-This is the same idea as own-crm's `prisma migrate deploy`: the database records which migration files it has applied (table `supabase_migrations.schema_migrations`), and each run applies only the new ones. The difference: here it is a separate workflow you run **before** deploying, not something the API does when it starts (an API restart must never change the schema).
+This is the same idea as own-crm's `prisma migrate deploy`: the database records which migration files it has applied (table `supabase_migrations.schema_migrations`), and each run applies only the new ones. The difference: it runs as the first job of the deploy workflow, before the containers restart, not inside the API at start-up (an API restart must never change the schema, and the API image does not hold the database password).
+
+```text
+STAGING / PRODUCTION - Deploy via AWS SSM
+  job 1  migrate   paused-campaign check → migration list → dry run → db push → migration list
+  job 2  deploy    (only if job 1 succeeded) update image tags on the host → docker-compose up
+```
+
+If a migration fails, the deploy does not happen and the running version keeps serving. Because migrations run just before the new code starts, they must stay backward compatible with the code that is still running (add tables/columns; never rename or drop in the same release).
 
 ---
 
@@ -35,10 +43,13 @@ Only do this once per environment. After that, never apply SQL by hand again.
 ## 3. Every release
 
 1. Merge to `staging`.
-2. **Database - Migrate**: environment `staging`, action `status` → check which files are pending.
-3. Same workflow, action `apply`. It shows a dry run, applies, then lists the result.
-4. Deploy images as usual (`docs/deployment/deploy-restructured-repo.md`).
-5. Repeat 2–4 for `production` after staging is verified.
+2. **STAGING - Build project**, then **STAGING - Build and Push Docker Images** for the commit (unchanged).
+3. **STAGING - Deploy via AWS SSM** for the commit. It applies pending migrations first, then deploys. Leave **Allow paused campaigns to resume** unticked; if the run stops on paused campaigns, agree it with the campaign owners and re-run with the box ticked.
+4. After staging is verified: **PRODUCTION - Build and Push Docker Images**, then **PRODUCTION - Deploy via AWS SSM** for the same commit (dispatch both from `staging`; the production environment asks for approval).
+
+**Database - Migrate** can still be run by hand: `status` to see what is pending (read-only), or `apply` to migrate without deploying.
+
+Production deploy prerequisites (once): the `production` GitHub environment needs `EC2_INSTANCE_ID` (the production instance), `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `DOCKER_USERNAME` and `SUPABASE_DB_URL`, and the production host must have the repo files at `/home/ec2-user/ai-receptionist` with `docker-compose-prod.yml` and its `.env` (`IMAGE_TAG_SERVER` / `IMAGE_TAG_CLIENT` lines), the same layout the staging host uses.
 
 Migrations are written to be additive (new tables/columns, `IF NOT EXISTS`). If one needs to remove or rewrite data, its PR says so and is deployed separately.
 
