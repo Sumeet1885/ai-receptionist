@@ -94,11 +94,14 @@ export function LandingNav({ navigate, signedIn }: LandingNavProps) {
               {label}
             </a>
           ))}
-          <AppLink to={secondary.to} navigate={navigate}>
-            {secondary.label}
+          <AppLink to="/pricing" navigate={navigate}>
+            Pricing
           </AppLink>
         </nav>
         <div className="nav-actions">
+          <AppLink className="btn light nav-signin" to={secondary.to} navigate={navigate}>
+            {secondary.label}
+          </AppLink>
           <AppLink className="btn" to={primary.to} navigate={navigate}>
             {primary.label}
           </AppLink>
@@ -121,6 +124,9 @@ export function LandingNav({ navigate, signedIn }: LandingNavProps) {
             {label} <span>{String(i + 1).padStart(2, '0')}</span>
           </a>
         ))}
+        <AppLink to="/pricing" navigate={navigate} onClick={() => setMenuOpen(false)}>
+          Pricing ↗
+        </AppLink>
         <AppLink to={secondary.to} navigate={navigate} onClick={() => setMenuOpen(false)}>
           {secondary.label} ↗
         </AppLink>

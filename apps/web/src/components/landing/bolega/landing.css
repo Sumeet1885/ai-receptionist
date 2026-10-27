@@ -6260,3 +6260,16 @@ html.bi-landing-root {
     top: 520px;
   }
 }
+
+/* Sign in sits beside Get started on the right; on small screens it lives in the mobile menu. */
+.bi-landing .nav .btn.nav-signin {
+  background: transparent;
+}
+.bi-landing .nav .btn.nav-signin:hover {
+  background: white;
+}
+@media (max-width: 900px) {
+  .bi-landing .nav .btn.nav-signin {
+    display: none;
+  }
+}
