@@ -51,22 +51,8 @@ export function getDummyHash() {
   return dummyHash;
 }
 
-const COMMON_PASSWORDS = new Set([
-  'password1234', 'password12345', 'password123456', '123456789012', 'qwertyuiop12',
-  'adminadmin123', 'administrator', 'letmein12345', 'welcome12345', 'iloveyou1234',
-  'bolegaindia1', 'bolegaindia123', 'changeme1234', 'superadmin123',
-]);
-
-// Returns an error message, or null when the password is acceptable.
-export function checkPasswordPolicy(password: string, email: string): string | null {
-  if (password.length < 12) return 'Password must be at least 12 characters.';
-  if (password.length > 128) return 'Password must be at most 128 characters.';
-  const lower = password.toLowerCase();
-  const localPart = email.toLowerCase().split('@')[0];
-  if (localPart.length >= 4 && lower.includes(localPart)) return 'Password must not contain your email name.';
-  if (COMMON_PASSWORDS.has(lower)) return 'This password is too common.';
-  return null;
-}
+// Admin password rules live with the other shared validation (the console checks them too).
+export { checkAdminPassword as checkPasswordPolicy } from '@ai-receptionist/contracts';
 
 export function generateTemporaryPassword() {
   return randomBytes(15).toString('base64url');

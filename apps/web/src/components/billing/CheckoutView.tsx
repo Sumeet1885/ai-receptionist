@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle2, Eye, EyeOff, Loader2, Lock, MailCheck, Tag } from 'lucide-react';
-import { validateCheckoutContact, type CheckoutContactErrors, type CheckoutContactInput } from '@ai-receptionist/contracts';
+import { LIMITS, validateCheckoutContact, type CheckoutContactErrors, type CheckoutContactInput } from '@ai-receptionist/contracts';
 import { Button } from '../ui/button';
 import { Input, Label } from '../ui/field';
 import { Card, Container } from '../ui/layout';
@@ -200,9 +200,18 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ navigate }) => {
     );
   }
 
+  // Each field is checked as the person leaves it (once something is typed); the rest on submit.
+  const checkField = (key: keyof CheckoutContactInput) => {
+    const value = form[key];
+    if (typeof value !== 'string' || !value.trim()) return;
+    const result = validateCheckoutContact(form);
+    setErrors((prev) => ({ ...prev, [key]: result.ok ? undefined : result.errors[key] }));
+  };
+
   const fieldProps = (key: keyof CheckoutContactInput) => ({
     'aria-invalid': errors[key] ? true : undefined,
     'aria-describedby': errors[key] ? `co-${key}-error` : undefined,
+    onBlur: () => checkField(key),
   });
   const fieldError = (key: keyof CheckoutContactInput) => errors[key] && <p id={`co-${key}-error`} className="mt-1 text-xs text-danger">{errors[key]}</p>;
 
@@ -224,22 +233,22 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ navigate }) => {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <Label htmlFor="co-fullName">Full name</Label>
-                    <Input id="co-fullName" autoComplete="name" value={form.fullName} onChange={(e) => set('fullName', e.target.value)} {...fieldProps('fullName')} />
+                    <Input id="co-fullName" autoComplete="name" maxLength={LIMITS.personName.max} value={form.fullName} onChange={(e) => set('fullName', e.target.value)} {...fieldProps('fullName')} />
                     {fieldError('fullName')}
                   </div>
                   <div>
                     <Label htmlFor="co-businessName">Business name</Label>
-                    <Input id="co-businessName" autoComplete="organization" value={form.businessName} onChange={(e) => set('businessName', e.target.value)} {...fieldProps('businessName')} />
+                    <Input id="co-businessName" autoComplete="organization" maxLength={LIMITS.businessName.max} value={form.businessName} onChange={(e) => set('businessName', e.target.value)} {...fieldProps('businessName')} />
                     {fieldError('businessName')}
                   </div>
                   <div>
                     <Label htmlFor="co-email">Work email</Label>
-                    <Input id="co-email" type="email" autoComplete="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="name@company.com" {...fieldProps('email')} />
+                    <Input id="co-email" type="email" autoComplete="email" maxLength={LIMITS.email.max} value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="name@company.com" {...fieldProps('email')} />
                     {fieldError('email')}
                   </div>
                   <div>
                     <Label htmlFor="co-phone">Mobile number</Label>
-                    <Input id="co-phone" type="tel" autoComplete="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="98765 43210 or +44…" {...fieldProps('phone')} />
+                    <Input id="co-phone" type="tel" autoComplete="tel" maxLength={20} value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="98765 43210 or +44…" {...fieldProps('phone')} />
                     {fieldError('phone')}
                   </div>
                   <div className="sm:col-span-2">
@@ -249,6 +258,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ navigate }) => {
                         id="co-password"
                         type={showPassword ? 'text' : 'password'}
                         autoComplete="new-password"
+                        maxLength={LIMITS.customerPassword.max}
                         className="pr-11"
                         value={form.password}
                         onChange={(e) => set('password', e.target.value)}
@@ -263,7 +273,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ navigate }) => {
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
-                    {fieldError('password') || <p className="mt-1 text-xs text-text-subtle">At least 8 characters. You will use it to sign in.</p>}
+                    {fieldError('password') || <p className="mt-1 text-xs text-text-subtle">At least {LIMITS.customerPassword.min} characters. You will use it to sign in.</p>}
                   </div>
                 </div>
                 <label className="flex items-start gap-3 text-sm text-text">
@@ -315,7 +325,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ navigate }) => {
                         onSubmit={(e) => { e.preventDefault(); if (coupon.trim()) void applyCoupon(coupon.trim()); }}
                       >
                         <label className="sr-only" htmlFor="co-coupon">Coupon code</label>
-                        <Input id="co-coupon" value={coupon} onChange={(e) => { setCoupon(e.target.value.toUpperCase()); setCouponError(''); }} placeholder="Coupon code" aria-invalid={couponError ? true : undefined} />
+                        <Input id="co-coupon" maxLength={LIMITS.couponCode.max} value={coupon} onChange={(e) => { setCoupon(e.target.value.toUpperCase()); setCouponError(''); }} placeholder="Coupon code" aria-invalid={couponError ? true : undefined} />
                         <Button type="submit" variant="secondary" disabled={applying || !coupon.trim()}>{applying ? 'Checking…' : 'Apply'}</Button>
                       </form>
                     )}

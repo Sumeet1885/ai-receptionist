@@ -8,7 +8,6 @@ import { publishAdminEvent } from '../../services/adminEvents';
 import { logger } from '../../services/cloudwatchLogger';
 import { asyncRoute } from '../../utils/asyncRoute';
 import { getClientIp } from '../../utils/security';
-import { checkCustomerPassword } from '../accounts/stage';
 import { authEmailExists } from '../access-requests/repository';
 import { fulfilPaidOrder } from './fulfil';
 import { computeQuote, CURRENCIES, isPurchasable, type Currency, type PlanRow } from './pricing';
@@ -105,8 +104,6 @@ router.post(
 
     const contact = validateCheckoutContact(req.body);
     if ('errors' in contact) return res.status(400).json({ error: 'Please check the highlighted fields.', fields: contact.errors });
-    const weakPassword = checkCustomerPassword(contact.value.password, contact.value.email);
-    if (weakPassword) return res.status(400).json({ error: weakPassword, field: 'password', fields: { password: weakPassword } });
 
     const result = await quoteFor(req, res);
     if (!result) return;

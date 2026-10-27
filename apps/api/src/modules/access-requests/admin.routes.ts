@@ -1,4 +1,5 @@
 import { Router, type Response } from 'express';
+import { validateAdminNotes, validateRejectionReason } from '@ai-receptionist/contracts';
 import { config } from '../../config';
 import { emailTemplates, sendEmail, sendEmailSafely } from '../../services/email';
 import { publishAdminEvent } from '../../services/adminEvents';
@@ -112,10 +113,9 @@ router.patch('/:id', requireAdminRole('support'), handle(async (req, res) => {
 
   const changes: Partial<AccessRequestRow> = {};
   if (req.body?.adminNotes !== undefined) {
-    if (typeof req.body.adminNotes !== 'string' || req.body.adminNotes.length > 2000) {
-      return res.status(400).json({ error: 'Notes must be text under 2,000 characters' });
-    }
-    changes.admin_notes = req.body.adminNotes.trim() || null;
+    const notes = validateAdminNotes(req.body.adminNotes);
+    if ('errors' in notes) return res.status(400).json({ error: notes.errors.adminNotes, fields: notes.errors });
+    changes.admin_notes = notes.value;
   }
 
   let updated: AccessRequestRow | null = request;
@@ -141,7 +141,9 @@ router.patch('/:id', requireAdminRole('support'), handle(async (req, res) => {
 router.post('/:id/reject', requireAdminRole('support'), handle(async (req, res) => {
   const request = await loadRequest(req, res);
   if (!request) return;
-  const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim().slice(0, 1000) : '';
+  const parsedReason = validateRejectionReason(req.body?.reason);
+  if ('errors' in parsedReason) return res.status(400).json({ error: parsedReason.errors.reason, fields: parsedReason.errors });
+  const reason = parsedReason.value ?? '';
 
   const updated = await transitionAccessRequest(request.id, OPEN_STATUSES, {
     status: 'rejected',

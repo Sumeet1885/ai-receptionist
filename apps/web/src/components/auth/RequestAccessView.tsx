@@ -64,9 +64,18 @@ export const RequestAccessView: React.FC<RequestAccessViewProps> = ({ navigate }
     set('languages', current.includes(language) ? current.filter((l) => l !== language) : [...current, language]);
   };
 
+  // Each field is checked as the person leaves it (once something is typed); the rest on submit.
+  const checkField = (key: keyof AccessRequestInput) => {
+    const value = form[key];
+    if (typeof value !== 'string' || !value.trim()) return;
+    const result = validateAccessRequest(form);
+    setErrors((prev) => ({ ...prev, [key]: result.ok ? undefined : result.errors[key] }));
+  };
+
   const fieldProps = (key: keyof AccessRequestInput) => ({
     'aria-invalid': errors[key] ? true : undefined,
     'aria-describedby': errors[key] ? `ra-${key}-error` : undefined,
+    onBlur: () => checkField(key),
   });
 
   const handleSubmit = async (event: React.FormEvent) => {

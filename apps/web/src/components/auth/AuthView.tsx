@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { checkCustomerPassword, LIMITS } from '@ai-receptionist/contracts';
 import { Button } from '../ui/button';
 import { Input, Label } from '../ui/field';
 import { AuthSplitLayout } from './AuthSplitLayout';
@@ -90,8 +91,9 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!password) return showToast("Please enter a new password", "error");
+    const problem = checkCustomerPassword(password, undefined);
+    if (problem) return showToast(problem, "error");
     if (password !== confirmPassword) return showToast("Passwords do not match", "error");
-    if (password.length < 8) return showToast("Password must be at least 8 characters", "error");
 
     setLoading(true);
     try {
@@ -277,8 +279,9 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
                     autoComplete="new-password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    placeholder="At least 8 characters"
-                    minLength={8}
+                    placeholder={`At least ${LIMITS.customerPassword.min} characters`}
+                    minLength={LIMITS.customerPassword.min}
+                    maxLength={LIMITS.customerPassword.max}
                   />
                 </div>
                 <div>
@@ -291,7 +294,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
                     placeholder="Re-enter your new password"
-                    minLength={8}
+                    maxLength={LIMITS.customerPassword.max}
                   />
                 </div>
                 <Button type="submit" size="lg" className="mt-2 w-full" disabled={loading}>

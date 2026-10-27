@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { LIMITS } from '@ai-receptionist/contracts';
 import {
   AlertCircle, Building2, CheckCircle2, ChevronLeft, ChevronRight, Globe, Inbox, Languages, Loader2, Mail,
   MapPin, Phone, Search, Send, UserRound, X,
@@ -315,7 +316,7 @@ function RequestDetail({ id, version, canTriage, canApprove, onClose, onChanged 
         {canTriage && (
           <div>
             <label htmlFor="admin-notes" className="text-[11px] font-semibold uppercase tracking-wider text-subtle">Internal notes</label>
-            <textarea id="admin-notes" rows={3} maxLength={2000} className={cx(FIELD, 'mt-1.5 resize-y')} placeholder="Only admins see these notes." value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <textarea id="admin-notes" rows={3} maxLength={LIMITS.adminNotes.max} className={cx(FIELD, 'mt-1.5 resize-y')} placeholder="Only admins see these notes." value={notes} onChange={(e) => setNotes(e.target.value)} />
             {notes !== (request.admin_notes ?? '') && (
               <Button variant="secondary" size="sm" className="mt-2" disabled={busy} onClick={() => run(() => accessRequestApi.saveNotes(id, notes), 'Notes saved.')}>Save notes</Button>
             )}
@@ -348,7 +349,7 @@ function RequestDetail({ id, version, canTriage, canApprove, onClose, onChanged 
           >
             <label className="block">
               <span className="text-sm font-semibold">Reason <span className="font-normal text-subtle">(optional; included in the email if sent)</span></span>
-              <textarea rows={3} maxLength={1000} className={cx(FIELD, 'mt-1.5')} value={reason} onChange={(e) => setReason(e.target.value)} />
+              <textarea rows={3} maxLength={LIMITS.rejectionReason.max} className={cx(FIELD, 'mt-1.5')} value={reason} onChange={(e) => setReason(e.target.value)} />
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" className="h-4 w-4 accent-[var(--color-primary)]" checked={notify} onChange={(e) => setNotify(e.target.checked)} /> Email the requester

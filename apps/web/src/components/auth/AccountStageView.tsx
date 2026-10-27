@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { checkCustomerPassword, LIMITS } from '@ai-receptionist/contracts';
 import { BrandLogo } from '../ui/brand-logo';
 import { Button } from '../ui/button';
 import { Input, Label } from '../ui/field';
@@ -47,6 +48,8 @@ export const AccountStageView: React.FC<AccountStageViewProps> = ({ stage, email
   if (stage === 'set_password') {
     const submit = async (event: React.FormEvent) => {
       event.preventDefault();
+      const problem = checkCustomerPassword(password, email);
+      if (problem) return setError(problem);
       if (password !== confirm) return setError('The passwords do not match.');
       setBusy(true);
       setError('');
@@ -63,7 +66,7 @@ export const AccountStageView: React.FC<AccountStageViewProps> = ({ stage, email
         <form onSubmit={submit} className="space-y-4">
           <div>
             <Label htmlFor="stage-password">Password</Label>
-            <Input id="stage-password" type="password" autoComplete="new-password" required minLength={8} maxLength={128} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" />
+            <Input id="stage-password" type="password" autoComplete="new-password" required minLength={LIMITS.customerPassword.min} maxLength={LIMITS.customerPassword.max} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={`At least ${LIMITS.customerPassword.min} characters`} />
           </div>
           <div>
             <Label htmlFor="stage-confirm">Confirm password</Label>

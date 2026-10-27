@@ -143,7 +143,7 @@ test('webhook gets the raw body and admin billing routes are role-checked', asyn
   }
 });
 
-test('checkout details include a password, checked in the browser and again by the API', async () => {
+test('checkout details include a password, with the same rules in the browser and the API', async () => {
   const { validateCheckoutContact } = await import('@ai-receptionist/contracts');
   const details = { fullName: 'Asha Rao', email: 'Asha@Example.com', phone: '91234 58207', businessName: 'Rao Clinic', consent: true };
   const missing = validateCheckoutContact(details);
@@ -152,7 +152,7 @@ test('checkout details include a password, checked in the browser and again by t
   assert.ok(ok.ok && ok.value.password === 'long enough secret' && ok.value.email === 'asha@example.com');
 
   const routes = await readFile(fileURLToPath(new URL('../src/modules/billing/public.routes.ts', import.meta.url)), 'utf8');
-  assert.match(routes, /checkCustomerPassword\(contact\.value\.password/);
+  assert.match(validateCheckoutContact({ ...details, password: 'password' }).ok ? '' : 'rejected', /rejected/, 'common passwords are refused');
   assert.match(routes, /password_hash: await bcrypt\.hash\(contact\.value\.password, 10\)/);
   assert.match(routes, /router\.post\('\/checkout\/abandoned'/);
 });

@@ -22,13 +22,5 @@ export function computeAccountStage(account: Pick<CustomerAccount, 'status' | 'p
   return 'active';
 }
 
-// Customer passwords (admins have a stricter policy). Returns an error message or null.
-export function checkCustomerPassword(password: unknown, email: string | undefined): string | null {
-  if (typeof password !== 'string' || password.length < 8) return 'Use at least 8 characters.';
-  if (password.length > 128) return 'Use at most 128 characters.';
-  if (email && password.toLowerCase() === email.toLowerCase()) return 'Your password cannot be your email address.';
-  if (/^(.)\1+$/.test(password) || ['password', 'password1', '12345678', '123456789', 'qwerty123', 'bolegaindia'].includes(password.toLowerCase())) {
-    return 'This password is too easy to guess.';
-  }
-  return null;
-}
+// Customer password rules live with the other shared validation.
+export { checkCustomerPassword } from '@ai-receptionist/contracts';

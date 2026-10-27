@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { LIMITS, parseCouponInput } from '@ai-receptionist/contracts';
 import { Loader2, Pencil, Plus, TicketPercent } from 'lucide-react';
 import { ApiError, billingAdminApi, formatMoney, type Coupon, type CouponInput, type Plan } from '../api';
 import { useToast } from '../toast';
@@ -206,11 +207,17 @@ function CouponDrawer({ coupon, plans, onClose, onSaved }: { coupon: Coupon | nu
   const set = <K extends keyof CouponForm>(key: K, value: CouponForm[K]) => setForm((prev) => ({ ...prev, [key]: value }));
 
   async function save() {
-    setBusy(true);
     setError('');
+    const input = toInput(form, coupon);
+    // Same rules as the API, so every problem shows next to its field before anything is sent.
+    const check = parseCouponInput(input);
+    if (!check.ok) {
+      setErrors(check.errors);
+      return setError('Please fix the highlighted fields.');
+    }
     setErrors({});
+    setBusy(true);
     try {
-      const input = toInput(form, coupon);
       const result = coupon ? await billingAdminApi.updateCoupon(coupon.id, input) : await billingAdminApi.createCoupon(input);
       onSaved(result.coupon);
     } catch (err) {
@@ -235,15 +242,15 @@ function CouponDrawer({ coupon, plans, onClose, onSaved }: { coupon: Coupon | nu
     >
       {error && <p role="alert" className="rounded-xl bg-danger-surface px-3 py-2 text-sm text-danger">{error}</p>}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Code" hint="(A–Z, 0–9, - or _)" error={errors.code}>
-          <input className={cx(INPUT, 'font-mono uppercase')} value={form.code} onChange={(e) => set('code', e.target.value.toUpperCase())} placeholder="LAUNCH20" />
+        <Field label="Code" hint="(3–32: A–Z, 0–9, - or _)" error={errors.code}>
+          <input className={cx(INPUT, 'font-mono uppercase')} maxLength={LIMITS.couponCode.max} value={form.code} onChange={(e) => set('code', e.target.value.toUpperCase())} placeholder="LAUNCH20" />
         </Field>
         <Field label="Usage limit" hint="(blank = unlimited)" error={errors.maxRedemptions}>
           <input className={INPUT} inputMode="numeric" value={form.maxRedemptions} onChange={(e) => set('maxRedemptions', e.target.value)} />
         </Field>
       </div>
       <Field label="Internal note" error={errors.description}>
-        <input className={INPUT} value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="Diwali campaign" />
+        <input className={INPUT} maxLength={LIMITS.couponDescription.max} value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="Diwali campaign" />
       </Field>
 
       <div className="space-y-3 rounded-2xl border border-line p-4">

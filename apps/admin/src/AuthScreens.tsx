@@ -1,4 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
+import { checkAdminPassword, LIMITS } from '@ai-receptionist/contracts';
 import { AlertCircle, KeyRound, Loader2, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { ApiError, adminApi, type AdminSession } from './api';
 import { Button, LOGO } from './ui';
@@ -65,7 +66,7 @@ export function LoginScreen({ onSignedIn }: { onSignedIn: (session: AdminSession
         <ErrorNote message={error} />
         <label className="block space-y-1.5">
           <span className="text-sm font-medium">Email</span>
-          <input className={INPUT} type="email" autoComplete="username" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" />
+          <input className={INPUT} type="email" autoComplete="username" required autoFocus maxLength={LIMITS.email.max} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" />
         </label>
         <label className="block space-y-1.5">
           <span className="text-sm font-medium">Password</span>
@@ -89,6 +90,9 @@ export function ChangePasswordScreen({ onChanged, onSignOut }: { onChanged: (ses
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    // The server also checks that it does not contain the email name.
+    const problem = checkAdminPassword(next, '');
+    if (problem) return setError(problem);
     if (next !== confirm) return setError('The new passwords do not match.');
     setBusy(true);
     setError('');
@@ -121,7 +125,7 @@ export function ChangePasswordScreen({ onChanged, onSignOut }: { onChanged: (ses
         </label>
         <label className="block space-y-1.5">
           <span className="text-sm font-medium">New password <span className="font-normal text-subtle">(at least 12 characters)</span></span>
-          <input className={INPUT} type="password" autoComplete="new-password" required minLength={12} maxLength={128} value={next} onChange={(e) => setNext(e.target.value)} />
+          <input className={INPUT} type="password" autoComplete="new-password" required minLength={LIMITS.adminPassword.min} maxLength={LIMITS.adminPassword.max} value={next} onChange={(e) => setNext(e.target.value)} />
         </label>
         <label className="block space-y-1.5">
           <span className="text-sm font-medium">Confirm new password</span>

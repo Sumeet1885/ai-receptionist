@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { LIMITS, parseFeatureList, parsePlanInput } from '@ai-receptionist/contracts';
 import { ArrowDown, ArrowUp, ListChecks, Loader2, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { ApiError, billingAdminApi, formatMoney, type Plan, type PlanFeature, type PlanInput } from '../api';
 import { useToast } from '../toast';
@@ -158,11 +159,17 @@ function PlanDrawer({ plan, features, onClose, onSaved }: { plan: Plan | null; f
   const set = <K extends keyof PlanForm>(key: K, value: PlanForm[K]) => setForm((prev) => ({ ...prev, [key]: value }));
 
   async function save() {
-    setBusy(true);
     setError('');
+    const input = toInput(form);
+    // Same rules as the API, so every problem shows next to its field before anything is sent.
+    const check = parsePlanInput(input);
+    if (!check.ok) {
+      setErrors(check.errors);
+      return setError('Please fix the highlighted fields.');
+    }
     setErrors({});
+    setBusy(true);
     try {
-      const input = toInput(form);
       const result = plan ? await billingAdminApi.updatePlan(plan.id, input) : await billingAdminApi.createPlan(input);
       onSaved(result.plan);
     } catch (err) {
@@ -194,12 +201,12 @@ function PlanDrawer({ plan, features, onClose, onSaved }: { plan: Plan | null; f
     >
       {error && <p role="alert" className="rounded-xl bg-danger-surface px-3 py-2 text-sm text-danger">{error}</p>}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Name" error={errors.name}><input className={INPUT} value={form.name} onChange={(e) => set('name', e.target.value)} /></Field>
+        <Field label="Name" error={errors.name}><input className={INPUT} maxLength={LIMITS.planName.max} value={form.name} onChange={(e) => set('name', e.target.value)} /></Field>
         <Field label="Slug" hint="(used in links)" error={errors.slug}>
-          <input className={INPUT} value={form.slug} onChange={(e) => set('slug', e.target.value.toLowerCase())} placeholder="ai-starter" />
+          <input className={INPUT} maxLength={LIMITS.planSlug.max} value={form.slug} onChange={(e) => set('slug', e.target.value.toLowerCase())} placeholder="ai-starter" />
         </Field>
       </div>
-      <Field label="Tagline" error={errors.tagline}><input className={INPUT} value={form.tagline} onChange={(e) => set('tagline', e.target.value)} /></Field>
+      <Field label="Tagline" error={errors.tagline}><input className={INPUT} maxLength={LIMITS.planTagline.max} value={form.tagline} onChange={(e) => set('tagline', e.target.value)} /></Field>
 
       <div className="grid gap-2">
         <Toggle checked={form.isActive} onChange={(v) => set('isActive', v)} label="Active" description="Shown on the pricing page and available at checkout." />
@@ -227,9 +234,10 @@ function PlanDrawer({ plan, features, onClose, onSaved }: { plan: Plan | null; f
           <p className="text-xs font-semibold uppercase tracking-wider text-subtle">Comparison rows</p>
           <div className="grid gap-3 sm:grid-cols-2">
             {features.map((feature) => (
-              <Field key={feature.key} label={feature.label}>
+              <Field key={feature.key} label={feature.label} error={errors[`featureValues.${feature.key}`]}>
                 <input
                   className={INPUT}
+                  maxLength={LIMITS.featureValue.max}
                   value={form.featureValues[feature.key] ?? ''}
                   onChange={(e) => set('featureValues', { ...form.featureValues, [feature.key]: e.target.value })}
                   placeholder="—"
@@ -250,6 +258,7 @@ function PlanDrawer({ plan, features, onClose, onSaved }: { plan: Plan | null; f
 function RowsDrawer({ features, onClose, onSaved }: { features: PlanFeature[]; onClose: () => void; onSaved: () => void }) {
   const [rows, setRows] = useState(features.map(({ key, label }) => ({ key, label })));
   const [error, setError] = useState('');
+  const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
   const move = (index: number, delta: number) => setRows((all) => {
@@ -260,10 +269,16 @@ function RowsDrawer({ features, onClose, onSaved }: { features: PlanFeature[]; o
   });
 
   async function save() {
-    setBusy(true);
     setError('');
+    const check = parseFeatureList(rows);
+    if (!check.ok) {
+      setRowErrors(check.errors);
+      return setError(check.errors.features ?? 'Please fix the highlighted rows, or remove empty ones.');
+    }
+    setRowErrors({});
+    setBusy(true);
     try {
-      await billingAdminApi.saveFeatures(rows.filter((row) => row.label.trim()));
+      await billingAdminApi.saveFeatures(rows);
       onSaved();
     } catch (err) {
       setError((err as Error).message);
@@ -285,20 +300,25 @@ function RowsDrawer({ features, onClose, onSaved }: { features: PlanFeature[]; o
       {error && <p role="alert" className="rounded-xl bg-danger-surface px-3 py-2 text-sm text-danger">{error}</p>}
       <ul className="space-y-2">
         {rows.map((row, index) => (
-          <li key={row.key || `new-${index}`} className="flex items-center gap-2">
-            <input
-              className={INPUT}
-              value={row.label}
-              aria-label={`Row ${index + 1} label`}
-              onChange={(e) => setRows((all) => all.map((r, i) => (i === index ? { ...r, label: e.target.value } : r)))}
-            />
-            <Button variant="ghost" size="sm" aria-label="Move up" disabled={index === 0} onClick={() => move(index, -1)}><ArrowUp className="h-3.5 w-3.5" /></Button>
-            <Button variant="ghost" size="sm" aria-label="Move down" disabled={index === rows.length - 1} onClick={() => move(index, 1)}><ArrowDown className="h-3.5 w-3.5" /></Button>
-            <Button variant="ghost" size="sm" aria-label="Remove row" onClick={() => setRows((all) => all.filter((_, i) => i !== index))}><Trash2 className="h-3.5 w-3.5" /></Button>
+          <li key={row.key || `new-${index}`}>
+            <div className="flex items-center gap-2">
+              <input
+                className={INPUT}
+                maxLength={LIMITS.featureLabel.max}
+                value={row.label}
+                aria-label={`Row ${index + 1} label`}
+                aria-invalid={rowErrors[`features.${index}`] ? true : undefined}
+                onChange={(e) => setRows((all) => all.map((r, i) => (i === index ? { ...r, label: e.target.value } : r)))}
+              />
+              <Button variant="ghost" size="sm" aria-label="Move up" disabled={index === 0} onClick={() => move(index, -1)}><ArrowUp className="h-3.5 w-3.5" /></Button>
+              <Button variant="ghost" size="sm" aria-label="Move down" disabled={index === rows.length - 1} onClick={() => move(index, 1)}><ArrowDown className="h-3.5 w-3.5" /></Button>
+              <Button variant="ghost" size="sm" aria-label="Remove row" onClick={() => setRows((all) => all.filter((_, i) => i !== index))}><Trash2 className="h-3.5 w-3.5" /></Button>
+            </div>
+            {rowErrors[`features.${index}`] && <p className="mt-1 text-xs text-danger">{rowErrors[`features.${index}`]}</p>}
           </li>
         ))}
       </ul>
-      <Button variant="secondary" size="sm" onClick={() => setRows((all) => [...all, { key: '', label: '' }])}><Plus className="h-3.5 w-3.5" /> Add row</Button>
+      <Button variant="secondary" size="sm" disabled={rows.length >= LIMITS.featureRows.max} onClick={() => setRows((all) => [...all, { key: '', label: '' }])}><Plus className="h-3.5 w-3.5" /> Add row</Button>
       <p className="text-xs text-subtle">Removing a row hides it from the pricing table; values already entered on plans are kept and come back if you add the row again with the same name.</p>
     </Drawer>
   );
