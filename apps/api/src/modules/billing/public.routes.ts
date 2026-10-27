@@ -7,6 +7,7 @@ import { publicFormGuards, publicHeaders } from '../../middleware/publicFormGuar
 import { publishAdminEvent } from '../../services/adminEvents';
 import { emailTemplates } from '../../services/email';
 import { notifyAdmins } from '../notifications';
+import { REMINDER_AFTER_ABANDON_MS, REMINDER_AFTER_CHECKOUT_MS, resumeTokenMatches, scheduleReminder } from './reminders';
 import { logger } from '../../services/cloudwatchLogger';
 import { asyncRoute } from '../../utils/asyncRoute';
 import { getClientIp } from '../../utils/security';
@@ -40,6 +41,7 @@ const router = Router();
 const quoteLimit = createRateLimit({ keyPrefix: 'checkout-quote', limit: 30, windowMs: 60_000 });
 const verifyLimit = createRateLimit({ keyPrefix: 'checkout-verify', limit: 20, windowMs: 60_000 });
 const abandonLimit = createRateLimit({ keyPrefix: 'checkout-abandon', limit: 20, windowMs: 60_000 });
+const resumeLimit = createRateLimit({ keyPrefix: 'checkout-resume', limit: 20, windowMs: 15 * 60_000 });
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function publicPlan(plan: PlanRow) {
@@ -133,6 +135,8 @@ router.post(
       business_name: contact.value.businessName,
       // Becomes the login only once the payment is captured (see fulfil.ts).
       password_hash: await bcrypt.hash(contact.value.password, 10),
+      // Reminder if it is never paid; brought forward when the payment window is closed.
+      reminder_due_at: new Date(Date.now() + REMINDER_AFTER_CHECKOUT_MS).toISOString(),
       ip: getClientIp(req),
       user_agent: req.get('user-agent')?.slice(0, 500) ?? null,
     });
@@ -208,8 +212,46 @@ router.post('/checkout/abandoned', publicHeaders, abandonLimit, asyncRoute('Bill
   if (updated) {
     publishAdminEvent({ type: 'billing_order.updated', id: updated.id, status: reason === 'closed' ? 'abandoned' : 'payment_failed' });
     void alertLead(updated.id, reason, 'payment_error' in changes ? changes.payment_error : undefined);
+    void scheduleReminder(updated.id, new Date(Date.now() + REMINDER_AFTER_ABANDON_MS));
   }
   res.json({ ok: true });
+}));
+
+// "Complete my payment" from the reminder email: reopens the saved order (same price and
+// Razorpay order) without asking for the details again.
+router.post('/checkout/resume', publicHeaders, resumeLimit, asyncRoute('Billing', async (req, res) => {
+  const [orderId, token] = String(req.body?.resume ?? '').split('.');
+  const invalid = () => res.status(404).json({ error: 'This payment link has expired or was already used. Choose a plan to start again.' });
+  if (!orderId || !UUID.test(orderId) || !token) return invalid();
+
+  const order = await getOrder(orderId);
+  if (!order || !resumeTokenMatches(order, token)) return invalid();
+  if (order.status !== 'created') {
+    return res.status(409).json({ error: 'This order is already paid. Check your inbox for the email confirmation link.', paid: true });
+  }
+  if (!order.razorpay_order_id || !razorpayConfigured()) return invalid();
+
+  res.json({
+    order: {
+      orderId: order.id,
+      razorpayOrderId: order.razorpay_order_id,
+      keyId: config.razorpay.keyId,
+      amount: order.total,
+      currency: order.currency,
+      description: `${order.plan_snapshot.name}: first month and setup`,
+      prefill: { name: order.full_name, email: order.email, contact: order.phone },
+    },
+    plan: publicPlan(order.plan_snapshot),
+    quote: {
+      currency: order.currency,
+      planAmount: order.plan_amount,
+      setupFee: order.setup_fee,
+      discount: order.discount,
+      total: order.total,
+      coupon: order.coupon_code ? { code: order.coupon_code, description: null } : null,
+    },
+    businessName: order.business_name,
+  });
 }));
 
 // One email per checkout, the first time it is closed or fails, to whoever gets signup-lead alerts.

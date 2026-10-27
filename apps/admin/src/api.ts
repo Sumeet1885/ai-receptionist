@@ -129,6 +129,7 @@ export interface BillingOrder {
   failure_reason: string | null;
   checkout_dismissed_at: string | null;
   payment_error: string | null;
+  reminder_sent_at: string | null;
 }
 
 export const billingAdminApi = {

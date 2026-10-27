@@ -27,6 +27,9 @@ export interface BillingOrderRow {
   checkout_dismissed_at: string | null;
   payment_error: string | null;
   lead_notified_at: string | null;
+  reminder_due_at: string | null;
+  reminder_sent_at: string | null;
+  resume_token_hash: string | null;
   razorpay_order_id: string | null;
   razorpay_payment_id: string | null;
   paid_at: string | null;
@@ -109,7 +112,7 @@ export async function redeemCoupon(couponId: string) {
 
 // ── orders ───────────────────────────────────────────────────────────────────
 
-export async function insertOrder(row: Omit<BillingOrderRow, 'id' | 'status' | 'failure_reason' | 'checkout_dismissed_at' | 'payment_error' | 'lead_notified_at' | 'razorpay_order_id' | 'razorpay_payment_id' | 'paid_at' | 'provisioned_user_id' | 'provisioned_at' | 'created_at' | 'updated_at'> & { ip: string; user_agent: string | null }) {
+export async function insertOrder(row: Omit<BillingOrderRow, 'id' | 'status' | 'failure_reason' | 'checkout_dismissed_at' | 'payment_error' | 'lead_notified_at' | 'reminder_sent_at' | 'resume_token_hash' | 'razorpay_order_id' | 'razorpay_payment_id' | 'paid_at' | 'provisioned_user_id' | 'provisioned_at' | 'created_at' | 'updated_at'> & { ip: string; user_agent: string | null }) {
   return check(await supabase.from('billing_orders').insert(row).select('*').single<BillingOrderRow>(), 'create order');
 }
 
@@ -172,7 +175,7 @@ export const PAID_STATUSES: OrderStatus[] = ['paid', 'provisioned', 'review'];
 export async function listOrders(filters: { status?: OrderStatus; paidOnly?: boolean; lead?: LeadStage; page: number; pageSize: number }) {
   let query = supabase
     .from('billing_orders')
-    .select('id,status,currency,total,discount,coupon_code,full_name,email,phone,business_name,plan_snapshot,razorpay_payment_id,paid_at,created_at,failure_reason,checkout_dismissed_at,payment_error', { count: 'exact' })
+    .select('id,status,currency,total,discount,coupon_code,full_name,email,phone,business_name,plan_snapshot,razorpay_payment_id,paid_at,created_at,failure_reason,checkout_dismissed_at,payment_error,reminder_sent_at', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range((filters.page - 1) * filters.pageSize, filters.page * filters.pageSize - 1);
   if (filters.status) query = query.eq('status', filters.status);

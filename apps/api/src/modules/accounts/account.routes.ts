@@ -4,7 +4,7 @@ import { requireAuth, type AuthRequest } from '../../middleware/auth';
 import { createRateLimit } from '../../middleware/rateLimit';
 import { logger } from '../../services/cloudwatchLogger';
 import { supabase } from '../../services/db';
-import { emailTemplates, maskEmail, sendEmail } from '../../services/email';
+import { emailTemplates, maskEmail, sendEmail, sendEmailSafely } from '../../services/email';
 import { asyncRoute } from '../../utils/asyncRoute';
 import { createVerificationLink } from './links';
 import { getCustomerAccount, markCustomerAccount } from './repository';
@@ -49,6 +49,14 @@ router.post('/password', perUser('account-password', 10, 15 * 60_000), handle(as
     return res.status(400).json({ error: 'That password was not accepted. Try a longer or less common one.' });
   }
   if (!account!.password_set_at) await markCustomerAccount(req.user!.id, { password_set_at: new Date().toISOString() });
+  // A change or reset (not the first password at activation) gets a security notice.
+  else if (req.user!.email) {
+    void sendEmailSafely(req.user!.email, emailTemplates.passwordChanged({
+      email: req.user!.email,
+      when: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) + ' IST',
+      resetUrl: `${config.clientUrl}/auth?mode=forgot`,
+    }), 'password_changed');
+  }
 
   const next = await stageFor(req);
   res.json({ stage: next.stage });
@@ -58,6 +66,12 @@ router.post('/onboarding-complete', handle(async (req, res) => {
   const { stage } = await stageFor(req);
   if (stage === 'onboarding') {
     await markCustomerAccount(req.user!.id, { onboarding_completed_at: new Date().toISOString() });
+    if (req.user!.email) {
+      void sendEmailSafely(req.user!.email, emailTemplates.onboardingComplete({
+        name: req.user!.name || 'there',
+        dashboardUrl: `${config.clientUrl}/dashboard`,
+      }), 'onboarding_complete');
+    }
     return res.json({ stage: 'active' });
   }
   res.json({ stage });

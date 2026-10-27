@@ -74,6 +74,9 @@ export const billingApi = {
   // Body includes the public-form guard fields (honeypot, fill time, Turnstile token).
   createOrder: (body: Record<string, unknown>) => call<CheckoutOrder>('/checkout/order', body),
   // Records a closed checkout or a failed payment attempt on the lead; best effort.
+  // "Complete my payment" link from the reminder email: the saved order, ready to pay.
+  resume: (resume: string) =>
+    call<{ order: CheckoutOrder; plan: PublicPlan; quote: Quote; businessName: string }>('/checkout/resume', { resume }),
   abandoned: (body: { orderId: string; razorpayOrderId: string; reason: 'closed' | 'failed'; message?: string }) =>
     call<{ ok: true }>('/checkout/abandoned', body).catch(() => undefined),
   verify: (body: { orderId: string; razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }) =>

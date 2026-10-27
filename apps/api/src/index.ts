@@ -21,7 +21,7 @@ async function bootstrap(): Promise<void> {
   const { adminAuthRoutes, createAdminEventsServer } = await import('./modules/admin-auth');
   const { accessRequestPublicRoutes, accessRequestAdminRoutes } = await import('./modules/access-requests');
   const { accountRoutes, accountPublicRoutes } = await import('./modules/accounts');
-  const { billingPublicRoutes, billingAdminRoutes, razorpayWebhook } = await import('./modules/billing');
+  const { billingPublicRoutes, billingAdminRoutes, razorpayWebhook, startCheckoutReminders } = await import('./modules/billing');
   const { notificationAdminRoutes } = await import('./modules/notifications');
   const { routeUpgrades }      = await import('./utils/upgradeRouter');
   const { dograhRoutes, phoneToolsRoutes, campaignRoutes, startCallPoller, startCampaign } =
@@ -119,6 +119,7 @@ async function bootstrap(): Promise<void> {
   });
 
   startCallPoller(supabase);
+  startCheckoutReminders();
   await resumeRunningCampaigns(supabase, startCampaign);
 }
 

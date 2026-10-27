@@ -3,6 +3,7 @@ import { CheckCircle2, Eye, EyeOff, Loader2, Lock, MailCheck, Tag } from 'lucide
 import { LIMITS, validateCheckoutContact, type CheckoutContactErrors, type CheckoutContactInput } from '@ai-receptionist/contracts';
 import { Button } from '../ui/button';
 import { Input, Label } from '../ui/field';
+import { PhoneField } from '../ui/phone-field';
 import { Card, Container } from '../ui/layout';
 import { Honeypot } from '../security/Honeypot';
 import { Turnstile } from '../security/Turnstile';
@@ -40,6 +41,8 @@ interface CheckoutViewProps {
 const EMPTY: CheckoutContactInput = { fullName: '', email: '', phone: '', businessName: '', password: '', consent: false };
 
 export const CheckoutView: React.FC<CheckoutViewProps> = ({ navigate }) => {
+  // Set when arriving from the payment reminder email (?resume=<order>.<token>).
+  const [resumeLink] = useState(() => new URLSearchParams(window.location.search).get('resume'));
   const [slug, setSlug] = useState(() => new URLSearchParams(window.location.search).get('plan') ?? '');
   const [currency, setCurrency] = useState<Currency>(() => (new URLSearchParams(window.location.search).get('currency') === 'USD' ? 'USD' : 'INR'));
   const [plans, setPlans] = useState<PublicPlan[]>([]);
@@ -64,11 +67,32 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ navigate }) => {
     billingApi.plans().then((data) => setPlans(data.plans.filter((p) => !p.contactSales))).catch(() => undefined);
   }, []);
 
+  // Reopen the saved order from the reminder email and go straight to the confirmation.
+  useEffect(() => {
+    if (!resumeLink) return;
+    billingApi.resume(resumeLink)
+      .then(async (data) => {
+        setPlan(data.plan);
+        setQuote(data.quote);
+        setCurrency(data.quote.currency);
+        setForm({ ...EMPTY, fullName: data.order.prefill.name, email: data.order.prefill.email, phone: data.order.prefill.contact, businessName: data.businessName });
+        setOrder({ key: 'resumed', value: data.order });
+        // Keep the one-time token out of the address bar and history.
+        window.history.replaceState(null, '', `/checkout?${new URLSearchParams({ plan: data.plan.slug, currency: data.quote.currency })}`);
+        await loadRazorpay();
+        setConfirming(true);
+      })
+      .catch((err) => setLoadError((err as Error).message));
+  }, [resumeLink]);
+
   // Re-quote when the plan or currency changes, keeping the applied coupon if it still applies.
   const appliedCoupon = useRef('');
   appliedCoupon.current = quote?.coupon?.code ?? '';
   useEffect(() => {
-    if (!slug) return setLoadError('Choose a plan first.');
+    if (!slug) {
+      if (!resumeLink) setLoadError('Choose a plan first.');
+      return;
+    }
     let cancelled = false;
     const code = appliedCoupon.current;
     billingApi.quote(slug, currency, code)
@@ -271,7 +295,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ navigate }) => {
                   </div>
                   <div>
                     <Label htmlFor="co-phone">Mobile number</Label>
-                    <Input id="co-phone" type="tel" autoComplete="tel" maxLength={20} value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="98765 43210 or +44…" {...fieldProps('phone')} />
+                    <PhoneField id="co-phone" value={form.phone} onChange={(value) => set('phone', value)} {...fieldProps('phone')} />
                     {fieldError('phone')}
                   </div>
                   <div className="sm:col-span-2">
@@ -331,7 +355,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ navigate }) => {
                             role="radio"
                             aria-checked={currency === c}
                             disabled={paying}
-                            onClick={() => choosePlan(slug, c)}
+                            onClick={() => choosePlan(slug || plan.slug, c)}
                             className={`rounded-pill px-2.5 py-1 ${currency === c ? 'bg-text text-background' : 'text-text-subtle hover:text-text'}`}
                           >
                             {c === 'INR' ? '₹ INR' : '$ USD'}
@@ -347,10 +371,10 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ navigate }) => {
                       {plans.filter((p) => p.price[currency] > 0).map((p) => (
                         <label
                           key={p.slug}
-                          className={`flex cursor-pointer items-center justify-between gap-3 rounded-medium border px-3.5 py-2.5 text-sm transition-colors ${p.slug === slug ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}`}
+                          className={`flex cursor-pointer items-center justify-between gap-3 rounded-medium border px-3.5 py-2.5 text-sm transition-colors ${p.slug === (slug || plan.slug) ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}`}
                         >
                           <span className="flex items-center gap-2.5">
-                            <input type="radio" name="co-plan" className="h-4 w-4 accent-(--color-primary)" checked={p.slug === slug} onChange={() => choosePlan(p.slug, currency)} />
+                            <input type="radio" name="co-plan" className="h-4 w-4 accent-(--color-primary)" checked={p.slug === (slug || plan.slug)} onChange={() => choosePlan(p.slug, currency)} />
                             <span className="font-semibold text-text">{p.name}</span>
                             {p.featured && <span className="rounded-pill bg-accent-lime px-2 py-0.5 text-[10px] font-bold uppercase text-text">Popular</span>}
                           </span>

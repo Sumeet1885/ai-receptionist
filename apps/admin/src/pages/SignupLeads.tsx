@@ -41,7 +41,7 @@ export function SignupLeads() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-3xl font-bold tracking-tight">Signup leads</h1>
-        <p className="mt-1 text-sm text-subtle">People who picked a paid plan and entered their details but have not paid. Reach out to help them finish; once they pay they move to Revenue.</p>
+        <p className="mt-1 text-sm text-subtle">People who picked a paid plan and entered their details but have not paid. Each gets one reminder email with a link back to their order (5 minutes after closing the payment window, or 30 minutes after starting). Once they pay they move to Revenue.</p>
       </div>
 
       <FilterTabs tabs={TABS} value={stage} onChange={(value) => { setStage(value); setPage(1); }} />
@@ -93,6 +93,7 @@ export function SignupLeads() {
                           <span className="h-1.5 w-1.5 rounded-full bg-current" />{current.label}
                         </span>
                         {order.payment_error && <p className="mt-1 max-w-56 text-xs text-danger">{order.payment_error}</p>}
+                        <p className="mt-1 text-xs text-subtle">{order.reminder_sent_at ? `Reminder emailed ${timeAgo(order.reminder_sent_at)}` : 'Reminder not sent yet'}</p>
                       </td>
                       <td className="px-4 py-3 text-subtle" title={formatDate(current.at)}>
                         {timeAgo(current.at)}
