@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { BrandLogo } from '../ui/brand-logo';
 import { Button } from '../ui/button';
 import { Input, Label } from '../ui/field';
-import { Card } from '../ui/layout';
+import { AuthSplitLayout } from './AuthSplitLayout';
 import { Honeypot } from '../security/Honeypot';
 import { Turnstile } from '../security/Turnstile';
 import { supabase } from '../../lib/supabaseClient';
@@ -143,18 +142,10 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
   );
 
   return (
-    <div className="relative flex min-h-[calc(100vh-80px)] flex-1 items-center justify-center overflow-hidden bg-background p-4 sm:p-6">
-      {/* Soft lime glow, as behind the landing hero */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-1/2 h-[300px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-[100%] bg-accent-lime/30 blur-[120px] sm:h-[600px] sm:w-[800px]"
-      />
-
-      <div className="relative z-10 w-full max-w-md">
-        <Card variant="floating" padding="lg" className="rounded-large">
-          <div className="mb-8 text-center">
-            <BrandLogo className="mb-6 justify-center" />
-            <h1 className="mb-2 font-display text-3xl font-semibold tracking-[-0.04em] text-text">{titles[mode].title}</h1>
+    <AuthSplitLayout>
+      <div className="mx-auto w-full max-w-md">
+          <div className="mb-8">
+            <h1 className="mb-2 font-display text-4xl font-semibold tracking-[-0.04em] text-text">{titles[mode].title}</h1>
             <p className="text-sm text-text-subtle">{titles[mode].description}</p>
           </div>
 
@@ -305,8 +296,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
               </form>
             )
           )}
-        </Card>
       </div>
-    </div>
+    </AuthSplitLayout>
   );
 };

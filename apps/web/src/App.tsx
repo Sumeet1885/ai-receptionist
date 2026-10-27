@@ -373,6 +373,8 @@ export default function App() {
   const activeBot = bots.find(b => b.id === activeBotId) || (bots.length > 0 ? bots[0] : null);
   const routeBot = route.name === 'agent-detail' ? bots.find(b => b.id === route.botId) || activeBot : activeBot;
   const isStandaloneChat = route.name === 'public-chat';
+  // Sign-in and access request fill exactly one screen on desktop (split layout, no footer).
+  const isAuthScreen = route.name === 'auth' || route.name === 'request-access';
 
   const noAgentState = (
     <div className="bg-brand-card border border-brand-border rounded-lg p-10 text-center text-brand-muted">
@@ -387,7 +389,7 @@ export default function App() {
   );
 
   return (
-    <div className={`bg-brand-bg text-brand-text font-sans antialiased flex flex-col ${isStandaloneChat ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
+    <div className={`bg-brand-bg text-brand-text font-sans antialiased flex flex-col ${isStandaloneChat ? 'h-screen overflow-hidden' : isAuthScreen ? 'min-h-screen lg:h-dvh lg:overflow-hidden' : 'min-h-screen'}`}>
       {toast && <Toast toast={toast} />}
 
       {!isStandaloneChat && route.name !== 'landing' && (
@@ -609,7 +611,7 @@ export default function App() {
       </main>
       )}
 
-      {!isStandaloneChat && route.name !== 'landing' && <Footer showToast={(msg) => showToast(msg, 'success')} />}
+      {!isStandaloneChat && !isAuthScreen && route.name !== 'landing' && <Footer showToast={(msg) => showToast(msg, 'success')} />}
 
       {newlyCreatedBotId && (
         <DeploymentSuccessModal
