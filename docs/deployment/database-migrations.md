@@ -1,16 +1,8 @@
 # Database migrations (Supabase)
 
-Schema changes live as SQL files in `supabase/migrations/` (one file per change, never edited after it has been applied). **They are applied automatically by the deploy workflows**, so nobody has to paste SQL into the Supabase dashboard.
+Schema changes live as SQL files in `supabase/migrations/` (one file per change, never edited after it has been applied). They are applied with `supabase db push` as a release step, so nobody has to paste SQL into the Supabase dashboard. **Step-by-step release instructions for staging and production: [release-runbook.md](release-runbook.md).**
 
-This is the same idea as own-crm's `prisma migrate deploy`: the database records which migration files it has applied (table `supabase_migrations.schema_migrations`), and each run applies only the new ones. The difference: it runs as the first job of the deploy workflow, before the containers restart, not inside the API at start-up (an API restart must never change the schema, and the API image does not hold the database password).
-
-```text
-STAGING / PRODUCTION - Deploy via AWS SSM
-  job 1  migrate   paused-campaign check → migration list → dry run → db push → migration list
-  job 2  deploy    (only if job 1 succeeded) update image tags on the host → docker-compose up
-```
-
-If a migration fails, the deploy does not happen and the running version keeps serving. Because migrations run just before the new code starts, they must stay backward compatible with the code that is still running (add tables/columns; never rename or drop in the same release).
+This is the same idea as own-crm's `prisma migrate deploy`: the database records which migration files it has applied (table `supabase_migrations.schema_migrations`), and each run applies only the new ones. The difference: it runs as a release step before the new containers start, not inside the API at start-up (an API restart must never change the schema, and the API image does not hold the database password). Because migrations land just before the new code starts, they must stay backward compatible with the running code.
 
 ---
 
@@ -42,16 +34,9 @@ Only do this once per environment. After that, never apply SQL by hand again.
 
 ## 3. Every release
 
-1. Merge to `staging`.
-2. **STAGING - Build project**, then **STAGING - Build and Push Docker Images** for the commit (unchanged).
-3. **STAGING - Deploy via AWS SSM** for the commit. It applies pending migrations first, then deploys. Leave **Allow paused campaigns to resume** unticked; if the run stops on paused campaigns, agree it with the campaign owners and re-run with the box ticked.
-4. After staging is verified: **PRODUCTION - Build and Push Docker Images**, then **PRODUCTION - Deploy via AWS SSM** for the same commit (dispatch both from `staging`; the production environment asks for approval).
+Follow [release-runbook.md](release-runbook.md): build images → check paused campaigns → **Database - Migrate** (`status`, then `apply`) → deploy images with the AWS CLI → verify.
 
-**Database - Migrate** can still be run by hand: `status` to see what is pending (read-only), or `apply` to migrate without deploying.
-
-Production deploy prerequisites (once): the `production` GitHub environment needs `EC2_INSTANCE_ID` (the production instance), `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `DOCKER_USERNAME` and `SUPABASE_DB_URL`, and the production host must have the repo files at `/home/ec2-user/ai-receptionist` with `docker-compose-prod.yml` and its `.env` (`IMAGE_TAG_SERVER` / `IMAGE_TAG_CLIENT` lines), the same layout the staging host uses.
-
-Migrations are written to be additive (new tables/columns, `IF NOT EXISTS`). If one needs to remove or rewrite data, its PR says so and is deployed separately.
+Optional automation in the repo: the **STAGING - Deploy via AWS SSM** and **PRODUCTION - Deploy via AWS SSM** workflows run the same migration (with the paused-campaign check) as their first job and only deploy if it succeeds. Use them instead of the manual AWS CLI step if you prefer; the production one needs the production deploy secrets listed in the runbook.
 
 ## 4. Local development
 
