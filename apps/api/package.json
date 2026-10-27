@@ -6,7 +6,9 @@
     "dev": "npx tsx watch src/index.ts",
     "start": "npx tsx src/index.ts",
     "test": "tsx --test tests/*.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "staff:create": "tsx scripts/staff-create.ts",
+    "staff:reset-password": "tsx scripts/staff-reset-password.ts"
   },
   "dependencies": {
     "@ai-receptionist/contracts": "*",

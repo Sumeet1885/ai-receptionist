@@ -17,6 +17,7 @@ async function bootstrap(): Promise<void> {
   const { isTrustedCorsOrigin }= await import('./utils/corsPolicy');
   const widgetRoutes           = (await import('./routes/widget.routes')).default;
   const crmRoutes              = (await import('./routes/crm.routes')).default;
+  const { staffAuthRoutes }    = await import('./modules/staff-auth');
   const { dograhRoutes, phoneToolsRoutes, campaignRoutes, startCallPoller, startCampaign } =
     await import('./modules/phone-calls');
   const { supabase }           = await import('./services/db');
@@ -48,6 +49,7 @@ async function bootstrap(): Promise<void> {
   app.use('/api/phone-tools', phoneToolsRoutes);
   app.use('/api/crm',      crmRoutes);
   app.use('/api/campaigns', campaignRoutes);
+  app.use('/api/admin',    staffAuthRoutes);
 
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok', geminiGuard: geminiGuard.getStatus() });
