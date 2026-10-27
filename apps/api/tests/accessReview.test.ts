@@ -54,7 +54,7 @@ test('admin events socket refuses other origins before looking at the session', 
 
 test('review routes require a session and the right role for each action', async () => {
   const source = await readFile(fileURLToPath(adminRoutesUrl), 'utf8');
-  assert.match(source, /router\.use\(adminOriginGuard\(config\.admin\.origin\)\);\s*router\.use\(requireAdminSession\);/);
+  assert.match(source, /router\.use\(adminOriginGuard\(config\.admin\.origins\)\);\s*router\.use\(requireAdminSession\);/);
   assert.match(source, /router\.get\('\/', requireAdminRole\('read_only'\)/);
   assert.match(source, /router\.get\('\/:id', requireAdminRole\('read_only'\)/);
   assert.match(source, /router\.patch\('\/:id', requireAdminRole\('support'\)/);
