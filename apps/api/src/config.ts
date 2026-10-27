@@ -42,6 +42,11 @@ export const config = {
     callbackBaseUrl: (process.env.PHONE_TOOLS_CALLBACK_BASE_URL || 'http://host.docker.internal:4000').trim().replace(/\/+$/, ''),
   },
   defaultPhoneNumber: (process.env.DEFAULT_PLATFORM_PHONE_NUMBER || process.env.PLATFORM_PHONE_NUMBER || '').trim(),
+  aws: {
+    region: (process.env.AWS_REGION || 'ap-south-1').trim(),
+    // Optional IAM role for SES; when set, the API assumes it (see src/aws/credentials.ts).
+    sesRoleArn: (process.env.AWS_SES_ROLE_ARN || '').trim(),
+  },
   email: {
     // Verified SES sender. Without it, development logs emails instead of sending them.
     from: (process.env.EMAIL_FROM || '').trim(),

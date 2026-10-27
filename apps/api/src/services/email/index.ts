@@ -1,18 +1,10 @@
-import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
+import { SendEmailCommand } from '@aws-sdk/client-sesv2';
+import { getSesClient } from '../../aws';
 import { config } from '../../config';
 import { logger } from '../cloudwatchLogger';
 import type { EmailContent } from './templates';
 
 export * as emailTemplates from './templates';
-
-let client: SESv2Client | null = null;
-
-// Credentials come from the default AWS chain: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY locally,
-// the EC2 instance role (needs ses:SendEmail) in staging and production.
-function sesClient() {
-  client ??= new SESv2Client({ region: config.email.region });
-  return client;
-}
 
 export function maskEmail(address: string) {
   const [local, domain] = address.split('@');
@@ -39,7 +31,7 @@ export async function sendEmail(to: string, content: EmailContent, tag: string):
     throw new Error('EMAIL_FROM is not configured');
   }
 
-  const result = await sesClient().send(new SendEmailCommand({
+  const result = await getSesClient().send(new SendEmailCommand({
     FromEmailAddress: `${config.email.fromName} <${config.email.from}>`,
     Destination: { ToAddresses: [to] },
     ReplyToAddresses: config.email.replyTo ? [config.email.replyTo] : undefined,

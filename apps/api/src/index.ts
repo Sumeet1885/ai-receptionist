@@ -1,7 +1,8 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { loadSecrets } from './utils/loadSecrets';
+// Imported directly (not via ./aws): it must run before ./config, which requires the secrets.
+import { loadSecrets } from './aws/ssmSecrets';
 
 async function bootstrap(): Promise<void> {
   await loadSecrets();
