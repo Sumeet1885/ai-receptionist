@@ -78,7 +78,8 @@ for (const file of walk(path.join(root, 'apps'), ['.ts', '.tsx'])) {
 }
 
 // Built browser bundles must not contain server secrets or their names.
-const forbiddenInBundles = ['SUPABASE_SERVICE_ROLE_KEY', 'service_role', 'GEMINI_API_KEY', 'GROQ_API_KEY', 'PHONE_TOOLS_API_KEY', 'DOGRAH_API_KEY', 'sb_secret_'];
+const forbiddenInBundles = ['SUPABASE_SERVICE_ROLE_KEY', 'service_role', 'GEMINI_API_KEY', 'GROQ_API_KEY', 'PHONE_TOOLS_API_KEY', 'DOGRAH_API_KEY', 'sb_secret_',
+  'TURNSTILE_SECRET_KEY', 'AWS_SECRET_ACCESS_KEY', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET'];
 for (const app of ['apps/web/dist', 'apps/admin/dist']) {
   for (const file of walk(path.join(root, app), ['.js', '.html', '.css'])) {
     const text = fs.readFileSync(file, 'utf8');

@@ -43,10 +43,12 @@ export function consumeRateLimit(key: string, options: RateLimitOptions) {
   };
 }
 
-export function createRateLimit(options: RateLimitOptions) {
+// keyFor defaults to the client IP; returning null skips the limit for that request.
+export function createRateLimit(options: RateLimitOptions, keyFor: (req: Request) => string | null = getClientIp) {
   return (req: Request, res: Response, next: NextFunction) => {
-    const ip = getClientIp(req);
-    const result = consumeRateLimit(`${options.keyPrefix}:${ip}`, options);
+    const key = keyFor(req);
+    if (key === null) return next();
+    const result = consumeRateLimit(`${options.keyPrefix}:${key}`, options);
 
     res.setHeader('RateLimit-Limit', String(options.limit));
     res.setHeader('RateLimit-Remaining', String(result.remaining));
