@@ -43,6 +43,8 @@ export const config = {
     fromName: (process.env.EMAIL_FROM_NAME || 'Bolega India').trim(),
     replyTo: (process.env.EMAIL_REPLY_TO || '').trim(),
     region: (process.env.AWS_SES_REGION || process.env.AWS_REGION || 'ap-south-1').trim(),
+    // Must match Supabase Auth → Email → "Email OTP expiration" (Supabase default: 1 hour).
+    linkExpiryHours: Number(process.env.AUTH_LINK_EXPIRY_HOURS || 1),
     // Who hears about new access requests; falls back to every active super_admin.
     staffNotifications: (process.env.STAFF_NOTIFICATION_EMAILS || '')
       .split(',')

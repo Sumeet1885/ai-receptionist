@@ -47,22 +47,29 @@ export function adminOriginGuard(allowedOrigin: string) {
   };
 }
 
+// Resolves the session cookie to an active staff member, or null. Shared by REST and WebSocket.
+export async function resolveStaffSession(cookieHeader: string | undefined): Promise<StaffRequest['staff'] | null> {
+  const token = readCookie(cookieHeader, sessionCookieName(config.environment));
+  if (!token) return null;
+
+  const session = await findSessionByTokenHash(hashSessionToken(token));
+  if (!session || !isSessionUsable(session)) return null;
+
+  const principal = await findPrincipalById(session.principal_id);
+  if (!principal || principal.status !== 'active') return null;
+
+  if (Date.parse(session.last_seen_at) + SESSION_TOUCH_INTERVAL_MS < Date.now()) {
+    await touchSession(session.id);
+  }
+
+  return { sessionId: session.id, principal, roles: await getActiveRoles(principal.id) };
+}
+
 export async function requireStaffSession(req: StaffRequest, res: Response, next: NextFunction) {
   try {
-    const token = readCookie(req.headers.cookie, sessionCookieName(config.environment));
-    if (!token) return res.status(401).json({ error: 'Not signed in' });
-
-    const session = await findSessionByTokenHash(hashSessionToken(token));
-    if (!session || !isSessionUsable(session)) return res.status(401).json({ error: 'Session expired' });
-
-    const principal = await findPrincipalById(session.principal_id);
-    if (!principal || principal.status !== 'active') return res.status(401).json({ error: 'Session expired' });
-
-    if (Date.parse(session.last_seen_at) + SESSION_TOUCH_INTERVAL_MS < Date.now()) {
-      await touchSession(session.id);
-    }
-
-    req.staff = { sessionId: session.id, principal, roles: await getActiveRoles(principal.id) };
+    const staff = await resolveStaffSession(req.headers.cookie);
+    if (!staff) return res.status(401).json({ error: 'Not signed in' });
+    req.staff = staff;
     next();
   } catch (error: any) {
     logger.error('[StaffAuth] session check failed', { error: error?.message });

@@ -1,5 +1,4 @@
 import { WebSocketServer } from 'ws';
-import { Server } from 'http';
 import { supabase } from '../services/db';
 import { config } from '../config';
 import { analyzeLead } from './leadController';
@@ -8,6 +7,7 @@ import WebSocket from 'ws';
 import { checkAllowedOrigin } from '../utils/security';
 import { checkWebSocketRateLimit } from '../middleware/rateLimit';
 import { logger } from '../services/cloudwatchLogger';
+import { acceptUpgrade, type UpgradeHandler } from '../utils/upgradeRouter';
 
 import { mergeWidgetConfig } from '../utils/widgetConfig';
 import { getTimezoneOffsetString, normalizeTimezone } from '../utils/date';
@@ -44,8 +44,9 @@ const GEMINI_API_KEY = config.geminiApiKey ?? '';
 const LIVE_API_URL = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${process.env.GEMINI_API_KEY || config.geminiApiKey}`;
 const PROACTIVE_CONTACT_TOOL_GRACE_MS = 350;
 
-export function setupWebSocketServer(server: Server) {
-  const wss = new WebSocketServer({ server, path: '/api/chat/live' });
+// Serves /api/chat/live; the caller registers the returned handler with routeUpgrades().
+export function setupWebSocketServer(): UpgradeHandler {
+  const wss = new WebSocketServer({ noServer: true });
 
   wss.on('connection', async (ws: WebSocket, req) => {
     console.log('Client connected to Live API proxy');
@@ -767,4 +768,6 @@ export function setupWebSocketServer(server: Server) {
       }
     });
   });
+
+  return acceptUpgrade(wss);
 }

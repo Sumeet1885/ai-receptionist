@@ -1,6 +1,7 @@
 // Staff console. Authentication is server-side (apps/api /api/admin, httpOnly session cookie);
 // this app never talks to Supabase. See docs/modernization/03-admin-auth.md.
 import { useEffect, useState, type FormEvent } from 'react';
+import { AccessRequests } from './AccessRequests';
 import { ApiError, staffApi, type StaffSession } from './api';
 
 type View = { name: 'loading' } | { name: 'signed-out' } | { name: 'signed-in'; session: StaffSession };
@@ -152,12 +153,7 @@ function Console({ session, onSignedOut }: { session: StaffSession; onSignedOut:
         </div>
       </header>
       <main>
-        <h1>Welcome, {session.principal.displayName}</h1>
-        <p className="muted">Signed in as {session.principal.email}.</p>
-        <section className="card wide">
-          <h2>Access requests</h2>
-          <p className="muted">Reviewing and approving free-access requests arrives in the next package.</p>
-        </section>
+        <AccessRequests roles={session.roles} />
       </main>
     </div>
   );

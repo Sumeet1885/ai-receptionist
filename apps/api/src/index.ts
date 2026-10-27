@@ -17,8 +17,9 @@ async function bootstrap(): Promise<void> {
   const { isTrustedCorsOrigin }= await import('./utils/corsPolicy');
   const widgetRoutes           = (await import('./routes/widget.routes')).default;
   const crmRoutes              = (await import('./routes/crm.routes')).default;
-  const { staffAuthRoutes }    = await import('./modules/staff-auth');
-  const { accessRequestPublicRoutes } = await import('./modules/access-requests');
+  const { staffAuthRoutes, createStaffEventsServer } = await import('./modules/staff-auth');
+  const { accessRequestPublicRoutes, accessRequestAdminRoutes } = await import('./modules/access-requests');
+  const { routeUpgrades }      = await import('./utils/upgradeRouter');
   const { dograhRoutes, phoneToolsRoutes, campaignRoutes, startCallPoller, startCampaign } =
     await import('./modules/phone-calls');
   const { supabase }           = await import('./services/db');
@@ -51,6 +52,7 @@ async function bootstrap(): Promise<void> {
   app.use('/api/crm',      crmRoutes);
   app.use('/api/campaigns', campaignRoutes);
   app.use('/api/admin',    staffAuthRoutes);
+  app.use('/api/admin/access-requests', accessRequestAdminRoutes);
   app.use('/api/public',   accessRequestPublicRoutes);
 
   app.get('/health', (_req, res) => {
@@ -100,7 +102,10 @@ async function bootstrap(): Promise<void> {
     });
   });
 
-  setupWebSocketServer(server);
+  routeUpgrades(server, {
+    '/api/chat/live': setupWebSocketServer(),
+    '/api/admin/events': createStaffEventsServer(),
+  });
 
   startCallPoller(supabase);
   await resumeRunningCampaigns(supabase, startCampaign);
