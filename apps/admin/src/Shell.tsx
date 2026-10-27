@@ -11,6 +11,7 @@ const NAV: Array<{ page: Page; label: string; icon: typeof Inbox }> = [
   { page: 'overview', label: 'Overview', icon: LayoutDashboard },
   { page: 'requests', label: 'Access requests', icon: Inbox },
   { page: 'customers', label: 'Customers', icon: Building2 },
+  { page: 'support', label: 'Support tickets', icon: Inbox },
   { page: 'revenue', label: 'Revenue', icon: TrendingUp },
   { page: 'leads', label: 'Signup leads', icon: UserPlus },
   { page: 'plans', label: 'Plans & pricing', icon: Package },
@@ -39,6 +40,9 @@ export function Shell({ session, page, onSignedOut, children }: {
   const connected = useAdminEvents((event) => {
     setLive((state) => ({ version: state.version + 1, lastEvent: event }));
     refreshPending();
+    if (event.type === 'support.updated') {
+      toast({ tone: 'info', title: 'Support ticket updated', action: { label: 'Open', onClick: () => navigate('support', `?ticket=${event.id}`) } });
+    }
     if (event.type === 'access_request.created') {
       playChime();
       toast({

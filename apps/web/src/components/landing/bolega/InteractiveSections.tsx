@@ -5,6 +5,7 @@ import { AppLink } from './AppLink';
 import { LandingDialog } from './LandingDialog';
 import { useInView, useLanding } from './LandingContext';
 import { Reveal } from './Reveal';
+import { openSupport } from '../../../lib/supportDrawer';
 
 // [shown text, "romanised · language", BCP 47 language] for the 11 landing-page languages.
 const allGreetings = SUPPORTED_LANGUAGES.map((l): [string, string, string] => [l.greeting, `${l.romanised} · ${l.name}`, l.code]);
@@ -254,6 +255,9 @@ export function LandingFooter({ onToggleMotion }: { onToggleMotion: () => void }
           <button className="language" id="about" type="button" onClick={() => setAboutOpen(true)}>
             A little clarity ↗
           </button>
+          <button type="button" className="language" onClick={() => openSupport({ view: 'new' })}>Contact support ↗</button>
+          <a className="language" href="/privacy">Privacy</a>
+          <a className="language" href="/terms">Terms</a>
         </div>
         <small>
           bolegaindia.ai

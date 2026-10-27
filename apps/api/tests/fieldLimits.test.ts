@@ -14,6 +14,7 @@ const FORM_FILES = [
   'web/src/components/auth/AccountStageView.tsx',
   'web/src/components/auth/RequestAccessView.tsx',
   'web/src/components/billing/CheckoutView.tsx',
+  'web/src/components/support/SupportView.tsx',
   'admin/src/AuthScreens.tsx',
 ];
 
@@ -28,7 +29,7 @@ test('every text, email, password and number field has a maxLength', async () =>
     const source = await readFile(path.join(apps, file), 'utf8');
     for (const match of source.matchAll(/<(Input|input|textarea|Textarea)\b([\s\S]*?)\/>/g)) {
       const tag = match[0];
-      if (/type="(checkbox|radio|date)"/.test(tag)) continue;
+      if (/type="(checkbox|radio|date|file)"/.test(tag)) continue;
       if (!/maxLength=/.test(tag)) missing.push(`${file}:${source.slice(0, match.index).split('\n').length}`);
     }
   }

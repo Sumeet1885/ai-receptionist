@@ -1,5 +1,6 @@
 // Browser-safe contracts shared by apps/web, apps/api and apps/admin.
 // Must not import Node built-ins, @supabase/*, express, or read process.env.
+export * from './support';
 export {
   ACCESS_REQUEST_INDUSTRIES,
   ACCESS_REQUEST_LANGUAGES,

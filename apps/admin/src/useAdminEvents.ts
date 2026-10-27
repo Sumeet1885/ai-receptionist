@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 export type AdminEvent =
+  | { type: 'support.updated'; id: string }
   | { type: 'access_request.created'; id: string }
   | { type: 'access_request.updated'; id: string; status: string }
   | { type: 'billing_order.updated'; id: string; status: string };
@@ -30,7 +31,7 @@ export function useAdminEvents(onEvent: (event: AdminEvent) => void) {
       socket.onmessage = (message) => {
         try {
           const event = JSON.parse(message.data);
-          if (event?.type?.startsWith('access_request.') || event?.type?.startsWith('billing_order.')) onEventRef.current(event);
+          if (event?.type?.startsWith('access_request.') || event?.type?.startsWith('billing_order.') || event?.type?.startsWith('support.')) onEventRef.current(event);
         } catch {
           // ignore malformed frames
         }

@@ -39,7 +39,7 @@ function failureMessage(status: number, serverMessage: string | undefined, isAut
 }
 
 // The session lives in an httpOnly cookie; nothing auth-related is kept in browser storage.
-async function request<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+export async function request<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), TIMEOUT_MS);
   let response: Response;
@@ -47,8 +47,8 @@ async function request<T>(path: string, init: { method?: string; body?: unknown 
     response = await fetch(`/api/admin${path}`, {
       method: init.method ?? 'GET',
       credentials: 'same-origin',
-      headers: init.body === undefined ? undefined : { 'Content-Type': 'application/json' },
-      body: init.body === undefined ? undefined : JSON.stringify(init.body),
+      headers: init.body === undefined || init.body instanceof FormData ? undefined : { 'Content-Type': 'application/json' },
+      body: init.body === undefined ? undefined : init.body instanceof FormData ? init.body : JSON.stringify(init.body),
       signal: controller.signal,
     });
   } catch (error) {

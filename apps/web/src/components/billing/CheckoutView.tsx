@@ -264,17 +264,17 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ navigate }) => {
 
   return (
     <div className="flex-1 bg-background py-12 sm:py-16">
-      <Container className="max-w-5xl">
+      <Container className="max-w-5xl px-2 min-[360px]:px-4 sm:px-6 lg:px-8">
         <button type="button" className="text-sm font-medium text-primary hover:underline" onClick={() => navigate('/pricing')}>← All plans</button>
         <h1 className="mt-3 font-display text-4xl font-semibold tracking-[-0.04em] text-text">Checkout</h1>
 
         {loadError ? (
           <p role="alert" className="mt-8 rounded-medium bg-danger-surface px-4 py-3 text-sm text-danger">{loadError}</p>
         ) : (
-          <div className="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-            <form onSubmit={review} noValidate className="space-y-4">
+          <div className="mt-8 grid grid-cols-1 items-start gap-6 sm:gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+            <form onSubmit={review} noValidate className="order-2 min-w-0 space-y-4 lg:order-1">
               <Honeypot {...guard.honeypotProps} />
-              <Card padding="lg" className="space-y-4">
+              <Card padding="lg" className="min-w-0 space-y-4 p-4 sm:p-8">
                 <h2 className="font-display text-xl font-semibold text-text">Your details</h2>
                 <p className="-mt-2 text-sm text-text-subtle">This email and password become your workspace login. After payment we email a link to confirm the address.</p>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -325,7 +325,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ navigate }) => {
                 </div>
                 <label className="flex items-start gap-3 text-sm text-text">
                   <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[var(--color-primary)]" checked={form.consent} onChange={(e) => set('consent', e.target.checked)} {...fieldProps('consent')} />
-                  <span>I agree to the terms of service and to Bolega India contacting me about my account.</span>
+                  <span>I agree to the <a href="/terms" target="_blank" rel="noreferrer" className="underline">terms of service</a> and <a href="/privacy" target="_blank" rel="noreferrer" className="underline">privacy policy</a>, and to Bolega India contacting me about my account.</span>
                 </label>
                 {fieldError('consent')}
               </Card>
@@ -339,7 +339,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ navigate }) => {
               <p className="text-center text-xs text-text-subtle">Payments are processed securely by Razorpay. We never see your card details.</p>
             </form>
 
-            <Card padding="lg" className="lg:sticky lg:top-24">
+            <Card padding="lg" className="order-1 min-w-0 p-4 sm:p-8 lg:order-2 lg:sticky lg:top-24">
               {!plan || !quote ? (
                 <div className="h-64 animate-pulse rounded-medium bg-surface-sunken" />
               ) : (
@@ -366,19 +366,18 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ navigate }) => {
                   </div>
 
                   {plans.length > 1 ? (
-                    <fieldset className="mt-3 space-y-2" disabled={paying}>
+                    <fieldset className="mt-3 min-w-0 space-y-2" disabled={paying}>
                       <legend className="sr-only">Plan</legend>
                       {plans.filter((p) => p.price[currency] > 0).map((p) => (
                         <label
                           key={p.slug}
-                          className={`flex cursor-pointer items-center justify-between gap-3 rounded-medium border px-3.5 py-2.5 text-sm transition-colors ${p.slug === (slug || plan.slug) ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}`}
+                          className={`grid min-w-0 grid-cols-[minmax(0,1fr)_auto] cursor-pointer items-center gap-2 rounded-medium border px-3 py-2.5 text-sm transition-colors ${p.slug === (slug || plan.slug) ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'}`}
                         >
-                          <span className="flex items-center gap-2.5">
-                            <input type="radio" name="co-plan" className="h-4 w-4 accent-(--color-primary)" checked={p.slug === (slug || plan.slug)} onChange={() => choosePlan(p.slug, currency)} />
-                            <span className="font-semibold text-text">{p.name}</span>
-                            {p.featured && <span className="rounded-pill bg-accent-lime px-2 py-0.5 text-[10px] font-bold uppercase text-text">Popular</span>}
+                          <span className="flex min-w-0 items-center gap-2">
+                            <input type="radio" name="co-plan" className="h-4 w-4 shrink-0 accent-(--color-primary)" checked={p.slug === (slug || plan.slug)} onChange={() => choosePlan(p.slug, currency)} />
+                            <span className="min-w-0 break-words font-semibold text-text">{p.name}{p.featured && <span className="ml-1.5 inline-block rounded-pill bg-accent-lime px-1.5 py-0.5 align-middle text-[9px] font-bold uppercase text-text">Popular</span>}</span>
                           </span>
-                          <span className="text-text-subtle">{formatMoney(p.price[currency], currency)}/mo</span>
+                          <span className="shrink-0 whitespace-nowrap text-xs text-text-subtle sm:text-sm">{formatMoney(p.price[currency], currency)}/mo</span>
                         </label>
                       ))}
                     </fieldset>
@@ -407,12 +406,12 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ navigate }) => {
                       </div>
                     ) : (
                       <form
-                        className="flex gap-2"
+                        className="flex min-w-0 gap-2"
                         onSubmit={(e) => { e.preventDefault(); if (coupon.trim()) void applyCoupon(coupon.trim()); }}
                       >
                         <label className="sr-only" htmlFor="co-coupon">Coupon code</label>
-                        <Input id="co-coupon" maxLength={LIMITS.couponCode.max} value={coupon} onChange={(e) => { setCoupon(e.target.value.toUpperCase()); setCouponError(''); }} placeholder="Coupon code" aria-invalid={couponError ? true : undefined} />
-                        <Button type="submit" variant="secondary" disabled={applying || !coupon.trim()}>{applying ? 'Checking…' : 'Apply'}</Button>
+                        <Input className="min-w-0 flex-1" id="co-coupon" maxLength={LIMITS.couponCode.max} value={coupon} onChange={(e) => { setCoupon(e.target.value.toUpperCase()); setCouponError(''); }} placeholder="Coupon code" aria-invalid={couponError ? true : undefined} />
+                        <Button type="submit" variant="secondary" className="shrink-0" disabled={applying || !coupon.trim()}>{applying ? 'Checking…' : 'Apply'}</Button>
                       </form>
                     )}
                     {couponError && <p role="alert" className="mt-2 text-xs text-danger">{couponError}</p>}

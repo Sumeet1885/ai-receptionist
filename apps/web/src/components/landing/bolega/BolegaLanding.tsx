@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import './landing.css';
 import { HeroSection } from './HeroSection';
 import { ContactCta, LandingFooter, LanguageWall, LeadStorySection, QuestionsSection } from './InteractiveSections';
@@ -12,6 +12,7 @@ const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
 interface BolegaLandingProps {
   navigate: (path: string) => void;
   signedIn: boolean;
+  userMenu?: ReactNode;
 }
 
 /**
@@ -19,7 +20,7 @@ interface BolegaLandingProps {
  * The reference page also contains a scripted call demo, a scroll story and a film strip; its approved
  * stylesheet hides them (`display: none !important`), so they are not rendered here.
  */
-export function BolegaLanding({ navigate, signedIn }: BolegaLandingProps) {
+export function BolegaLanding({ navigate, signedIn, userMenu }: BolegaLandingProps) {
   const [motionPaused, setMotionPaused] = useState(() => window.matchMedia(REDUCED_MOTION).matches);
   const [recordingActive, setRecordingActive] = useState(false);
 
@@ -60,7 +61,7 @@ export function BolegaLanding({ navigate, signedIn }: BolegaLandingProps) {
     <LandingProvider motionPaused={motionPaused}>
       <div className={className}>
         <AmbientStickers />
-        <LandingNav navigate={navigate} signedIn={signedIn} />
+        <LandingNav navigate={navigate} signedIn={signedIn} userMenu={userMenu} />
         <main>
           <HeroSection onSpeakingChange={setRecordingActive} />
           <Ticker />

@@ -24,6 +24,8 @@ async function bootstrap(): Promise<void> {
   const { billingPublicRoutes, billingAdminRoutes, razorpayWebhook, startCheckoutReminders } = await import('./modules/billing');
   const { notificationAdminRoutes } = await import('./modules/notifications');
   const { customerAdminRoutes } = await import('./modules/customers');
+  const { supportPublicRoutes, supportCustomerRoutes, supportAdminRoutes } = await import('./modules/support/routes');
+  const { startSupportRetention } = await import('./modules/support/retention');
   const { routeUpgrades }      = await import('./utils/upgradeRouter');
   const { dograhRoutes, phoneToolsRoutes, campaignRoutes, startCallPoller, startCampaign } =
     await import('./modules/phone-calls');
@@ -67,6 +69,9 @@ async function bootstrap(): Promise<void> {
   app.use('/api/admin/notifications', notificationAdminRoutes);
   app.use('/api/admin/customers', customerAdminRoutes);
   app.use('/api/account',  accountRoutes);
+  app.use('/api/public/support', supportPublicRoutes);
+  app.use('/api/support', supportCustomerRoutes);
+  app.use('/api/admin/support', supportAdminRoutes);
 
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok', geminiGuard: geminiGuard.getStatus() });
@@ -122,6 +127,7 @@ async function bootstrap(): Promise<void> {
 
   startCallPoller(supabase);
   startCheckoutReminders();
+  startSupportRetention();
   await resumeRunningCampaigns(supabase, startCampaign);
 }
 

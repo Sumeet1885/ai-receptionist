@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrandLogo } from '../ui/brand-logo';
+import { openSupport } from '../../lib/supportDrawer';
 
 interface FooterProps {
   showToast: (message: string) => void;
@@ -13,9 +14,10 @@ export const Footer: React.FC<FooterProps> = ({ showToast }: FooterProps) => {
         <p className="text-center md:text-left">© 2026 Bolega India · bolegaindia.ai</p>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4">
-        <span className="cursor-pointer transition duration-200 hover:text-text">Terms</span>
+        <button type="button" onClick={() => openSupport({ view: 'new' })} className="transition hover:text-text">Contact support</button>
+        <a href="/terms" className="transition duration-200 hover:text-text">Terms</a>
         <span className="hidden sm:inline" aria-hidden="true">•</span>
-        <span className="cursor-pointer transition duration-200 hover:text-text">Privacy</span>
+        <a href="/privacy" className="transition duration-200 hover:text-text">Privacy</a>
         <span className="hidden sm:inline" aria-hidden="true">•</span>
         <span className="cursor-pointer transition duration-200 hover:text-text" onClick={() => showToast("Webhook simulated successfully")}>API Status</span>
       </div>

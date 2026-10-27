@@ -3,6 +3,7 @@ import { EventEmitter } from 'node:events';
 // In-process bus for realtime admin-console updates (the API runs as one container). Events carry
 // ids and a status only; the console re-fetches details through the authorized REST routes.
 export type AdminEvent =
+  | { type: 'support.updated'; id: string }
   | { type: 'access_request.created'; id: string }
   | { type: 'access_request.updated'; id: string; status: string }
   | { type: 'billing_order.updated'; id: string; status: string };

@@ -12,6 +12,7 @@ import { Notifications } from './pages/Notifications';
 import { Plans } from './pages/Plans';
 import { Revenue } from './pages/Revenue';
 import { SignupLeads } from './pages/SignupLeads';
+import { Support } from './pages/Support';
 import { usePage } from './router';
 import { Shell } from './Shell';
 import { ToastProvider } from './toast';
@@ -58,6 +59,7 @@ export default function App() {
           : page === 'revenue' ? <Revenue />
           : page === 'leads' ? <SignupLeads />
           : page === 'notifications' ? <Notifications roles={view.session.roles} />
+          : page === 'support' ? <Support roles={view.session.roles} />
           : <Overview session={view.session} />}
       </Shell>
     </ToastProvider>

@@ -10,6 +10,29 @@ export interface EmailContent {
 }
 
 const BRAND = 'Bolega India';
+
+export function supportNotice(input: { number: string; url: string; created: boolean }): EmailContent {
+  return {
+    subject: `${input.created ? 'Support request received' : 'Support request updated'}: ${input.number}`,
+    ...render({
+      preview: input.created ? 'Your support request has been received.' : 'There is an update to your support request.',
+      label: 'Customer support', heading: input.created ? 'We received your request' : 'Your support request has an update',
+      paragraphs: [input.created ? 'Our team will review your request. You can follow the conversation and reply from your support ticket.' : input.url ? 'Open your ticket to read the update and reply to our support team.' : 'Use the private ticket link in your original confirmation email to read the update and reply.'],
+      details: [['Ticket', input.number]],
+      action: input.url ? { label: 'View support ticket', url: input.url } : undefined,
+      footnote: input.created ? 'Keep your ticket link private. Guest links expire after 180 days.' : undefined,
+      reason: 'You received this email because a support request was submitted using this address.',
+    }),
+  };
+}
+
+export function supportAdminAlert(input: { number: string; subject: string; category: string; url: string }): EmailContent {
+  return { subject: `New support ticket: ${input.number}`, ...render({
+    preview: 'A new support ticket needs review.', label: 'Support alert', heading: 'New support request',
+    paragraphs: ['Open the admin console to review and respond.'], details: [['Ticket', input.number], ['Subject', input.subject], ['Category', input.category]],
+    action: { label: 'Review ticket', url: input.url }, internal: true,
+  }) };
+}
 // Hosted by the web app; mail clients that block images show the alt text instead.
 const LOGO_URL = () => `${config.clientUrl}/bolegaindia/brand/bolegaindia-logo.png`;
 

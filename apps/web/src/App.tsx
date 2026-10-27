@@ -15,8 +15,12 @@ import { useChat } from './hooks/useChat';
 import { Toast } from './components/common/Toast';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
+import { UserMenu } from './components/layout/UserMenu';
 
 import { OnboardingView } from './components/onboarding/OnboardingView';
+import { SupportDrawer } from './components/support/SupportDrawer';
+import { openSupport } from './lib/supportDrawer';
+import { LegalView } from './components/legal/LegalView';
 import { DeploymentSuccessModal } from './components/onboarding/DeploymentSuccessModal';
 import { PublicChatView } from './components/chat/PublicChatView';
 import { AuthView } from './components/auth/AuthView';
@@ -47,6 +51,11 @@ type AppRoute =
   | { name: 'request-access' }
   | { name: 'pricing' }
   | { name: 'checkout' }
+  | { name: 'support' }
+  | { name: 'contact-support' }
+  | { name: 'support-guest-ticket' }
+  | { name: 'privacy' }
+  | { name: 'terms' }
   | { name: 'dashboard' }
   | { name: 'leads' }
   | { name: 'inbox' }
@@ -67,6 +76,11 @@ const PAGE_TITLES: Partial<Record<AppRoute['name'], string>> = {
   'request-access': 'Request free access',
   pricing: 'Pricing',
   checkout: 'Checkout',
+  support: 'Support',
+  'contact-support': 'Contact support',
+  'support-guest-ticket': 'Support ticket',
+  privacy: 'Privacy Policy',
+  terms: 'Terms & Conditions',
   dashboard: 'Dashboard',
   leads: 'Leads',
   inbox: 'Inbox',
@@ -109,6 +123,11 @@ function parseRoute(): AppRoute {
   if (path === '/request-access') return { name: 'request-access' };
   if (path === '/pricing') return { name: 'pricing' };
   if (path === '/checkout') return { name: 'checkout' };
+  if (path === '/support') return { name: 'support' };
+  if (path === '/contact-support') return { name: 'contact-support' };
+  if (path === '/contact-support/ticket') return { name: 'support-guest-ticket' };
+  if (path === '/privacy' || path === '/privacy-policy') return { name: 'privacy' };
+  if (path === '/terms' || path === '/terms-and-conditions') return { name: 'terms' };
   if (path === '/dashboard') return { name: 'dashboard' };
   if (path === '/leads') return { name: 'leads' };
   if (path === '/inbox') return { name: 'inbox' };
@@ -128,12 +147,12 @@ function parseRoute(): AppRoute {
 }
 
 function isProtectedRoute(route: AppRoute) {
-  return !['landing', 'auth', 'auth-confirm', 'request-access', 'pricing', 'checkout', 'public-chat'].includes(route.name);
+  return !['landing', 'auth', 'auth-confirm', 'request-access', 'pricing', 'checkout', 'public-chat', 'contact-support', 'support-guest-ticket', 'privacy', 'terms'].includes(route.name);
 }
 
 // Routes a signed-in user may see before finishing activation (verify email, set password).
 function isOpenBeforeActivation(route: AppRoute) {
-  return ['landing', 'public-chat', 'auth-confirm', 'request-access', 'pricing', 'checkout'].includes(route.name)
+  return ['landing', 'public-chat', 'auth-confirm', 'request-access', 'pricing', 'checkout', 'support', 'contact-support', 'support-guest-ticket', 'privacy', 'terms'].includes(route.name)
     || (route.name === 'auth' && route.mode === 'reset');
 }
 
@@ -163,6 +182,11 @@ export default function App() {
   const [leadAgentFilter, setLeadAgentFilter] = useState<string | 'all'>('all');
 
   const navigate = (path: string, replace = false) => {
+    const destination = new URL(path, window.location.origin);
+    if (destination.pathname === '/support' || destination.pathname === '/contact-support') {
+      openSupport({ view: destination.pathname === '/support' ? 'tickets' : 'new', ticketId: destination.searchParams.get('ticket') || '' });
+      return;
+    }
     if (replace) {
       window.history.replaceState({}, '', path);
     } else {
@@ -170,6 +194,17 @@ export default function App() {
     }
     setRoute(parseRoute());
   };
+
+  useEffect(() => {
+    if (authLoading || !['support', 'contact-support', 'support-guest-ticket'].includes(route.name)) return;
+    const view = route.name === 'support-guest-ticket' ? 'guest-ticket' : route.name === 'support' ? 'tickets' : 'new';
+    const ticketId = new URLSearchParams(window.location.search).get('ticket') || '';
+    const token = new URLSearchParams(window.location.hash.slice(1)).get('token') || '';
+    window.history.replaceState({}, '', user && account.stage === 'active' ? '/dashboard' : '/');
+    setRoute(parseRoute());
+    // The global drawer stays mounted when the background route changes.
+    openSupport({ view, ticketId, token });
+  }, [route.name, authLoading]);
 
   const legacySetView = (view: string) => {
     const map: Record<string, string> = {
@@ -233,6 +268,7 @@ export default function App() {
       if (route.name === 'auth' && route.mode === 'reset') return;
 
       if (stage === 'onboarding') {
+        if (['support', 'contact-support', 'support-guest-ticket', 'privacy', 'terms'].includes(route.name)) return;
         if (route.name !== 'agent-new' && route.name !== 'landing' && route.name !== 'public-chat') {
           navigate('/agents/new', true);
         }
@@ -434,7 +470,7 @@ export default function App() {
 
       {route.name === 'landing' ? (
         <React.Suspense fallback={<div className="min-h-screen bg-background" aria-busy="true" />}>
-          <BolegaLanding navigate={navigate} signedIn={Boolean(user)} />
+          <BolegaLanding navigate={navigate} signedIn={Boolean(user)} userMenu={user ? <UserMenu email={user.email} navigate={navigate} signOut={() => { void signOut().then(() => navigate('/')).catch(() => showToast('Could not sign out. Please try again.', 'error')); }} /> : undefined} />
         </React.Suspense>
       ) : (
       <main className="flex-1 flex flex-col min-h-0">
@@ -462,6 +498,8 @@ export default function App() {
         {route.name === 'pricing' && <PricingView navigate={navigate} />}
 
         {route.name === 'checkout' && <CheckoutView navigate={navigate} />}
+        {route.name === 'privacy' && <LegalView type="privacy" navigate={navigate} />}
+        {route.name === 'terms' && <LegalView type="terms" navigate={navigate} />}
 
         {route.name === 'auth-confirm' && <AuthConfirmView navigate={navigate} />}
 
@@ -648,6 +686,8 @@ export default function App() {
       )}
 
       {!isStandaloneChat && !isAuthScreen && route.name !== 'landing' && route.name !== 'agent-new' && <Footer showToast={(msg) => showToast(msg, 'success')} />}
+
+      {!isStandaloneChat && <SupportDrawer signedIn={Boolean(user)} navigate={navigate} />}
 
       {newlyCreatedBotId && (
         <DeploymentSuccessModal

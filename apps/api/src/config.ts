@@ -46,6 +46,11 @@ export const config = {
     region: (process.env.AWS_REGION || 'ap-south-1').trim(),
     // Development SES role; staging/production use the instance role (see src/aws/credentials.ts).
     sesRoleArn: (process.env.AWS_SES_ROLE_ARN || '').trim(),
+    s3RoleArn: (process.env.AWS_S3_ROLE_ARN || '').trim(),
+  },
+  s3: {
+    bucket: (process.env.S3_BUCKET_NAME || '').trim(),
+    region: (process.env.AWS_S3_REGION || process.env.AWS_REGION || 'ap-south-1').trim(),
   },
   email: {
     // Verified SES sender. Without it, development logs emails instead of sending them.

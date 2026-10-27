@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { useEffect, useRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { LIMITS } from '@ai-receptionist/contracts';
 import type { AccessRequestStatus } from './api';
 
@@ -121,10 +121,31 @@ export function Toggle({ checked, onChange, label, description }: { checked: boo
 
 /** Right-hand panel for create/edit forms. */
 export function Drawer({ title, subtitle, onClose, children, footer }: { title: string; subtitle?: string; onClose: () => void; children: ReactNode; footer: ReactNode }) {
+  const panel = useRef<HTMLDivElement>(null);
+  const close = useRef(onClose);
+  close.current = onClose;
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    panel.current?.focus();
+    const key = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close.current(); }
+      if (event.key !== 'Tab') return;
+      const controls = Array.from(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]') || []).filter((element) => element.getClientRects().length);
+      const first = controls[0]; const last = controls.at(-1);
+      if (!first) { event.preventDefault(); return; }
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === panel.current)) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && (document.activeElement === last || document.activeElement === panel.current)) { event.preventDefault(); first.focus(); }
+    };
+    panel.current?.addEventListener('keydown', key);
+    const element = panel.current;
+    return () => { element?.removeEventListener('keydown', key); document.body.style.overflow = overflow; if (previous?.isConnected) previous.focus(); };
+  }, []);
   return (
     <div className="fixed inset-0 z-40 flex justify-end" role="dialog" aria-modal="true" aria-label={title}>
       <button type="button" aria-label="Close" className="absolute inset-0 bg-ink/30" onClick={onClose} />
-      <div className="relative flex h-full w-full max-w-xl flex-col bg-surface shadow-2xl">
+      <div ref={panel} tabIndex={-1} className="relative flex h-full w-full max-w-xl flex-col bg-surface shadow-2xl outline-none">
         <div className="border-b border-line px-6 py-5">
           <h2 className="font-display text-xl font-bold">{title}</h2>
           {subtitle && <p className="mt-0.5 text-sm text-subtle">{subtitle}</p>}

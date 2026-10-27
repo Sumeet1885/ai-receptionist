@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BrandLogo } from '../ui/brand-logo';
 import { Button } from '../ui/button';
+import { UserMenu } from './UserMenu';
 
 interface HeaderProps {
   routeName: string;
@@ -16,7 +17,7 @@ const authedNav = [
   { label: 'Calendar', path: '/calendar', key: 'calendar' },
   { label: 'Calls', path: '/calls', key: 'calls' },
   { label: 'Agents', path: '/agents', key: 'agents' },
-  { label: 'Plans', path: '/plans', key: 'plans' }
+  { label: 'Plans', path: '/plans', key: 'plans' },
 ];
 
 // Signed-out pages (pricing, checkout, sign in, request access).
@@ -104,12 +105,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       <div className="flex items-center gap-2 sm:gap-4">
         {user ? (
-          <div className="hidden 2xl:flex items-center gap-3">
-            <span className="max-w-[200px] truncate text-sm text-text-subtle">{user.email}</span>
-            <Button variant="secondary" size="md" className="text-base" onClick={handleSignOut}>
-              Sign out
-            </Button>
-          </div>
+          <UserMenu email={user.email} navigate={navigate} signOut={() => void handleSignOut()} />
         ) : (
           <div className="hidden 2xl:flex items-center gap-2">
             {actions.signIn && (

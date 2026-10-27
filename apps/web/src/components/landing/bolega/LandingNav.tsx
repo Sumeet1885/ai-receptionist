@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { BrandLogo } from '../../ui/brand-logo';
 import { AppLink } from './AppLink';
 
@@ -12,9 +12,10 @@ const sections = [
 interface LandingNavProps {
   navigate: (path: string) => void;
   signedIn: boolean;
+  userMenu?: ReactNode;
 }
 
-export function LandingNav({ navigate, signedIn }: LandingNavProps) {
+export function LandingNav({ navigate, signedIn, userMenu }: LandingNavProps) {
   const [scrolled, setScrolled] = useState(false);
   const [progress, setProgress] = useState(0);
   const [active, setActive] = useState<string | null>(null);
@@ -99,9 +100,9 @@ export function LandingNav({ navigate, signedIn }: LandingNavProps) {
           </AppLink>
         </nav>
         <div className="nav-actions">
-          <AppLink className="btn light nav-signin" to={secondary.to} navigate={navigate}>
+          {userMenu || <AppLink className="btn light nav-signin" to={secondary.to} navigate={navigate}>
             {secondary.label}
-          </AppLink>
+          </AppLink>}
           <AppLink className="btn" to={primary.to} navigate={navigate}>
             {primary.label}
           </AppLink>

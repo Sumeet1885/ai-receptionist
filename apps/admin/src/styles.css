@@ -42,3 +42,15 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 :focus-visible { outline: 2px solid var(--color-orange); outline-offset: 2px; }
+
+/* Interactive controls throughout the admin console use the same cursor affordance. */
+button:not(:disabled), a[href], select:not(:disabled), summary,
+[role="button"]:not([aria-disabled="true"]), [role="tab"]:not([aria-disabled="true"]),
+input[type="checkbox"]:not(:disabled), input[type="radio"]:not(:disabled),
+input[type="file"]:not(:disabled)::file-selector-button,
+label:has(input[type="checkbox"]:not(:disabled)),
+label:has(input[type="radio"]:not(:disabled)) {
+  cursor: pointer;
+}
+button:disabled, select:disabled, input:disabled, textarea:disabled,
+[aria-disabled="true"] { cursor: not-allowed; }
