@@ -120,6 +120,21 @@ export async function getAccessRequest(id: string) {
   );
 }
 
+export async function findLatestProvisionedRequestByEmail(email: string) {
+  return check(
+    await supabase
+      .from('access_requests')
+      .select('*')
+      .eq('email', email)
+      .eq('status', 'approved')
+      .not('provisioned_user_id', 'is', null)
+      .order('provisioned_at', { ascending: false })
+      .limit(1)
+      .maybeSingle<AccessRequestRow>(),
+    'find provisioned access request',
+  );
+}
+
 export async function findLatestRequestForUser(userId: string) {
   return check(
     await supabase

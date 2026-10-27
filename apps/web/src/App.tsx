@@ -6,6 +6,8 @@ import { defaultWidgetConfig, mergeWidgetConfig } from './lib/widgetConfig';
 import { BUSINESS_TEMPLATES } from './lib/businessTemplates';
 import { getLeadRefreshInterval } from './lib/leadQuery';
 import { useAuth } from './hooks/useAuth';
+import { useAccountState } from './hooks/useAccountState';
+import { accountApi } from './lib/accountApi';
 import { useBots } from './hooks/useBots';
 import { useLeads } from './hooks/useLeads';
 import { useChat } from './hooks/useChat';
@@ -19,6 +21,8 @@ import { DeploymentSuccessModal } from './components/onboarding/DeploymentSucces
 import { PublicChatView } from './components/chat/PublicChatView';
 import { AuthView } from './components/auth/AuthView';
 import { RequestAccessView } from './components/auth/RequestAccessView';
+import { AuthConfirmView } from './components/auth/AuthConfirmView';
+import { AccountStageView } from './components/auth/AccountStageView';
 import { PostLoginShell } from './components/dashboard/PostLoginShell';
 import { DashboardHome } from './components/dashboard/DashboardHome';
 import { LeadsWorkspace } from './components/dashboard/LeadsWorkspace';
@@ -36,7 +40,8 @@ type AgentTab = 'overview' | 'knowledge' | 'install' | 'crm' | 'preview';
 
 type AppRoute =
   | { name: 'landing' }
-  | { name: 'auth'; mode: 'signin' | 'signup' | 'forgot' | 'reset' }
+  | { name: 'auth'; mode: 'signin' | 'forgot' | 'reset' | 'resend' }
+  | { name: 'auth-confirm' }
   | { name: 'request-access' }
   | { name: 'dashboard' }
   | { name: 'leads' }
@@ -59,6 +64,9 @@ function parseRoute(): AppRoute {
   const chatMatch = path.match(/^\/chats\/([^/]+)/);
   if (chatMatch) return { name: 'public-chat', subdomain: decodeURIComponent(chatMatch[1]) };
 
+  // Emailed activation / verification / reset links (checked before the recovery heuristics below).
+  if (path === '/auth/confirm') return { name: 'auth-confirm' };
+
   const isRecovery =
     hash.includes('type=recovery') ||
     params.get('type') === 'recovery' ||
@@ -67,9 +75,11 @@ function parseRoute(): AppRoute {
 
   if (path === '/auth' || isRecovery) {
     const modeParam = params.get('mode');
-    let mode: 'signin' | 'signup' | 'forgot' | 'reset' = 'signin';
-    if (modeParam === 'signup') mode = 'signup';
-    else if (modeParam === 'forgot') mode = 'forgot';
+    // No self-signup any more: old "sign up" links lead to the access request form.
+    if (modeParam === 'signup') return { name: 'request-access' };
+    let mode: 'signin' | 'forgot' | 'reset' | 'resend' = 'signin';
+    if (modeParam === 'forgot') mode = 'forgot';
+    else if (modeParam === 'resend') mode = 'resend';
     else if (modeParam === 'reset' || isRecovery) mode = 'reset';
     return { name: 'auth', mode };
   }
@@ -93,8 +103,16 @@ function parseRoute(): AppRoute {
 }
 
 function isProtectedRoute(route: AppRoute) {
-  return !['landing', 'auth', 'request-access', 'public-chat'].includes(route.name);
+  return !['landing', 'auth', 'auth-confirm', 'request-access', 'public-chat'].includes(route.name);
 }
+
+// Routes a signed-in user may see before finishing activation (verify email, set password).
+function isOpenBeforeActivation(route: AppRoute) {
+  return ['landing', 'public-chat', 'auth-confirm', 'request-access'].includes(route.name)
+    || (route.name === 'auth' && route.mode === 'reset');
+}
+
+const BLOCKING_STAGES = ['not_provisioned', 'suspended', 'verify_email', 'set_password'] as const;
 
 export default function App() {
   const [route, setRoute] = useState<AppRoute>(() => parseRoute());
@@ -103,6 +121,7 @@ export default function App() {
   const toastTimerRef = useRef<number | null>(null);
 
   const { user, loading: authLoading, signOut } = useAuth();
+  const account = useAccountState(user?.id ?? null);
   const { bots, setBots, activeBotId, setActiveBotId, fetchBots, createBot, updateBot, deleteBot } = useBots();
   const { leads, setLeads, fetchLeads } = useLeads();
   const chat = useChat();
@@ -131,7 +150,8 @@ export default function App() {
     const map: Record<string, string> = {
       landing: '/',
       'auth-signin': '/auth?mode=signin',
-      'auth-signup': '/auth?mode=signup',
+      'auth-signup': '/request-access',
+      'request-access': '/request-access',
       onboarding: '/agents/new',
       dashboard: '/dashboard',
       'public-chat': '/dashboard'
@@ -172,27 +192,26 @@ export default function App() {
     if (authLoading) return;
 
     if (user) {
+      // Resume the user at their current step: onboarding stays on "create your receptionist"
+      // until it is done; activated users leave the sign-in pages for the dashboard.
+      const stage = account.stage;
+      if (stage !== 'onboarding' && stage !== 'active') return;
+
       fetchBots(user.id);
       fetchLeads();
-      if (route.name === 'auth' || route.name === 'landing') {
-        if (route.name === 'auth' && route.mode === 'reset') {
-          return;
-        }
+      if (route.name === 'auth' && route.mode === 'reset') return;
 
-        const justSignedUp = localStorage.getItem('just_signed_up') === 'true' ||
-          (user.last_sign_in_at && user.created_at && Math.abs(new Date(user.last_sign_in_at).getTime() - new Date(user.created_at).getTime()) < 30000);
-
-        if (justSignedUp) {
-          localStorage.removeItem('just_signed_up');
+      if (stage === 'onboarding') {
+        if (route.name !== 'agent-new' && route.name !== 'landing' && route.name !== 'public-chat') {
           navigate('/agents/new', true);
-        } else if (route.name === 'auth') {
-          navigate('/dashboard', true);
         }
+      } else if (route.name === 'auth' || route.name === 'auth-confirm' || route.name === 'request-access') {
+        navigate('/dashboard', true);
       }
     } else if (isProtectedRoute(route)) {
       navigate('/', true);
     }
-  }, [user, authLoading, route]);
+  }, [user, authLoading, route, account.stage]);
 
   useEffect(() => {
     if (!user) return;
@@ -329,11 +348,27 @@ export default function App() {
       });
       setNewlyCreatedBotId(newBotId);
       showToast('Receptionist created. Your link is live.', 'success');
+      if (account.stage === 'onboarding') {
+        try {
+          account.setStage((await accountApi.completeOnboarding()).stage);
+        } catch {
+          showToast('Your receptionist is live, but we could not finish setup. Please refresh the page.', 'error');
+        }
+      }
       navigate('/dashboard');
     } catch (err: any) {
       showToast('Error creating bot: ' + (err?.message || 'Unknown error'), 'error');
     }
   };
+
+  const accountGate = user && !isOpenBeforeActivation(route)
+    ? account.error
+      ? 'error' as const
+      : (BLOCKING_STAGES as readonly string[]).includes(account.stage ?? '')
+        ? account.stage as (typeof BLOCKING_STAGES)[number]
+        : null
+    : null;
+  const accountLoading = Boolean(user) && !isOpenBeforeActivation(route) && account.loading && isProtectedRoute(route);
 
   const activeBot = bots.find(b => b.id === activeBotId) || (bots.length > 0 ? bots[0] : null);
   const routeBot = route.name === 'agent-detail' ? bots.find(b => b.id === route.botId) || activeBot : activeBot;
@@ -370,8 +405,16 @@ export default function App() {
         </React.Suspense>
       ) : (
       <main className="flex-1 flex flex-col min-h-0">
-        {authLoading && isProtectedRoute(route) ? (
+        {(authLoading && isProtectedRoute(route)) || accountLoading ? (
           <div className="flex-1 flex items-center justify-center text-brand-muted text-sm">Loading…</div>
+        ) : accountGate ? (
+          <AccountStageView
+            stage={accountGate}
+            email={user?.email}
+            onStageChange={account.setStage}
+            onRetry={() => void account.refresh()}
+            signOut={signOut}
+          />
         ) : <>
         {route.name === 'auth' && (
           <AuthView
@@ -382,6 +425,8 @@ export default function App() {
         )}
 
         {route.name === 'request-access' && <RequestAccessView navigate={navigate} />}
+
+        {route.name === 'auth-confirm' && <AuthConfirmView navigate={navigate} />}
 
         {route.name === 'agent-new' && (
           <OnboardingView

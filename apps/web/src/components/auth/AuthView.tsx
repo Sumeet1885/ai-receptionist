@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Icons } from '../common/Icons';
 import { BrandLogo } from '../ui/brand-logo';
 import { Button } from '../ui/button';
 import { Input, Label } from '../ui/field';
 import { Card } from '../ui/layout';
+import { Honeypot } from '../security/Honeypot';
+import { Turnstile } from '../security/Turnstile';
 import { supabase } from '../../lib/supabaseClient';
+import { accountApi } from '../../lib/accountApi';
+import { postPublic, usePublicFormGuard } from '../../lib/publicForm';
 
-export type AuthMode = 'signin' | 'signup' | 'forgot' | 'reset';
+// There is no self-signup: workspaces are created when staff approve an access request.
+export type AuthMode = 'signin' | 'forgot' | 'reset' | 'resend';
 
 interface AuthViewProps {
   setView: (view: string) => void;
@@ -22,6 +26,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
   const [loading, setLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
+  const guard = usePublicFormGuard();
 
   useEffect(() => {
     setMode(defaultMode);
@@ -50,16 +55,9 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
     
     setLoading(true);
     try {
-      if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
-        localStorage.setItem('just_signed_up', 'true');
-        showToast("Account created successfully! Check your email if verification is required.", "success");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        showToast("Signed in successfully!", "success");
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      showToast("Signed in successfully!", "success");
     } catch (err: any) {
       showToast(err.message, "error");
     } finally {
@@ -67,19 +65,19 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
     }
   };
 
-  const handleForgotPassword = async (e: React.FormEvent) => {
+  // Password reset and activation resend both email a one-time link through our API (SES).
+  const handleEmailLinkRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return showToast("Please enter your email address", "error");
+    if (!guard.captchaReady) return showToast("Please complete the security check", "error");
 
     setLoading(true);
     try {
-      const redirectTo = `${window.location.origin}/auth?mode=reset`;
-      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
-      if (error) throw error;
+      await postPublic(mode === 'resend' ? '/activation-resend' : '/password-reset', { email, ...guard.guardFields() });
       setResetSent(true);
-      showToast("Password reset link sent! Please check your email.", "success");
     } catch (err: any) {
-      showToast(err.message || "Failed to send reset link", "error");
+      showToast(err.message || "Failed to send the link", "error");
+      guard.resetChallenge();
     } finally {
       setLoading(false);
     }
@@ -89,7 +87,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
     e.preventDefault();
     if (!password) return showToast("Please enter a new password", "error");
     if (password !== confirmPassword) return showToast("Passwords do not match", "error");
-    if (password.length < 6) return showToast("Password must be at least 6 characters", "error");
+    if (password.length < 8) return showToast("Password must be at least 8 characters", "error");
 
     setLoading(true);
     try {
@@ -104,9 +102,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
         }
       }
 
-      // 2. Directly update user password using current recovery session
-      const { error } = await supabase.auth.updateUser({ password });
-      if (error) throw error;
+      // 2. Set the password through the API (same policy as activation; needs the recovery session)
+      await accountApi.setPassword(password);
 
       showToast("Password updated successfully! Welcome back.", "success");
       setPassword('');
@@ -124,35 +121,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
     }
   };
 
-  const handleOAuth = async (provider: 'google' | 'azure') => {
-    const redirectTo = window.location.origin;
-    if (provider === 'google') {
-      await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo,
-          scopes: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly',
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent'
-          }
-        }
-      });
-    } else {
-      await supabase.auth.signInWithOAuth({ 
-        provider,
-        options: {
-          redirectTo
-        }
-      });
-    }
-  };
-
   const titles: Record<AuthMode, { title: string; description: string }> = {
     signin: { title: 'Welcome back', description: 'Sign in to your Bolega India workspace.' },
-    signup: { title: 'Create your account', description: 'Set up your business persona and start your first campaign.' },
     forgot: { title: 'Reset password', description: 'Enter your account email to receive a password recovery link.' },
     reset: { title: 'Create a new password', description: 'Please choose a secure new password for your account.' },
+    resend: { title: 'Resend activation link', description: 'Enter the email from your access request to get a new activation link.' },
   };
 
   const backToSignIn = (
@@ -185,25 +158,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
             <p className="text-sm text-text-subtle">{titles[mode].description}</p>
           </div>
 
-          {(mode === 'signin' || mode === 'signup') && (
+          {mode === 'signin' && (
             <>
-              <div className="mb-6 space-y-3">
-                <Button variant="secondary" size="lg" className="w-full" onClick={() => handleOAuth('google')}>
-                  <Icons.Google />
-                  <span>Continue with Google</span>
-                </Button>
-                <Button variant="secondary" size="lg" className="w-full" onClick={() => handleOAuth('azure')}>
-                  <Icons.Microsoft />
-                  <span>Continue with Microsoft</span>
-                </Button>
-              </div>
-
-              <div className="mb-6 flex items-center gap-4">
-                <div className="h-px flex-1 bg-border" />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-subtle">or email</span>
-                <div className="h-px flex-1 bg-border" />
-              </div>
-
               <form onSubmit={handleEmailAuth} className="space-y-4">
                 <div>
                   <Label htmlFor="auth-email">Email address</Label>
@@ -220,58 +176,56 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
                 <div>
                   <div className="mb-1.5 flex items-center justify-between">
                     <Label htmlFor="auth-password" className="mb-0">Password</Label>
-                    {mode === 'signin' && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setResetSent(false);
-                          setMode('forgot');
-                        }}
-                        className="text-xs font-medium text-primary hover:underline"
-                      >
-                        Forgot password?
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResetSent(false);
+                        setMode('forgot');
+                      }}
+                      className="text-xs font-medium text-primary hover:underline"
+                    >
+                      Forgot password?
+                    </button>
                   </div>
                   <Input
                     id="auth-password"
                     type="password"
                     required
-                    autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+                    autoComplete="current-password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     placeholder="••••••••"
                   />
                 </div>
                 <Button type="submit" size="lg" className="mt-2 w-full" disabled={loading}>
-                  {loading ? 'Please wait…' : (mode === 'signin' ? 'Sign in' : 'Create account')}
+                  {loading ? 'Please wait…' : 'Sign in'}
                 </Button>
               </form>
 
-              <div className="mt-6 text-center text-sm text-text-subtle">
-                {mode === 'signin' ? (
-                  <p>Don&apos;t have an account? <button type="button" onClick={() => setMode('signup')} className="font-medium text-primary hover:underline">Sign up</button></p>
-                ) : (
-                  <p>Already have an account? <button type="button" onClick={() => setMode('signin')} className="font-medium text-primary hover:underline">Sign in</button></p>
-                )}
+              <div className="mt-6 space-y-2 text-center text-sm text-text-subtle">
+                <p>Don&apos;t have a workspace yet? <button type="button" onClick={() => setView('request-access')} className="font-medium text-primary hover:underline">Request free access</button></p>
+                <p>Approved but no activation email? <button type="button" onClick={() => { setResetSent(false); setMode('resend'); }} className="font-medium text-primary hover:underline">Resend it</button></p>
               </div>
             </>
           )}
 
-          {mode === 'forgot' && (
+          {(mode === 'forgot' || mode === 'resend') && (
             <div className="space-y-4">
               {resetSent ? (
                 <div role="status" className="space-y-2 rounded-medium border border-success/30 bg-success-surface p-4 text-center">
                   <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-success/15 text-lg font-bold text-success" aria-hidden="true">
                     ✓
                   </div>
-                  <h2 className="text-sm font-bold text-success">Recovery email sent</h2>
+                  <h2 className="text-sm font-bold text-success">{mode === 'resend' ? 'Activation email requested' : 'Recovery email sent'}</h2>
                   <p className="text-xs text-text">
-                    If an account exists for <span className="font-semibold">{email}</span>, you will receive a password reset link shortly.
+                    {mode === 'resend'
+                      ? <>If <span className="font-semibold">{email}</span> has a workspace waiting to be activated, a new activation link is on its way.</>
+                      : <>If an account exists for <span className="font-semibold">{email}</span>, you will receive a password reset link shortly.</>}
                   </p>
                 </div>
               ) : (
-                <form onSubmit={handleForgotPassword} className="space-y-4">
+                <form onSubmit={handleEmailLinkRequest} className="space-y-4">
+                  <Honeypot {...guard.honeypotProps} />
                   <div>
                     <Label htmlFor="auth-recovery-email">Account email</Label>
                     <Input
@@ -284,8 +238,9 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
                       placeholder="name@company.com"
                     />
                   </div>
+                  <Turnstile {...guard.turnstileProps} />
                   <Button type="submit" size="lg" className="w-full" disabled={loading}>
-                    {loading ? 'Sending link…' : 'Send reset link'}
+                    {loading ? 'Sending link…' : mode === 'resend' ? 'Send activation link' : 'Send reset link'}
                   </Button>
                 </form>
               )}
@@ -326,8 +281,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
                     autoComplete="new-password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    placeholder="At least 6 characters"
-                    minLength={6}
+                    placeholder="At least 8 characters"
+                    minLength={8}
                   />
                 </div>
                 <div>
@@ -340,7 +295,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
                     placeholder="Re-enter your new password"
-                    minLength={6}
+                    minLength={8}
                   />
                 </div>
                 <Button type="submit" size="lg" className="mt-2 w-full" disabled={loading}>

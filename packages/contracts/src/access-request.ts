@@ -86,15 +86,14 @@ export function validateAccessRequest(input: unknown):
   const industry = text(raw.industry);
   if (!(ACCESS_REQUEST_INDUSTRIES as readonly string[]).includes(industry)) errors.industry = 'Please choose your industry.';
 
+  // Scheme optional; host must have a dot. Stored as scheme://host[:port]/path.
   let website = text(raw.website);
   if (website) {
-    if (!/^https?:\/\//i.test(website)) website = `https://${website}`;
-    try {
-      const url = new URL(website);
-      if (!url.hostname.includes('.') || website.length > ACCESS_REQUEST_LIMITS.website) throw new Error();
-      website = url.toString();
-    } catch {
+    const match = /^(https?:\/\/)?([a-z0-9-]+(?:\.[a-z0-9-]+)+)(:\d{1,5})?(\/\S*)?$/i.exec(website);
+    if (!match || website.length > ACCESS_REQUEST_LIMITS.website) {
       errors.website = 'Please enter a valid website, like example.com.';
+    } else {
+      website = `${(match[1] || 'https://').toLowerCase()}${match[2].toLowerCase()}${match[3] ?? ''}${match[4] ?? '/'}`;
     }
   }
 
