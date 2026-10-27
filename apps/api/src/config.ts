@@ -44,7 +44,7 @@ export const config = {
   defaultPhoneNumber: (process.env.DEFAULT_PLATFORM_PHONE_NUMBER || process.env.PLATFORM_PHONE_NUMBER || '').trim(),
   aws: {
     region: (process.env.AWS_REGION || 'ap-south-1').trim(),
-    // Optional IAM role for SES; when set, the API assumes it (see src/aws/credentials.ts).
+    // Development SES role; staging/production use the instance role (see src/aws/credentials.ts).
     sesRoleArn: (process.env.AWS_SES_ROLE_ARN || '').trim(),
   },
   email: {

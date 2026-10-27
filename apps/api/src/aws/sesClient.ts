@@ -6,7 +6,7 @@ import { awsCredentialMode, awsCredentials } from './credentials';
 let client: SESv2Client | null = null;
 
 // SES v2 client, created on first use. The identity needs ses:SendEmail on the EMAIL_FROM identity
-// (instance role on EC2, or AWS_SES_ROLE_ARN when set; see ./credentials).
+// (instance role on EC2, or AWS_SES_ROLE_ARN in development; see ./credentials).
 export function getSesClient() {
   if (!client) {
     const region = config.email.region;
@@ -14,7 +14,13 @@ export function getSesClient() {
       region,
       credentials: awsCredentials(config.aws.sesRoleArn, 'bolegaindia-ses', region),
     });
-    logger.info('[aws] SES client ready', { region, credentials: awsCredentialMode(config.aws.sesRoleArn) });
+    const mode = awsCredentialMode(config.aws.sesRoleArn);
+    logger.info('[aws] SES client configured', {
+      region,
+      environment: config.environment,
+      credentials: mode,
+      roleArn: mode === 'assume-role' ? config.aws.sesRoleArn : undefined,
+    });
   }
   return client;
 }
