@@ -165,7 +165,7 @@ Passwords must never appear in SQL, migrations, shell history or git. Seeding is
 
 ```bash
 # from the repo root, with apps/api/.env pointing at the target project
-npm run staff:create -w apps/api -- --email ops@bolegaindia.ai --name "Ops" --role super_admin
+pnpm --filter @ai-receptionist/api staff:create --email ops@bolegaindia.ai --name "Ops" --role super_admin
 ```
 
 The script:
@@ -221,7 +221,7 @@ No new npm dependency is required.
 
 | Phase | Contents | Exit check |
 | --- | --- | --- |
-| 1 | Migration file, API module, seed scripts, admin login UI, tests | `npm run verify` passes; local login works against a **non-production** project after the migration is applied there by you |
+| 1 | Migration file, API module, seed scripts, admin login UI, tests | `pnpm verify` passes; local login works against a **non-production** project after the migration is applied there by you |
 | 2 | TOTP MFA + recovery codes; enforce for all staff | Login without second factor is impossible |
 | 3 | First real admin features (read-only tenant list, audit viewer) behind `requireStaffRole` | Every route has a role and an audit row |
 | — | Customer-side auth review (separate doc 04) | — |

@@ -195,9 +195,9 @@ read or written):
 
 ```bash
 cd ~/ai-receptionist/server
-npx supabase login
-npx supabase link --project-ref YOUR_PROJECT_REF
-npm run db:migrate
+pnpm exec supabase login
+pnpm exec supabase link --project-ref YOUR_PROJECT_REF
+pnpm db:migrate
 cd ~/ai-receptionist
 ```
 

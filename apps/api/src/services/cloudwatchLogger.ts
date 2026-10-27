@@ -10,8 +10,26 @@ export interface LogMetadata {
  * docker-compose-staging.yml) intercepts these stdout streams and sends them
  * directly to AWS CloudWatch without requiring in-process AWS SDK network calls.
  */
+// JSON for CloudWatch; a readable single line for local development. LOG_FORMAT overrides.
+// Images set NODE_ENV=production, so containers always log JSON even without DEPLOY_ENV.
+const LOG_FORMAT = process.env.LOG_FORMAT
+  || ((process.env.DEPLOY_ENV || 'development') === 'development' && process.env.NODE_ENV !== 'production' ? 'pretty' : 'json');
+
+function prettyValue(value: unknown) {
+  if (typeof value === 'string') return /\s/.test(value) ? JSON.stringify(value) : value;
+  return JSON.stringify(value);
+}
+
 class StandardLogger {
   private formatMessage(level: string, message: string, meta?: LogMetadata): string {
+    if (LOG_FORMAT === 'pretty') {
+      const time = new Date().toISOString().slice(11, 23);
+      const fields = Object.entries(meta || {})
+        .filter(([key, value]) => value !== undefined && key !== 'type')
+        .map(([key, value]) => `${key}=${prettyValue(value)}`)
+        .join(' ');
+      return `${time} ${level.padEnd(5)} ${message}${fields ? `  ${fields}` : ''}`;
+    }
     return JSON.stringify({
       timestamp: new Date().toISOString(),
       level,

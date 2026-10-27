@@ -18,16 +18,20 @@ jobs:
         with:
           ref: ${{ github.event.inputs.commit_sha }}
 
+      - name: Set up pnpm (version from package.json "packageManager")
+        uses: pnpm/action-setup@v4
+
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
+          cache: pnpm
 
       - name: Install dependencies (all workspaces)
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Typecheck and build (web, api, admin, contracts)
-        run: npx turbo run typecheck build
+        run: pnpm exec turbo run typecheck build
         env:
           # Vite bakes these into the client bundle at build time.
           # Add them as Variables (not Secrets) in GitHub → Settings → Secrets and Variables → Actions → Variables
@@ -37,7 +41,7 @@ jobs:
           VITE_WIDGET_BASE_URL: ${{ vars.VITE_WIDGET_BASE_URL }}
 
       - name: Check browser/server import boundaries
-        run: npm run check:boundaries
+        run: pnpm run check:boundaries
 
       - name: Summary
         run: |

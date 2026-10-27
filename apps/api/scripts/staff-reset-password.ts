@@ -1,7 +1,7 @@
 /**
  * Issue a new temporary password for a staff account, unlock it and sign out all its sessions.
  *
- *   npm run staff:reset-password -w apps/api -- --email ops@example.com --confirm-project <ref>
+ *   pnpm --filter @ai-receptionist/api staff:reset-password --email ops@example.com --confirm-project <ref>
  */
 import 'dotenv/config';
 import { parseArgs } from 'node:util';

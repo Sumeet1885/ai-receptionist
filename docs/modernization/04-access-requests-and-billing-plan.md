@@ -41,7 +41,7 @@ Pricing → minimal checkout form (name, email, phone, company, plan) behind the
 
 ## 2. Work packages (in order)
 
-Each package is one PR, with its own tests, and leaves `npm run verify` green. Migrations are written and reviewed; **you** apply them, to a non-production project first.
+Each package is one PR, with its own tests, and leaves `pnpm verify` green. Migrations are written and reviewed; **you** apply them, to a non-production project first.
 
 | # | Package | Contents | Needs from you |
 | --- | --- | --- | --- |
@@ -104,11 +104,11 @@ Known limit: the gate is enforced by the web app and the new API routes. Databas
 
 ## 7. Local test walkthrough
 
-Prerequisite: the migrations are applied to the project in `apps/api/.env`, and you have created a super admin (`npm run staff:create -w apps/api -- … --confirm-project <ref>`).
+Prerequisite: the migrations are applied to the project in `apps/api/.env`, and you have created a super admin (`pnpm --filter @ai-receptionist/api staff:create … --confirm-project <ref>`).
 
-> **Warning:** `npm run dev:api` starts the call poller and **resumes paused outbound campaigns** in whatever Supabase project `apps/api/.env` points at (audit S09). Check `call_campaigns` for `paused` rows first, or point the API at a non-production project.
+> **Warning:** `pnpm dev` / `pnpm dev:api` start the call poller and **resumes paused outbound campaigns** in whatever Supabase project `apps/api/.env` points at (audit S09). Check `call_campaigns` for `paused` rows first, or point the API at a non-production project.
 
-1. `npm run dev:api`, `npm run dev:web` (http://localhost:3000), `npm run dev:admin` (http://127.0.0.1:3001).
+1. `pnpm dev` (web http://127.0.0.1:3000, staff console http://127.0.0.1:3001, API http://localhost:4000, all logging into one terminal).
 2. Web → **Get started** → fill the request form (Turnstile appears) → "Request received"; the requester gets a confirmation email and staff get a notification email.
 3. Admin → sign in → the new request appears live (green "Live updates on" dot) → open it → **Approve and provision**.
 4. The requester's email has **Activate my workspace** → `/auth/confirm` → **Activate** → **Choose your password** → lands on **create your receptionist** (onboarding). Close the tab, sign in again: it resumes at the same step.

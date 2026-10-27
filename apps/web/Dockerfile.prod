@@ -17,14 +17,18 @@
 FROM node:20-alpine AS build
 WORKDIR /repo
 
-# Build context: repository root (npm workspaces). Every workspace manifest is copied so
-# `npm ci` can validate the shared lockfile.
-COPY package.json package-lock.json tsconfig.base.json ./
+# Same pnpm as package.json "packageManager" (installed with npm: the corepack bundled with
+# node:20 cannot verify current pnpm releases).
+RUN npm install -g pnpm@10.34.7
+
+# Build context: repository root (pnpm workspace). Every workspace manifest is copied so the
+# shared lockfile can be checked (--frozen-lockfile).
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 COPY apps/admin/package.json apps/admin/
 COPY packages/contracts/package.json packages/contracts/
-RUN npm ci -w @ai-receptionist/web
+RUN pnpm install --frozen-lockfile --filter "@ai-receptionist/web..."
 
 COPY packages/contracts packages/contracts
 COPY apps/web apps/web
@@ -37,7 +41,7 @@ ENV VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_fvHLCT-vSL2xPmhEzbVBiA__qYmKzey
 ENV VITE_EXPRESS_SERVER_URL=https://ai-receptionist.agilewaters.com
 ENV VITE_WIDGET_BASE_URL=https://ai-receptionist.agilewaters.com
 
-RUN npm run build -w @ai-receptionist/web
+RUN pnpm --filter @ai-receptionist/web build
 
 # ── Stage 2: Serve with Caddy ─────────────────────────────────────────────────
 # Caddy serves the built SPA and reverse-proxies /api/* and /widget/* to the api

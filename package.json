@@ -1,25 +1,21 @@
 {
   "name": "ai-receptionist-root",
   "private": true,
-  "packageManager": "npm@10.9.2",
+  "packageManager": "pnpm@10.34.7",
   "engines": {
     "node": ">=20.11 <23"
   },
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
-    "dev": "turbo run dev --env-mode=loose --filter=@ai-receptionist/web --filter=@ai-receptionist/api",
-    "dev:web": "turbo run dev --env-mode=loose --filter=@ai-receptionist/web",
-    "dev:api": "turbo run dev --env-mode=loose --filter=@ai-receptionist/api",
-    "dev:admin": "turbo run dev --env-mode=loose --filter=@ai-receptionist/admin",
+    "dev": "turbo run dev --env-mode=loose --ui=stream --log-order=stream --log-prefix=task --output-logs=full --filter=@ai-receptionist/web --filter=@ai-receptionist/api --filter=@ai-receptionist/admin",
+    "dev:web": "turbo run dev --env-mode=loose --ui=stream --filter=@ai-receptionist/web",
+    "dev:api": "turbo run dev --env-mode=loose --ui=stream --filter=@ai-receptionist/api",
+    "dev:admin": "turbo run dev --env-mode=loose --ui=stream --filter=@ai-receptionist/admin",
     "dev:functions": "supabase functions serve --no-verify-jwt",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "check:boundaries": "node scripts/check-boundaries.mjs",
-    "verify": "turbo run typecheck build && npm run check:boundaries && turbo run test",
+    "verify": "turbo run typecheck build && pnpm run check:boundaries && turbo run test",
     "db:migrate": "supabase db push",
     "deploy:functions": "supabase functions deploy chat-reply && supabase functions deploy analyze-lead"
   },

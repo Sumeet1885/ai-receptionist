@@ -14,6 +14,7 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    strictPort: false
+    // Fail instead of moving to another port: the API trusts this exact origin (CLIENT_URL).
+    strictPort: true
   }
 });

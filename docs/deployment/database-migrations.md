@@ -24,7 +24,7 @@ If earlier migrations were applied by pasting SQL into the dashboard, the databa
 
      ```bash
      # repeat for every timestamp that already exists in the database
-     npx supabase migration repair --status applied <timestamp> --db-url "<connection string>"
+     pnpm exec supabase migration repair --status applied <timestamp> --db-url "<connection string>"
      ```
 
      The timestamp is the number at the start of the file name, e.g. `20261027120000` for `20261027120000_staff_auth.sql`; legacy files use `001`, `002`, `003`, `004`.
@@ -47,8 +47,8 @@ Migrations are written to be additive (new tables/columns, `IF NOT EXISTS`). If 
 Use the same command with your own development project's connection string:
 
 ```bash
-npx supabase migration list --db-url "<connection string>"
-npx supabase db push --db-url "<connection string>"
+pnpm exec supabase migration list --db-url "<connection string>"
+pnpm exec supabase db push --db-url "<connection string>"
 ```
 
-`npm run db:migrate` still pushes to the CLI-linked project in `supabase/config.toml`, which is **not** the staging or production project. Prefer `--db-url` so the target is explicit.
+`pnpm db:migrate` still pushes to the CLI-linked project in `supabase/config.toml`, which is **not** the staging or production project. Prefer `--db-url` so the target is explicit.

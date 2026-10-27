@@ -88,7 +88,7 @@ The backup files contain secrets. Keep them only on the instance and delete them
 
 In GitHub → **Actions**, always choose **Use workflow from: `staging`** and enter `<SHA>`:
 
-1. **STAGING - Build project.** It must pass. It now runs `npm ci`, typecheck and build for all workspaces, plus the boundary check.
+1. **STAGING - Build project.** It must pass. It now runs `pnpm install --frozen-lockfile`, typecheck and build for all workspaces, plus the boundary check.
 2. **STAGING - Build and Push Docker Images.** It pushes `ai-receptionist-server-staging-<sha7>` and `ai-receptionist-client-staging-<sha7>`, the same names as always.
 3. Check §3.2 again (paused campaigns), then run **STAGING - Deploy via AWS SSM**. It updates `IMAGE_TAG_SERVER` / `IMAGE_TAG_CLIENT` in `.env`, runs `docker-compose -f docker-compose-staging.yml up -d`, and fails if a container exits.
 4. Verify (§7).
@@ -266,7 +266,7 @@ shred -u ~/.env.pre-restructure ~/server.env.pre-restructure
 | Symptom | Cause | Fix |
 | --- | --- | --- |
 | Image workflow fails with `server/Dockerfile` or `./server` not found | Workflow was dispatched before the PR was merged into `staging` | Merge first (§3.1), then dispatch from `staging` |
-| Image workflow: `npm ci` lockfile error | A workspace `package.json` changed without updating the root `package-lock.json` | Run `npm install` at the repo root locally and commit the lockfile |
+| Image workflow: `pnpm install --frozen-lockfile` error | A workspace `package.json` changed without updating the root `pnpm-lock.yaml` | Run `pnpm install` at the repo root locally and commit the lockfile |
 | `api` container restarts; log says `Missing required environment variable` | Host `server/.env` missing or moved | It must stay at `$APP_DIR/server/.env`; restore it from the backup in §3.3 |
 | Dashboard loads but API calls fail | `api` not running or crashed | `docker logs ai-receptionist-api`; check `/health` from inside the container (§7) |
 | Public `https://…/health` returns HTML | Expected: Caddy serves the SPA for paths other than `/api/*` and `/widget/*` | Use the in-container check in §7 |

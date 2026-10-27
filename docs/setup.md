@@ -58,7 +58,7 @@ cd ai-receptionist
 Install dependencies:
 
 ```bash
-npm install
+pnpm install
 ```
 
 ## 2. Confirm the Production Architecture
@@ -615,9 +615,9 @@ The production database must receive the schema in `supabase/migrations/`.
 From the repository root (the Supabase project lives in `supabase/`):
 
 ```bash
-npx supabase login
-npx supabase link --project-ref YOUR_PROJECT_REF
-npm run db:migrate
+pnpm exec supabase login
+pnpm exec supabase link --project-ref YOUR_PROJECT_REF
+pnpm db:migrate
 ```
 
 If the project is already linked correctly, verify the target before applying migrations.

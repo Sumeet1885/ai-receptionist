@@ -1,7 +1,7 @@
 /**
  * Create a staff (admin console) account. There is no public signup for staff.
  *
- *   npm run staff:create -w apps/api -- --email ops@example.com --name "Ops" --role super_admin \
+ *   pnpm --filter @ai-receptionist/api staff:create --email ops@example.com --name "Ops" --role super_admin \
  *     --confirm-project <supabase-project-ref> [--granted-by admin@example.com]
  *
  * Prints a one-time temporary password; the console forces a change at first sign-in.

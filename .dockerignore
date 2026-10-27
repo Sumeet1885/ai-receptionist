@@ -1,4 +1,4 @@
-# Docker build context is the repository root (npm workspaces).
+# Docker build context is the repository root (pnpm workspace).
 # Never send credentials, VCS data or local installs to the builder.
 .env
 .env.*

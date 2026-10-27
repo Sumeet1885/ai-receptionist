@@ -302,7 +302,7 @@ Global CORS is restricted by trusted runtime origins. Widget authorization is a 
 ### Prerequisites
 
 - Node.js 20 or newer.
-- npm.
+- pnpm 10 (`npm install -g pnpm@10.34.7`, or `corepack enable`; the exact version is pinned in `package.json` → `packageManager`).
 - A Supabase project.
 - A Gemini API key.
 - Optional Groq, Google Calendar, and Microsoft Graph credentials for those features.
@@ -310,10 +310,10 @@ Global CORS is restricted by trusted runtime origins. Widget authorization is a 
 ### Install
 
 ```bash
-npm install
+pnpm install
 ```
 
-This installs every workspace (`apps/*`, `packages/*`) from the single root `package-lock.json`.
+This installs every workspace (`apps/*`, `packages/*`, listed in `pnpm-workspace.yaml`) from the single root `pnpm-lock.yaml`. Only `esbuild` may run install scripts (`onlyBuiltDependencies`).
 
 ### Configure environment
 
@@ -366,17 +366,23 @@ Apply every SQL file in `supabase/migrations/` in filename order. The final poli
 ### Run
 
 ```bash
-# Client and Express server
-npm run dev
+# Web app, API and staff console together, one terminal
+pnpm dev
 
-# Or run either process separately
-npm run dev:web
-npm run dev:api
+# Or one process at a time
+pnpm dev:web
+pnpm dev:api
+pnpm dev:admin
 ```
 
-Default URLs:
+`pnpm dev` streams every process into one terminal; each line starts with its source, e.g. `@ai-receptionist/api:dev:`. API logs are one readable line per event locally (`HH:MM:SS.mmm LEVEL message key=value …`) and JSON in staging/production (for CloudWatch); set `LOG_FORMAT=json` or `pretty` to override.
+
+> `pnpm dev` and `pnpm dev:api` start the call poller and resume **paused outbound campaigns** in the Supabase project that `apps/api/.env` points at. Check `call_campaigns` for `paused` rows first, or point the API at a non-production project.
+
+Default URLs (the ports are fixed; a dev server stops with an error if its port is taken, because the API trusts these exact origins):
 
 - Client: `http://127.0.0.1:3000`
+- Staff console: `http://127.0.0.1:3001`
 - Express: `http://localhost:4000`
 - Health check: `http://localhost:4000/health`
 
@@ -387,13 +393,13 @@ The root `dev:functions` script starts the legacy Supabase Edge Functions. They 
 Run these before opening a pull request or deploying:
 
 ```bash
-npm run typecheck          # all workspaces, via turbo
-npm test                   # api + web tests (api tests need SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, GEMINI_API_KEY set; dummy values work)
-npm run build              # web + admin
-npm run check:boundaries   # browser/server import and bundle-secret guard
+pnpm typecheck             # all workspaces, via turbo
+pnpm test                  # api + web tests (api tests need SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, GEMINI_API_KEY set; dummy values work)
+pnpm build                 # web + admin
+pnpm check:boundaries      # browser/server import and bundle-secret guard
 ```
 
-`npm run verify` runs all of the above.
+`pnpm verify` runs all of the above.
 
 The server regression suite covers CORS, newest-message history, safe public bot projections, widget protocol and domains, live contact collection, calendar transactions, OAuth state, migrations, and repository hygiene.
 

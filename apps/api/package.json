@@ -3,18 +3,19 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "npx tsx watch src/index.ts",
-    "start": "npx tsx src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
     "test": "tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
     "staff:create": "tsx scripts/staff-create.ts",
     "staff:reset-password": "tsx scripts/staff-reset-password.ts"
   },
   "dependencies": {
-    "@ai-receptionist/contracts": "*",
+    "@ai-receptionist/contracts": "workspace:*",
     "@aws-sdk/client-sesv2": "~3.1148.0",
     "@aws-sdk/client-ssm": "^3.1143.0",
     "@microsoft/microsoft-graph-client": "^3.0.7",
+    "@supabase/realtime-js": "2.108.1",
     "@supabase/supabase-js": "^2.108.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.0",
