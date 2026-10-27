@@ -6181,6 +6181,47 @@ html.bi-landing-root {
 .bi-landing .hero-description {
   max-width: 700px;
 }
+/* Wordmark spacing: ~25px below the description, ~12px above the tagline. `!important` because
+   an earlier block pins these with `!important`. Tagline top = wordmark top + height + 12. */
+.bi-landing .hero-brand-backdrop {
+  top: 335px !important;
+  height: 130px;
+}
+.bi-landing .hero-brand-backdrop .india-culture-art {
+  height: 130px;
+  width: 278px;
+}
+.bi-landing .hero-brand-backdrop span:last-child {
+  font-size: 96px !important;
+  line-height: 1.3;
+}
+.bi-landing .brand-promise {
+  top: 477px;
+}
+@media (min-width: 1600px) {
+  .bi-landing .hero-brand-backdrop {
+    top: 358px !important;
+  }
+  .bi-landing .brand-promise {
+    top: 500px;
+  }
+}
+@media (max-width: 800px) {
+  .bi-landing .hero-brand-backdrop {
+    top: 356px !important;
+    height: 118px;
+  }
+  .bi-landing .hero-brand-backdrop .india-culture-art {
+    width: 49%;
+    height: 118px;
+  }
+  .bi-landing .hero-brand-backdrop span:last-child {
+    font-size: 14vw !important;
+  }
+  .bi-landing .brand-promise {
+    top: 484px;
+  }
+}
 .bi-landing .hero-brand-backdrop {
   top: 330px;
 }
