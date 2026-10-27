@@ -1,0 +1,62 @@
+/* react-phone-number-input, styled like our other fields (see fieldClassName in field.tsx).
+   index.css has global .PhoneInput* rules for the voice-call screens; these are more specific. */
+.PhoneInput.bi-phone-field {
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
+  background: var(--color-surface);
+  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+}
+.PhoneInput.bi-phone-field:hover {
+  border-color: var(--color-border-strong);
+}
+.PhoneInput.bi-phone-field:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+.PhoneInput.bi-phone-field--error,
+.PhoneInput.bi-phone-field--error:hover {
+  border-color: var(--color-danger);
+}
+.bi-phone-field .PhoneInputCountry {
+  align-self: center;
+  gap: 6px;
+  padding: 0;
+  background: transparent;
+  border-right: 0;
+}
+.bi-phone-field .PhoneInputCountryIcon {
+  width: 22px;
+  height: 15px;
+  border-radius: 2px;
+}
+.bi-phone-field .PhoneInputInput {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: none;
+  background: transparent;
+  padding: 0.625rem 0;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--color-text);
+}
+.bi-phone-field .PhoneInputInput::placeholder {
+  color: var(--color-text-subtle);
+}
+.PhoneInput.bi-phone-field:has(input:disabled) {
+  cursor: not-allowed;
+  background: var(--color-disabled);
+}
+/* Matches the compact fields on the free-access form. */
+.bi-phone-field--compact .PhoneInputInput {
+  padding: 0.5rem 0;
+}
+@media (max-height: 800px) {
+  .bi-phone-field--compact .PhoneInputInput {
+    padding: 0.375rem 0;
+  }
+}

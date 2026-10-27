@@ -11,6 +11,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
 import { fieldClassName, Input, Label, Textarea } from '../ui/field';
+import { PhoneField } from '../ui/phone-field';
 import { Honeypot } from '../security/Honeypot';
 import { Turnstile } from '../security/Turnstile';
 import { postPublic, usePublicFormGuard } from '../../lib/publicForm';
@@ -149,7 +150,7 @@ export const RequestAccessView: React.FC<RequestAccessViewProps> = ({ navigate }
           </div>
           <div>
             <Label htmlFor="ra-phone" className="mb-1">Mobile number</Label>
-            <Input id="ra-phone" className={COMPACT} type="tel" autoComplete="tel" required value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="98765 43210 or +44…" {...fieldProps('phone')} />
+            <PhoneField id="ra-phone" compact required value={form.phone} onChange={(value) => set('phone', value)} {...fieldProps('phone')} />
             <FieldError id="ra-phone-error" message={errors.phone} />
           </div>
           <div>

@@ -34,6 +34,7 @@ export {
   type PlanColumns,
   type Validated,
 } from './validation';
+export { SUPPORTED_LANGUAGES, SUPPORTED_LANGUAGE_LIST, type SupportedLanguage } from './languages';
 export { FORM_ELAPSED_FIELD, HONEYPOT_FIELD, MIN_FORM_FILL_MS, TURNSTILE_TOKEN_FIELD } from './public-forms';
 export {
   defaultWidgetConfig,

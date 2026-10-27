@@ -19,6 +19,23 @@ const authedNav = [
   { label: 'Plans', path: '/plans', key: 'plans' }
 ];
 
+// Signed-out pages (pricing, checkout, sign in, request access).
+const publicNav = [
+  { label: 'Home', path: '/', key: 'landing' },
+  { label: 'Product', path: '/#product-persona', key: 'product' },
+  { label: 'Pricing', path: '/pricing', key: 'pricing' },
+];
+
+/**
+ * Buttons for signed-out visitors, depending on the page: never a link to the page you are on,
+ * and no "Get started" (free access) in the middle of buying a plan.
+ */
+function publicActions(routeName: string) {
+  const signIn = routeName !== 'auth' && routeName !== 'auth-confirm';
+  const getStarted = routeName !== 'request-access' && routeName !== 'checkout';
+  return { signIn, getStarted };
+}
+
 /** App navigation for every screen except the landing page (which has its own navbar). */
 export const Header: React.FC<HeaderProps> = ({
   routeName,
@@ -30,7 +47,21 @@ export const Header: React.FC<HeaderProps> = ({
 
   const isActive = (key: string) => {
     if (key === 'agents') return routeName === 'agents' || routeName === 'agent-detail' || routeName === 'agent-new';
+    if (key === 'pricing') return routeName === 'pricing' || routeName === 'checkout';
     return routeName === key;
+  };
+  const actions = publicActions(routeName);
+  const navClass = (active: boolean) => `rounded-pill px-3.5 py-1.5 transition-colors duration-[var(--duration-fast)] ${
+    active ? 'bg-accent-lime font-semibold text-text' : 'font-medium text-text-subtle hover:bg-surface-sunken hover:text-text'
+  }`;
+  const mobileClass = (active: boolean) => `w-full rounded-small px-4 py-3 text-left text-sm font-medium transition ${
+    active ? 'bg-accent-lime text-text' : 'text-text-subtle hover:bg-surface-sunken hover:text-text'
+  }`;
+  const go = (path: string) => {
+    setMobileMenuOpen(false);
+    // Landing sections are anchors on the landing page; everything else is an app route.
+    if (path.startsWith('/#')) window.location.assign(path);
+    else navigate(path);
   };
 
   const handleSignOut = async () => {
@@ -44,7 +75,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between border-b border-border bg-background/90 px-4 py-3 backdrop-blur-xl sm:px-6">
+    <header className="sticky top-0 z-40 flex items-center justify-between border-b border-border bg-background/90 px-[5%] py-3 backdrop-blur-xl">
       <a
         href={user ? '/dashboard' : '/'}
         onClick={(e) => {
@@ -57,25 +88,19 @@ export const Header: React.FC<HeaderProps> = ({
         <BrandLogo />
       </a>
 
-      {user && (
-        <nav aria-label="Main" className="hidden lg:flex items-center gap-1 rounded-pill border border-border bg-surface p-1 text-xs shadow-card">
-          {authedNav.map(item => (
-            <button
-              key={item.key}
-              type="button"
-              onClick={() => navigate(item.path)}
-              aria-current={isActive(item.key) ? 'page' : undefined}
-              className={`rounded-pill px-3.5 py-1.5 transition-colors duration-[var(--duration-fast)] ${
-                isActive(item.key)
-                  ? 'bg-accent-lime font-semibold text-text'
-                  : 'font-medium text-text-subtle hover:bg-surface-sunken hover:text-text'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
-      )}
+      <nav aria-label="Main" className="hidden lg:flex items-center gap-1 rounded-pill border border-border bg-surface p-1 text-xs shadow-card">
+        {(user ? authedNav : publicNav).map(item => (
+          <button
+            key={item.key}
+            type="button"
+            onClick={() => go(item.path)}
+            aria-current={isActive(item.key) ? 'page' : undefined}
+            className={navClass(isActive(item.key))}
+          >
+            {item.label}
+          </button>
+        ))}
+      </nav>
 
       <div className="flex items-center gap-2 sm:gap-4">
         {user ? (
@@ -87,12 +112,16 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         ) : (
           <div className="hidden lg:flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/auth?mode=signin')}>
-              Sign in
-            </Button>
-            <Button size="sm" onClick={() => navigate('/request-access')}>
-              Get started ↗
-            </Button>
+            {actions.signIn && (
+              <Button variant={actions.getStarted ? 'ghost' : 'secondary'} size="sm" onClick={() => navigate('/auth?mode=signin')}>
+                Sign in
+              </Button>
+            )}
+            {actions.getStarted && (
+              <Button size="sm" onClick={() => navigate('/request-access')}>
+                Get started ↗
+              </Button>
+            )}
           </div>
         )}
 
@@ -126,11 +155,9 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   key={item.key}
                   type="button"
-                  onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
+                  onClick={() => go(item.path)}
                   aria-current={isActive(item.key) ? 'page' : undefined}
-                  className={`w-full rounded-small px-4 py-3 text-left text-sm font-medium transition ${
-                    isActive(item.key) ? 'bg-accent-lime text-text' : 'text-text-subtle hover:bg-surface-sunken hover:text-text'
-                  }`}
+                  className={mobileClass(isActive(item.key))}
                 >
                   {item.label}
                 </button>
@@ -148,27 +175,31 @@ export const Header: React.FC<HeaderProps> = ({
             </>
           ) : (
             <>
-              <button
-                type="button"
-                onClick={() => { navigate('/'); setMobileMenuOpen(false); }}
-                className="w-full rounded-small px-4 py-3 text-left text-sm font-medium text-text-subtle transition hover:bg-surface-sunken hover:text-text"
-              >
-                Home
-              </button>
-              <button
-                type="button"
-                onClick={() => { navigate('/auth?mode=signin'); setMobileMenuOpen(false); }}
-                className="w-full rounded-small px-4 py-3 text-left text-sm font-medium text-text-subtle transition hover:bg-surface-sunken hover:text-text"
-              >
-                Sign in
-              </button>
-              <button
-                type="button"
-                onClick={() => { navigate('/request-access'); setMobileMenuOpen(false); }}
-                className="w-full rounded-small bg-text px-4 py-3 text-left text-sm font-semibold text-primary-foreground transition hover:bg-primary"
-              >
-                Get started ↗
-              </button>
+              {publicNav.map(item => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => go(item.path)}
+                  aria-current={isActive(item.key) ? 'page' : undefined}
+                  className={mobileClass(isActive(item.key))}
+                >
+                  {item.label}
+                </button>
+              ))}
+              {actions.signIn && (
+                <button type="button" onClick={() => go('/auth?mode=signin')} className={mobileClass(false)}>
+                  Sign in
+                </button>
+              )}
+              {actions.getStarted && (
+                <button
+                  type="button"
+                  onClick={() => go('/request-access')}
+                  className="w-full rounded-small bg-text px-4 py-3 text-left text-sm font-semibold text-primary-foreground transition hover:bg-primary"
+                >
+                  Get started ↗
+                </button>
+              )}
             </>
           )}
         </nav>

@@ -1,29 +1,22 @@
 import { useCallback, useEffect, useState, type MouseEvent } from 'react';
+import { SUPPORTED_LANGUAGES, SUPPORTED_LANGUAGE_LIST } from '@ai-receptionist/contracts';
 import { BrandLogo } from '../../ui/brand-logo';
 import { AppLink } from './AppLink';
 import { LandingDialog } from './LandingDialog';
 import { useInView, useLanding } from './LandingContext';
 import { Reveal } from './Reveal';
 
-const greetings: [string, string, string][] = [
-  // [shown text, romanised name, BCP 47 language]
-  ['नमस्ते', 'Namaste', 'hi'],
-  ['Hello', 'Hello', 'en'],
-  ['வணக்கம்', 'Vanakkam', 'ta'],
-  ['నమస్కారం', 'Namaskaram', 'te'],
-  ['নমস্কার', 'Namaskar', 'bn'],
+// [shown text, "romanised · language", BCP 47 language] for every supported language, plus English.
+const allGreetings: [string, string, string][] = [
+  ['Hello', 'English', 'en'],
+  ...SUPPORTED_LANGUAGES.map((l): [string, string, string] => [l.greeting, `${l.romanised} · ${l.name}`, l.code]),
 ];
-const greetingsReverse: [string, string, string][] = [
-  ['ನಮಸ್ಕಾರ', 'Namaskara', 'kn'],
-  ['ਸਤ ਸ੍ਰੀ ਅਕਾਲ', 'Sat Sri Akal', 'pa'],
-  ['નમસ્તે', 'Namaste', 'gu'],
-  ['നമസ്കാരം', 'Namaskaram', 'ml'],
-  ['आदाब', 'Adaab', 'hi'],
-];
+const greetings = allGreetings.slice(0, 6);
+const greetingsReverse = allGreetings.slice(6);
 
 export function LanguageWall() {
   const { motionPaused } = useLanding();
-  const [note, setNote] = useState('Tap a hello to animate it · Language inspiration, not a production support list.');
+  const [note, setNote] = useState('Tap a hello to hear which language it is.');
 
   const greet = (e: MouseEvent<HTMLButtonElement>, shown: string, name: string) => {
     setNote(`${shown} — ${name}`);
@@ -60,6 +53,7 @@ export function LanguageWall() {
       <div className="hint" id="greeting-note" role="status">
         {note}
       </div>
+      <p className="hint">Supported languages: English, {SUPPORTED_LANGUAGE_LIST}.</p>
     </section>
   );
 }
@@ -241,7 +235,7 @@ const clarity = [
   },
   {
     q: 'Which languages are supported?',
-    a: 'Samples illustrate English, Hindi, and Hinglish. The greeting wall celebrates India’s languages; it does not promise production language coverage.',
+    a: `English, ${SUPPORTED_LANGUAGE_LIST}, as well as everyday mixes like Hinglish.`,
   },
 ];
 

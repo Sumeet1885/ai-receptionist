@@ -1,4 +1,5 @@
 import { asRecord, cleanLine, consentField, done, emailField, oneOf, optionalText, phoneField, requiredText, type Validated } from './fields';
+import { SUPPORTED_LANGUAGES } from '../languages';
 import { LIMITS } from './limits';
 
 // Free-access request form, validated identically in the browser and the API.
@@ -23,9 +24,8 @@ export const ACCESS_REQUEST_VOLUMES = {
   over_2000: 'More than 2,000 a month',
 } as const;
 
-export const ACCESS_REQUEST_LANGUAGES = [
-  'English', 'Hindi', 'Marathi', 'Gujarati', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Malayalam', 'Punjabi',
-] as const;
+// The supported Indian languages, plus English.
+export const ACCESS_REQUEST_LANGUAGES: readonly string[] = ['English', ...SUPPORTED_LANGUAGES.map((language) => language.name)];
 
 export type AccessRequestVolume = keyof typeof ACCESS_REQUEST_VOLUMES;
 
