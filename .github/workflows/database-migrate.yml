@@ -1,0 +1,88 @@
+name: Database - Migrate (Supabase)
+
+# Applies pending files in supabase/migrations/ to one environment's database.
+# Run it BEFORE deploying images that need the new schema. "status" is read-only and is the
+# default; "apply" runs `supabase db push`, which only applies migrations the database has not
+# recorded yet and never resets or drops data. See docs/deployment/database-migrations.md.
+#
+# Required per GitHub environment (Settings → Environments → staging / production → Secrets):
+#   SUPABASE_DB_URL  Postgres connection string of that project (Supabase dashboard → Connect →
+#                    "Session pooler"), including the database password.
+# Protect the "production" environment with required reviewers so an apply needs approval.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options: [staging, production]
+      action:
+        description: "status = list applied/pending only; apply = run pending migrations"
+        required: true
+        type: choice
+        default: status
+        options: [status, apply]
+      commit_sha:
+        description: "Full commit SHA whose supabase/migrations to use"
+        required: true
+
+concurrency:
+  group: database-migrate-${{ github.event.inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: Checkout code at specified commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.commit_sha }}
+
+      - name: Set up Supabase CLI (same version as package-lock.json)
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.106.0
+
+      - name: Check the secret is configured
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::SUPABASE_DB_URL is not set for the '${{ github.event.inputs.environment }}' environment."
+            exit 1
+          fi
+
+      - name: Migration status (before)
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: supabase migration list --db-url "$SUPABASE_DB_URL"
+
+      - name: Preview pending migrations
+        if: github.event.inputs.action == 'apply'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: supabase db push --db-url "$SUPABASE_DB_URL" --dry-run
+
+      - name: Apply pending migrations
+        if: github.event.inputs.action == 'apply'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: supabase db push --db-url "$SUPABASE_DB_URL"
+
+      - name: Migration status (after)
+        if: github.event.inputs.action == 'apply'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: supabase migration list --db-url "$SUPABASE_DB_URL"
+
+      - name: Summary
+        run: |
+          echo "### Database migrations: ${{ github.event.inputs.action }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ github.event.inputs.commit_sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- See the step logs for the Local/Remote migration table." >> $GITHUB_STEP_SUMMARY
