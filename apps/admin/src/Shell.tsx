@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Inbox, LayoutDashboard, LogOut, Menu, ShieldCheck, X } from 'lucide-react';
+import { CreditCard, Inbox, LayoutDashboard, LogOut, Menu, Package, ShieldCheck, TicketPercent, X } from 'lucide-react';
 import { accessRequestApi, adminApi, type AdminSession } from './api';
 import { LiveContext, type LiveState } from './live';
-import { navigate, type Page } from './router';
+import { navigate, PAGE_PATHS, type Page } from './router';
 import { playChime, useToast } from './toast';
 import { cx, initials, LOGO } from './ui';
 import { useAdminEvents } from './useAdminEvents';
@@ -10,6 +10,9 @@ import { useAdminEvents } from './useAdminEvents';
 const NAV: Array<{ page: Page; label: string; icon: typeof Inbox }> = [
   { page: 'overview', label: 'Overview', icon: LayoutDashboard },
   { page: 'requests', label: 'Access requests', icon: Inbox },
+  { page: 'plans', label: 'Plans & pricing', icon: Package },
+  { page: 'coupons', label: 'Coupons', icon: TicketPercent },
+  { page: 'payments', label: 'Payments', icon: CreditCard },
 ];
 
 const ROLE_LABELS: Record<string, string> = { super_admin: 'Super admin', support: 'Support', read_only: 'Read only' };
@@ -42,6 +45,15 @@ export function Shell({ session, page, onSignedOut, children }: {
         action: { label: 'Review', onClick: () => navigate('requests', `?request=${event.id}`) },
       });
     }
+    if (event.type === 'billing_order.updated' && (event.status === 'provisioned' || event.status === 'review')) {
+      playChime();
+      toast({
+        tone: event.status === 'provisioned' ? 'success' : 'info',
+        title: event.status === 'provisioned' ? 'New paid signup' : 'Payment needs review',
+        description: event.status === 'provisioned' ? 'A customer paid and their workspace was created.' : 'Paid, but the email already has a login.',
+        action: { label: 'View payments', onClick: () => navigate('payments') },
+      });
+    }
   });
 
   async function signOut() {
@@ -69,7 +81,7 @@ export function Shell({ session, page, onSignedOut, children }: {
           return (
             <a
               key={target}
-              href={target === 'overview' ? '/super-admin/' : '/super-admin/requests'}
+              href={PAGE_PATHS[target]}
               onClick={(e) => { e.preventDefault(); navigate(target); setMobileOpen(false); }}
               aria-current={active ? 'page' : undefined}
               className={cx(

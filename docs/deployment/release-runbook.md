@@ -192,9 +192,10 @@ In addition to the steps above, the first release of branch `feat/admin-auth` ne
 
 | Where | Action |
 | --- | --- |
-| Migrations | `20261027120000_admin_auth`, `20261027130000_access_requests`, `20261027140000_customer_accounts` (Step 3). The last one adds a `customer_accounts` row for every existing login so current customers keep working. |
-| Host `server/.env` (both) | `EMAIL_FROM`, `EMAIL_FROM_NAME`, `ADMIN_NOTIFICATION_EMAILS`, `AUTH_LINK_EXPIRY_HOURS`, and `ADMIN_ORIGIN=https://<app domain>` (the same origin as `CLIENT_URL`, because the admin console is served at `/super-admin/` on the app domain). See `apps/api/.env.example`. |
-| SSM `/ai-receptionist/<env>/` | `TURNSTILE_SECRET_KEY`. |
+| Migrations | `20261027120000_admin_auth`, `20261027130000_access_requests`, `20261027140000_customer_accounts`, `20261028120000_billing`, `20261028130000_paid_signup` (Step 3). `customer_accounts` adds a row for every existing login so current customers keep working; `billing` creates plans, coupons and orders and seeds the four launch plans; `paid_signup` adds the checkout password hash and abandoned-checkout fields. |
+| Host `server/.env` (both) | `EMAIL_FROM`, `EMAIL_FROM_NAME`, `ADMIN_NOTIFICATION_EMAILS`, `AUTH_LINK_EXPIRY_HOURS`, `RAZORPAY_KEY_ID`, and `ADMIN_ORIGIN=https://<app domain>` (the same origin as `CLIENT_URL`, because the admin console is served at `/super-admin/` on the app domain). See `apps/api/.env.example`. |
+| SSM `/ai-receptionist/<env>/` | `TURNSTILE_SECRET_KEY`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` (live keys in production, test keys in staging). |
+| Razorpay dashboard | Webhook `https://<api domain>/api/public/razorpay/webhook`, events `payment.captured` and `order.paid`, secret = `RAZORPAY_WEBHOOK_SECRET`. Enable International Payments if USD prices are offered. |
 | Web Dockerfiles | `VITE_TURNSTILE_SITE_KEY` for that environment's domain in `apps/web/Dockerfile.staging` / `.prod`. |
 | AWS | SES: verified sending domain, production access, `ses:SendEmail` on the EC2 instance role. |
 | Supabase Auth (both) | Turn off "Allow new users to sign up"; disable the Google and Azure providers. |

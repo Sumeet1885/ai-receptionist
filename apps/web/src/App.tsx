@@ -21,6 +21,8 @@ import { DeploymentSuccessModal } from './components/onboarding/DeploymentSucces
 import { PublicChatView } from './components/chat/PublicChatView';
 import { AuthView } from './components/auth/AuthView';
 import { RequestAccessView } from './components/auth/RequestAccessView';
+import { PricingView } from './components/billing/PricingView';
+import { CheckoutView } from './components/billing/CheckoutView';
 import { AuthConfirmView } from './components/auth/AuthConfirmView';
 import { AccountStageView } from './components/auth/AccountStageView';
 import { PostLoginShell } from './components/dashboard/PostLoginShell';
@@ -43,6 +45,8 @@ type AppRoute =
   | { name: 'auth'; mode: 'signin' | 'forgot' | 'reset' | 'resend' }
   | { name: 'auth-confirm' }
   | { name: 'request-access' }
+  | { name: 'pricing' }
+  | { name: 'checkout' }
   | { name: 'dashboard' }
   | { name: 'leads' }
   | { name: 'inbox' }
@@ -84,6 +88,8 @@ function parseRoute(): AppRoute {
     return { name: 'auth', mode };
   }
   if (path === '/request-access') return { name: 'request-access' };
+  if (path === '/pricing') return { name: 'pricing' };
+  if (path === '/checkout') return { name: 'checkout' };
   if (path === '/dashboard') return { name: 'dashboard' };
   if (path === '/leads') return { name: 'leads' };
   if (path === '/inbox') return { name: 'inbox' };
@@ -103,12 +109,12 @@ function parseRoute(): AppRoute {
 }
 
 function isProtectedRoute(route: AppRoute) {
-  return !['landing', 'auth', 'auth-confirm', 'request-access', 'public-chat'].includes(route.name);
+  return !['landing', 'auth', 'auth-confirm', 'request-access', 'pricing', 'checkout', 'public-chat'].includes(route.name);
 }
 
 // Routes a signed-in user may see before finishing activation (verify email, set password).
 function isOpenBeforeActivation(route: AppRoute) {
-  return ['landing', 'public-chat', 'auth-confirm', 'request-access'].includes(route.name)
+  return ['landing', 'public-chat', 'auth-confirm', 'request-access', 'pricing', 'checkout'].includes(route.name)
     || (route.name === 'auth' && route.mode === 'reset');
 }
 
@@ -427,6 +433,10 @@ export default function App() {
         )}
 
         {route.name === 'request-access' && <RequestAccessView navigate={navigate} />}
+
+        {route.name === 'pricing' && <PricingView navigate={navigate} />}
+
+        {route.name === 'checkout' && <CheckoutView navigate={navigate} />}
 
         {route.name === 'auth-confirm' && <AuthConfirmView navigate={navigate} />}
 

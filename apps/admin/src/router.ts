@@ -4,17 +4,24 @@ import { useEffect, useState } from 'react';
 // /super-admin/* path, so deep links work on reload).
 export const BASE = '/super-admin';
 
-export type Page = 'overview' | 'requests';
+export type Page = 'overview' | 'requests' | 'plans' | 'coupons' | 'payments';
 
-const PATHS: Record<Page, string> = { overview: `${BASE}/`, requests: `${BASE}/requests` };
+export const PAGE_PATHS: Record<Page, string> = {
+  overview: `${BASE}/`,
+  requests: `${BASE}/requests`,
+  plans: `${BASE}/plans`,
+  coupons: `${BASE}/coupons`,
+  payments: `${BASE}/payments`,
+};
 
 function currentPage(): Page {
   const path = window.location.pathname.replace(/\/+$/, '');
-  return path === `${BASE}/requests` ? 'requests' : 'overview';
+  const match = (Object.entries(PAGE_PATHS) as Array<[Page, string]>).find(([, p]) => p.replace(/\/+$/, '') === path);
+  return match ? match[0] : 'overview';
 }
 
 export function navigate(page: Page, search = '') {
-  window.history.pushState({}, '', `${PATHS[page]}${search}`);
+  window.history.pushState({}, '', `${PAGE_PATHS[page]}${search}`);
   window.dispatchEvent(new PopStateEvent('popstate'));
 }
 

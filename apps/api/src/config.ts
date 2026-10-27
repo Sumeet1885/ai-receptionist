@@ -61,6 +61,12 @@ export const config = {
       .map((address) => address.trim().toLowerCase())
       .filter(Boolean),
   },
+  razorpay: {
+    // Key id is public (sent to the browser to open Checkout); the secrets stay server-side.
+    keyId: (process.env.RAZORPAY_KEY_ID || '').trim(),
+    keySecret: (process.env.RAZORPAY_KEY_SECRET || '').trim(),
+    webhookSecret: (process.env.RAZORPAY_WEBHOOK_SECRET || '').trim(),
+  },
   turnstile: {
     // Cloudflare Turnstile secret for public forms. Required outside development.
     secretKey: (process.env.TURNSTILE_SECRET_KEY || '').trim(),

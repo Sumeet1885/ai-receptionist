@@ -55,6 +55,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
     setLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
+      // Paid signups have a password before their email is confirmed: offer a new confirmation link.
+      if (error?.code === 'email_not_confirmed') {
+        setMode('resend');
+        return showToast("Confirm your email first. We can send you a new link.", "error");
+      }
       if (error) throw error;
       showToast("Signed in successfully!", "success");
     } catch (err: any) {
@@ -124,7 +129,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
     signin: { title: 'Welcome back', description: 'Sign in to your Bolega India workspace.' },
     forgot: { title: 'Reset password', description: 'Enter your account email to receive a password recovery link.' },
     reset: { title: 'Create a new password', description: 'Please choose a secure new password for your account.' },
-    resend: { title: 'Resend activation link', description: 'Enter the email from your access request to get a new activation link.' },
+    resend: { title: 'Resend activation link', description: 'Enter the email from your access request or purchase to get a new activation or confirmation link.' },
   };
 
   const backToSignIn = (

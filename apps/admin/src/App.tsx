@@ -5,7 +5,10 @@ import { Loader2 } from 'lucide-react';
 import { adminApi, type AdminSession } from './api';
 import { ChangePasswordScreen, LoginScreen } from './AuthScreens';
 import { AccessRequests } from './pages/AccessRequests';
+import { Coupons } from './pages/Coupons';
 import { Overview } from './pages/Overview';
+import { Payments } from './pages/Payments';
+import { Plans } from './pages/Plans';
 import { usePage } from './router';
 import { Shell } from './Shell';
 import { ToastProvider } from './toast';
@@ -38,7 +41,11 @@ export default function App() {
   return (
     <ToastProvider>
       <Shell session={view.session} page={page} onSignedOut={signedOut}>
-        {page === 'requests' ? <AccessRequests key="requests" roles={view.session.roles} /> : <Overview session={view.session} />}
+        {page === 'requests' ? <AccessRequests key="requests" roles={view.session.roles} />
+          : page === 'plans' ? <Plans roles={view.session.roles} />
+          : page === 'coupons' ? <Coupons roles={view.session.roles} />
+          : page === 'payments' ? <Payments />
+          : <Overview session={view.session} />}
       </Shell>
     </ToastProvider>
   );

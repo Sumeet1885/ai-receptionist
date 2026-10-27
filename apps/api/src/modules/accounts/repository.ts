@@ -26,7 +26,8 @@ export async function getCustomerAccount(userId: string) {
   );
 }
 
-export async function createCustomerAccount(userId: string, accessRequestId: string) {
+// accessRequestId is null for paid signups (they come from a billing order, not a request).
+export async function createCustomerAccount(userId: string, accessRequestId: string | null) {
   check(
     await supabase
       .from('customer_accounts')

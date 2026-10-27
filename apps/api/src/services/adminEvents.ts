@@ -4,7 +4,8 @@ import { EventEmitter } from 'node:events';
 // ids and a status only; the console re-fetches details through the authorized REST routes.
 export type AdminEvent =
   | { type: 'access_request.created'; id: string }
-  | { type: 'access_request.updated'; id: string; status: string };
+  | { type: 'access_request.updated'; id: string; status: string }
+  | { type: 'billing_order.updated'; id: string; status: string };
 
 const bus = new EventEmitter();
 bus.setMaxListeners(0);

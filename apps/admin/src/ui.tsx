@@ -79,3 +79,69 @@ export function timeAgo(value: string) {
 }
 
 export const LOGO = '/bolegaindia/images/bolegaindia-logo.svg';
+
+// ── form pieces ──────────────────────────────────────────────────────────────
+
+export const INPUT = 'h-10 w-full rounded-xl border border-line bg-white px-3 text-sm text-ink placeholder:text-subtle/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 aria-invalid:border-danger';
+
+export function Field({ label, hint, error, children }: { label: string; hint?: string; error?: string; children: ReactNode }) {
+  return (
+    <label className="block space-y-1.5">
+      <span className="text-xs font-semibold text-ink">
+        {label} {hint && <span className="font-normal text-subtle">{hint}</span>}
+      </span>
+      {children}
+      {error && <span className="block text-xs text-danger">{error}</span>}
+    </label>
+  );
+}
+
+export function Toggle({ checked, onChange, label, description }: { checked: boolean; onChange: (value: boolean) => void; label: string; description?: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-line bg-white px-3 py-2.5 text-left"
+    >
+      <span>
+        <span className="block text-sm font-medium">{label}</span>
+        {description && <span className="block text-xs text-subtle">{description}</span>}
+      </span>
+      <span className={cx('relative h-5 w-9 shrink-0 rounded-full transition-colors', checked ? 'bg-primary' : 'bg-line')}>
+        <span className={cx('absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all', checked ? 'left-[18px]' : 'left-0.5')} />
+      </span>
+    </button>
+  );
+}
+
+/** Right-hand panel for create/edit forms. */
+export function Drawer({ title, subtitle, onClose, children, footer }: { title: string; subtitle?: string; onClose: () => void; children: ReactNode; footer: ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-40 flex justify-end" role="dialog" aria-modal="true" aria-label={title}>
+      <button type="button" aria-label="Close" className="absolute inset-0 bg-ink/30" onClick={onClose} />
+      <div className="relative flex h-full w-full max-w-xl flex-col bg-surface shadow-2xl">
+        <div className="border-b border-line px-6 py-5">
+          <h2 className="font-display text-xl font-bold">{title}</h2>
+          {subtitle && <p className="mt-0.5 text-sm text-subtle">{subtitle}</p>}
+        </div>
+        <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5">{children}</div>
+        <div className="flex items-center justify-end gap-2 border-t border-line bg-background/60 px-6 py-4">{footer}</div>
+      </div>
+    </div>
+  );
+}
+
+export function ActiveBadge({ active }: { active: boolean }) {
+  return (
+    <span className={cx('inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold', active ? 'bg-success-surface text-success' : 'bg-background text-subtle')}>
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      {active ? 'Active' : 'Off'}
+    </span>
+  );
+}
+
+/** Whole rupees/dollars in a form ↔ minor units in the API. */
+export const toMinor = (major: string) => (major.trim() === '' ? 0 : Math.round(Number(major) * 100));
+export const toMajor = (minor: number | null | undefined) => (minor ? String(minor / 100) : '');

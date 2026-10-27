@@ -123,7 +123,25 @@ export function adminNewAccessRequest(input: {
   };
 }
 
-export function workspaceActivation(input: { name: string; activationUrl: string; expiresInHours: number }): EmailContent {
+export function adminNewPayment(input: { name: string; email: string; businessName: string; planName: string; amount: string; consoleUrl: string }): EmailContent {
+  return {
+    subject: `New payment: ${input.businessName} (${input.planName})`,
+    ...render({
+      heading: 'New paid signup',
+      paragraphs: [
+        `${input.name} from ${input.businessName} bought ${input.planName} and paid ${input.amount}.`,
+        `Email: ${input.email}. Their workspace was created and the email confirmation sent.`,
+      ],
+      action: { label: 'View payments', url: input.consoleUrl },
+    }),
+  };
+}
+
+export function workspaceActivation(input: {
+  name: string;
+  activationUrl: string;
+  expiresInHours: number;
+}): EmailContent {
   return {
     subject: `Your ${BRAND} workspace is ready`,
     ...render({
@@ -138,12 +156,22 @@ export function workspaceActivation(input: { name: string; activationUrl: string
   };
 }
 
-export function emailVerification(input: { verificationUrl: string; expiresInHours: number }): EmailContent {
+export function emailVerification(input: {
+  verificationUrl: string;
+  expiresInHours: number;
+  // Paid signups: what was bought, shown above the confirmation request.
+  purchase?: { name: string; planName: string; amount: string };
+}): EmailContent {
   return {
-    subject: `Confirm your email for ${BRAND}`,
+    subject: input.purchase ? `Payment received: confirm your email for ${BRAND}` : `Confirm your email for ${BRAND}`,
     ...render({
-      heading: 'Confirm your email address',
-      paragraphs: ['Confirm this email address to continue to your workspace.'],
+      heading: input.purchase ? `Welcome to ${BRAND}, ${input.purchase.name}` : 'Confirm your email address',
+      paragraphs: input.purchase
+        ? [
+          `Thank you for your payment of ${input.purchase.amount} for ${input.purchase.planName}. Your workspace is ready.`,
+          'Confirm this email address to open it. Then we will help you set up your AI receptionist.',
+        ]
+        : ['Confirm this email address to continue to your workspace.'],
       action: { label: 'Confirm email', url: input.verificationUrl },
       footnote: `This link works once and expires in ${input.expiresInHours} hours. If you did not ask for it, you can ignore this email.`,
     }),

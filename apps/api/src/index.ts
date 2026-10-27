@@ -21,6 +21,7 @@ async function bootstrap(): Promise<void> {
   const { adminAuthRoutes, createAdminEventsServer } = await import('./modules/admin-auth');
   const { accessRequestPublicRoutes, accessRequestAdminRoutes } = await import('./modules/access-requests');
   const { accountRoutes, accountPublicRoutes } = await import('./modules/accounts');
+  const { billingPublicRoutes, billingAdminRoutes, razorpayWebhook } = await import('./modules/billing');
   const { routeUpgrades }      = await import('./utils/upgradeRouter');
   const { dograhRoutes, phoneToolsRoutes, campaignRoutes, startCallPoller, startCampaign } =
     await import('./modules/phone-calls');
@@ -44,6 +45,8 @@ async function bootstrap(): Promise<void> {
       callback(null, isTrustedCorsOrigin(origin, trustedCorsOrigins));
     },
   }));
+  // Raw body: the Razorpay signature covers the exact bytes, so this route precedes express.json.
+  app.post('/api/public/razorpay/webhook', express.raw({ type: 'application/json', limit: '1mb' }), razorpayWebhook);
   app.use(express.json());
 
   app.use('/api/calendar', calendarRoutes);
@@ -57,6 +60,8 @@ async function bootstrap(): Promise<void> {
   app.use('/api/admin/access-requests', accessRequestAdminRoutes);
   app.use('/api/public',   accessRequestPublicRoutes);
   app.use('/api/public',   accountPublicRoutes);
+  app.use('/api/public',   billingPublicRoutes);
+  app.use('/api/admin/billing', billingAdminRoutes);
   app.use('/api/account',  accountRoutes);
 
   app.get('/health', (_req, res) => {

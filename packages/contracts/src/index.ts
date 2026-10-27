@@ -12,6 +12,7 @@ export {
   type AccessRequestValues,
   type AccessRequestVolume,
 } from './access-request';
+export { validateCheckoutContact, type CheckoutContactErrors, type CheckoutContactInput } from './checkout';
 export { FORM_ELAPSED_FIELD, HONEYPOT_FIELD, MIN_FORM_FILL_MS, TURNSTILE_TOKEN_FIELD } from './public-forms';
 export {
   defaultWidgetConfig,

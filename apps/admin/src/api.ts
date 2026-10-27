@@ -9,7 +9,8 @@ export interface AdminSession {
 }
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  // Per-field messages from the API's validation, for forms.
+  constructor(public status: number, message: string, public fields: Record<string, string> = {}) {
     super(message);
   }
 }
@@ -23,9 +24,138 @@ async function request<T>(path: string, init: { method?: string; body?: unknown 
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new ApiError(response.status, data.error || 'Request failed');
+  if (!response.ok) throw new ApiError(response.status, data.error || 'Request failed', data.fields);
   return data as T;
 }
+
+// ── billing ──────────────────────────────────────────────────────────────────
+// Amounts are minor units (paise / cents); the forms show and accept whole rupees / dollars.
+
+export type Currency = 'INR' | 'USD';
+
+export interface Plan {
+  id: string;
+  slug: string;
+  name: string;
+  tagline: string | null;
+  sort_order: number;
+  is_active: boolean;
+  is_featured: boolean;
+  contact_sales: boolean;
+  monthly_minutes: number | null;
+  price_inr: number;
+  price_usd: number;
+  setup_fee_inr: number;
+  setup_fee_usd: number;
+  max_agents: number | null;
+  max_concurrent_calls: number | null;
+  feature_values: Record<string, string>;
+}
+
+export interface PlanFeature {
+  key: string;
+  label: string;
+  sort_order: number;
+}
+
+export interface PlanInput {
+  slug: string;
+  name: string;
+  tagline: string;
+  sortOrder: number;
+  isActive: boolean;
+  isFeatured: boolean;
+  contactSales: boolean;
+  monthlyMinutes: number | null;
+  priceInr: number;
+  priceUsd: number;
+  setupFeeInr: number;
+  setupFeeUsd: number;
+  maxAgents: number | null;
+  maxConcurrentCalls: number | null;
+  featureValues: Record<string, string>;
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  description: string | null;
+  discount_type: 'percent' | 'fixed';
+  percent_off: number | string | null;
+  amount_off_inr: number | null;
+  amount_off_usd: number | null;
+  applies_to: 'total' | 'plan' | 'setup';
+  plan_ids: string[];
+  max_redemptions: number | null;
+  redemption_count: number;
+  starts_at: string;
+  expires_at: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface CouponInput {
+  code: string;
+  description: string;
+  discountType: 'percent' | 'fixed';
+  percentOff: number | null;
+  amountOffInr: number | null;
+  amountOffUsd: number | null;
+  appliesTo: 'total' | 'plan' | 'setup';
+  planIds: string[];
+  maxRedemptions: number | null;
+  startsAt: string | null;
+  expiresAt: string | null;
+  isActive: boolean;
+}
+
+export type OrderStatus = 'created' | 'paid' | 'provisioned' | 'failed' | 'review';
+
+export interface BillingOrder {
+  id: string;
+  status: OrderStatus;
+  currency: Currency;
+  total: number;
+  discount: number;
+  coupon_code: string | null;
+  full_name: string;
+  email: string;
+  phone: string;
+  business_name: string;
+  plan_snapshot: { name: string };
+  razorpay_payment_id: string | null;
+  paid_at: string | null;
+  created_at: string;
+  failure_reason: string | null;
+  checkout_dismissed_at: string | null;
+  payment_error: string | null;
+}
+
+export const billingAdminApi = {
+  plans: () => request<{ plans: Plan[]; features: PlanFeature[] }>('/billing/plans'),
+  createPlan: (body: PlanInput) => request<{ plan: Plan }>('/billing/plans', { method: 'POST', body }),
+  updatePlan: (id: string, body: PlanInput) => request<{ plan: Plan }>(`/billing/plans/${encodeURIComponent(id)}`, { method: 'PUT', body }),
+  saveFeatures: (features: Array<{ key: string; label: string }>) => request<{ features: PlanFeature[] }>('/billing/features', { method: 'PUT', body: { features } }),
+  coupons: () => request<{ coupons: Coupon[] }>('/billing/coupons'),
+  createCoupon: (body: CouponInput) => request<{ coupon: Coupon }>('/billing/coupons', { method: 'POST', body }),
+  updateCoupon: (id: string, body: CouponInput) => request<{ coupon: Coupon }>(`/billing/coupons/${encodeURIComponent(id)}`, { method: 'PUT', body }),
+  orders: (params: { status?: OrderStatus; page?: number }) => {
+    const query = new URLSearchParams();
+    if (params.status) query.set('status', params.status);
+    if (params.page) query.set('page', String(params.page));
+    return request<{ rows: BillingOrder[]; total: number; page: number; pageSize: number }>(`/billing/orders?${query.toString()}`);
+  },
+};
+
+export function formatMoney(minor: number, currency: Currency) {
+  return new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: minor % 100 === 0 ? 0 : 2,
+  }).format(minor / 100);
+}
+
+// ── access requests ──────────────────────────────────────────────────────────
 
 export type AccessRequestStatus = 'pending' | 'contacted' | 'approved' | 'rejected';
 
