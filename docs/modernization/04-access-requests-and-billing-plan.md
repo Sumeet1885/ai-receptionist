@@ -2,6 +2,8 @@
 
 **Date:** 2026-10-27 · **Status:** Plan awaiting approval. No code, migration, AWS or Supabase setting changed.
 
+> **Implementation status (2026-10-27, branch `feat/admin-auth`).** P1–P6 are implemented and tested; P7 (onboarding beyond "create your first receptionist") and P8 (Razorpay) are not started. **No migration is applied and no Supabase or AWS setting was changed.** See §6 for what the owner must do and §7 for a local test walkthrough. Decisions taken: migrations target the current project; Google and Microsoft sign-in are removed entirely; local testing uses the own-crm Turnstile/SES test credentials (in gitignored env files only).
+
 Reference implementation: `own-crm` (Ezeebzee) — `apps/server/src/controllers/accessRequest.controller.ts`, `middleware/{botGuard,turnstile,signupGuards,rateLimiter}.ts`, `packages/core/src/aws/sesClient.ts`, `routes/signup.routes.ts` (Razorpay). We copy its **behaviour**, not its code: own-crm owns its user table (Prisma + bcrypt + JWT), while this product's customers live in **Supabase Auth**. Provisioning here therefore means "the API creates the Supabase user", and every DB change is a Supabase migration file.
 
 Depends on: [03-admin-auth.md](03-admin-auth.md) (super-admin login is needed to review requests).
@@ -83,4 +85,36 @@ Required: full name, work email, phone (validated with the existing `libphonenum
 5. Field list in §4.
 6. Which Supabase project receives the migrations first (the local env points at the production-Dockerfile project).
 
-STOP: implementation starts with P1 after these and the doc 03 decisions are answered.
+---
+
+## 6. Owner actions before this works outside a laptop
+
+| # | Where | Action |
+| --- | --- | --- |
+| 1 | Database | Apply the three migrations (`20261027120000_staff_auth`, `20261027130000_access_requests`, `20261027140000_customer_accounts`) with the **Database - Migrate** workflow ([database-migrations.md](../deployment/database-migrations.md)). Order matters: deploy the API only after they are applied. |
+| 2 | Supabase → Authentication → Sign In / Providers | Turn **off** "Allow new users to sign up", and disable the Google and Azure providers. Admin-created invites keep working. Until this is done, the Supabase API still accepts direct sign-ups; such logins land on "Your workspace is not set up yet". |
+| 3 | Supabase → Authentication → Email | Keep "Email OTP expiration" equal to `AUTH_LINK_EXPIRY_HOURS` (default 1 hour; up to 24 hours is reasonable for activation). Optionally point Supabase SMTP at SES so any remaining Supabase-sent mail also comes from our domain. |
+| 4 | AWS SES | Verify the `bolegaindia.ai` domain (DKIM), request production access (leave the sandbox), and allow `ses:SendEmail` for the EC2 instance role. Set `EMAIL_FROM` (e.g. `no-reply@bolegaindia.ai`). |
+| 5 | Cloudflare Turnstile | Create a widget for `bolegaindia.ai` (+ staging host). Secret → SSM `/ai-receptionist/<env>/TURNSTILE_SECRET_KEY`; site key → `VITE_TURNSTILE_SITE_KEY` in `apps/web/Dockerfile.staging` / `.prod`. |
+| 6 | API env (host `server/.env`) | `ADMIN_ORIGIN`, `EMAIL_FROM`, `EMAIL_FROM_NAME`, `STAFF_NOTIFICATION_EMAILS`, `AUTH_LINK_EXPIRY_HOURS`. |
+| 7 | Admin hosting | The admin console is not in Compose or Caddy yet: it needs its own domain, a Caddy site block serving `apps/admin/dist` and proxying `/api/admin/*` (including WebSocket) to `api:4000`, and an image build. Separate change. |
+| 8 | Existing customers | Every existing login is kept (backfilled as active). Anyone who only used Google/Microsoft sign-in must use "Forgot password" once to set a password. |
+
+Known limit: the gate is enforced by the web app and the new API routes. Database RLS still lets any signed-in Supabase user write their own bots/leads directly; closing self-signup (item 2) is what prevents unapproved logins from existing. Moving that check into RLS belongs to the S01–S05 remediation package.
+
+## 7. Local test walkthrough
+
+Prerequisite: the migrations are applied to the project in `apps/api/.env`, and you have created a super admin (`npm run staff:create -w apps/api -- … --confirm-project <ref>`).
+
+> **Warning:** `npm run dev:api` starts the call poller and **resumes paused outbound campaigns** in whatever Supabase project `apps/api/.env` points at (audit S09). Check `call_campaigns` for `paused` rows first, or point the API at a non-production project.
+
+1. `npm run dev:api`, `npm run dev:web` (http://localhost:3000), `npm run dev:admin` (http://127.0.0.1:3001).
+2. Web → **Get started** → fill the request form (Turnstile appears) → "Request received"; the requester gets a confirmation email and staff get a notification email.
+3. Admin → sign in → the new request appears live (green "Live updates on" dot) → open it → **Approve and provision**.
+4. The requester's email has **Activate my workspace** → `/auth/confirm` → **Activate** → **Choose your password** → lands on **create your receptionist** (onboarding). Close the tab, sign in again: it resumes at the same step.
+5. Create the receptionist → dashboard (stage `active`).
+6. Also try: resend activation (admin button, and "Resend it" on the sign-in page), forgot password, reject with email, a second submit with the same email (same reply; status email instead).
+
+Without `EMAIL_FROM`, development prints every email (with its link) in the API console instead of sending it.
+
+STOP: P7 (onboarding) and P8 (Razorpay) need their own design discussion before implementation.
