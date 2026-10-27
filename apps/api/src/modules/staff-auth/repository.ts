@@ -172,6 +172,21 @@ export async function revokeOtherSessions(principalId: string, keepSessionId: st
   check(await query, 'revoke staff sessions');
 }
 
+export async function listActiveSuperAdminEmails(): Promise<string[]> {
+  const rows = check(
+    await supabase
+      .from('staff_role_assignments')
+      .select('staff_principals!staff_role_assignments_principal_id_fkey(email,status)')
+      .eq('role', 'super_admin')
+      .is('revoked_at', null),
+    'list super admins',
+  ) as unknown as Array<{ staff_principals: { email: string; status: string } | null }>;
+  return [...new Set(rows
+    .map((row) => row.staff_principals)
+    .filter((principal): principal is { email: string; status: string } => principal?.status === 'active')
+    .map((principal) => principal.email))];
+}
+
 // Audit failures are logged, never thrown: a broken audit insert must not take login down.
 export async function recordAudit(event: StaffAuditEvent) {
   const { error } = await supabase.from('staff_audit_events').insert({ ...event, metadata: event.metadata ?? {} });

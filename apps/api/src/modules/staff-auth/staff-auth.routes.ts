@@ -1,7 +1,7 @@
-import { Router, type NextFunction, type Request, type Response } from 'express';
+import { Router, type Response } from 'express';
 import { config } from '../../config';
 import { createRateLimit } from '../../middleware/rateLimit';
-import { logger } from '../../services/cloudwatchLogger';
+import { asyncRoute } from '../../utils/asyncRoute';
 import { getClientIp } from '../../utils/security';
 import { adminOriginGuard, noStore, requireStaffSession, type StaffRequest } from './middleware';
 import { checkPasswordPolicy, getDummyHash, hashPassword, verifyPassword } from './password';
@@ -36,14 +36,7 @@ const cookieOptions = sessionCookieOptions(config.environment);
 const loginRateLimit = createRateLimit({ keyPrefix: 'staff-login', limit: 10, windowMs: 15 * 60_000 });
 const passwordRateLimit = createRateLimit({ keyPrefix: 'staff-password', limit: 10, windowMs: 15 * 60_000 });
 
-// Express 4 does not catch async rejections. Internal error text is logged, never returned.
-const handle = (fn: (req: StaffRequest, res: Response) => Promise<unknown>) =>
-  (req: Request, res: Response, _next: NextFunction) => {
-    fn(req as StaffRequest, res).catch((error: any) => {
-      logger.error('[StaffAuth] request failed', { url: req.originalUrl, error: error?.message });
-      if (!res.headersSent) res.status(500).json({ error: 'Something went wrong' });
-    });
-  };
+const handle = (fn: (req: StaffRequest, res: Response) => Promise<unknown>) => asyncRoute<StaffRequest>('StaffAuth', fn);
 
 function describe(principal: StaffPrincipal, roles: StaffRole[]) {
   return {

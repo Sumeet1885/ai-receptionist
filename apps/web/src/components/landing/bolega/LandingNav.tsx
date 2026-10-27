@@ -78,7 +78,7 @@ export function LandingNav({ navigate, signedIn }: LandingNavProps) {
 
   const primary = signedIn
     ? { to: '/dashboard', label: 'Open dashboard ↗' }
-    : { to: '/auth?mode=signup', label: 'Get started ↗' };
+    : { to: '/request-access', label: 'Get started ↗' };
   const secondary = signedIn ? { to: '/dashboard', label: 'Dashboard' } : { to: '/auth?mode=signin', label: 'Sign in' };
 
   return (

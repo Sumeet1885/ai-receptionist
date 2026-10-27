@@ -124,5 +124,5 @@ test('admin routes check origin first, rate-limit login and never echo internal 
   assert.match(source, /router\.post\('\/auth\/login', loginRateLimit,/);
   assert.match(source, /router\.post\('\/auth\/password', passwordRateLimit, requireStaffSession,/);
   assert.match(source, /verifyPassword\(password, principal\?\.password_hash \?\? await getDummyHash\(\)\)/);
-  assert.match(source, /res\.status\(500\)\.json\(\{ error: 'Something went wrong' \}\)/);
+  assert.match(source, /asyncRoute<StaffRequest>\('StaffAuth', fn\)/);
 });

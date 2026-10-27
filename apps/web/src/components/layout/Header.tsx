@@ -90,7 +90,7 @@ export const Header: React.FC<HeaderProps> = ({
             <Button variant="ghost" size="sm" onClick={() => navigate('/auth?mode=signin')}>
               Sign in
             </Button>
-            <Button size="sm" onClick={() => navigate('/auth?mode=signup')}>
+            <Button size="sm" onClick={() => navigate('/request-access')}>
               Get started ↗
             </Button>
           </div>
@@ -164,7 +164,7 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => { navigate('/auth?mode=signup'); setMobileMenuOpen(false); }}
+                onClick={() => { navigate('/request-access'); setMobileMenuOpen(false); }}
                 className="w-full rounded-small bg-text px-4 py-3 text-left text-sm font-semibold text-primary-foreground transition hover:bg-primary"
               >
                 Get started ↗

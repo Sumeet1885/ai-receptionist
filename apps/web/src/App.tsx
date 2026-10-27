@@ -18,6 +18,7 @@ import { OnboardingView } from './components/onboarding/OnboardingView';
 import { DeploymentSuccessModal } from './components/onboarding/DeploymentSuccessModal';
 import { PublicChatView } from './components/chat/PublicChatView';
 import { AuthView } from './components/auth/AuthView';
+import { RequestAccessView } from './components/auth/RequestAccessView';
 import { PostLoginShell } from './components/dashboard/PostLoginShell';
 import { DashboardHome } from './components/dashboard/DashboardHome';
 import { LeadsWorkspace } from './components/dashboard/LeadsWorkspace';
@@ -36,6 +37,7 @@ type AgentTab = 'overview' | 'knowledge' | 'install' | 'crm' | 'preview';
 type AppRoute =
   | { name: 'landing' }
   | { name: 'auth'; mode: 'signin' | 'signup' | 'forgot' | 'reset' }
+  | { name: 'request-access' }
   | { name: 'dashboard' }
   | { name: 'leads' }
   | { name: 'inbox' }
@@ -71,6 +73,7 @@ function parseRoute(): AppRoute {
     else if (modeParam === 'reset' || isRecovery) mode = 'reset';
     return { name: 'auth', mode };
   }
+  if (path === '/request-access') return { name: 'request-access' };
   if (path === '/dashboard') return { name: 'dashboard' };
   if (path === '/leads') return { name: 'leads' };
   if (path === '/inbox') return { name: 'inbox' };
@@ -90,7 +93,7 @@ function parseRoute(): AppRoute {
 }
 
 function isProtectedRoute(route: AppRoute) {
-  return !['landing', 'auth', 'public-chat'].includes(route.name);
+  return !['landing', 'auth', 'request-access', 'public-chat'].includes(route.name);
 }
 
 export default function App() {
@@ -377,6 +380,8 @@ export default function App() {
             defaultMode={route.mode}
           />
         )}
+
+        {route.name === 'request-access' && <RequestAccessView navigate={navigate} />}
 
         {route.name === 'agent-new' && (
           <OnboardingView

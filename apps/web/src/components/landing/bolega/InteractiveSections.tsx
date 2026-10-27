@@ -201,7 +201,7 @@ export function QuestionsSection({ navigate, signedIn }: CtaProps) {
           <br />
           your business and your customers.
         </p>
-        <AppLink className="btn light" to={signedIn ? '/dashboard' : '/auth?mode=signup'} navigate={navigate}>
+        <AppLink className="btn light" to={signedIn ? '/dashboard' : '/request-access'} navigate={navigate}>
           {signedIn ? 'Go to your dashboard ↗' : 'Explore getting started ↗'}
         </AppLink>
       </Reveal>
@@ -226,7 +226,7 @@ export function ContactCta({ navigate, signedIn }: CtaProps) {
         <br />
         <em>bolega.</em>
       </h2>
-      <AppLink className="btn" to={signedIn ? '/agents/new' : '/auth?mode=signup'} navigate={navigate}>
+      <AppLink className="btn" to={signedIn ? '/agents/new' : '/request-access'} navigate={navigate}>
         Build your business persona <span>↗</span>
       </AppLink>
       <div className="cta-sub">Start with your business. Make every conversation count.</div>

@@ -18,6 +18,7 @@ async function bootstrap(): Promise<void> {
   const widgetRoutes           = (await import('./routes/widget.routes')).default;
   const crmRoutes              = (await import('./routes/crm.routes')).default;
   const { staffAuthRoutes }    = await import('./modules/staff-auth');
+  const { accessRequestPublicRoutes } = await import('./modules/access-requests');
   const { dograhRoutes, phoneToolsRoutes, campaignRoutes, startCallPoller, startCampaign } =
     await import('./modules/phone-calls');
   const { supabase }           = await import('./services/db');
@@ -50,6 +51,7 @@ async function bootstrap(): Promise<void> {
   app.use('/api/crm',      crmRoutes);
   app.use('/api/campaigns', campaignRoutes);
   app.use('/api/admin',    staffAuthRoutes);
+  app.use('/api/public',   accessRequestPublicRoutes);
 
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok', geminiGuard: geminiGuard.getStatus() });
