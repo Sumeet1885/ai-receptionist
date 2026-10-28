@@ -13,10 +13,10 @@ interface HeaderProps {
 const authedNav = [
   { label: 'Dashboard', path: '/dashboard', key: 'dashboard' },
   { label: 'Leads', path: '/leads', key: 'leads' },
-  { label: 'Inbox', path: '/inbox', key: 'inbox' },
+  { label: 'Inbound Calls', path: '/inbound-calls', key: 'inbound-calls' },
+  { label: 'Outbound Calls', path: '/outbound-calls', key: 'outbound-calls' },
   { label: 'Calendar', path: '/calendar', key: 'calendar' },
-  { label: 'Calls', path: '/calls', key: 'calls' },
-  { label: 'Agents', path: '/agents', key: 'agents' },
+  { label: 'Recordings', path: '/recordings', key: 'recordings' },
   { label: 'Plans', path: '/plans', key: 'plans' },
 ];
 
@@ -47,7 +47,9 @@ export const Header: React.FC<HeaderProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isActive = (key: string) => {
-    if (key === 'agents') return routeName === 'agents' || routeName === 'agent-detail' || routeName === 'agent-new';
+    if (key === 'inbound-calls') return routeName === 'inbound-calls';
+    if (key === 'outbound-calls') return routeName === 'outbound-calls';
+    if (key === 'recordings') return routeName === 'recordings';
     if (key === 'pricing') return routeName === 'pricing' || routeName === 'checkout';
     return routeName === key;
   };

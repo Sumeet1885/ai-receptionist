@@ -61,6 +61,9 @@ type AppRoute =
   | { name: 'inbox' }
   | { name: 'calendar' }
   | { name: 'calls' }
+  | { name: 'inbound-calls' }
+  | { name: 'outbound-calls' }
+  | { name: 'recordings' }
   | { name: 'agents' }
   | { name: 'plans' }
   | { name: 'agent-new' }
@@ -86,6 +89,9 @@ const PAGE_TITLES: Partial<Record<AppRoute['name'], string>> = {
   inbox: 'Inbox',
   calendar: 'Calendar',
   calls: 'Calls',
+  'inbound-calls': 'Inbound Calls',
+  'outbound-calls': 'Outbound Calls',
+  recordings: 'Call Recordings',
   agents: 'Agents',
   plans: 'Plans',
   'agent-new': 'New agent',
@@ -130,10 +136,13 @@ function parseRoute(): AppRoute {
   if (path === '/terms' || path === '/terms-and-conditions') return { name: 'terms' };
   if (path === '/dashboard') return { name: 'dashboard' };
   if (path === '/leads') return { name: 'leads' };
-  if (path === '/inbox') return { name: 'inbox' };
+  if (path === '/inbox') return { name: 'recordings' };
   if (path === '/calendar') return { name: 'calendar' };
   if (path === '/calls') return { name: 'calls' };
-  if (path === '/agents/new') return { name: 'agent-new' };
+  if (path === '/inbound-calls' || path === '/calls/inbound') return { name: 'inbound-calls' };
+  if (path === '/outbound-calls' || path === '/calls/outbound') return { name: 'outbound-calls' };
+  if (path === '/recordings' || path === '/calls/recordings') return { name: 'recordings' };
+  if (path === '/agents/new') return { name: 'outbound-calls' };
   if (path === '/agents') return { name: 'agents' };
   if (path === '/plans') return { name: 'plans' };
 
@@ -212,7 +221,7 @@ export default function App() {
       'auth-signin': '/auth?mode=signin',
       'auth-signup': '/request-access',
       'request-access': '/request-access',
-      onboarding: '/agents/new',
+      onboarding: '/outbound-calls',
       agents: '/agents',
       dashboard: '/dashboard',
       'public-chat': '/dashboard'
@@ -269,8 +278,8 @@ export default function App() {
 
       if (stage === 'onboarding') {
         if (['support', 'contact-support', 'support-guest-ticket', 'privacy', 'terms'].includes(route.name)) return;
-        if (route.name !== 'agent-new' && route.name !== 'landing' && route.name !== 'public-chat') {
-          navigate('/agents/new', true);
+        if (route.name === 'auth' || route.name === 'auth-confirm' || route.name === 'request-access' || route.name === 'agent-new') {
+          navigate('/outbound-calls', true);
         }
       } else if (route.name === 'auth' || route.name === 'auth-confirm' || route.name === 'request-access') {
         navigate('/dashboard', true);
@@ -445,13 +454,7 @@ export default function App() {
 
   const noAgentState = (
     <div className="bg-brand-card border border-brand-border rounded-lg p-10 text-center text-brand-muted">
-      <p className="text-sm">Create an agent first so your receptionist can start collecting leads.</p>
-      <button
-        onClick={() => navigate('/agents/new')}
-        className="mt-4 px-5 py-2.5 bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground rounded-lg text-sm font-bold transition"
-      >
-        Create Agent
-      </button>
+      <p className="text-sm">Telephony lines and AI personas are managed directly via Dograh. Active lines will automatically appear here.</p>
     </div>
   );
 
@@ -473,216 +476,234 @@ export default function App() {
           <BolegaLanding navigate={navigate} signedIn={Boolean(user)} userMenu={user ? <UserMenu email={user.email} navigate={navigate} signOut={() => { void signOut().then(() => navigate('/')).catch(() => showToast('Could not sign out. Please try again.', 'error')); }} /> : undefined} />
         </React.Suspense>
       ) : (
-      <main className="flex-1 flex flex-col min-h-0">
-        {(authLoading && isProtectedRoute(route)) || accountLoading ? (
-          <div className="flex-1 flex items-center justify-center text-brand-muted text-sm">Loading…</div>
-        ) : accountGate ? (
-          <AccountStageView
-            stage={accountGate}
-            email={user?.email}
-            onStageChange={account.setStage}
-            onRetry={() => void account.refresh()}
-            signOut={signOut}
-          />
-        ) : <>
-        {route.name === 'auth' && (
-          <AuthView
-            setView={legacySetView}
-            showToast={showToast}
-            defaultMode={route.mode}
-          />
-        )}
-
-        {route.name === 'request-access' && <RequestAccessView navigate={navigate} />}
-
-        {route.name === 'pricing' && <PricingView navigate={navigate} />}
-
-        {route.name === 'checkout' && <CheckoutView navigate={navigate} />}
-        {route.name === 'privacy' && <LegalView type="privacy" navigate={navigate} />}
-        {route.name === 'terms' && <LegalView type="terms" navigate={navigate} />}
-
-        {route.name === 'auth-confirm' && <AuthConfirmView navigate={navigate} />}
-
-        {route.name === 'agent-new' && (
-          <OnboardingView
-            isInitialSetup={account.stage === 'onboarding'}
-            newBotName={newBotName}
-            setNewBotName={setNewBotName}
-            newBotIndustry={newBotIndustry}
-            setNewBotIndustry={setNewBotIndustry}
-            newBotGreeting={newBotGreeting}
-            setNewBotGreeting={setNewBotGreeting}
-            newBotKB={newBotKB}
-            setNewBotKB={setNewBotKB}
-            newBotColor={newBotColor}
-            setNewBotColor={setNewBotColor}
-            newBotLeadFields={newBotLeadFields}
-            setNewBotLeadFields={setNewBotLeadFields}
-            newBotPrompts={newBotPrompts}
-            setNewBotPrompts={setNewBotPrompts}
-            setView={legacySetView}
-            handleCreateBot={handleCreateBot}
-          />
-        )}
-
-        {route.name === 'dashboard' && (
-          <PostLoginShell
-            title="Dashboard"
-            subtitle="Your daily home for leads, appointments, and receptionist health."
-          >
-            <DashboardHome
-              activeBot={activeBot}
-              bots={bots}
-              leads={leads}
-              navigate={navigate}
-              launchPublicChat={launchPublicChat}
+        <main className="flex-1 flex flex-col min-h-0">
+          {(authLoading && isProtectedRoute(route)) || accountLoading ? (
+            <div className="flex-1 flex items-center justify-center text-brand-muted text-sm">Loading…</div>
+          ) : accountGate ? (
+            <AccountStageView
+              stage={accountGate}
+              email={user?.email}
+              onStageChange={account.setStage}
+              onRetry={() => void account.refresh()}
+              signOut={signOut}
             />
-          </PostLoginShell>
-        )}
-
-        {route.name === 'leads' && (
-          <PostLoginShell
-            title="Leads"
-            subtitle="People who spoke with your receptionist and may need follow-up."
-          >
-            {activeBot ? (
-              <LeadsWorkspace
-                bots={bots}
-                leads={leads}
-                setLeads={setLeads}
-                selectedBotId={leadAgentFilter}
-                setSelectedBotId={setLeadAgentFilter}
-                launchPublicChat={launchPublicChat}
+          ) : <>
+            {route.name === 'auth' && (
+              <AuthView
+                setView={legacySetView}
                 showToast={showToast}
+                defaultMode={route.mode}
               />
-            ) : noAgentState}
-          </PostLoginShell>
-        )}
+            )}
 
-        {route.name === 'inbox' && (
-          <PostLoginShell
-            title="Inbox"
-            subtitle="Review chat and voice conversations handled by the receptionist."
-          >
-            {activeBot ? <ConversationList activeBotId="all" /> : noAgentState}
-          </PostLoginShell>
-        )}
+            {route.name === 'request-access' && <RequestAccessView navigate={navigate} />}
 
-        {route.name === 'calendar' && (
-          <PostLoginShell
-            title="Calendar"
-            subtitle="Connect your calendar and review bookings created by the receptionist."
-          >
-            <AppointmentsTab
-              bots={bots}
-              activeBot={activeBot}
-              updateBot={updateBot}
-              showToast={showToast}
-            />
-          </PostLoginShell>
-        )}
+            {route.name === 'pricing' && <PricingView navigate={navigate} />}
 
-        {route.name === 'calls' && (
-          <PostLoginShell
-            title="Calls"
-            subtitle="Provision your AI phone agent, connect your telephony provider (Twilio, Plivo, Carrier), and review conversations."
-            maxWidth="max-w-[1560px]"
-          >
-            <CallsWorkspace
-              bots={bots}
-              activeBotId={activeBotId}
-              setActiveBotId={setActiveBotId}
-              showToast={showToast}
-            />
-          </PostLoginShell>
-        )}
+            {route.name === 'checkout' && <CheckoutView navigate={navigate} />}
+            {route.name === 'privacy' && <LegalView type="privacy" navigate={navigate} />}
+            {route.name === 'terms' && <LegalView type="terms" navigate={navigate} />}
 
-        {route.name === 'agents' && (
-          <PostLoginShell
-            title="Agents"
-            subtitle="Manage receptionist profiles, website install, and preview links."
-            actions={
-              <button
-                onClick={() => navigate('/agents/new')}
-                className="px-4 py-2.5 bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground rounded-lg text-sm font-bold transition"
+            {route.name === 'auth-confirm' && <AuthConfirmView navigate={navigate} />}
+
+            {route.name === 'agent-new' && (
+              <OnboardingView
+                isInitialSetup={account.stage === 'onboarding'}
+                newBotName={newBotName}
+                setNewBotName={setNewBotName}
+                newBotIndustry={newBotIndustry}
+                setNewBotIndustry={setNewBotIndustry}
+                newBotGreeting={newBotGreeting}
+                setNewBotGreeting={setNewBotGreeting}
+                newBotKB={newBotKB}
+                setNewBotKB={setNewBotKB}
+                newBotColor={newBotColor}
+                setNewBotColor={setNewBotColor}
+                newBotLeadFields={newBotLeadFields}
+                setNewBotLeadFields={setNewBotLeadFields}
+                newBotPrompts={newBotPrompts}
+                setNewBotPrompts={setNewBotPrompts}
+                setView={legacySetView}
+                handleCreateBot={handleCreateBot}
+              />
+            )}
+
+            {route.name === 'dashboard' && (
+              <PostLoginShell
+                title="Dashboard"
+                subtitle="Your daily home for leads, appointments, and receptionist health."
               >
-                Create Agent
-              </button>
-            }
-          >
-            <AgentsPage
-              bots={bots}
-              activeBotId={activeBotId}
-              setActiveBotId={setActiveBotId}
-              navigate={navigate}
-              launchPublicChat={launchPublicChat}
-              deleteBot={deleteBot}
-              showToast={showToast}
-            />
-          </PostLoginShell>
-        )}
+                <DashboardHome
+                  activeBot={activeBot}
+                  bots={bots}
+                  leads={leads}
+                  navigate={navigate}
+                  launchPublicChat={launchPublicChat}
+                />
+              </PostLoginShell>
+            )}
 
-        {route.name === 'agent-detail' && (
-          <PostLoginShell
-            title={routeBot?.businessName || 'Agent'}
-            subtitle="Manage this receptionist's behavior, install script, and preview link."
-            actions={
-              <button
-                onClick={() => navigate('/agents')}
-                className="px-4 py-2.5 bg-brand-card hover:bg-brand-border border border-brand-border text-brand-text rounded-lg text-sm font-semibold transition"
+            {route.name === 'leads' && (
+              <PostLoginShell
+                title="Lead Pipeline"
+                subtitle="Autonomous voice call leads, caller inquiries, and scheduled site visits."
               >
-                All Agents
-              </button>
-            }
-          >
-            {routeBot ? (
-              <AgentDetailPage
-                bots={bots}
-                setBots={setBots}
-                activeBot={routeBot}
-                tab={route.tab}
-                navigate={navigate}
-                launchPublicChat={launchPublicChat}
+                {activeBot ? (
+                  <LeadsWorkspace
+                    bots={bots}
+                    leads={leads}
+                    setLeads={setLeads}
+                    selectedBotId={leadAgentFilter}
+                    setSelectedBotId={setLeadAgentFilter}
+                    launchPublicChat={launchPublicChat}
+                    showToast={showToast}
+                  />
+                ) : noAgentState}
+              </PostLoginShell>
+            )}
+
+            {route.name === 'inbox' && (
+              <PostLoginShell
+                title="Inbox"
+                subtitle="Review chat and voice conversations handled by the receptionist."
+              >
+                {activeBot ? <ConversationList activeBotId="all" /> : noAgentState}
+              </PostLoginShell>
+            )}
+
+            {route.name === 'calendar' && (
+              <PostLoginShell
+                title="Calendar"
+                subtitle="Connect your calendar and review bookings created by the receptionist."
+              >
+                <AppointmentsTab
+                  bots={bots}
+                  activeBot={activeBot}
+                  updateBot={updateBot}
+                  showToast={showToast}
+                />
+              </PostLoginShell>
+            )}
+
+            {(route.name === 'calls' || route.name === 'inbound-calls' || route.name === 'outbound-calls' || route.name === 'recordings') && (
+              <PostLoginShell
+                title={
+                  route.name === 'inbound-calls'
+                    ? 'Inbound Calls'
+                    : route.name === 'outbound-calls'
+                      ? 'Outbound Calls'
+                      : route.name === 'recordings'
+                        ? 'Call Recordings & Logs'
+                        : 'Calls Workspace'
+                }
+                subtitle={
+                  route.name === 'inbound-calls'
+                    ? 'Live WebRTC inbound reception, carrier line status, and incoming call handling.'
+                    : route.name === 'outbound-calls'
+                      ? 'Manual single dialer with live session status and bulk CSV outbound wave campaigns.'
+                      : route.name === 'recordings'
+                        ? 'Review telephony call logs, audio playback recordings, duration, and lead outcomes.'
+                        : 'Provision your AI phone agent, manage outbound dialer, and review call recordings.'
+                }
+                maxWidth="max-w-[1560px]"
+              >
+                <CallsWorkspace
+                  bots={bots}
+                  activeBotId={activeBotId}
+                  setActiveBotId={setActiveBotId}
+                  showToast={showToast}
+                  hideSubTabs={true}
+                  initialTab={
+                    route.name === 'inbound-calls'
+                      ? 'incoming'
+                      : route.name === 'outbound-calls'
+                        ? 'outgoing'
+                        : route.name === 'recordings'
+                          ? 'logs'
+                          : 'incoming'
+                  }
+                />
+              </PostLoginShell>
+            )}
+
+            {route.name === 'agents' && (
+              <PostLoginShell
+                title="Agents"
+                subtitle="Manage receptionist profiles, website install, and preview links."
+              >
+                <AgentsPage
+                  bots={bots}
+                  activeBotId={activeBotId}
+                  setActiveBotId={setActiveBotId}
+                  navigate={navigate}
+                  launchPublicChat={launchPublicChat}
+                  deleteBot={deleteBot}
+                  showToast={showToast}
+                />
+              </PostLoginShell>
+            )}
+
+            {route.name === 'agent-detail' && (
+              <PostLoginShell
+                title={routeBot?.businessName || 'Agent'}
+                subtitle="Manage this receptionist's behavior, install script, and preview link."
+                actions={
+                  <button
+                    onClick={() => navigate('/agents')}
+                    className="px-4 py-2.5 bg-brand-card hover:bg-brand-border border border-brand-border text-brand-text rounded-lg text-sm font-semibold transition"
+                  >
+                    All Agents
+                  </button>
+                }
+              >
+                {routeBot ? (
+                  <AgentDetailPage
+                    bots={bots}
+                    setBots={setBots}
+                    activeBot={routeBot}
+                    tab={route.tab}
+                    navigate={navigate}
+                    launchPublicChat={launchPublicChat}
+                    showToast={showToast}
+                    updateBot={updateBot}
+                  />
+                ) : noAgentState}
+              </PostLoginShell>
+            )}
+
+            {route.name === 'plans' && (
+              <PostLoginShell
+                title="Plans & Billing"
+                subtitle="Transparent calling minute packages and live voice minutes consumption."
+              >
+                <PlansView
+                  activeBot={activeBot}
+                  showToast={showToast}
+                />
+              </PostLoginShell>
+            )}
+
+            {route.name === 'public-chat' && activeBot && (
+              <PublicChatView
+                activeBot={activeBot}
+                chatMessages={chat.chatMessages}
+                chatInput={chat.chatInput}
+                setChatInput={chat.setChatInput}
+                isBotResponding={chat.isBotResponding}
+                handleSendChatMessage={(e) => chat.sendMessage(e, (msg) => showToast(msg, 'error'))}
+                sessionId={chat.currentSessionId}
+                showSpeech={chat.showSpeech}
+                setShowSpeech={chat.setShowSpeech}
+                previewMode={previewMode}
+                setPreviewMode={setPreviewMode}
+                setView={legacySetView}
                 showToast={showToast}
-                updateBot={updateBot}
+                messageEndRef={chat.messageEndRef}
+                isStandalone={isStandaloneChat}
               />
-            ) : noAgentState}
-          </PostLoginShell>
-        )}
-
-        {route.name === 'plans' && (
-          <PostLoginShell
-            title="Plans & Billing"
-            subtitle="Transparent calling minute packages and live voice minutes consumption."
-          >
-            <PlansView
-              activeBot={activeBot}
-              showToast={showToast}
-            />
-          </PostLoginShell>
-        )}
-
-        {route.name === 'public-chat' && activeBot && (
-          <PublicChatView
-            activeBot={activeBot}
-            chatMessages={chat.chatMessages}
-            chatInput={chat.chatInput}
-            setChatInput={chat.setChatInput}
-            isBotResponding={chat.isBotResponding}
-            handleSendChatMessage={(e) => chat.sendMessage(e, (msg) => showToast(msg, 'error'))}
-            sessionId={chat.currentSessionId}
-            showSpeech={chat.showSpeech}
-            setShowSpeech={chat.setShowSpeech}
-            previewMode={previewMode}
-            setPreviewMode={setPreviewMode}
-            setView={legacySetView}
-            showToast={showToast}
-            messageEndRef={chat.messageEndRef}
-            isStandalone={isStandaloneChat}
-          />
-        )}
-        </>}
-      </main>
+            )}
+          </>}
+        </main>
       )}
 
       {!isStandaloneChat && !isAuthScreen && route.name !== 'landing' && route.name !== 'agent-new' && <Footer showToast={(msg) => showToast(msg, 'success')} />}

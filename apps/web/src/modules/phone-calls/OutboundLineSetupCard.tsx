@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Icons } from '../../components/common/Icons';
 import { PhoneInputField } from '../../components/common/PhoneInputField';
 import { validateContactInput } from '../../lib/contactValidation';
@@ -36,6 +36,13 @@ export const OutboundLineSetupCard: React.FC<OutboundLineSetupCardProps> = ({
   );
   const [saving, setSaving] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [copiedNumber, setCopiedNumber] = useState(false);
+
+  const handleCopyNumber = (num: string) => {
+    navigator.clipboard.writeText(num);
+    setCopiedNumber(true);
+    setTimeout(() => setCopiedNumber(false), 2000);
+  };
 
   // Form Fields for BYOT
   const [customPhone, setCustomPhone] = useState(currentOutboundTelephony?.phoneNumber || '');
@@ -49,6 +56,72 @@ export const OutboundLineSetupCard: React.FC<OutboundLineSetupCardProps> = ({
   const [asteriskAppName, setAsteriskAppName] = useState('dograh');
   const [asteriskAppPassword, setAsteriskAppPassword] = useState('');
   const [asteriskWsClientName, setAsteriskWsClientName] = useState('dograh');
+
+  // Unified available numbers for outbound caller ID:
+  // Combines Dograh platform numbers + connected lines (e.g. +912264230099, +917038455063)
+  const availableOutboundOptions = useMemo(() => {
+    const list: Array<{
+      key: string;
+      address: string;
+      label?: string | null;
+      type: 'platform_number' | 'connected_line' | 'receptionist';
+      telephonyConfigId?: number;
+      phoneNumberId?: number;
+      isCurrentlyAssigned: boolean;
+    }> = [];
+
+    // 1. Dograh Numbers
+    for (const n of numbers) {
+      list.push({
+        key: `dograh:${n.telephonyConfigId}:${n.phoneNumberId}`,
+        address: n.address,
+        label: n.label,
+        type: 'platform_number',
+        telephonyConfigId: n.telephonyConfigId,
+        phoneNumberId: n.phoneNumberId,
+        isCurrentlyAssigned: n.address === currentOutboundNumber,
+      });
+    }
+
+    // 2. Connected lines in status
+    if (status?.connectedLines) {
+      for (const line of status.connectedLines) {
+        if (!list.some(item => item.address === line.phoneNumber)) {
+          list.push({
+            key: `line:${line.id}:${line.phoneNumber}`,
+            address: line.phoneNumber,
+            label: line.label || (line.type === 'forwarding' ? 'Mobile SIM' : 'Cloud Line'),
+            type: 'connected_line',
+            telephonyConfigId: line.telephonyConfigId ? Number(line.telephonyConfigId) : undefined,
+            phoneNumberId: line.phoneNumberId ? Number(line.phoneNumberId) : undefined,
+            isCurrentlyAssigned: line.phoneNumber === currentOutboundNumber,
+          });
+        }
+      }
+    }
+
+    // 3. Status phoneNumber if not yet in list
+    if (status?.phoneNumber && !list.some(item => item.address === status.phoneNumber)) {
+      list.push({
+        key: `receptionist:${status.phoneNumber}`,
+        address: status.phoneNumber,
+        label: 'Main Receptionist Line',
+        type: 'receptionist',
+        isCurrentlyAssigned: status.phoneNumber === currentOutboundNumber,
+      });
+    }
+
+    return list;
+  }, [numbers, status?.connectedLines, status?.phoneNumber, currentOutboundNumber]);
+
+  const [selectedOutboundOptionKey, setSelectedOutboundOptionKey] = useState<string>('');
+
+  useEffect(() => {
+    if (availableOutboundOptions.length > 0) {
+      const match = availableOutboundOptions.find(o => o.isCurrentlyAssigned) || availableOutboundOptions[0];
+      if (match) setSelectedOutboundOptionKey(match.key);
+    }
+  }, [availableOutboundOptions]);
 
   const defaultCandidateNumber = numbers[0]?.address || status?.defaultPlatformNumber || '';
 
@@ -67,17 +140,53 @@ export const OutboundLineSetupCard: React.FC<OutboundLineSetupCardProps> = ({
     }
   };
 
-  const handleActivatePlatformDefault = async () => {
+  const handleSwitchOutboundNumber = async (selectedKey: string) => {
+    const option = availableOutboundOptions.find(o => o.key === selectedKey);
+    if (!option) return;
     setSaving(true);
     try {
-      const activeKey = numbers[0];
+      if (option.type === 'receptionist' || option.address === status?.phoneNumber) {
+        await dograhApi.assignOutboundNumber(botId, { mode: 'same_as_inbound' });
+        showToast(`Outgoing Caller ID set to ${option.address} (Same as Receptionist Line)`, 'success');
+      } else {
+        await dograhApi.assignOutboundNumber(botId, {
+          mode: 'platform_default',
+          provider: 'pool',
+          customPhoneNumber: option.address,
+          telephonyConfigId: option.telephonyConfigId,
+          phoneNumberId: option.phoneNumberId,
+        });
+        showToast(`Outgoing Caller ID switched to ${option.address}!`, 'success');
+      }
+      setIsExpanded(false);
+      onUpdated();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to switch outbound line', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleActivatePlatformDefault = async (keyToUse?: string) => {
+    setSaving(true);
+    try {
+      const key = keyToUse || selectedOutboundOptionKey;
+      const found = availableOutboundOptions.find(o => o.key === key);
+      let activeKey = numbers[0];
+      if (found) {
+        await handleSwitchOutboundNumber(found.key);
+        return;
+      }
+      if (!activeKey) {
+        throw new Error('No platform number available');
+      }
       await dograhApi.assignOutboundNumber(botId, {
         mode: 'platform_default',
         provider: 'pool',
-        telephonyConfigId: activeKey?.telephonyConfigId,
-        phoneNumberId: activeKey?.phoneNumberId,
+        telephonyConfigId: activeKey.telephonyConfigId,
+        phoneNumberId: activeKey.phoneNumberId,
       });
-      showToast('Dedicated platform outbound line activated successfully!', 'success');
+      showToast(`Dedicated outbound line set to ${activeKey.address}!`, 'success');
       setSetupMode('platform_default');
       setIsExpanded(false);
       onUpdated();
@@ -172,62 +281,143 @@ export const OutboundLineSetupCard: React.FC<OutboundLineSetupCardProps> = ({
   };
 
   return (
-    <div className="bg-brand-card border border-brand-border rounded-2xl p-5 lg:p-6 shadow-sm space-y-5">
-      {/* Top Banner: Current Outgoing Caller ID Status */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-brand-border">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <h4 className="text-base font-display font-extrabold text-brand-text">
-              Outgoing Caller ID & Phone Line
-            </h4>
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-sky-500/15 text-sky-700 border border-sky-500/30">
-              {isDedicatedOutboundActive ? 'Dedicated Line' : 'Same as Receptionist Line'}
-            </span>
+    <div className="space-y-6">
+      {/* ── HERO BANNER: DEFAULT OUTBOUND CALLER ID LINE ── */}
+      <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-sky-500/10 via-brand-bg/90 to-brand-bg border border-sky-500/30 space-y-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-sky-500/20 text-sky-700 border border-sky-500/30">
+                ✨ Ready for Outbound Dials
+              </span>
+              <span className="text-xs text-brand-muted">• Powered by Managed Telephony</span>
+            </div>
+            <h5 className="text-lg font-display font-extrabold text-brand-text mt-1">
+              Official Outbound Caller ID Line
+            </h5>
+            <p className="text-xs text-brand-muted max-w-xl">
+              We provide this official virtual phone line so you don't need your own Twilio, Plivo, or VoIP credentials. When your AI telecaller calls leads or runs bulk campaigns, this number appears on their phone screens.
+            </p>
           </div>
-          <p className="text-xs text-brand-muted">
-            The phone number that appears on people's phones when your AI dials out. You can use our given platform number, your own carrier, or your receptionist line.
-          </p>
+
+          <div className="flex items-center gap-2.5 shrink-0 self-start md:self-auto flex-wrap">
+            {/* Calendar Integration Status Pill */}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-bg border border-brand-border text-xs font-bold shadow-xs">
+              <span>📅</span>
+              <span className="text-brand-muted text-[11px] font-medium">Calendar:</span>
+              {status?.calendarConnected ? (
+                <span className="inline-flex items-center gap-1 text-emerald-700">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Active (Live Booking)
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-amber-700">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                  Callback Mode
+                </span>
+              )}
+            </div>
+
+            {currentOutboundNumber ? (
+              <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-700 text-xs font-bold shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
+                <span>Active & Ready to Dial</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-700 text-xs font-bold">
+                <span className="w-2 h-2 rounded-full bg-amber-400" />
+                <span>Line Setup Needed</span>
+              </div>
+            )}
+          </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsExpanded(prev => !prev)}
-          className="px-3.5 py-2 rounded-xl bg-brand-bg hover:bg-brand-card text-brand-text border border-brand-border text-xs font-bold transition flex items-center gap-2 self-start sm:self-auto"
-        >
-          <span>⚙️</span>
-          <span>{isExpanded ? 'Hide Settings' : 'Change Outgoing Number'}</span>
-        </button>
-      </div>
-
-      {/* Summary Card of currently active outbound line */}
-      <div className="p-4 rounded-xl bg-brand-bg/60 border border-brand-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-700 flex items-center justify-center text-xl shrink-0">
-            📤
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-brand-muted">
-                Active Outgoing Caller ID:
+        {/* Softphone Display Card */}
+        <div className="p-5 rounded-xl bg-brand-card/95 border border-brand-border flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-700 flex items-center justify-center text-2xl shrink-0">
+              📤
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-brand-muted block">
+                  Outgoing Caller ID (Active)
+                </span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-brand-bg border border-brand-border text-sky-700">
+                  {currentOutboundTelephony?.provider === 'pool'
+                    ? 'Dedicated Virtual Line'
+                    : currentOutboundTelephony?.provider === 'forwarding'
+                    ? 'Mobile SIM Line'
+                    : currentOutboundTelephony?.provider
+                    ? `Via ${currentOutboundTelephony.provider.toUpperCase()}`
+                    : 'Same as Receptionist Line'}
+                </span>
+              </div>
+              <span className="text-xl sm:text-2xl font-body font-extrabold text-brand-text block mt-0.5 tracking-wide">
+                {currentOutboundNumber || defaultCandidateNumber || 'No Line Configured Yet'}
               </span>
-              <span className="px-2 py-0.2 rounded text-[10px] font-bold uppercase bg-brand-card border border-brand-border text-sky-700">
-                {currentOutboundTelephony?.provider ? `Via ${currentOutboundTelephony.provider.toUpperCase()}` : 'Default Inbound Line'}
+              <span className="text-[11px] text-sky-700 font-medium block mt-0.5">
+                Verified number used for live test dials and automated bulk campaigns. Customers can easily identify your business.
               </span>
             </div>
-            <span className="text-lg font-body font-extrabold text-brand-text mt-0.5 block">
-              {currentOutboundNumber || 'No Line Configured Yet'}
-            </span>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            {currentOutboundNumber && (
+              <button
+                type="button"
+                onClick={() => handleCopyNumber(currentOutboundNumber)}
+                className="h-10 px-4 rounded-xl bg-brand-bg hover:bg-brand-card text-brand-text border border-brand-border text-xs font-bold transition flex items-center gap-1.5"
+                title="Copy Caller ID"
+              >
+                {copiedNumber ? <Icons.Check /> : <Icons.Copy />}
+                {copiedNumber ? 'Copied!' : 'Copy Caller ID'}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsExpanded(prev => !prev)}
+              className="h-10 px-4 rounded-xl bg-brand-bg hover:bg-brand-card text-brand-text border border-brand-border text-xs font-bold transition flex items-center gap-1.5"
+            >
+              <span>⚙️</span>
+              <span>{isExpanded ? 'Hide Advanced Modes' : 'Advanced Setup'}</span>
+            </button>
           </div>
         </div>
 
-        <div className="text-xs text-brand-muted sm:text-right">
-          {isDedicatedOutboundActive ? (
-            <p className="text-sky-700 font-semibold">Separate dedicated outbound number active</p>
-          ) : (
-            <p className="text-emerald-700 font-semibold">Using main receptionist line (Customers can call back)</p>
-          )}
-          <p className="text-[11px] text-brand-muted mt-0.5">Used for test calls and bulk campaigns</p>
-        </div>
+        {/* ── Switcher: Available Platform & Connected Numbers for Outbound ── */}
+        {availableOutboundOptions.length > 0 && (
+          <div className="pt-2 border-t border-brand-border/60">
+            <label className="block text-xs font-bold text-brand-text mb-1.5">
+              Switch to Another Available Platform Number:
+            </label>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 max-w-xl">
+              <select
+                value={selectedOutboundOptionKey}
+                onChange={e => setSelectedOutboundOptionKey(e.target.value)}
+                disabled={saving}
+                className="flex-1 h-10 px-3 rounded-lg bg-brand-card border border-brand-border text-sm text-brand-text focus:border-brand-accent outline-none"
+              >
+                {availableOutboundOptions.map(n => (
+                  <option key={n.key} value={n.key}>
+                    {n.address} {n.label ? `(${n.label})` : ''} {n.isCurrentlyAssigned ? '★ (currently assigned)' : ''}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => handleSwitchOutboundNumber(selectedOutboundOptionKey)}
+                disabled={saving || availableOutboundOptions.find(o => o.key === selectedOutboundOptionKey)?.isCurrentlyAssigned}
+                className="h-10 px-5 rounded-lg bg-sky-500 hover:bg-sky-400 text-black border border-sky-400/40 text-xs font-bold transition disabled:opacity-50 shrink-0 shadow-sm"
+              >
+                {saving ? 'Switching…' : 'Switch'}
+              </button>
+            </div>
+            <p className="text-[11px] text-brand-muted mt-1">
+              Select which phone number appears on customers' screens when your AI places outgoing calls and campaigns.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Expanded Configuration Section */}
@@ -257,20 +447,7 @@ export const OutboundLineSetupCard: React.FC<OutboundLineSetupCardProps> = ({
  : 'text-brand-muted hover:text-brand-text'
  }`}
             >
-              ⚡ Priority 1: Given Platform Number
-            </button>
-
-            {/* Tab 3: Option 2 - Configure Their Own */}
-            <button
-              type="button"
-              onClick={() => setSetupMode('byot')}
-              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition whitespace-nowrap text-center ${
- setupMode === 'byot'
- ? 'bg-brand-accent text-primary-foreground shadow-sm'
- : 'text-brand-muted hover:text-brand-text'
- }`}
-            >
-              ⚙️ Option 2: Configure Your Own Carrier
+              ⚡ Dedicated Virtual Outbound Number
             </button>
           </div>
 
@@ -313,21 +490,54 @@ export const OutboundLineSetupCard: React.FC<OutboundLineSetupCardProps> = ({
               </div>
 
               {defaultCandidateNumber ? (
-                <div className="p-4 rounded-xl bg-brand-card border border-brand-border flex items-center justify-between gap-4">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-brand-muted block">Candidate Outgoing Number</span>
-                    <span className="text-lg font-body font-extrabold text-brand-text">{defaultCandidateNumber}</span>
-                    <span className="text-[11px] text-sky-700 block mt-0.5">Managed virtual line • 1-click activation</span>
+                <div className="space-y-3">
+                  <div className="p-4 rounded-xl bg-brand-card border border-brand-border flex items-center justify-between gap-4">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-brand-muted block">Candidate Outgoing Number</span>
+                      <span className="text-lg font-body font-extrabold text-brand-text">{defaultCandidateNumber}</span>
+                      <span className="text-[11px] text-sky-700 block mt-0.5">Managed virtual line • 1-click activation</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleActivatePlatformDefault(selectedOutboundOptionKey || undefined)}
+                      disabled={saving}
+                      className="h-10 px-5 rounded-xl bg-sky-500 hover:bg-sky-400 text-black text-xs font-bold transition flex items-center gap-2 shadow-md disabled:opacity-50 active:scale-95"
+                    >
+                      {saving ? 'Activating…' : '⚡ Activate Given Number'}
+                    </button>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleActivatePlatformDefault}
-                    disabled={saving}
-                    className="h-10 px-5 rounded-xl bg-sky-500 hover:bg-sky-400 text-black text-xs font-bold transition flex items-center gap-2 shadow-md disabled:opacity-50 active:scale-95"
-                  >
-                    {saving ? 'Activating…' : '⚡ Activate Given Number'}
-                  </button>
+                  {/* Pool Numbers Switcher if multiple available */}
+                  {availableOutboundOptions.length > 1 && (
+                    <div className="p-4 rounded-xl bg-brand-card border border-brand-border space-y-2">
+                      <label className="block text-xs font-bold text-brand-text">
+                        Switch to Another Available Platform Number:
+                      </label>
+                      <div className="flex items-center gap-3 max-w-md">
+                        <select
+                          value={selectedOutboundOptionKey}
+                          onChange={e => setSelectedOutboundOptionKey(e.target.value)}
+                          disabled={saving}
+                          className="flex-1 h-10 px-3 rounded-lg bg-brand-bg border border-brand-border text-sm text-brand-text focus:border-brand-accent outline-none"
+                        >
+                          {availableOutboundOptions.map(n => (
+                            <option key={n.key} value={n.key}>
+                              {n.address} {n.label ? `(${n.label})` : ''} {n.isCurrentlyAssigned ? '★ (currently assigned)' : ''}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => handleSwitchOutboundNumber(selectedOutboundOptionKey)}
+                          disabled={saving}
+                          className="h-10 px-4 rounded-lg bg-sky-500 hover:bg-sky-400 text-black border border-sky-400/40 text-xs font-bold transition disabled:opacity-50"
+                        >
+                          {saving ? 'Switching…' : 'Switch'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="p-4 rounded-xl bg-brand-card border border-brand-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -348,8 +558,8 @@ export const OutboundLineSetupCard: React.FC<OutboundLineSetupCardProps> = ({
             </div>
           )}
 
-          {/* VIEW 3: OPTION 2 - CONFIGURE THEIR OWN CARRIER */}
-          {setupMode === 'byot' && (
+          {/* BYOT carrier credential forms unplugged per Rule 3.5 */}
+          {false && setupMode === 'byot' && (
             <div className="p-5 rounded-xl bg-brand-bg/80 border border-brand-border space-y-4">
               <div>
                 <h5 className="text-sm font-bold text-brand-text">Option 2: Connect Your Own Outbound Carrier</h5>

@@ -238,138 +238,163 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Google & Outlook Calendar Integration Card - KEPT 100% INTACT */}
-      <section className="bg-brand-card border border-brand-border rounded-xl overflow-hidden shadow-sm">
-        <div className="px-5 sm:px-6 py-4 border-b border-brand-border flex items-center justify-between gap-3 bg-brand-bg/40">
-          <div>
-            <h3 className="font-display font-bold text-brand-text text-lg flex items-center gap-2"><Icons.Calendar /> Calendar Sync</h3>
-            <p className="text-xs text-brand-muted mt-1">Connection health and live calendar availability booked by your receptionist.</p>
-          </div>
-          <button type="button" onClick={refresh} className="text-xs font-body text-brand-accent hover:text-brand-accent-hover flex items-center gap-1">
-            <Icons.Refresh /> Refresh
-          </button>
+      {/* Google & Outlook Calendar Integration Card with 80% Visible Sunlit Calendar Background */}
+      <section className="relative rounded-2xl overflow-hidden border border-brand-border bg-[#f7f6ef] shadow-sm group min-h-[360px] flex flex-col justify-between">
+        {/* 80% Visible Calendar Booking Background Image */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <img
+            src="/images/calendar_booking_banner.jpg"
+            alt="Calendar Booking Station"
+            className="w-full h-full object-cover object-[center_35%] opacity-80 transform group-hover:scale-[1.01] transition-transform duration-700 ease-out"
+          />
+          {/* Subtle light ambient tint (20%) allowing 80% of the image to be cleanly visible */}
+          <div className="absolute inset-0 bg-[#f7f6ef]/20" />
         </div>
 
-        <div className="p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-lg border flex items-center justify-center ${connectionState === 'connected' ? 'bg-brand-success/10 border-brand-success/30 text-brand-success' : 'bg-brand-bg border-brand-border text-brand-muted'}`}>
-              {connectionState === 'connected' ? <Icons.Check /> : <Icons.Calendar />}
-            </div>
-            <div>
-              <p className="text-sm font-bold text-brand-text">
-                {connectionState === 'connected' ? `${provider === 'google' ? 'Google' : 'Outlook'} Calendar connected` : connectionState === 'loading' ? 'Checking calendar connection…' : connectionState === 'error' ? 'Connection status unavailable' : 'Connect a calendar'}
-              </p>
-              <p className="text-xs text-brand-muted mt-0.5">
-                {connectionState === 'connected' ? 'Availability checks and new bookings are active.' : 'Connect Google or Outlook to accept new bookings.'}
-              </p>
-            </div>
-          </div>
-          {connectionState === 'connected' ? (
-            <button
-              type="button"
-              id="calendar-disconnect-btn"
-              onClick={handleDisconnect}
-              disabled={disconnecting}
-              className="h-10 px-4 rounded-lg border border-red-500/30 text-red-700 hover:bg-red-500/10 text-xs font-bold transition disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {disconnecting ? 'Disconnecting…' : 'Disconnect Calendar'}
-            </button>
-          ) : connectionState !== 'loading' && (
-            <div className="flex flex-col sm:flex-row gap-2">
-              <button type="button" onClick={() => connectCalendar('google')} className="h-10 px-4 rounded-lg bg-white text-gray-900 border border-gray-300 text-xs font-bold flex items-center justify-center gap-2"><Icons.Google /> Google</button>
-              <button type="button" onClick={() => connectCalendar('outlook')} className="h-10 px-4 rounded-lg bg-[#0078d4] text-white text-xs font-bold flex items-center justify-center gap-2"><Icons.Microsoft /> Outlook</button>
-            </div>
-          )}
-        </div>
-
-        {/* Receptionist Calendar Booking Toggle direct status section */}
-        {connectionState !== 'loading' && (
-          <div className="border-t border-brand-border bg-brand-bg/40 px-5 sm:px-6 py-4">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-body uppercase tracking-wider text-brand-muted">Receptionist Booking:</span>
-                  <span className="text-sm font-bold text-brand-text">
-                    {(activeBot || bots?.[0])?.businessName || 'AI Receptionist'}
+        {/* Single Unified Frosted Glass Container with Warm Image-Aligned Styling */}
+        <div className="relative z-10 p-4 sm:p-6">
+          <div className="bg-gradient-to-br from-white/80 via-[#fcfaf6]/72 to-white/75 backdrop-blur-md rounded-2xl p-5 sm:p-7 border border-white/85 shadow-md space-y-4">
+            {/* 1. Header Row */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
+              <div>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <div className="w-9 h-9 rounded-xl bg-brand-primary text-white flex items-center justify-center shadow-xs">
+                    <Icons.Calendar />
+                  </div>
+                  <h3 className="font-display font-extrabold text-xl sm:text-2xl text-brand-text tracking-tight">
+                    Calendar Sync
+                  </h3>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 backdrop-blur-sm border border-brand-border/70 text-xs font-bold text-brand-text shadow-xs">
+                    <span className={`w-2 h-2 rounded-full ${connectionState === 'connected' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`} />
+                    <span>{connectionState === 'connected' ? 'Google Calendar Synced' : 'Offline Mode'}</span>
                   </span>
-                  <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-body font-bold uppercase tracking-wider border flex items-center gap-1.5 ${connectionState === 'connected' && Boolean((activeBot || bots?.[0])?.widgetConfig.enableCalendar)
-                        ? 'bg-brand-success/10 border-brand-success/30 text-brand-success'
-                        : 'bg-amber-500/10 border-amber-500/30 text-amber-700'
-                      }`}
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-full ${connectionState === 'connected' && Boolean((activeBot || bots?.[0])?.widgetConfig.enableCalendar) ? 'bg-brand-success' : 'bg-amber-400'}`} />
-                    <span>
-                      {connectionState === 'connected' && Boolean((activeBot || bots?.[0])?.widgetConfig.enableCalendar)
-                        ? 'Toggle ON (Active)'
-                        : 'Toggle OFF'}
-                    </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-success/15 backdrop-blur-sm border border-brand-success/30 text-brand-success text-xs font-bold shadow-xs">
+                    <span>Live Slot Engine Active</span>
                   </span>
                 </div>
-                <p className="text-xs text-brand-muted leading-relaxed">
-                  {connectionState !== 'connected' ? (
-                    <>
-                      <strong className="text-amber-700">Calendar booking toggle is OFF.</strong> You must first connect Google or Outlook Calendar above to unlock and turn on automated booking.
-                    </>
-                  ) : (activeBot || bots?.[0])?.widgetConfig.enableCalendar ? (
-                    <>
-                      <strong className="text-brand-success">Calendar booking toggle is ON.</strong> Your receptionist will check live slot availability and book meetings directly into your connected calendar.
-                    </>
-                  ) : (
-                    <>
-                      <strong className="text-amber-700">Calendar booking toggle is OFF.</strong> Your calendar is connected, but the booking toggle is currently OFF. Turn it ON to start accepting bookings.
-                    </>
-                  )}
+                <p className="text-xs sm:text-sm text-brand-muted mt-1.5 font-sans font-medium">
+                  Connection health and live calendar availability booked by your receptionist.
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                {connectionState === 'connected' && (activeBot || bots?.[0]) && updateBot ? (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const targetBot = activeBot || bots?.[0];
-                      if (!targetBot) return;
-                      const nextVal = !targetBot.widgetConfig.enableCalendar;
-                      await updateBot(targetBot.id, {
-                        widgetConfig: { ...targetBot.widgetConfig, enableCalendar: nextVal }
-                      });
-                      dograhApi.provision(targetBot.id).catch(err => {
-                        console.error('Failed to update phone agent on toggle change', err);
-                      });
-                      showToast?.(nextVal ? 'Calendar booking toggle turned ON' : 'Calendar booking toggle turned OFF');
-                    }}
-                    className={`h-9 px-4 rounded-md text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm ${(activeBot || bots?.[0])?.widgetConfig.enableCalendar
- ? 'bg-brand-card border border-brand-border hover:bg-brand-bg'
- : 'bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground '
- }`}
-                  >
-                    <span>{(activeBot || bots?.[0])?.widgetConfig.enableCalendar ? 'Turn OFF Booking' : 'Turn ON Booking'}</span>
-                  </button>
-                ) : (
-                  <div className="h-9 px-3 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-700 text-xs font-body flex items-center gap-1.5 select-none">
-                    <span>🔒</span>
-                    <span>Toggle Locked OFF</span>
-                  </div>
-                )}
-
-                {(activeBot || bots?.[0]) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const botId = (activeBot || bots?.[0])?.id;
-                      window.history.pushState({}, '', `/agents/${botId}/knowledge?section=behavior`);
-                      window.dispatchEvent(new PopStateEvent('popstate'));
-                    }}
-                    className="h-9 px-3 rounded-md border border-brand-border bg-brand-card hover:bg-brand-bg text-brand-text text-xs font-semibold transition cursor-pointer"
-                  >
-                    Agent Settings →
-                  </button>
-                )}
-              </div>
+              <button
+                type="button"
+                onClick={refresh}
+                className="h-8.5 px-4 rounded-xl bg-white/90 hover:bg-white text-brand-text border border-brand-border/70 text-xs font-bold transition flex items-center gap-1.5 self-start sm:self-auto shrink-0 shadow-xs cursor-pointer hover:shadow-sm"
+              >
+                <Icons.Refresh />
+                <span>Refresh</span>
+              </button>
             </div>
+
+            {/* 2. Connection Status & Provider Action Sub-card */}
+            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4 sm:p-5 border border-white/80 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className={`w-11 h-11 rounded-xl border flex items-center justify-center shadow-xs ${connectionState === 'connected' ? 'bg-brand-success/15 border-brand-success/40 text-brand-success' : 'bg-white/80 border-brand-border text-brand-muted'}`}>
+                  {connectionState === 'connected' ? <Icons.Check /> : <Icons.Calendar />}
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-brand-text">
+                    {connectionState === 'connected' ? `${provider === 'google' ? 'Google' : 'Outlook'} Calendar connected` : connectionState === 'loading' ? 'Checking calendar connection…' : connectionState === 'error' ? 'Connection status unavailable' : 'Connect a calendar'}
+                  </p>
+                  <p className="text-xs text-brand-muted mt-0.5 font-medium">
+                    {connectionState === 'connected' ? 'Availability checks and new bookings are active.' : 'Connect Google or Outlook to accept new bookings.'}
+                  </p>
+                </div>
+              </div>
+
+              {connectionState === 'connected' ? (
+                <button
+                  type="button"
+                  id="calendar-disconnect-btn"
+                  onClick={handleDisconnect}
+                  disabled={disconnecting}
+                  className="h-9 px-4 rounded-xl border border-red-500/30 text-red-700 bg-white/85 hover:bg-red-50 text-xs font-bold transition disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                >
+                  {disconnecting ? 'Disconnecting…' : 'Disconnect Calendar'}
+                </button>
+              ) : connectionState !== 'loading' && (
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button type="button" onClick={() => connectCalendar('google')} className="h-9 px-4 rounded-xl bg-white text-gray-900 border border-gray-300 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs hover:bg-stone-50"><Icons.Google /> Google</button>
+                  <button type="button" onClick={() => connectCalendar('outlook')} className="h-9 px-4 rounded-xl bg-[#0078d4] text-white text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs hover:bg-[#106ebe]"><Icons.Microsoft /> Outlook</button>
+                </div>
+              )}
+            </div>
+
+            {/* 3. Receptionist Calendar Booking Toggle Sub-card */}
+            {connectionState !== 'loading' && (
+              <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4 sm:p-5 border border-white/80 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="space-y-1.5 max-w-2xl">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-body uppercase tracking-wider text-brand-muted font-bold">Receptionist Booking:</span>
+                    <span className="text-sm font-bold text-brand-text">
+                      {(activeBot || bots?.[0])?.businessName || 'AI Receptionist'}
+                    </span>
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-body font-bold uppercase tracking-wider border flex items-center gap-1.5 ${connectionState === 'connected' && Boolean((activeBot || bots?.[0])?.widgetConfig.enableCalendar)
+                        ? 'bg-brand-success/10 border-brand-success/30 text-brand-success'
+                        : 'bg-amber-500/10 border-amber-500/30 text-amber-700'
+                        }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${connectionState === 'connected' && Boolean((activeBot || bots?.[0])?.widgetConfig.enableCalendar) ? 'bg-brand-success' : 'bg-amber-400'}`} />
+                      <span>
+                        {connectionState === 'connected' && Boolean((activeBot || bots?.[0])?.widgetConfig.enableCalendar)
+                          ? 'Toggle ON (Active)'
+                          : 'Toggle OFF'}
+                      </span>
+                    </span>
+                  </div>
+                  <p className="text-xs text-brand-muted leading-relaxed font-medium">
+                    {connectionState !== 'connected' ? (
+                      <>
+                        <strong className="text-amber-700 font-bold">Calendar booking toggle is OFF.</strong> You must first connect Google or Outlook Calendar above to unlock and turn on automated booking.
+                      </>
+                    ) : (activeBot || bots?.[0])?.widgetConfig.enableCalendar ? (
+                      <>
+                        <strong className="text-brand-success font-bold">Calendar booking toggle is ON.</strong> Your receptionist will check live slot availability and book meetings directly into your connected calendar.
+                      </>
+                    ) : (
+                      <>
+                        <strong className="text-amber-700 font-bold">Calendar booking toggle is OFF.</strong> Your calendar is connected, but the booking toggle is currently OFF. Turn it ON to start accepting bookings.
+                      </>
+                    )}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {connectionState === 'connected' && (activeBot || bots?.[0]) && updateBot ? (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const targetBot = activeBot || bots?.[0];
+                        if (!targetBot) return;
+                        const nextVal = !targetBot.widgetConfig.enableCalendar;
+                        await updateBot(targetBot.id, {
+                          widgetConfig: { ...targetBot.widgetConfig, enableCalendar: nextVal }
+                        });
+                        dograhApi.provision(targetBot.id).catch(err => {
+                          console.error('Failed to update phone agent on toggle change', err);
+                        });
+                        showToast?.(nextVal ? 'Calendar booking toggle turned ON' : 'Calendar booking toggle turned OFF');
+                      }}
+                      className={`h-9 px-4 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs ${(activeBot || bots?.[0])?.widgetConfig.enableCalendar
+                        ? 'bg-white border border-brand-border text-brand-text hover:bg-stone-50'
+                        : 'bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground'
+                        }`}
+                    >
+                      <span>{(activeBot || bots?.[0])?.widgetConfig.enableCalendar ? 'Turn OFF Booking' : 'Turn ON Booking'}</span>
+                    </button>
+                  ) : (
+                    <div className="h-9 px-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 text-xs font-body flex items-center gap-1.5 select-none font-bold">
+                      <span>🔒</span>
+                      <span>Toggle Locked OFF</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </section>
 
       {/* Booked Appointments View Section */}
@@ -397,8 +422,8 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
                 type="button"
                 onClick={() => setCalendarViewMode('grid')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-semibold transition-all ${calendarViewMode === 'grid'
-                    ? 'bg-brand-card text-brand-accent shadow-sm border border-brand-border'
-                    : 'text-brand-muted hover:text-brand-text'
+                  ? 'bg-brand-card text-brand-accent shadow-sm border border-brand-border'
+                  : 'text-brand-muted hover:text-brand-text'
                   }`}
               >
                 <span>📅 Weekly Grid</span>
@@ -407,8 +432,8 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
                 type="button"
                 onClick={() => setCalendarViewMode('list')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-semibold transition-all ${calendarViewMode === 'list'
-                    ? 'bg-brand-card text-brand-accent shadow-sm border border-brand-border'
-                    : 'text-brand-muted hover:text-brand-text'
+                  ? 'bg-brand-card text-brand-accent shadow-sm border border-brand-border'
+                  : 'text-brand-muted hover:text-brand-text'
                   }`}
               >
                 <span>📝 List View</span>
@@ -449,8 +474,8 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
                   type="button"
                   onClick={() => setWeekOffset(0)}
                   className={`h-8 px-3 rounded text-xs font-semibold transition border ${weekOffset === 0
-                      ? 'bg-brand-accent/15 border-brand-accent/40 text-brand-accent'
-                      : 'border-brand-border bg-brand-card hover:bg-brand-bg text-brand-text'
+                    ? 'bg-brand-accent/15 border-brand-accent/40 text-brand-accent'
+                    : 'border-brand-border bg-brand-card hover:bg-brand-bg text-brand-text'
                     }`}
                 >
                   Today
@@ -495,19 +520,19 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
                     <div
                       key={day.toISOString()}
                       className={`rounded-xl border transition-all flex flex-col min-h-[320px] overflow-hidden ${isWeekend
-                          ? 'border-amber-500/30 bg-amber-500/[0.02]'
-                          : isDayToday
-                            ? 'border-brand-accent/50 bg-brand-accent/[0.02] ring-1 ring-brand-accent/30'
-                            : 'border-brand-border bg-brand-bg/40'
+                        ? 'border-amber-500/30 bg-amber-500/[0.02]'
+                        : isDayToday
+                          ? 'border-brand-accent/50 bg-brand-accent/[0.02] ring-1 ring-brand-accent/30'
+                          : 'border-brand-border bg-brand-bg/40'
                         }`}
                     >
                       {/* Day Column Header */}
                       <div
                         className={`p-3 border-b flex items-center justify-between gap-1 ${isWeekend
-                            ? 'border-amber-500/20 bg-amber-500/10'
-                            : isDayToday
-                              ? 'border-brand-accent/20 bg-brand-accent/10'
-                              : 'border-brand-border/60 bg-brand-bg/60'
+                          ? 'border-amber-500/20 bg-amber-500/10'
+                          : isDayToday
+                            ? 'border-brand-accent/20 bg-brand-accent/10'
+                            : 'border-brand-border/60 bg-brand-bg/60'
                           }`}
                       >
                         <div>

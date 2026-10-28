@@ -136,11 +136,8 @@ export const AgentSelectorDropdown: React.FC<AgentSelectorDropdownProps> = ({
               </div>
             </div>
 
-            {/* Switch Action Badge + Chevron */}
+            {/* Dropdown Chevron */}
             <div className="flex items-center gap-2 shrink-0">
-              <span className="hidden sm:inline-flex px-2 py-1 rounded-lg text-[11px] font-bold bg-brand-card border border-brand-border text-brand-muted group-hover:text-brand-text group-hover:border-brand-accent/40 transition">
-                ⇄ Switch
-              </span>
               <div
                 className={`w-7 h-7 rounded-lg flex items-center justify-center text-brand-muted group-hover:text-brand-text transition-transform duration-200 ${
                   isOpen ? 'rotate-180 bg-brand-accent/20 text-brand-accent' : 'bg-brand-card'

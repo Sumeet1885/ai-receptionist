@@ -17,3 +17,5 @@ target.md
 
 # Turborepo local cache and logs
 .turbo
+admin_credentials.txt
+ngrok.exe
