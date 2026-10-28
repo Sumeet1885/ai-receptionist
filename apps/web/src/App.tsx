@@ -7,6 +7,7 @@ import { BUSINESS_TEMPLATES } from './lib/businessTemplates';
 import { getLeadRefreshInterval } from './lib/leadQuery';
 import { useAuth } from './hooks/useAuth';
 import { useAccountState } from './hooks/useAccountState';
+import { isPublicMarketingPage, signedInRedirect } from './lib/customerRoutes';
 import { accountApi } from './lib/accountApi';
 import { useBots } from './hooks/useBots';
 import { useLeads } from './hooks/useLeads';
@@ -19,7 +20,7 @@ import { UserMenu } from './components/layout/UserMenu';
 
 import { OnboardingView } from './components/onboarding/OnboardingView';
 import { SupportDrawer } from './components/support/SupportDrawer';
-import { openSupport } from './lib/supportDrawer';
+import { openSupport, type SupportDrawerRequest } from './lib/supportDrawer';
 import { LegalView } from './components/legal/LegalView';
 import { DeploymentSuccessModal } from './components/onboarding/DeploymentSuccessModal';
 import { PublicChatView } from './components/chat/PublicChatView';
@@ -27,6 +28,7 @@ import { AuthView } from './components/auth/AuthView';
 import { RequestAccessView } from './components/auth/RequestAccessView';
 import { PricingView } from './components/billing/PricingView';
 import { CheckoutView } from './components/billing/CheckoutView';
+import { WorkspacePaywall } from './components/billing/WorkspacePaywall';
 import { AuthConfirmView } from './components/auth/AuthConfirmView';
 import { AccountStageView } from './components/auth/AccountStageView';
 import { PostLoginShell } from './components/dashboard/PostLoginShell';
@@ -100,7 +102,7 @@ const PAGE_TITLES: Partial<Record<AppRoute['name'], string>> = {
 };
 
 function parseRoute(): AppRoute {
-  const path = window.location.pathname;
+  const path = window.location.pathname.replace(/\/+$/, '') || '/';
   const params = new URLSearchParams(window.location.search);
   const hash = window.location.hash;
 
@@ -116,7 +118,8 @@ function parseRoute(): AppRoute {
     params.get('mode') === 'reset' ||
     (params.has('code') && params.get('mode') === 'reset');
 
-  if (path === '/auth' || isRecovery) {
+  if (['/signup', '/sign-up', '/register'].includes(path)) return { name: 'request-access' };
+  if (['/auth', '/login', '/signin', '/sign-in'].includes(path) || isRecovery) {
     const modeParam = params.get('mode');
     // No self-signup any more: old "sign up" links lead to the access request form.
     if (modeParam === 'signup') return { name: 'request-access' };
@@ -161,14 +164,16 @@ function isProtectedRoute(route: AppRoute) {
 
 // Routes a signed-in user may see before finishing activation (verify email, set password).
 function isOpenBeforeActivation(route: AppRoute) {
-  return ['landing', 'public-chat', 'auth-confirm', 'request-access', 'pricing', 'checkout', 'support', 'contact-support', 'support-guest-ticket', 'privacy', 'terms'].includes(route.name)
+  return ['public-chat', 'auth-confirm', 'support', 'privacy', 'terms'].includes(route.name)
     || (route.name === 'auth' && route.mode === 'reset');
 }
 
-const BLOCKING_STAGES = ['not_provisioned', 'suspended', 'verify_email', 'set_password'] as const;
+const BLOCKING_STAGES = ['not_provisioned', 'suspended', 'verify_email', 'set_password', 'scheduled'] as const;
 
 export default function App() {
   const [route, setRoute] = useState<AppRoute>(() => parseRoute());
+  const authIntent = route.name === 'auth' ? route.mode : route.name === 'auth-confirm' ? new URLSearchParams(window.location.search).get('type') ?? undefined : undefined;
+  const pendingSupport = useRef<SupportDrawerRequest | null>(null);
   const [toast, setToast] = useState<ToastType | null>(null);
   const loadedPublicSubdomainRef = useRef<string>('');
   const toastTimerRef = useRef<number | null>(null);
@@ -193,7 +198,7 @@ export default function App() {
   const navigate = (path: string, replace = false) => {
     const destination = new URL(path, window.location.origin);
     if (destination.pathname === '/support' || destination.pathname === '/contact-support') {
-      openSupport({ view: destination.pathname === '/support' ? 'tickets' : 'new', ticketId: destination.searchParams.get('ticket') || '' });
+      openSupport({ view: user ? 'tickets' : destination.pathname === '/support' ? 'tickets' : 'new', ticketId: destination.searchParams.get('ticket') || '' });
       return;
     }
     if (replace) {
@@ -206,14 +211,19 @@ export default function App() {
 
   useEffect(() => {
     if (authLoading || !['support', 'contact-support', 'support-guest-ticket'].includes(route.name)) return;
-    const view = route.name === 'support-guest-ticket' ? 'guest-ticket' : route.name === 'support' ? 'tickets' : 'new';
-    const ticketId = new URLSearchParams(window.location.search).get('ticket') || '';
-    const token = new URLSearchParams(window.location.hash.slice(1)).get('token') || '';
-    window.history.replaceState({}, '', user && account.stage === 'active' ? '/dashboard' : '/');
+    const view = user ? 'tickets' : route.name === 'support-guest-ticket' ? 'guest-ticket' : route.name === 'support' ? 'tickets' : 'new';
+    const ticketId = route.name === 'support' ? new URLSearchParams(window.location.search).get('ticket') || '' : '';
+    const token = user ? '' : new URLSearchParams(window.location.hash.slice(1)).get('token') || '';
+    pendingSupport.current = { view, ticketId, token };
+    window.history.replaceState({}, '', user ? account.stage === 'onboarding' ? '/agents/new' : '/dashboard' : '/');
     setRoute(parseRoute());
-    // The global drawer stays mounted when the background route changes.
-    openSupport({ view, ticketId, token });
   }, [route.name, authLoading]);
+  useEffect(() => {
+    if (!pendingSupport.current || ['support', 'contact-support', 'support-guest-ticket'].includes(route.name)) return;
+    const request = pendingSupport.current;
+    pendingSupport.current = null;
+    openSupport(request);
+  }, [route.name]);
 
   const legacySetView = (view: string) => {
     const map: Record<string, string> = {
@@ -229,7 +239,7 @@ export default function App() {
     navigate(map[view] || '/dashboard');
   };
 
-  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+  const showToast = useCallback((message: string, type: ToastType['type'] = 'success') => {
     if (toastTimerRef.current) {
       window.clearTimeout(toastTimerRef.current);
     }
@@ -270,6 +280,11 @@ export default function App() {
       // Resume the user at their current step: onboarding stays on "create your receptionist"
       // until it is done; activated users leave the sign-in pages for the dashboard.
       const stage = account.stage;
+      if (['support', 'contact-support', 'support-guest-ticket'].includes(route.name)) return;
+      const redirect = signedInRedirect(route.name, stage, authIntent);
+      if (redirect) { navigate(redirect, true); return; }
+      // Only pending verification and password recovery need the confirmation screen.
+      if (route.name === 'auth-confirm') return;
       if (stage !== 'onboarding' && stage !== 'active') return;
 
       fetchBots(user.id);
@@ -281,23 +296,23 @@ export default function App() {
         if (route.name === 'auth' || route.name === 'auth-confirm' || route.name === 'request-access' || route.name === 'agent-new') {
           navigate('/outbound-calls', true);
         }
-      } else if (route.name === 'auth' || route.name === 'auth-confirm' || route.name === 'request-access') {
+      } else if (route.name === 'auth' || route.name === 'request-access') {
         navigate('/dashboard', true);
       }
     } else if (isProtectedRoute(route)) {
       navigate('/', true);
     }
-  }, [user, authLoading, route, account.stage]);
+  }, [user, authLoading, route, account.stage, authIntent]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !['active', 'onboarding'].includes(account.stage || '')) return;
 
     const refreshInterval = getLeadRefreshInterval(route.name);
     if (!refreshInterval) return;
 
     const interval = setInterval(fetchLeads, refreshInterval);
     return () => clearInterval(interval);
-  }, [route.name, user, fetchLeads]);
+  }, [route.name, user, fetchLeads, account.stage]);
 
   useEffect(() => {
     if (route.name === 'agent-detail' && route.botId && activeBotId !== route.botId) {
@@ -458,9 +473,20 @@ export default function App() {
     </div>
   );
 
+  // Hide marketing while restoring a session or replacing a signed-in visitor's URL.
+  if ((authLoading && (isPublicMarketingPage(route.name) || route.name === 'auth' || route.name === 'auth-confirm')) || (user && !['support', 'contact-support', 'support-guest-ticket'].includes(route.name) && signedInRedirect(route.name, account.stage, authIntent))) {
+    return <div className="flex min-h-dvh items-center justify-center bg-background text-sm text-text-subtle" role="status">Opening your workspace...</div>;
+  }
+
+  if (user && account.stage === 'payment_required') return <WorkspacePaywall trialEndsAt={account.trialEndsAt} signOut={signOut} onActivated={() => account.refresh()} />;
+
   return (
     <div className={`bg-brand-bg text-brand-text font-sans antialiased flex flex-col ${isStandaloneChat ? 'h-screen overflow-hidden' : isAuthScreen ? 'min-h-screen lg:h-dvh lg:overflow-hidden' : 'min-h-screen'}`}>
-      {toast && <Toast toast={toast} />}
+      {toast && <Toast toast={toast} onClose={() => {
+        if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+        toastTimerRef.current = null;
+        setToast(null);
+      }} />}
 
       {!isStandaloneChat && route.name !== 'landing' && route.name !== 'agent-new' && (
         <Header
@@ -482,6 +508,8 @@ export default function App() {
           ) : accountGate ? (
             <AccountStageView
               stage={accountGate}
+              loadError={account.error}
+              startsAt={account.startsAt}
               email={user?.email}
               onStageChange={account.setStage}
               onRetry={() => void account.refresh()}
@@ -501,10 +529,10 @@ export default function App() {
             {route.name === 'pricing' && <PricingView navigate={navigate} />}
 
             {route.name === 'checkout' && <CheckoutView navigate={navigate} />}
-            {route.name === 'privacy' && <LegalView type="privacy" navigate={navigate} />}
-            {route.name === 'terms' && <LegalView type="terms" navigate={navigate} />}
+            {route.name === 'privacy' && <LegalView type="privacy" navigate={navigate} signedIn={Boolean(user)} />}
+            {route.name === 'terms' && <LegalView type="terms" navigate={navigate} signedIn={Boolean(user)} />}
 
-            {route.name === 'auth-confirm' && <AuthConfirmView navigate={navigate} />}
+            {route.name === 'auth-confirm' && <AuthConfirmView navigate={navigate} user={user} accountStage={account.stage} checkingAccount={authLoading || (!!user && account.loading)} />}
 
             {route.name === 'agent-new' && (
               <OnboardingView
@@ -706,7 +734,7 @@ export default function App() {
         </main>
       )}
 
-      {!isStandaloneChat && !isAuthScreen && route.name !== 'landing' && route.name !== 'agent-new' && <Footer showToast={(msg) => showToast(msg, 'success')} />}
+      {!isStandaloneChat && !isAuthScreen && route.name !== 'landing' && route.name !== 'agent-new' && <Footer />}
 
       {!isStandaloneChat && <SupportDrawer signedIn={Boolean(user)} navigate={navigate} />}
 

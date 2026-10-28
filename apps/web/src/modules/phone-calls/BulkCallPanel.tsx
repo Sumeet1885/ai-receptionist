@@ -1,3 +1,4 @@
+import { formatDateTimeIST } from '@ai-receptionist/contracts';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Icons } from '../../components/common/Icons';
 import { Campaign, CampaignContact, campaignApi } from './campaignApi';
@@ -430,7 +431,7 @@ export const BulkCallPanel: React.FC<BulkCallPanelProps> = ({ botId, isProvision
                             <StatusBadge status={campaign.status} />
                           </div>
                           <p className="text-xs text-brand-muted mt-0.5">
-                            {campaign.called_count}/{campaign.total_contacts} called · {new Date(campaign.created_at).toLocaleDateString()}
+                            {campaign.called_count}/{campaign.total_contacts} called · {formatDateTimeIST(campaign.created_at)}
                             {campaign.hourly_cap_override ? ` · ${campaign.hourly_cap_override}/hr cap` : ''}
                           </p>
                         </button>

@@ -1,6 +1,24 @@
 @import "tailwindcss";
 @import "./styles/theme.css";
 
+/* Keep interactive controls consistent across all customer screens. */
+button:not(:disabled), a[href], select:not(:disabled), summary,
+[role="button"]:not([aria-disabled="true"]), [role="tab"]:not([aria-disabled="true"]),
+[role="menuitem"]:not([aria-disabled="true"]),
+input:is([type="button"], [type="submit"], [type="reset"], [type="checkbox"], [type="radio"]):not(:disabled),
+input[type="file"]:not(:disabled)::file-selector-button,
+label:has(input[type="checkbox"]:not(:disabled)),
+label:has(input[type="radio"]:not(:disabled)) {
+  cursor: pointer;
+}
+button:disabled, select:disabled, input:disabled, textarea:disabled,
+[aria-disabled="true"] { cursor: not-allowed; }
+
+@keyframes toast-bounce {
+  0%, 100% { transform: translateY(0); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
+  50% { transform: translateY(6px); animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+}
+
 /*
  * Legacy "brand-*" names used across existing screens, kept as aliases of the Bolega India
  * theme tokens so every screen follows the same palette. Prefer the theme names in new code.

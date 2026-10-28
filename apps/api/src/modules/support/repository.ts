@@ -1,4 +1,4 @@
-import { SUPPORT_CATEGORIES, type SupportCategory } from '@ai-receptionist/contracts';
+import { SALES_SUPPORT_CATEGORY, SUPPORT_CATEGORIES, type SupportCategory } from '@ai-receptionist/contracts';
 import { supabase } from '../../services/db';
 
 export function checked<T>(result: { data: T; error: any }): T {
@@ -10,7 +10,12 @@ export async function supportSettings(): Promise<{ categories: SupportCategory[]
     await supabase.from('support_settings').select('categories,retention_days').eq('id', true).single(),
   );
   return {
-    categories: row.categories.length ? row.categories : SUPPORT_CATEGORIES,
+    categories: [
+      ...(row.categories.length ? row.categories : SUPPORT_CATEGORIES).filter(
+        (category: any) => category.id !== SALES_SUPPORT_CATEGORY.id,
+      ),
+      SALES_SUPPORT_CATEGORY,
+    ],
     retention_days: row.retention_days,
   };
 }

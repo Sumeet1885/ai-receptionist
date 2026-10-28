@@ -13,7 +13,7 @@ const POINTS = [
 const ACCESS_STEPS = [
   { title: 'Tell us about your business', body: 'One short form. No card, no commitment.' },
   { title: 'Our team reviews it', body: 'Usually within one working day.' },
-  { title: 'Activate your workspace', body: 'Confirm your email, choose a password and set up your receptionist.' },
+  { title: 'Activate your workspace', body: 'Verify your email to start your 14-day trial, then set up your receptionist.' },
 ];
 
 const HELLOS = [
@@ -82,7 +82,7 @@ function AccessArt() {
   return (
     <>
       <div className="relative">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-accent-lime">Free access</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-accent-lime">14-day free trial</p>
         <div className="mt-4 flex items-end gap-4">
           <img src={INDIA_ARTWORK} alt="" className="h-[clamp(3.5rem,8vh,5rem)] w-auto brightness-110" />
           <span lang="hi" className="font-devanagari text-[clamp(2.4rem,4vw,3.6rem)] font-semibold leading-none text-accent-lime">बोलेगा</span>

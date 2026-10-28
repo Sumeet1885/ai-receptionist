@@ -61,6 +61,8 @@ router.put('/recipients/:id', requireAdminRole('super_admin'), handle(async (req
       accessRequests: recipient.notify_access_requests,
       payments: recipient.notify_payments,
       signupLeads: recipient.notify_signup_leads,
+      sales: recipient.notify_sales,
+      support: recipient.notify_support,
     });
     res.json({ recipient });
   } catch (error: any) {

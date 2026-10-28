@@ -1,3 +1,4 @@
+import { formatExpiryIST } from '@ai-receptionist/contracts';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Ban, Loader2, Mail, RotateCcw, Search, Users } from 'lucide-react';
 import { LIMITS } from '@ai-receptionist/contracts';
@@ -9,6 +10,8 @@ import { Button, Card, Drawer, FilterTabs, PageError, Pager, cx, formatDate, ini
 // plan, and the actions support needs.
 
 const STAGE: Record<CustomerStage, { label: string; style: string }> = {
+  scheduled: { label: 'Scheduled', style: 'bg-info-surface text-info' },
+  payment_required: { label: 'Payment required', style: 'bg-warning-surface text-warning' },
   active: { label: 'Active', style: 'bg-success-surface text-success' },
   onboarding: { label: 'Onboarding', style: 'bg-info-surface text-info' },
   set_password: { label: 'Setting password', style: 'bg-warning-surface text-warning' },
@@ -45,7 +48,7 @@ export function Customers({ roles }: { roles: string[] }) {
   const counts = data?.counts;
   const tabs: Array<{ value: CustomerStage | undefined; label: string }> = [
     { value: undefined, label: `All${counts ? ` · ${counts.all}` : ''}` },
-    ...(['active', 'onboarding', 'set_password', 'verify_email', 'suspended'] as const).map((value) => ({
+    ...(['active', 'scheduled', 'payment_required', 'onboarding', 'set_password', 'verify_email', 'suspended'] as const).map((value) => ({
       value,
       label: `${STAGE[value].label}${counts ? ` · ${counts[value]}` : ''}`,
     })),
@@ -192,7 +195,8 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
     ['Business', customer.businessName ?? '—'],
     ['Joined via', SOURCE[customer.source]],
     ['Plan', customer.plan ? `${customer.plan.name}${customer.plan.currency ? ` (${customer.plan.currency})` : ''}` : 'Free access'],
-    ['Current period ends', customer.plan?.periodEnd ? formatDate(customer.plan.periodEnd) : '—'],
+    ['Plan starts', customer.plan?.startsAt ? formatDate(customer.plan.startsAt) : 'After email verification'],
+    ['Current period ends', customer.plan?.periodEnd ? formatExpiryIST(customer.plan.periodEnd) : '—'],
     ['Agents', String(customer.agents)],
     ['Email confirmed', customer.emailConfirmedAt ? formatDate(customer.emailConfirmedAt) : 'Not yet'],
     ['Last sign-in', customer.lastSignInAt ? formatDate(customer.lastSignInAt) : 'Never'],

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../services/db';
+import { logger } from '../services/cloudwatchLogger';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -20,13 +21,19 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
   const token = authHeader.split(' ')[1];
   try {
     const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error && (!error.status || error.status === 429 || error.status >= 500)) {
+      logger.warn('[Auth] verification service unavailable', { code: error.code, status: error.status, name: error.name });
+      return res.status(503).json({ error: 'The sign-in service is temporarily unavailable. Please try again.', code: 'auth_unavailable' });
+    }
     if (error || !user) {
-      return res.status(401).json({ error: 'Invalid token' });
+      logger.warn('[Auth] access token rejected', { code: error?.code, status: error?.status });
+      return res.status(401).json({ error: 'Invalid token', code: 'invalid_token' });
     }
 
     req.user = { id: user.id, email: user.email, emailConfirmedAt: user.email_confirmed_at ?? null, name: user.user_metadata?.full_name };
     next();
   } catch (err) {
-    res.status(500).json({ error: 'Authentication failed' });
+    logger.warn('[Auth] verification request failed', { name: err instanceof Error ? err.name : 'unknown' });
+    res.status(503).json({ error: 'The sign-in service is temporarily unavailable. Please try again.', code: 'auth_unavailable' });
   }
 };

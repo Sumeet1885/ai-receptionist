@@ -19,3 +19,6 @@ target.md
 .turbo
 admin_credentials.txt
 ngrok.exe
+
+# Local pagination test manifests (dummy account identifiers).
+apps/api/.test-data/

@@ -1,3 +1,4 @@
+import { formatDateTimeIST } from '@ai-receptionist/contracts';
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { Icons } from '../../components/common/Icons';
 import { validateContactInput } from '../../lib/contactValidation';
@@ -662,6 +663,12 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                           <>
                             <span>•</span>
                             <span>Carrier Forwarding</span>
+                          </>
+                        )}
+                        {line.configuredAt && (
+                          <>
+                            <span>•</span>
+                            <span>Added {formatDateTimeIST(line.configuredAt)}</span>
                           </>
                         )}
                       </div>

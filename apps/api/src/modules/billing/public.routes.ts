@@ -1,3 +1,4 @@
+import { validFollowupResume } from './followups';
 import bcrypt from 'bcryptjs';
 import { Router, type Request, type Response } from 'express';
 import { validateCheckoutContact } from '@ai-receptionist/contracts';
@@ -7,7 +8,7 @@ import { publicFormGuards, publicHeaders } from '../../middleware/publicFormGuar
 import { publishAdminEvent } from '../../services/adminEvents';
 import { emailTemplates } from '../../services/email';
 import { notifyAdmins } from '../notifications';
-import { REMINDER_AFTER_ABANDON_MS, REMINDER_AFTER_CHECKOUT_MS, resumeTokenMatches, scheduleReminder } from './reminders';
+import { REMINDER_AFTER_ABANDON_MS, REMINDER_AFTER_CHECKOUT_MS, scheduleReminder } from './reminders';
 import { logger } from '../../services/cloudwatchLogger';
 import { asyncRoute } from '../../utils/asyncRoute';
 import { getClientIp } from '../../utils/security';
@@ -225,11 +226,24 @@ router.post('/checkout/resume', publicHeaders, resumeLimit, asyncRoute('Billing'
   if (!orderId || !UUID.test(orderId) || !token) return invalid();
 
   const order = await getOrder(orderId);
-  if (!order || !resumeTokenMatches(order, token)) return invalid();
+  if (!order || !await validFollowupResume(order, token)) return invalid();
   if (order.status !== 'created') {
-    return res.status(409).json({ error: 'This order is already paid. Check your inbox for the email confirmation link.', paid: true });
+    if (['paid', 'provisioned', 'review'].includes(order.status)) {
+      return res.status(409).json({ error: 'Payment has already been received for this order. Do not pay again. Sign in if your workspace is activated, or use the confirmation email to finish setup.', paid: true, code: 'order_paid' });
+    }
+    return res.status(409).json({ error: 'This checkout is no longer available. Choose a plan to start a new checkout.', code: 'order_unavailable' });
   }
-  if (!order.razorpay_order_id || !razorpayConfigured()) return invalid();
+  if (order.customer_user_id) return res.status(409).json({ error: 'Sign in to your existing workspace to complete this payment.' });
+  if (!order.razorpay_order_id || !order.password_hash) {
+    let selected = await getPlanBySlug(order.plan_snapshot.slug);
+    if (!selected || !isPurchasable(selected, order.currency)) {
+      selected = (await listPlans({ activeOnly: true })).find(plan => isPurchasable(plan, order.currency)) || null;
+    }
+    if (!selected) return res.status(409).json({ error: 'No online plans are available right now. Please contact support.' });
+    return res.json({ order: null, requiresDetails: true, plan: publicPlan(selected), quote: computeQuote(selected, order.currency, null),
+      contact: { fullName: order.full_name, email: order.email, phone: order.phone, businessName: order.business_name }, businessName: order.business_name });
+  }
+  if (!razorpayConfigured()) return res.status(503).json({ error: 'Online payments are temporarily unavailable. Please try again shortly.' });
 
   res.json({
     order: {
@@ -251,6 +265,7 @@ router.post('/checkout/resume', publicHeaders, resumeLimit, asyncRoute('Billing'
       coupon: order.coupon_code ? { code: order.coupon_code, description: null } : null,
     },
     businessName: order.business_name,
+    requiresDetails: false,
   });
 }));
 

@@ -1,3 +1,4 @@
+import { openSupport } from '../../lib/supportDrawer';
 import React, { useEffect, useState } from 'react';
 import { Check } from 'lucide-react';
 import { Button } from '../ui/button';
@@ -26,7 +27,7 @@ export const PricingView: React.FC<PricingViewProps> = ({ navigate }) => {
   }, [reload]);
 
   const choose = (plan: PublicPlan) => {
-    if (plan.contactSales) navigate('/request-access');
+    if (plan.contactSales) openSupport({ view: 'new', intent: 'sales' });
     else navigate(`/checkout?plan=${encodeURIComponent(plan.slug)}&currency=${currency}`);
   };
 

@@ -34,7 +34,7 @@ export function useChat() {
       id: '1',
       sender: 'bot',
       text: greeting,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })
     }]);
   };
 
@@ -50,7 +50,7 @@ export function useChat() {
       id: `user-${Date.now()}`,
       sender: 'user',
       text: userText,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })
     };
 
     setChatMessages(prev => [...prev, userMsg]);
@@ -78,7 +78,7 @@ export function useChat() {
         id: `bot-${Date.now()}`,
         sender: 'bot',
         text: botResponseText,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        timestamp: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })
       };
 
       setChatMessages(prev => [...prev, botMsg]);

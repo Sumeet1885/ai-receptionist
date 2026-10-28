@@ -25,6 +25,9 @@ export interface AccessRequestRow {
   reviewed_by: string | null;
   reviewed_at: string | null;
   rejection_reason: string | null;
+  trial_plan_id?: string | null;
+  assigned_start_date?: string | null;
+  assigned_expiry_date?: string | null;
   provisioned_user_id: string | null;
   provisioned_at: string | null;
   activation_sent_at: string | null;
@@ -90,7 +93,7 @@ export async function listAccessRequests(filters: ListFilters) {
   let query = supabase
     .from('access_requests')
     .select('id,status,full_name,email,phone,business_name,industry,city,created_at,reviewed_at', { count: 'exact' })
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false }).order('id', { ascending: false })
     .range((filters.page - 1) * filters.pageSize, filters.page * filters.pageSize - 1);
   if (filters.status) query = query.eq('status', filters.status);
   if (filters.search) {
@@ -177,4 +180,22 @@ export async function updateAccessRequest(id: string, changes: Partial<AccessReq
       .single<AccessRequestRow>(),
     'update access request',
   );
+}
+
+export interface AccessRequestNote {
+  id: string;
+  body: string;
+  author_name: string | null;
+  created_at: string;
+  is_imported: boolean;
+}
+const NOTE_COLUMNS = 'id,body,author_name,created_at,is_imported';
+export async function listAccessRequestNotes(requestId: string) {
+  return check(await supabase.from('access_request_notes').select(NOTE_COLUMNS)
+    .eq('access_request_id', requestId).order('created_at', { ascending: false }).order('id', { ascending: false }),
+    'list access request notes') as AccessRequestNote[];
+}
+export async function addAccessRequestNote(requestId: string, body: string, authorId: string, authorName: string) {
+  return check(await supabase.from('access_request_notes').insert({ access_request_id: requestId, body, author_admin_id: authorId, author_name: authorName })
+    .select(NOTE_COLUMNS).single<AccessRequestNote>(), 'add access request note');
 }

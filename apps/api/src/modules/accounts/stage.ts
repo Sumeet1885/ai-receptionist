@@ -11,13 +11,15 @@ import type { CustomerAccount } from './repository';
  *   onboarding      → first-time setup (currently: create the first receptionist)
  *   active          → full access
  */
-export type AccountStage = 'not_provisioned' | 'suspended' | 'verify_email' | 'set_password' | 'onboarding' | 'active';
+export type AccountStage = 'not_provisioned' | 'suspended' | 'verify_email' | 'set_password' | 'onboarding' | 'active' | 'payment_required' | 'scheduled';
 
-export function computeAccountStage(account: Pick<CustomerAccount, 'status' | 'password_set_at' | 'onboarding_completed_at'> | null, emailConfirmed: boolean): AccountStage {
+export function computeAccountStage(account: Pick<CustomerAccount, 'status' | 'password_set_at' | 'onboarding_completed_at' | 'access_expires_at' | 'access_starts_at'> | null, emailConfirmed: boolean): AccountStage {
   if (!account) return 'not_provisioned';
   if (account.status === 'suspended') return 'suspended';
   if (!emailConfirmed) return 'verify_email';
   if (!account.password_set_at) return 'set_password';
+  if (account.access_expires_at && Date.parse(account.access_expires_at) <= Date.now()) return 'payment_required';
+  if (account.access_starts_at && Date.parse(account.access_starts_at) > Date.now()) return 'scheduled';
   if (!account.onboarding_completed_at) return 'onboarding';
   return 'active';
 }

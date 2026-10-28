@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Bell, Building2, Inbox, LayoutDashboard, LogOut, Menu, Package, ShieldCheck, TicketPercent, TrendingUp, UserPlus, X } from 'lucide-react';
+import { Building2, Inbox, LayoutDashboard, LogOut, Mail, Menu, Package, ShieldCheck, TicketPercent, TrendingUp, UserPlus, X } from 'lucide-react';
 import { accessRequestApi, adminApi, type AdminSession } from './api';
 import { LiveContext, type LiveState } from './live';
 import { navigate, PAGE_PATHS, type Page } from './router';
@@ -16,7 +16,7 @@ const NAV: Array<{ page: Page; label: string; icon: typeof Inbox }> = [
   { page: 'leads', label: 'Signup leads', icon: UserPlus },
   { page: 'plans', label: 'Plans & pricing', icon: Package },
   { page: 'coupons', label: 'Coupons', icon: TicketPercent },
-  { page: 'notifications', label: 'Notifications', icon: Bell },
+  { page: 'notifications', label: 'Email settings', icon: Mail },
 ];
 
 const ROLE_LABELS: Record<string, string> = { super_admin: 'Super admin', support: 'Support', read_only: 'Read only' };
@@ -166,8 +166,8 @@ export function Shell({ session, page, onSignedOut, children }: {
 
         <aside className="hidden w-64 shrink-0 border-r border-line bg-surface md:block">{sidebar}</aside>
 
-        <main className="min-w-0 flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-6xl p-4 md:p-6 lg:p-8">{children}</div>
+        <main className={cx("min-h-0 min-w-0 flex-1", page === 'requests' ? 'overflow-hidden' : 'overflow-y-auto')}>
+          <div className={cx("mx-auto max-w-6xl p-4 md:p-6 lg:p-8", page === 'requests' && 'h-full min-h-0')}>{children}</div>
         </main>
       </div>
     </LiveContext.Provider>

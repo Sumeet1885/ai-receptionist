@@ -8,7 +8,8 @@
     "test": "tsx --test --test-concurrency=4 tests/*.test.ts",
     "typecheck": "tsc --noEmit",
     "admin:create": "tsx scripts/admin-create.ts",
-    "admin:reset-password": "tsx scripts/admin-reset-password.ts"
+    "admin:reset-password": "tsx scripts/admin-reset-password.ts",
+    "test-data": "tsx scripts/seed-pagination.ts"
   },
   "dependencies": {
     "@ai-receptionist/contracts": "workspace:*",
@@ -36,7 +37,9 @@
     "@types/express": "^4.17.21",
     "@types/multer": "^2.2.0",
     "@types/node": "^20.11.24",
+    "@types/pg": "^8.23.1",
     "@types/ws": "^8.18.1",
+    "pg": "^8.23.1",
     "tsx": "^4.7.1",
     "typescript": "^5.3.3"
   }

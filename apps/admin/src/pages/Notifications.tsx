@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Bell, Loader2, Pencil, Plus, Send, Trash2 } from 'lucide-react';
+import { Bell, Loader2, Pencil, Plus, Send, Trash2, X } from 'lucide-react';
 import { LIMITS, NOTIFICATION_EVENTS, validateNotificationRecipient } from '@ai-receptionist/contracts';
 import { ApiError, notificationsApi, type NotificationRecipient, type NotificationRecipientInput } from '../api';
 import { useToast } from '../toast';
 import { ActiveBadge, Button, Card, Drawer, Field, INPUT, PageError, Toggle, cx } from '../ui';
 
-const EMPTY: NotificationRecipientInput = { email: '', label: '', accessRequests: true, payments: true, signupLeads: true, isActive: true };
+const EMPTY: NotificationRecipientInput = { email: '', label: '', accessRequests: true, payments: true, signupLeads: true, sales: true, support: true, isActive: true };
 
 const toInput = (row: NotificationRecipient): NotificationRecipientInput => ({
   email: row.email,
@@ -13,6 +13,8 @@ const toInput = (row: NotificationRecipient): NotificationRecipientInput => ({
   accessRequests: row.notify_access_requests,
   payments: row.notify_payments,
   signupLeads: row.notify_signup_leads,
+  sales: !!row.notify_sales,
+  support: !!row.notify_support,
   isActive: row.is_active,
 });
 
@@ -21,6 +23,8 @@ function alertsOf(row: NotificationRecipient) {
     row.notify_access_requests && 'Access requests',
     row.notify_payments && 'Payments',
     row.notify_signup_leads && 'Signup leads',
+    row.notify_sales && 'Pricing & sales',
+    row.notify_support && 'Support requests',
   ].filter(Boolean) as string[];
 }
 
@@ -72,8 +76,8 @@ export function Notifications({ roles }: { roles: string[] }) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-bold tracking-tight">Notifications</h1>
-          <p className="mt-1 text-sm text-subtle">Who gets an email when something needs attention. Each address can choose its alerts.</p>
+          <h1 className="font-display text-3xl font-bold tracking-tight">Email settings</h1>
+          <p className="mt-1 text-sm text-subtle">Who gets an email when something needs attention. Add multiple team email addresses and choose which transactional alerts each receives.</p>
         </div>
         {canEdit && <Button onClick={() => setEditing({ row: null })}><Plus className="h-4 w-4" /> Add emails</Button>}
       </div>
@@ -146,11 +150,35 @@ const splitEmails = (text: string) => [...new Set(text.split(/[\s,;]+/).map((e) 
 function RecipientDrawer({ row, onClose, onSaved }: { row: NotificationRecipient | null; onClose: () => void; onSaved: (message: string) => void }) {
   const [form, setForm] = useState<NotificationRecipientInput>(row ? toInput(row) : EMPTY);
   // New recipients: several addresses at once, all with the same alerts.
-  const [emailList, setEmailList] = useState('');
+  const [emailList, setEmailList] = useState<string[]>([]);
+  const [emailDraft, setEmailDraft] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const set = <K extends keyof NotificationRecipientInput>(key: K, value: NotificationRecipientInput[K]) => setForm((prev) => ({ ...prev, [key]: value }));
+
+  function clearEmailError() {
+    setErrors(current => { const next = { ...current }; delete next.email; return next; });
+  }
+
+  function addEmails(text = emailDraft) {
+    if (busy) return;
+    const candidates = splitEmails(text);
+    if (!candidates.length) { setEmailDraft(''); return; }
+    const invalid = candidates.filter(email => {
+      const check = validateNotificationRecipient({ ...EMPTY, email });
+      return !check.ok && Boolean(check.errors.email);
+    });
+    const next = [...new Set([...emailList, ...candidates])];
+    if (invalid.length || next.length > LIMITS.recipientBatch.max) {
+      setEmailDraft(text);
+      setErrors(current => ({ ...current, email: invalid.length ? `Not valid: ${invalid.join(', ')}` : `Add at most ${LIMITS.recipientBatch.max} addresses at a time.` }));
+      return;
+    }
+    setEmailList(next);
+    setEmailDraft('');
+    clearEmailError();
+  }
 
   async function save() {
     setError('');
@@ -174,7 +202,7 @@ function RecipientDrawer({ row, onClose, onSaved }: { row: NotificationRecipient
   }
 
   async function saveMany() {
-    const emails = splitEmails(emailList);
+    const emails = [...new Set([...emailList, ...splitEmails(emailDraft)])];
     const { max } = LIMITS.recipientBatch;
     if (!emails.length) return setErrors({ email: 'Enter at least one email address.' });
     if (emails.length > max) return setErrors({ email: `Add at most ${max} addresses at a time.` });
@@ -230,17 +258,54 @@ function RecipientDrawer({ row, onClose, onSaved }: { row: NotificationRecipient
           <input className={INPUT} type="email" maxLength={LIMITS.email.max} value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="sales@yourcompany.com" />
         </Field>
       ) : (
-        <Field label="Emails" hint={`(one per line or comma-separated, up to ${LIMITS.recipientBatch.max})`} error={errors.email}>
-          <textarea
-            className={cx(INPUT, 'h-auto min-h-28 resize-y py-2')}
-            rows={4}
-            maxLength={(LIMITS.email.max + 2) * LIMITS.recipientBatch.max}
-            value={emailList}
-            onChange={(e) => setEmailList(e.target.value)}
-            placeholder={'sales@yourcompany.com\nowner@yourcompany.com'}
-          />
-          <span className="block text-right text-[11px] text-subtle">{splitEmails(emailList).length} / {LIMITS.recipientBatch.max} addresses</span>
-        </Field>
+        <div className="space-y-1.5">
+          <label htmlFor="alert-email-input" className="text-xs font-semibold text-ink">Emails <span className="text-danger">*</span></label>
+          <div className={cx('flex min-h-11 min-w-0 flex-wrap items-center gap-2 rounded-xl border bg-white p-2 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20', errors.email ? 'border-danger' : 'border-line')}>
+            {emailList.map(email => (
+              <span key={email} className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-lg bg-primary-soft pl-2.5 pr-1 py-1 text-xs font-medium text-ink">
+                <span className="min-w-0 break-all">{email}</span>
+                <button type="button" disabled={busy} aria-label={`Remove ${email}`} onClick={() => { setEmailList(current => current.filter(value => value !== email)); clearEmailError(); }} className="shrink-0 rounded p-1 text-primary hover:bg-primary/10"><X className="h-3.5 w-3.5" /></button>
+              </span>
+            ))}
+            <input
+              id="alert-email-input"
+              type="text"
+              inputMode="email"
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              disabled={busy}
+              aria-required="true"
+              aria-invalid={Boolean(errors.email)}
+              aria-describedby={`alert-email-hint${errors.email ? ' alert-email-error' : ''}`}
+              className="min-w-0 flex-1 basis-44 border-0 bg-transparent px-1 py-1 text-sm outline-none"
+              maxLength={(LIMITS.email.max + 2) * LIMITS.recipientBatch.max}
+              value={emailDraft}
+              onChange={event => { setEmailDraft(event.target.value); clearEmailError(); }}
+              onBlur={() => addEmails()}
+              onKeyDown={event => {
+                if (event.nativeEvent.isComposing) return;
+                if (['Enter', ',', ';', ' '].includes(event.key)) { event.preventDefault(); addEmails(); }
+                else if (event.key === 'Backspace' && !emailDraft && emailList.length) { setEmailList(current => current.slice(0, -1)); clearEmailError(); }
+              }}
+              onPaste={event => {
+                const pasted = event.clipboardData.getData('text');
+                if (/[\s,;]/.test(pasted)) {
+                  event.preventDefault();
+                  const input = event.currentTarget;
+                  addEmails(emailDraft.slice(0, input.selectionStart ?? emailDraft.length) + pasted + emailDraft.slice(input.selectionEnd ?? emailDraft.length));
+                }
+              }}
+              placeholder="Add email address"
+            />
+            <button type="button" aria-label="Add email address" disabled={busy || !emailDraft.trim()} onClick={() => addEmails()} className="rounded-lg p-1.5 text-primary hover:bg-primary-soft disabled:opacity-40"><Plus className="h-4 w-4" /></button>
+          </div>
+          <div className="flex items-start justify-between gap-3 text-[11px] text-subtle">
+            <p id="alert-email-hint">Press Enter or comma to add. You can paste multiple emails.</p>
+            <span className="shrink-0">{emailList.length} / {LIMITS.recipientBatch.max}</span>
+          </div>
+          {errors.email && <p id="alert-email-error" role="alert" className="break-words text-xs text-danger">{errors.email}</p>}
+        </div>
       )}
       <Field label="Name" hint={row ? '(optional, e.g. Sales team)' : '(optional, applied to all)'} error={errors.label}>
         <input className={INPUT} maxLength={LIMITS.recipientLabel.max} value={form.label} onChange={(e) => set('label', e.target.value)} />
@@ -250,6 +315,8 @@ function RecipientDrawer({ row, onClose, onSaved }: { row: NotificationRecipient
         <Toggle checked={form.accessRequests} onChange={(v) => set('accessRequests', v)} label="Access requests" description={NOTIFICATION_EVENTS.access_requests} />
         <Toggle checked={form.payments} onChange={(v) => set('payments', v)} label="Payments" description={NOTIFICATION_EVENTS.payments} />
         <Toggle checked={form.signupLeads} onChange={(v) => set('signupLeads', v)} label="Signup leads" description={NOTIFICATION_EVENTS.signup_leads} />
+        <Toggle checked={!!form.sales} onChange={v => set('sales', v)} label="Pricing & sales" description={NOTIFICATION_EVENTS.sales} />
+        <Toggle checked={!!form.support} onChange={v => set('support', v)} label="Support requests" description={NOTIFICATION_EVENTS.support} />
         {errors.events && <p className="text-xs text-danger">{errors.events}</p>}
       </div>
       <Toggle checked={form.isActive} onChange={(v) => set('isActive', v)} label="Active" description="Turn off to pause all alerts to this address." />

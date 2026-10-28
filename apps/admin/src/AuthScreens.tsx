@@ -1,10 +1,21 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useState, type FormEvent, type ReactNode, type InputHTMLAttributes } from 'react';
 import { checkAdminPassword, LIMITS } from '@ai-receptionist/contracts';
-import { AlertCircle, KeyRound, Loader2, LockKeyhole, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, KeyRound, Loader2, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { ApiError, adminApi, type AdminSession } from './api';
 import { Button, LOGO_WHITE } from './ui';
 
 const INPUT = 'h-11 w-full rounded-xl border border-line bg-white px-3.5 text-sm text-ink placeholder:text-subtle/70 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20';
+
+function PasswordInput(props: InputHTMLAttributes<HTMLInputElement>) {
+  const [visible, setVisible] = useState(false);
+  const Icon = visible ? EyeOff : Eye;
+  return <div className="relative">
+    <input {...props} type={visible ? 'text' : 'password'} className={`${props.className || INPUT} pr-12`} />
+    <button type="button" disabled={props.disabled} aria-label={visible ? 'Hide password' : 'Show password'} aria-pressed={visible} onClick={() => setVisible(value => !value)} className="absolute inset-y-0 right-1 flex w-10 items-center justify-center rounded-lg text-subtle hover:text-primary">
+      <Icon className="h-4 w-4" aria-hidden="true" />
+    </button>
+  </div>;
+}
 
 function Frame({ children }: { children: ReactNode }) {
   return (
@@ -70,7 +81,7 @@ export function LoginScreen({ onSignedIn, notice }: { onSignedIn: (session: Admi
         </label>
         <label className="block space-y-1.5">
           <span className="text-sm font-medium">Password</span>
-          <input className={INPUT} type="password" autoComplete="current-password" required maxLength={LIMITS.adminPassword.max} value={password} onChange={(e) => setPassword(e.target.value)} />
+          <PasswordInput className={INPUT} type="password" autoComplete="current-password" required maxLength={LIMITS.adminPassword.max} value={password} onChange={(e) => setPassword(e.target.value)} />
         </label>
         <Button type="submit" className="h-11 w-full" disabled={busy}>
           {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Signing in…</> : 'Sign in'}
@@ -121,15 +132,15 @@ export function ChangePasswordScreen({ onChanged, onSignOut }: { onChanged: (ses
         <ErrorNote message={error} />
         <label className="block space-y-1.5">
           <span className="text-sm font-medium">Temporary password</span>
-          <input className={INPUT} type="password" autoComplete="current-password" required maxLength={LIMITS.adminPassword.max} value={current} onChange={(e) => setCurrent(e.target.value)} />
+          <PasswordInput className={INPUT} type="password" autoComplete="current-password" required maxLength={LIMITS.adminPassword.max} value={current} onChange={(e) => setCurrent(e.target.value)} />
         </label>
         <label className="block space-y-1.5">
           <span className="text-sm font-medium">New password <span className="font-normal text-subtle">(at least 12 characters)</span></span>
-          <input className={INPUT} type="password" autoComplete="new-password" required minLength={LIMITS.adminPassword.min} maxLength={LIMITS.adminPassword.max} value={next} onChange={(e) => setNext(e.target.value)} />
+          <PasswordInput className={INPUT} type="password" autoComplete="new-password" required minLength={LIMITS.adminPassword.min} maxLength={LIMITS.adminPassword.max} value={next} onChange={(e) => setNext(e.target.value)} />
         </label>
         <label className="block space-y-1.5">
           <span className="text-sm font-medium">Confirm new password</span>
-          <input className={INPUT} type="password" autoComplete="new-password" required maxLength={LIMITS.adminPassword.max} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+          <PasswordInput className={INPUT} type="password" autoComplete="new-password" required maxLength={LIMITS.adminPassword.max} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
         </label>
         <Button type="submit" className="h-11 w-full" disabled={busy}>
           {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : 'Save password and continue'}

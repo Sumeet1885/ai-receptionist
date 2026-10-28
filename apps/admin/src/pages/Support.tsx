@@ -1,6 +1,19 @@
+import { navigate } from '../router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Loader2, Paperclip, Plus, RefreshCw, Settings } from 'lucide-react';
 import {
+  ArrowUpRight,
+  ChevronLeft,
+  ChevronRight,
+  Inbox,
+  Loader2,
+  Paperclip,
+  Plus,
+  RefreshCw,
+  Search,
+  Settings,
+} from 'lucide-react';
+import {
+  SALES_SUPPORT_CATEGORY,
   SUPPORT_FILE_ACCEPT,
   SUPPORT_PRIORITIES,
   SUPPORT_STATUSES,
@@ -13,7 +26,38 @@ import {
 import { request } from '../api';
 import { useLive } from '../live';
 import { useToast } from '../toast';
-import { Button, Card, Drawer, Field, INPUT, PageError, cx, formatDate } from '../ui';
+import { Button, Card, Drawer, Field, INPUT, PageError, cx, formatDate, initials, timeAgo } from '../ui';
+
+const TICKET_STATUS_STYLE = {
+  open: 'bg-info-surface text-info',
+  in_progress: 'bg-warning-surface text-warning',
+  awaiting_reply: 'bg-primary-soft text-primary',
+  resolved: 'bg-success-surface text-success',
+  closed: 'bg-background text-subtle',
+};
+function TicketStatus({ status }: { status: SupportTicket['status'] }) {
+  return (
+    <span
+      className={cx(
+        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold',
+        TICKET_STATUS_STYLE[status],
+      )}
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      {supportLabel(status)}
+    </span>
+  );
+}
+function TicketPriority({ priority }: { priority: SupportTicket['priority'] }) {
+  const style =
+    priority === 'critical' ? 'text-danger' : priority === 'high' ? 'text-warning' : 'text-subtle';
+  return (
+    <span className={cx('inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium', style)}>
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      {priority ? supportLabel(priority) : 'Not set'}
+    </span>
+  );
+}
 
 interface SettingsData {
   categories: SupportCategory[];
@@ -29,6 +73,7 @@ export function Support({ roles }: { roles: string[] }) {
   const [status, setStatus] = useState('');
   const [priority, setPriority] = useState('');
   const [unread, setUnread] = useState(false);
+  const [salesOnly, setSalesOnly] = useState(false);
   const [search, setSearch] = useState('');
   const [applied, setApplied] = useState('');
   const [page, setPage] = useState(1);
@@ -46,19 +91,20 @@ export function Support({ roles }: { roles: string[] }) {
   const [internal, setInternal] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
 
+  const loadVersion = useRef(0);
   const load = useCallback(async () => {
+    const version = ++loadVersion.current;
     if (selected) {
       const result = await request<{ ticket: SupportTicket }>(`/support/${selected}`);
       if (selectedRef.current === selected) setTicket(result.ticket);
     }
     {
       const result = await request<{ tickets: SupportTicket[]; total: number }>(
-        `/support?${new URLSearchParams({ page: String(page), status, priority, search: applied, unread: String(unread) })}`,
+        `/support?${new URLSearchParams({ page: String(page), status, priority, search: applied, unread: String(unread), category: salesOnly ? SALES_SUPPORT_CATEGORY.id : '' })}`,
       );
-      setTickets(result.tickets);
-      setTotal(result.total);
+      if (version === loadVersion.current) { setTickets(result.tickets); setTotal(result.total); }
     }
-  }, [selected, page, status, priority, applied, unread]);
+  }, [selected, page, status, priority, applied, unread, salesOnly]);
   useEffect(() => {
     void request<SettingsData>('/support/settings')
       .then(setSettings)
@@ -145,18 +191,19 @@ export function Support({ roles }: { roles: string[] }) {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="support-workspace space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-bold tracking-tight">Support tickets</h1>
           <p className="mt-1 text-sm text-subtle">
-            Review customer questions, reply privately, and keep internal notes for your team.
+            Manage customer conversations and keep your team in the loop.
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => void load().catch((err) => setError(err.message))}>
             <RefreshCw size={16} /> Refresh
           </Button>
+          {canConfigure && <Button variant="secondary" onClick={() => navigate('notifications')}>Email recipients</Button>}
           {canConfigure && (
             <Button variant="secondary" onClick={() => setConfigOpen(true)}>
               <Settings size={16} /> Settings
@@ -174,142 +221,298 @@ export function Support({ roles }: { roles: string[] }) {
           }
         />
       )}
-      <div
-        className="space-y-5"
-      >
-        <div className="min-w-0 space-y-4">
-          <>
-            <div className="flex flex-wrap gap-3">
-              <select
-                aria-label="Filter status"
-                className={cx(INPUT, 'w-auto')}
-                value={status}
-                onChange={(e) => {
-                  setStatus(e.target.value);
-                  setPage(1);
-                }}
-              >
-                <option value="">All statuses</option>
-                {SUPPORT_STATUSES.map((value) => (
-                  <option key={value} value={value}>
-                    {supportLabel(value)}
-                  </option>
-                ))}
-              </select>
-              <select
-                aria-label="Filter priority"
-                className={cx(INPUT, 'w-auto')}
-                value={priority}
-                onChange={(e) => {
-                  setPriority(e.target.value);
-                  setPage(1);
-                }}
-              >
-                <option value="">All priorities</option>
-                {SUPPORT_PRIORITIES.map((value) => (
-                  <option key={value} value={value}>
-                    {supportLabel(value)}
-                  </option>
-                ))}
-              </select>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={unread}
-                  onChange={(e) => {
-                    setUnread(e.target.checked);
+      <div className="space-y-5">
+        <Card className="overflow-hidden">
+          <div className="border-b border-line px-4 pt-4 sm:px-5">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-3">
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-semibold">Ticket inbox</h2>
+                <span
+                  className="rounded-md bg-background px-2 py-0.5 text-xs font-semibold text-subtle"
+                  aria-live="polite"
+                >
+                  {tickets ? total : '...'}
+                </span>
+              </div>
+              <button type="button" aria-pressed={salesOnly} className={cx('rounded-lg border px-3 py-1.5 text-xs font-semibold', salesOnly ? 'border-warning/30 bg-warning-surface text-warning' : 'border-line text-subtle')} onClick={() => { setSalesOnly(!salesOnly); setPage(1); }}>Pricing &amp; sales only</button>
+              {(status || priority || unread || applied || salesOnly) && (
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-primary hover:underline"
+                  onClick={() => {
+                    setSalesOnly(false);
+                    setStatus('');
+                    setPriority('');
+                    setUnread(false);
+                    setSearch('');
+                    setApplied('');
                     setPage(1);
                   }}
-                />{' '}
-                Unread only
-              </label>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  setApplied(search);
-                  setPage(1);
-                }}
-                className="flex flex-1 gap-2"
-              >
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-x-1 gap-y-1" role="group" aria-label="Filter ticket status">
+              {[
+                { value: '', label: 'All tickets' },
+                ...SUPPORT_STATUSES.map((value) => ({ value, label: supportLabel(value) })),
+              ].map((item) => (
+                <button
+                  type="button"
+                  key={item.value}
+                  aria-pressed={status === item.value}
+                  onClick={() => {
+                    setStatus(item.value);
+                    setPage(1);
+                  }}
+                  className={cx(
+                    'relative rounded-t-lg px-3 py-3 text-sm font-medium transition-colors',
+                    status === item.value
+                      ? 'bg-primary-soft text-primary after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary'
+                      : 'text-subtle hover:bg-background hover:text-ink',
+                  )}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="support-ticket-toolbar border-b border-line bg-background/40 p-4 sm:px-5">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                setApplied(search.trim());
+                setPage(1);
+              }}
+              className="support-ticket-search flex min-w-0 gap-2"
+              role="search"
+            >
+              <div className="relative min-w-0 flex-1">
+                <Search
+                  size={16}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-3 top-3 text-subtle"
+                />
                 <input
                   type="search"
                   aria-label="Search support tickets"
                   placeholder="Search subject or email"
                   maxLength={100}
-                  className={INPUT}
+                  className={cx(INPUT, 'support-search-input')}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
-                <Button type="submit" variant="secondary">
-                  Search
-                </Button>
-              </form>
-            </div>
-            <Card className="overflow-x-auto">
-              <table className="w-full min-w-[650px] text-left text-sm">
-                <thead>
-                  <tr className="border-b border-line text-subtle">
-                    {['Ticket', 'Requester', 'Status', 'Priority', 'Updated'].map((label) => (
-                      <th key={label} className="px-4 py-3 font-medium">
-                        {label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {tickets?.map((item) => (
-                    <tr key={item.id} className="border-b border-line last:border-0 hover:bg-background">
-                      <td className="max-w-xs px-4 py-4">
-                        <button className="text-left" type="button" onClick={() => choose(item.id)}>
-                          <span className="text-xs text-subtle">
-                            {item.admin_unread && (
-                              <span className="mr-2 inline-block h-2 w-2 rounded-full bg-orange" />
-                            )}
-                            {supportNumber(item.ticket_number)}
-                          </span>
-                          <p className={cx('mt-1 break-words', item.admin_unread && 'font-bold')}>
-                            {item.subject}
-                          </p>
-                        </button>
-                      </td>
-                      <td className="px-4 py-4">
-                        <p>{item.name}</p>
-                        <p className="text-xs text-subtle">{item.email}</p>
-                      </td>
-                      <td className="px-4 py-4">{supportLabel(item.status)}</td>
-                      <td className="px-4 py-4">{supportLabel(item.priority || '')}</td>
-                      <td className="px-4 py-4 text-subtle">{formatDate(item.updated_at)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {(!tickets || !tickets.length) && (
-                <p className="p-8 text-center text-subtle">
-                  {tickets ? 'No tickets match these filters.' : 'Loading tickets...'}
-                </p>
+              </div>
+              <Button type="submit" variant="secondary">
+                Search
+              </Button>
+            </form>
+            <select
+              aria-label="Filter priority"
+              className={cx(INPUT, 'support-priority-filter')}
+              value={priority}
+              onChange={(e) => {
+                setPriority(e.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">All priorities</option>
+              {SUPPORT_PRIORITIES.map((value) => (
+                <option key={value} value={value}>
+                  {supportLabel(value)}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              aria-pressed={unread}
+              onClick={() => {
+                setUnread(!unread);
+                setPage(1);
+              }}
+              className={cx(
+                'inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-xl border px-3 text-sm font-medium transition-colors',
+                unread
+                  ? 'border-primary/30 bg-primary-soft text-primary'
+                  : 'border-line bg-surface text-subtle hover:border-primary/40',
               )}
-            </Card>
-            <div className="flex items-center justify-between">
-              <Button variant="secondary" disabled={page === 1} onClick={() => setPage(page - 1)}>
-                Previous
+            >
+              <span className={cx('h-2 w-2 rounded-full', unread ? 'bg-primary' : 'bg-orange')} />
+              Unread only
+            </button>
+          </div>
+          <table className="support-ticket-table w-full table-fixed text-left text-sm">
+            <colgroup>
+              <col style={{ width: '34%' }} />
+              <col style={{ width: '25%' }} />
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '13%' }} />
+            </colgroup>
+            <thead className="bg-background/50">
+              <tr className="border-b border-line text-xs text-subtle">
+                {['Ticket', 'Requester', 'Status', 'Priority', 'Updated'].map((label) => (
+                  <th key={label} className="px-4 py-3 font-medium first:pl-5 last:pr-5">
+                    {label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {tickets?.map((item) => (
+                <tr
+                  key={item.id}
+                  className={cx('group cursor-pointer border-b border-line transition-colors last:border-0 hover:bg-background/80', item.category === SALES_SUPPORT_CATEGORY.id && 'bg-warning-surface/50')}
+                  onClick={() => choose(item.id)}
+                >
+                  <td className="py-4 pl-5 pr-4">
+                    <button type="button" className="block w-full min-w-0 text-left">
+                      <span className="flex items-center gap-2 text-xs text-subtle">
+                        {supportNumber(item.ticket_number)}{item.category === SALES_SUPPORT_CATEGORY.id && <span className="rounded bg-warning-surface px-1.5 py-0.5 text-[10px] font-semibold text-warning">Sales</span>}
+                        {item.admin_unread && (
+                          <span className="rounded bg-orange/10 px-1.5 py-0.5 text-[10px] font-semibold text-warning">
+                            Unread
+                          </span>
+                        )}
+                      </span>
+                      <span
+                        className={cx(
+                          'mt-1.5 block line-clamp-2 break-words leading-5 group-hover:text-primary',
+                          item.admin_unread ? 'font-semibold' : 'font-medium',
+                        )}
+                      >
+                        {item.subject}
+                      </span>
+                      <span className="mt-1 block text-xs text-subtle">{categoryName(item.category)}</span>
+                    </button>
+                  </td>
+                  <td className="px-4 py-4">
+                    <span className="block truncate font-medium" title={item.name}>
+                      {item.name || 'Customer'}
+                    </span>
+                    <span className="mt-1 block truncate text-xs text-subtle" title={item.email}>
+                      {item.email}
+                    </span>
+                  </td>
+                  <td className="px-4 py-4">
+                    <TicketStatus status={item.status} />
+                  </td>
+                  <td className="px-4 py-4">
+                    <TicketPriority priority={item.priority} />
+                  </td>
+                  <td className="py-4 pl-4 pr-5">
+                    <span
+                      className="whitespace-nowrap text-xs text-subtle"
+                      title={formatDate(item.updated_at)}
+                    >
+                      {timeAgo(item.updated_at)}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="support-ticket-cards divide-y divide-line">
+            {tickets?.map((item) => (
+              <button
+                type="button"
+                key={item.id}
+                onClick={() => choose(item.id)}
+                className={cx('block w-full px-4 py-4 text-left transition-colors hover:bg-background sm:px-5', item.category === SALES_SUPPORT_CATEGORY.id && 'bg-warning-surface/50')}
+              >
+                <span className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2 text-xs text-subtle">
+                    {item.admin_unread && (
+                      <span className="h-2 w-2 rounded-full bg-orange" aria-label="Unread" />
+                    )}
+                    {supportNumber(item.ticket_number)}{item.category === SALES_SUPPORT_CATEGORY.id && <span className="rounded bg-warning-surface px-1.5 py-0.5 text-[10px] font-semibold text-warning">Sales</span>}
+                  </span>
+                  <TicketStatus status={item.status} />
+                </span>
+                <span className="mt-2 block line-clamp-2 break-words text-sm font-semibold leading-5">
+                  {item.subject}
+                </span>
+                <span className="mt-3 flex items-center gap-2">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-soft text-xs font-semibold text-primary">
+                    {initials(item.name || 'Customer')}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-xs font-medium">{item.name || 'Customer'}</span>
+                    <span className="block truncate text-xs text-subtle">{item.email}</span>
+                  </span>
+                  <ArrowUpRight size={16} className="shrink-0 text-subtle" aria-hidden="true" />
+                </span>
+                <span className="mt-3 flex items-center justify-between gap-2">
+                  <TicketPriority priority={item.priority} />
+                  <span className="text-xs text-subtle" title={formatDate(item.updated_at)}>
+                    {timeAgo(item.updated_at)}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+          {(!tickets || !tickets.length) && (
+            <div className="px-5 py-12 text-center" role="status">
+              <Inbox size={28} className="mx-auto mb-3 text-subtle/60" />
+              <p className="text-sm font-semibold">
+                {tickets ? 'No tickets match your filters' : 'Loading tickets...'}
+              </p>
+              {tickets && (
+                <p className="mt-1 text-sm text-subtle">Try a different search or clear your filters.</p>
+              )}
+            </div>
+          )}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3 sm:px-5">
+            <p className="text-xs text-subtle" aria-live="polite">
+              {total
+                ? `${(page - 1) * 25 + 1}-${Math.min(page * 25, total)} of ${total} ${total === 1 ? 'ticket' : 'tickets'}`
+                : '0 tickets'}
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="mr-1 text-xs text-subtle">Page {page}</span>
+              <Button
+                variant="secondary"
+                size="sm"
+                aria-label="Previous page"
+                disabled={page === 1}
+                onClick={() => setPage(page - 1)}
+              >
+                <ChevronLeft size={15} />
               </Button>
-              <span className="text-sm text-subtle">
-                {total} tickets · Page {page}
-              </span>
-              <Button variant="secondary" disabled={page * 25 >= total} onClick={() => setPage(page + 1)}>
-                Next
+              <Button
+                variant="secondary"
+                size="sm"
+                aria-label="Next page"
+                disabled={page * 25 >= total}
+                onClick={() => setPage(page + 1)}
+              >
+                <ChevronRight size={15} />
               </Button>
             </div>
-          </>
-        </div>
+          </div>
+        </Card>
         {selected && (
           <Drawer
-            title="Support ticket details"
+            title={ticket?.category === SALES_SUPPORT_CATEGORY.id ? 'Sales enquiry details' : 'Support ticket details'}
             subtitle={ticket ? supportNumber(ticket.ticket_number) : 'Loading ticket...'}
             onClose={() => choose('')}
-            footer={<Button variant="secondary" onClick={() => choose('')}>Close</Button>}
+            footer={
+              <Button variant="secondary" onClick={() => choose('')}>
+                Close
+              </Button>
+            }
           >
-            {error && <PageError message={error} onRetry={() => void load().then(() => setError('')).catch((err) => setError(err.message))} />}
+            {error && (
+              <PageError
+                message={error}
+                onRetry={() =>
+                  void load()
+                    .then(() => setError(''))
+                    .catch((err) => setError(err.message))
+                }
+              />
+            )}
             {ticket ? (
               <>
                 <Card className="space-y-4 p-5">
@@ -373,7 +576,7 @@ export function Support({ roles }: { roles: string[] }) {
                         <select
                           className={INPUT}
                           value={ticket.category}
-                          disabled={busy}
+                          disabled={busy || ticket.category === SALES_SUPPORT_CATEGORY.id}
                           onChange={(e) => void patch({ category: e.target.value })}
                         >
                           {settings.categories
@@ -564,6 +767,7 @@ function SupportSettings({
                 <input
                   className={INPUT}
                   value={category.name}
+                  disabled={category.id === SALES_SUPPORT_CATEGORY.id}
                   maxLength={60}
                   onChange={(e) => update({ name: e.target.value })}
                 />
@@ -572,6 +776,7 @@ function SupportSettings({
                 <select
                   className={INPUT}
                   value={category.defaultPriority}
+                  disabled={category.id === SALES_SUPPORT_CATEGORY.id}
                   onChange={(e) =>
                     update({ defaultPriority: e.target.value as SupportCategory['defaultPriority'] })
                   }
@@ -587,6 +792,7 @@ function SupportSettings({
                 <input
                   type="checkbox"
                   checked={!!category.archived}
+                  disabled={category.id === SALES_SUPPORT_CATEGORY.id}
                   onChange={(e) => update({ archived: e.target.checked })}
                 />{' '}
                 Archived (hidden from new tickets)
@@ -597,7 +803,7 @@ function SupportSettings({
       </div>
       <Button
         variant="secondary"
-        disabled={form.categories.length >= 30}
+        disabled={form.categories.length >= 31}
         onClick={() =>
           setForm((prev) => ({
             ...prev,

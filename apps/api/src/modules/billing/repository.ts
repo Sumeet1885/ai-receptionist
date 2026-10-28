@@ -1,4 +1,5 @@
 import { supabase } from '../../services/db';
+import { workspacePeriodEnd } from '@ai-receptionist/contracts';
 import type { CouponRow, Currency, PlanRow } from './pricing';
 import type { CouponColumns, FeatureColumns, PlanColumns } from './validation';
 
@@ -7,6 +8,10 @@ import type { CouponColumns, FeatureColumns, PlanColumns } from './validation';
 export type OrderStatus = 'created' | 'paid' | 'provisioned' | 'failed' | 'review';
 
 export interface BillingOrderRow {
+  followup_last_status?: 'sending' | 'sent' | 'failed' | null;
+  followup_sent_at?: string | null;
+  followup_sent_stage?: 'started' | 'closed' | 'failed' | null;
+  customer_user_id?: string | null;
   id: string;
   plan_id: string;
   plan_snapshot: PlanRow;
@@ -50,12 +55,24 @@ const now = () => new Date().toISOString();
 
 export async function listPlans({ activeOnly }: { activeOnly: boolean }) {
   let query = supabase.from('plans').select('*').order('sort_order').order('created_at');
-  if (activeOnly) query = query.eq('is_active', true);
+  if (activeOnly) query = query.eq('is_active', true).eq('is_trial', false);
   return (check(await query, 'list plans') ?? []) as PlanRow[];
 }
 
 export async function getPlanBySlug(slug: string) {
   return check(await supabase.from('plans').select('*').eq('slug', slug).maybeSingle<PlanRow>(), 'get plan');
+}
+
+export async function getTrialPlan(id?: string) {
+  let query = supabase.from('plans').select('*').eq('is_active', true).eq('is_trial', true);
+  query = id ? query.eq('id', id) : query.eq('slug', 'trial-period');
+  return check(await query.maybeSingle<PlanRow>(), 'get trial plan');
+}
+
+export async function getProvisioningPlan(id?: string) {
+  let query = supabase.from('plans').select('*').eq('is_active', true);
+  query = id ? query.eq('id', id) : query.eq('slug', 'trial-period').eq('is_trial', true);
+  return check(await query.maybeSingle<PlanRow>(), 'get provisioning plan');
 }
 
 export async function createPlan(columns: PlanColumns) {
@@ -85,10 +102,6 @@ export async function replaceFeatures(rows: FeatureColumns[]) {
 }
 
 // ── coupons ──────────────────────────────────────────────────────────────────
-
-export async function listCoupons() {
-  return (check(await supabase.from('coupons').select('*').order('created_at', { ascending: false }), 'list coupons') ?? []) as CouponRow[];
-}
 
 export async function getCouponByCode(code: string) {
   return check(await supabase.from('coupons').select('*').eq('code', code.trim().toUpperCase()).maybeSingle<CouponRow>(), 'get coupon');
@@ -175,8 +188,8 @@ export const PAID_STATUSES: OrderStatus[] = ['paid', 'provisioned', 'review'];
 export async function listOrders(filters: { status?: OrderStatus; paidOnly?: boolean; lead?: LeadStage; page: number; pageSize: number }) {
   let query = supabase
     .from('billing_orders')
-    .select('id,status,currency,total,discount,coupon_code,full_name,email,phone,business_name,plan_snapshot,razorpay_payment_id,paid_at,created_at,failure_reason,checkout_dismissed_at,payment_error,reminder_sent_at', { count: 'exact' })
-    .order('created_at', { ascending: false })
+    .select('id,status,currency,total,discount,coupon_code,full_name,email,phone,business_name,plan_snapshot,razorpay_payment_id,paid_at,created_at,failure_reason,checkout_dismissed_at,payment_error,reminder_sent_at,followup_last_status,followup_sent_at,followup_sent_stage', { count: 'exact' })
+    .order('created_at', { ascending: false }).order('id', { ascending: false })
     .range((filters.page - 1) * filters.pageSize, filters.page * filters.pageSize - 1);
   if (filters.status) query = query.eq('status', filters.status);
   else if (filters.paidOnly) query = query.in('status', PAID_STATUSES);
@@ -209,9 +222,8 @@ export async function listOpenLeads() {
 }
 
 export async function setCustomerPlan(userId: string, order: BillingOrderRow) {
-  const started = new Date();
-  const periodEnd = new Date(started);
-  periodEnd.setMonth(periodEnd.getMonth() + 1);
+  const started = new Date(order.paid_at || Date.now());
+  const periodEnd = workspacePeriodEnd(started, { months: 1 });
   check(
     await supabase
       .from('customer_accounts')
@@ -219,11 +231,38 @@ export async function setCustomerPlan(userId: string, order: BillingOrderRow) {
         plan_id: order.plan_id,
         plan_currency: order.currency,
         plan_started_at: started.toISOString(),
-        current_period_end: periodEnd.toISOString(),
+        current_period_end: periodEnd,
+        access_expires_at: periodEnd,
+        trial_days: null,
+        trial_started_at: null,
+        trial_ends_at: null,
+        access_months: null,
+        access_end_date: null,
+        access_starts_at: null,
         billing_order_id: order.id,
         updated_at: now(),
       })
       .eq('user_id', userId),
     'set customer plan',
   );
+}
+
+export async function listAdminPlans(filters: { page: number; search?: string; activeOnly?: boolean; trialOnly?: boolean; checkoutOnly?: boolean }) {
+  let query = supabase.from('plans').select('*', { count: 'exact' }).order('sort_order').order('created_at').order('id')
+    .range((filters.page - 1) * 25, filters.page * 25 - 1);
+  if (filters.activeOnly) query = query.eq('is_active', true);
+  if (filters.trialOnly) query = query.eq('is_trial', true);
+  if (filters.checkoutOnly) query = query.eq('is_trial', false).eq('contact_sales', false);
+  const search = (filters.search || '').replace(/[^\p{L}\p{N} .@+_-]/gu, '').slice(0, 100);
+  if (search) query = query.or(`name.ilike.%${search}%,slug.ilike.%${search}%`);
+  const result = await query;
+  return { plans: (check(result, 'list admin plans') || []) as PlanRow[], total: result.count || 0, page: filters.page, pageSize: 25 };
+}
+export async function listAdminCoupons(page: number) {
+  const result = await supabase.from('coupons').select('*', { count: 'exact' }).order('created_at', { ascending: false }).order('id', { ascending: false })
+    .range((page - 1) * 25, page * 25 - 1);
+  const coupons = (check(result, 'list admin coupons') || []) as CouponRow[];
+  const ids = [...new Set(coupons.flatMap(coupon => coupon.plan_ids))];
+  const names = ids.length ? check(await supabase.from('plans').select('id,name').in('id', ids), 'coupon plan labels') || [] : [];
+  return { coupons, planNames: Object.fromEntries(names.map((plan: { id: string; name: string }) => [plan.id, plan.name])), total: result.count || 0, page, pageSize: 25 };
 }

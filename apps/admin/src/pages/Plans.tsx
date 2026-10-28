@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { LIMITS, parseFeatureList, parsePlanInput } from '@ai-receptionist/contracts';
 import { ArrowDown, ArrowUp, ListChecks, Loader2, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { ApiError, billingAdminApi, formatMoney, type Plan, type PlanFeature, type PlanInput } from '../api';
 import { useToast } from '../toast';
-import { ActiveBadge, Button, Card, Drawer, Field, INPUT, MONEY_INPUT_LENGTH, PageError, Toggle, cx, digitsFor, toMajor, toMinor } from '../ui';
+import { ActiveBadge, Button, Card, Drawer, Field, INPUT, MONEY_INPUT_LENGTH, PageError, Pager, Toggle, cx, digitsFor, toMajor, toMinor } from '../ui';
 
-type PlanForm = Omit<PlanInput, 'priceInr' | 'priceUsd' | 'setupFeeInr' | 'setupFeeUsd' | 'monthlyMinutes' | 'maxAgents' | 'maxConcurrentCalls' | 'sortOrder'> & {
+type PlanForm = Omit<PlanInput, 'priceInr' | 'priceUsd' | 'setupFeeInr' | 'setupFeeUsd' | 'monthlyMinutes' | 'maxAgents' | 'maxConcurrentCalls' | 'sortOrder' | 'trialDays'> & {
+  trialDays: string;
   priceInr: string;
   priceUsd: string;
   setupFeeInr: string;
@@ -17,12 +18,15 @@ type PlanForm = Omit<PlanInput, 'priceInr' | 'priceUsd' | 'setupFeeInr' | 'setup
 };
 
 const EMPTY_FORM: PlanForm = {
+  isTrial: false, trialDays: '14',
   slug: '', name: '', tagline: '', sortOrder: '100', isActive: true, isFeatured: false, contactSales: false,
   monthlyMinutes: '', priceInr: '', priceUsd: '', setupFeeInr: '', setupFeeUsd: '', maxAgents: '', maxConcurrentCalls: '', featureValues: {},
 };
 
 function toForm(plan: Plan): PlanForm {
   return {
+    isTrial: !!plan.is_trial,
+    trialDays: String(plan.trial_days ?? 14),
     slug: plan.slug,
     name: plan.name,
     tagline: plan.tagline ?? '',
@@ -46,6 +50,7 @@ const optionalInt = (value: string) => (value.trim() === '' ? null : Number(valu
 function toInput(form: PlanForm): PlanInput {
   return {
     ...form,
+    trialDays: form.isTrial ? Number(form.trialDays) : null,
     sortOrder: Number(form.sortOrder || 0),
     monthlyMinutes: optionalInt(form.monthlyMinutes),
     maxAgents: optionalInt(form.maxAgents),
@@ -61,16 +66,20 @@ export function Plans({ roles }: { roles: string[] }) {
   const canEdit = roles.includes('super_admin');
   const toast = useToast();
   const [plans, setPlans] = useState<Plan[] | null>(null);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [features, setFeatures] = useState<PlanFeature[]>([]);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState<{ plan: Plan | null } | null>(null);
   const [editingRows, setEditingRows] = useState(false);
 
+  const loadVersion = useRef(0);
   const load = useCallback(() => {
-    billingAdminApi.plans()
-      .then((data) => { setPlans(data.plans); setFeatures(data.features); setError(''); })
-      .catch((err) => setError((err as Error).message));
-  }, []);
+    const version = ++loadVersion.current;
+    billingAdminApi.plans({ page })
+      .then((data) => { if (version !== loadVersion.current) return; setPlans(data.plans); setTotal(data.total); setFeatures(data.features); setError(''); })
+      .catch((err) => { if (version === loadVersion.current) setError((err as Error).message); });
+  }, [page]);
   useEffect(load, [load]);
 
   return (
@@ -104,7 +113,7 @@ export function Plans({ roles }: { roles: string[] }) {
             {plan.is_featured && <span className="mt-2 inline-flex w-fit items-center gap-1 rounded-full bg-lime px-2 py-0.5 text-[11px] font-bold text-ink"><Sparkles className="h-3 w-3" /> Most popular</span>}
 
             <div className="mt-4 flex-1">
-              {plan.contact_sales ? (
+              {plan.is_trial ? <><p className="font-display text-xl font-bold">{plan.trial_days}-day trial</p><p className="mt-1 text-sm text-primary">Admin only - starts after email verification</p></> : plan.contact_sales ? (
                 <p className="font-display text-2xl font-bold">Talk to sales</p>
               ) : (
                 <>
@@ -127,6 +136,8 @@ export function Plans({ roles }: { roles: string[] }) {
           </Card>
         ))}
       </div>
+
+      {plans && <Pager page={page} pages={Math.max(1, Math.ceil(total / 25))} onPage={setPage} />}
 
       {editing && (
         <PlanDrawer
@@ -209,12 +220,14 @@ function PlanDrawer({ plan, features, onClose, onSaved }: { plan: Plan | null; f
       <Field label="Tagline" error={errors.tagline}><input className={INPUT} maxLength={LIMITS.planTagline.max} value={form.tagline} onChange={(e) => set('tagline', e.target.value)} /></Field>
 
       <div className="grid gap-2">
-        <Toggle checked={form.isActive} onChange={(v) => set('isActive', v)} label="Active" description="Shown on the pricing page and available at checkout." />
-        <Toggle checked={form.isFeatured} onChange={(v) => set('isFeatured', v)} label="Most popular" description="Highlighted on the pricing page." />
-        <Toggle checked={form.contactSales} onChange={(v) => set('contactSales', v)} label="Talk to sales" description="No price or checkout; the button opens the access request form." />
+        <Toggle checked={!!form.isTrial} onChange={(v) => set('isTrial', v)} label="Trial plan (admin only)" description="Hidden from customer pricing. Assign when approving an access request." />
+        {form.isTrial && <Field label="Trial duration (days)" error={errors.trialDays}><input className={INPUT} inputMode="numeric" maxLength={3} value={form.trialDays} onChange={(e) => set('trialDays', e.target.value)} /><p className="mt-1 text-xs text-subtle">1-365 days, starting when the customer verifies their email.</p></Field>}
+        <Toggle checked={form.isActive} onChange={(v) => set('isActive', v)} label="Active" description={form.isTrial ? "Available to admins when approving access requests." : "Shown on the pricing page and available at checkout."} />
+        {!form.isTrial && <Toggle checked={form.isFeatured} onChange={(v) => set('isFeatured', v)} label="Most popular" description="Highlighted on the pricing page." />}
+        {!form.isTrial && <Toggle checked={form.contactSales} onChange={(v) => set('contactSales', v)} label="Talk to sales" description="No price or checkout; the button opens the access request form." />}
       </div>
 
-      {!form.contactSales && (
+      {!form.contactSales && !form.isTrial && (
         <div className="grid gap-4 sm:grid-cols-2">
           {money('priceInr', 'Price per month (INR)', '₹')}
           {money('priceUsd', 'Price per month (USD)', '$')}

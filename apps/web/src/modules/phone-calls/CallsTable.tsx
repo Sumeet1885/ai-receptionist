@@ -1,3 +1,4 @@
+import { formatDateTimeIST } from '@ai-receptionist/contracts';
 import React, { useState, useEffect } from 'react';
 import { Icons } from '../../components/common/Icons';
 import { PhoneCallRecord } from './dograhApi';
@@ -436,12 +437,7 @@ export const CallsTable: React.FC<CallsTableProps> = ({
                       </p>
                       <p className="text-[11px] text-brand-muted mt-0.5">
                         {call.started_at
-                          ? new Date(call.started_at).toLocaleString([], {
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })
+                          ? formatDateTimeIST(call.started_at)
                           : '—'}
                       </p>
                     </div>
@@ -577,7 +573,7 @@ export const CallsTable: React.FC<CallsTableProps> = ({
                 <div className="p-3 rounded-xl bg-brand-bg border border-brand-border space-y-1">
                   <span className="text-[10px] text-brand-muted uppercase tracking-wider block">Started At</span>
                   <span className="font-medium text-brand-text block">
-                    {selectedCall.started_at ? new Date(selectedCall.started_at).toLocaleString() : '—'}
+                    {selectedCall.started_at ? formatDateTimeIST(selectedCall.started_at) : '—'}
                   </span>
                 </div>
                 <div className="p-3 rounded-xl bg-brand-bg border border-brand-border space-y-1">

@@ -29,14 +29,14 @@ async function stageFor(req: AuthRequest) {
 }
 
 router.get('/state', handle(async (req, res) => {
-  const { stage } = await stageFor(req);
-  res.json({ stage, email: req.user!.email });
+  const { stage, account } = await stageFor(req);
+  res.json({ stage, email: req.user!.email, accessExpiresAt: account?.access_expires_at ?? null, trialEndsAt: account?.trial_ends_at ?? null, accessStartsAt: account?.plan_started_at ?? account?.access_starts_at ?? null });
 }));
 
 // Sets the password during activation and for resets (the recovery link signs the person in).
 router.post('/password', perUser('account-password', 10, 15 * 60_000), handle(async (req, res) => {
   const { account, stage } = await stageFor(req);
-  if (!['set_password', 'onboarding', 'active'].includes(stage)) {
+  if (!['set_password', 'onboarding', 'active', 'scheduled'].includes(stage)) {
     return res.status(403).json({ error: 'Confirm your email before choosing a password.', stage });
   }
 

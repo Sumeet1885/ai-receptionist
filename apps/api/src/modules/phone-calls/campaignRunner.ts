@@ -1,3 +1,4 @@
+import { workspaceAllowed } from '../../middleware/workspaceAccess';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { initiateCall } from './dograhClient';
 import { DograhProvisionableBot } from './types';
@@ -74,6 +75,11 @@ async function advanceLoop(
     console.log(`[campaign] Campaign ${campaignId} is no longer running — loop exits.`);
     return;
   }
+
+  try {
+    const { data: owner, error } = await supabase.from('bots').select('owner_id').eq('id', bot.id).single();
+    if (error || !owner || !await workspaceAllowed(owner.owner_id)) { await pauseForRateLimit(campaignId, supabase); return; }
+  } catch { await pauseForRateLimit(campaignId, supabase); return; }
 
   const rateLimitError = checkCampaignRateLimit(bot.id, hourlyCap);
   if (rateLimitError) {

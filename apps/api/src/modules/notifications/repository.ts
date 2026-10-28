@@ -13,6 +13,8 @@ const EVENT_COLUMN: Record<NotificationEvent, keyof NotificationRecipientColumns
   access_requests: 'notify_access_requests',
   payments: 'notify_payments',
   signup_leads: 'notify_signup_leads',
+  sales: 'notify_sales',
+  support: 'notify_support',
 };
 
 function check<T>(result: { data: T; error: { message: string; code?: string } | null }, what: string): T {
@@ -20,7 +22,7 @@ function check<T>(result: { data: T; error: { message: string; code?: string } |
   return result.data;
 }
 
-const COLUMNS = 'id,email,label,notify_access_requests,notify_payments,notify_signup_leads,is_active,created_at,updated_at';
+const COLUMNS = 'id,email,label,notify_access_requests,notify_payments,notify_signup_leads,notify_sales,notify_support,is_active,created_at,updated_at';
 
 export async function listRecipients() {
   return (check(await supabase.from('admin_notification_recipients').select(COLUMNS).order('created_at'), 'list notification recipients') ?? []) as NotificationRecipientRow[];

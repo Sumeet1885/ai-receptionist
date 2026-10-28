@@ -31,7 +31,7 @@ test('customer password policy', () => {
 test('account routes require a signed-in user and only set a password after the email is confirmed', async () => {
   const source = await readFile(fileURLToPath(accountRoutesUrl), 'utf8');
   assert.match(source, /router\.use\(requireAuth\);/);
-  assert.match(source, /if \(!\['set_password', 'onboarding', 'active'\]\.includes\(stage\)\)/);
+  assert.match(source, /if \(!\['set_password', 'onboarding', 'active', 'scheduled'\]\.includes\(stage\)\)/);
   assert.match(source, /router\.post\('\/password', perUser\('account-password', \d+, [\d_ *]+\)/);
   assert.match(source, /router\.post\('\/verification-email', perUser\('account-verify', 3, [\d_ *]+\)/);
   assert.match(source, /emailConfirmedAt/);

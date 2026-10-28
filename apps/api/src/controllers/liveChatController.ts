@@ -1,3 +1,4 @@
+import { workspaceAllowed } from '../middleware/workspaceAccess';
 import { WebSocketServer } from 'ws';
 import { supabase } from '../services/db';
 import { config } from '../config';
@@ -91,6 +92,7 @@ export function setupWebSocketServer(): UpgradeHandler {
     let widgetConfig: ReturnType<typeof mergeWidgetConfig>;
     try {
       ({ bot } = await loadLiveSessionContext(supabase, botId, sessionId));
+      if (!await workspaceAllowed(bot.owner_id)) throw new Error('This receptionist is not available.');
     } catch (error: any) {
       ws.close(1008, error.message || 'Invalid chat session');
       return;
@@ -126,6 +128,10 @@ export function setupWebSocketServer(): UpgradeHandler {
 
     // 2. Connect to Gemini Live API
     const geminiWs = new WebSocket(LIVE_API_URL);
+    const accessTimer = setInterval(() => {
+      void workspaceAllowed(bot.owner_id).then(allowed => { if (!allowed) { ws.close(1008, 'Workspace plan expired'); geminiWs.close(); } }).catch(() => { ws.close(1011, 'Could not verify workspace access'); geminiWs.close(); });
+    }, 10_000);
+    ws.once('close', () => clearInterval(accessTimer));
     let setupSent = false;
     let accumulatedBotText = '';
     const inputTranscript = new LiveInputTranscriptAccumulator();

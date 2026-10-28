@@ -5,9 +5,11 @@ import { openSupport } from '../../lib/supportDrawer';
 export function LegalView({
   type,
   navigate,
+  signedIn = false,
 }: {
   type: 'privacy' | 'terms';
   navigate: (path: string) => void;
+  signedIn?: boolean;
 }) {
   const title = type === 'privacy' ? 'Privacy Policy' : 'Terms & Conditions';
   const sections = type === 'privacy' ? PRIVACY_SECTIONS : TERMS_SECTIONS;
@@ -15,10 +17,10 @@ export function LegalView({
     <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
       <button
         type="button"
-        onClick={() => navigate('/')}
+        onClick={() => navigate(signedIn ? '/dashboard' : '/')}
         className="mb-6 inline-flex min-h-10 items-center gap-2 text-sm font-medium text-primary"
       >
-        <ArrowLeft size={16} /> Back to home
+        <ArrowLeft size={16} /> {signedIn ? 'Back to workspace' : 'Back to home'}
       </button>
       <div className="mb-8 border-b border-border pb-7">
         <p className="text-sm font-semibold text-primary">Bolega India · {LEGAL.legalEntity}</p>

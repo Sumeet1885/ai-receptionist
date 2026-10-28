@@ -77,6 +77,8 @@ export async function request<T>(path: string, init: { method?: string; body?: u
 export type Currency = 'INR' | 'USD';
 
 export interface Plan {
+  is_trial?: boolean;
+  trial_days?: number | null;
   id: string;
   slug: string;
   name: string;
@@ -102,6 +104,8 @@ export interface PlanFeature {
 }
 
 export interface PlanInput {
+  isTrial?: boolean;
+  trialDays?: number | null;
   slug: string;
   name: string;
   tagline: string;
@@ -155,6 +159,9 @@ export interface CouponInput {
 export type OrderStatus = 'created' | 'paid' | 'provisioned' | 'failed' | 'review';
 
 export interface BillingOrder {
+  followup_last_status?: 'sending' | 'sent' | 'failed' | null;
+  followup_sent_at?: string | null;
+  followup_sent_stage?: LeadStage | null;
   id: string;
   status: OrderStatus;
   currency: Currency;
@@ -175,12 +182,19 @@ export interface BillingOrder {
   reminder_sent_at: string | null;
 }
 
+export interface LeadEmailPreview {
+  to: string; stage: LeadStage; subject: string; html: string; text: string;
+  canResume: boolean; existingWorkspace: boolean; lastSentAt: string | null;
+}
+
 export const billingAdminApi = {
-  plans: () => request<{ plans: Plan[]; features: PlanFeature[] }>('/billing/plans'),
+  leadEmailPreview: (id: string) => request<LeadEmailPreview>(`/billing/orders/${encodeURIComponent(id)}/email-preview`),
+  sendLeadEmail: (id: string, stage: LeadStage) => request<{ accepted: boolean; stage: LeadStage; messageId?: string }>(`/billing/orders/${encodeURIComponent(id)}/send-email`, { method: 'POST', body: { stage } }),
+  plans: (params: { page?: number; search?: string; activeOnly?: boolean; trialOnly?: boolean; checkoutOnly?: boolean } = {}) => request<{ plans: Plan[]; features: PlanFeature[]; total: number; page: number; pageSize: number }>(`/billing/plans?${new URLSearchParams(Object.entries(params).map(([key, value]) => [key, String(value)]))}`),
   createPlan: (body: PlanInput) => request<{ plan: Plan }>('/billing/plans', { method: 'POST', body }),
   updatePlan: (id: string, body: PlanInput) => request<{ plan: Plan }>(`/billing/plans/${encodeURIComponent(id)}`, { method: 'PUT', body }),
   saveFeatures: (features: Array<{ key: string; label: string }>) => request<{ features: PlanFeature[] }>('/billing/features', { method: 'PUT', body: { features } }),
-  coupons: () => request<{ coupons: Coupon[] }>('/billing/coupons'),
+  coupons: (page = 1) => request<{ coupons: Coupon[]; planNames: Record<string, string>; total: number; page: number; pageSize: number }>(`/billing/coupons?page=${page}`),
   createCoupon: (body: CouponInput) => request<{ coupon: Coupon }>('/billing/coupons', { method: 'POST', body }),
   updateCoupon: (id: string, body: CouponInput) => request<{ coupon: Coupon }>(`/billing/coupons/${encodeURIComponent(id)}`, { method: 'PUT', body }),
   // view=revenue: paid orders; view=leads: unpaid checkouts, optionally one stage.
@@ -215,6 +229,8 @@ export interface NotificationRecipient {
   notify_access_requests: boolean;
   notify_payments: boolean;
   notify_signup_leads: boolean;
+  notify_sales?: boolean;
+  notify_support?: boolean;
   is_active: boolean;
   created_at: string;
 }
@@ -225,6 +241,8 @@ export interface NotificationRecipientInput {
   accessRequests: boolean;
   payments: boolean;
   signupLeads: boolean;
+  sales?: boolean;
+  support?: boolean;
   isActive: boolean;
 }
 
@@ -277,6 +295,14 @@ export interface AccessRequestDetail extends AccessRequestSummary {
   updated_at: string;
 }
 
+export interface AccessRequestNote {
+  id: string;
+  body: string;
+  author_name: string | null;
+  created_at: string;
+  is_imported: boolean;
+}
+
 export interface AccessRequestList {
   rows: AccessRequestSummary[];
   total: number;
@@ -286,29 +312,36 @@ export interface AccessRequestList {
 }
 
 export interface AccessRequestAccount {
+  planId?: string | null;
+  trialDays?: number | null;
+  accessMonths?: number | null;
+  accessExpiresAt?: string | null;
+  expiryDate?: string | null;
+  startsAt?: string | null;
   status: 'active' | 'suspended';
   activated: boolean;
   onboardingCompleted: boolean;
 }
 
 export const accessRequestApi = {
-  list: (params: { status?: AccessRequestStatus; search?: string; page?: number }) => {
+  list: (params: { status?: AccessRequestStatus; search?: string; page?: number; pageSize?: number }) => {
     const query = new URLSearchParams();
     if (params.status) query.set('status', params.status);
+    if (params.pageSize) query.set('pageSize', String(params.pageSize));
     if (params.search) query.set('search', params.search);
     if (params.page) query.set('page', String(params.page));
     return request<AccessRequestList>(`/access-requests?${query.toString()}`);
   },
   get: (id: string) =>
-    request<{ request: AccessRequestDetail; account: AccessRequestAccount | null }>(`/access-requests/${encodeURIComponent(id)}`),
+    request<{ request: AccessRequestDetail; account: AccessRequestAccount | null; notes: AccessRequestNote[] }>(`/access-requests/${encodeURIComponent(id)}`),
   markContacted: (id: string) =>
     request<{ request: AccessRequestDetail }>(`/access-requests/${encodeURIComponent(id)}`, { method: 'PATCH', body: { status: 'contacted' } }),
-  saveNotes: (id: string, adminNotes: string) =>
-    request<{ request: AccessRequestDetail }>(`/access-requests/${encodeURIComponent(id)}`, { method: 'PATCH', body: { adminNotes } }),
+  addNote: (id: string, body: string) =>
+    request<{ note: AccessRequestNote }>(`/access-requests/${encodeURIComponent(id)}/notes`, { method: 'POST', body: { body } }),
   reject: (id: string, reason: string, notify: boolean) =>
     request<{ request: AccessRequestDetail }>(`/access-requests/${encodeURIComponent(id)}/reject`, { method: 'POST', body: { reason, notify } }),
-  approve: (id: string) =>
-    request<{ request: AccessRequestDetail }>(`/access-requests/${encodeURIComponent(id)}/approve`, { method: 'POST', body: {} }),
+  approve: (id: string, planId?: string, expiryDate?: string, startDate?: string) =>
+    request<{ request: AccessRequestDetail }>(`/access-requests/${encodeURIComponent(id)}/approve`, { method: 'POST', body: { planId, expiryDate, startDate } }),
   resendActivation: (id: string) =>
     request<{ request: AccessRequestDetail }>(`/access-requests/${encodeURIComponent(id)}/resend-activation`, { method: 'POST', body: {} }),
 };
@@ -324,7 +357,7 @@ export const adminApi = {
 
 // ── customers ────────────────────────────────────────────────────────────────
 
-export type CustomerStage = 'verify_email' | 'set_password' | 'onboarding' | 'active' | 'suspended';
+export type CustomerStage = 'verify_email' | 'set_password' | 'onboarding' | 'active' | 'suspended' | 'payment_required' | 'scheduled';
 
 export interface Customer {
   userId: string;
@@ -334,7 +367,7 @@ export interface Customer {
   status: 'active' | 'suspended';
   stage: CustomerStage;
   source: 'paid' | 'access_request' | 'existing';
-  plan: { name: string; currency: string | null; periodEnd: string | null } | null;
+  plan: { name: string; currency: string | null; periodEnd: string | null; startsAt?: string | null } | null;
   agents: number;
   createdAt: string;
   emailConfirmedAt: string | null;

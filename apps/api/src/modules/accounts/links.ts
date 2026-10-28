@@ -1,9 +1,8 @@
 import { config } from '../../config';
 import { supabase } from '../../services/db';
 
-// One-time links for customer logins. Supabase generates the token (no Supabase email is sent);
-// we email our own link to the web app, which verifies it with supabase.auth.verifyOtp after the
-// person clicks "Continue" (so mail scanners that prefetch links cannot use it up).
+// One-time links for customer logins. Supabase generates the token (no Supabase email is sent).
+// Our email opens the web app, which verifies the token automatically and resumes setup.
 
 export type CustomerLinkType = 'invite' | 'magiclink' | 'recovery';
 

@@ -46,7 +46,8 @@ body {
 /* Interactive controls throughout the admin console use the same cursor affordance. */
 button:not(:disabled), a[href], select:not(:disabled), summary,
 [role="button"]:not([aria-disabled="true"]), [role="tab"]:not([aria-disabled="true"]),
-input[type="checkbox"]:not(:disabled), input[type="radio"]:not(:disabled),
+[role="menuitem"]:not([aria-disabled="true"]),
+input:is([type="button"], [type="submit"], [type="reset"], [type="checkbox"], [type="radio"]):not(:disabled),
 input[type="file"]:not(:disabled)::file-selector-button,
 label:has(input[type="checkbox"]:not(:disabled)),
 label:has(input[type="radio"]:not(:disabled)) {
@@ -54,3 +55,43 @@ label:has(input[type="radio"]:not(:disabled)) {
 }
 button:disabled, select:disabled, input:disabled, textarea:disabled,
 [aria-disabled="true"] { cursor: not-allowed; }
+
+/* Support adapts to the space beside the sidebar, including narrow desktop windows. */
+.support-workspace { container: support / inline-size; min-width: 0; }
+.support-ticket-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.75rem; }
+.support-ticket-search { grid-column: 1 / -1; }
+.support-search-input { padding-left: 2.25rem; }
+.support-ticket-table { display: none; }
+@container support (min-width: 680px) {
+  .support-ticket-toolbar { grid-template-columns: minmax(0, 1fr) 150px auto; }
+  .support-ticket-search { grid-column: auto; }
+}
+@container support (min-width: 780px) {
+  .support-ticket-table { display: table; }
+  .support-ticket-cards { display: none; }
+}
+
+/* Leave room for the bounce without creating a scrollbar for a single toast.
+   Long stacks still scroll, with no visible scrollbar in Chromium, Safari or Firefox. */
+.admin-toast-stack {
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-bottom: 8px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.admin-toast-stack::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+@keyframes toast-bounce {
+  0%, 100% { transform: translateY(0); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
+  50% { transform: translateY(6px); animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+}
+
+@media (max-width: 1023px) {
+  .request-detail-host { height: 100dvh; }
+  .request-detail-host > div { border: 0; border-radius: 0; }
+}

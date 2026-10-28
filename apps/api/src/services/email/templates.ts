@@ -11,13 +11,13 @@ export interface EmailContent {
 
 const BRAND = 'Bolega India';
 
-export function supportNotice(input: { number: string; url: string; created: boolean }): EmailContent {
+export function supportNotice(input: { number: string; url: string; created: boolean; sales?: boolean }): EmailContent {
   return {
-    subject: `${input.created ? 'Support request received' : 'Support request updated'}: ${input.number}`,
+    subject: `${input.sales ? input.created ? 'Sales enquiry received' : 'Sales enquiry updated' : input.created ? 'Support request received' : 'Support request updated'}: ${input.number}`,
     ...render({
-      preview: input.created ? 'Your support request has been received.' : 'There is an update to your support request.',
-      label: 'Customer support', heading: input.created ? 'We received your request' : 'Your support request has an update',
-      paragraphs: [input.created ? 'Our team will review your request. You can follow the conversation and reply from your support ticket.' : input.url ? 'Open your ticket to read the update and reply to our support team.' : 'Use the private ticket link in your original confirmation email to read the update and reply.'],
+      preview: input.sales ? 'Our sales team has received your pricing enquiry.' : input.created ? 'Your support request has been received.' : 'There is an update to your support request.',
+      label: input.sales ? 'Pricing & sales' : 'Customer support', heading: input.sales ? input.created ? 'We received your sales enquiry' : 'Your sales enquiry has an update' : input.created ? 'We received your request' : 'Your support request has an update',
+      paragraphs: [input.sales && input.created ? 'Our sales team will review your requirements and get in touch. You can follow the conversation and reply from your enquiry.' : input.created ? 'Our team will review your request. You can follow the conversation and reply from your support ticket.' : input.url ? 'Open your ticket to read the update and reply to our support team.' : 'Use the private ticket link in your original confirmation email to read the update and reply.'],
       details: [['Ticket', input.number]],
       action: input.url ? { label: 'View support ticket', url: input.url } : undefined,
       footnote: input.created ? 'Keep your ticket link private. Guest links expire after 180 days.' : undefined,
@@ -26,9 +26,9 @@ export function supportNotice(input: { number: string; url: string; created: boo
   };
 }
 
-export function supportAdminAlert(input: { number: string; subject: string; category: string; url: string }): EmailContent {
-  return { subject: `New support ticket: ${input.number}`, ...render({
-    preview: 'A new support ticket needs review.', label: 'Support alert', heading: 'New support request',
+export function supportAdminAlert(input: { number: string; subject: string; category: string; url: string; sales?: boolean }): EmailContent {
+  return { subject: `${input.sales ? 'New pricing & sales enquiry' : 'New support ticket'}: ${input.number}`, ...render({
+    preview: input.sales ? 'A customer would like to discuss pricing or a custom plan.' : 'A new support ticket needs review.', label: input.sales ? 'Sales enquiry' : 'Support alert', heading: input.sales ? 'New pricing & sales enquiry' : 'New support request',
     paragraphs: ['Open the admin console to review and respond.'], details: [['Ticket', input.number], ['Subject', input.subject], ['Category', input.category]],
     action: { label: 'Review ticket', url: input.url }, internal: true,
   }) };
@@ -340,31 +340,37 @@ export function onboardingComplete(input: { name: string; dashboardUrl: string }
 
 // ── billing ──────────────────────────────────────────────────────────────────
 
-/** Sent a few minutes after someone leaves checkout without paying. */
+/** Status-specific follow-up for an unpaid checkout, used by automatic and admin sends. */
 export function paymentReminder(input: {
-  name: string;
-  businessName: string;
-  planName: string;
-  amount: string;
-  resumeUrl: string;
-  pricingUrl: string;
+  name: string; businessName: string; planName: string; amount: string;
+  resumeUrl: string; pricingUrl: string; stage?: 'started' | 'closed' | 'failed';
+  canResume?: boolean; existingWorkspace?: boolean;
 }): EmailContent {
+  const stage = input.stage || 'started';
+  const copy = {
+    started: { subject: `Complete your ${BRAND} purchase`, label: 'Checkout started', heading: 'Ready when you are',
+      text: `You started checkout for ${input.planName} for ${input.businessName}, but payment has not been completed. Continue when you are ready to get started with your AI receptionist.` },
+    closed: { subject: `Your ${BRAND} checkout is waiting`, label: 'Checkout not completed', heading: 'Pick up where you left off',
+      text: `Your checkout for ${input.planName} was closed before payment was completed. If you would like to continue with ${input.businessName}, you can return when it suits you.` },
+    failed: { subject: `Need help completing your ${BRAND} payment?`, label: 'Payment needs attention', heading: 'Let us help you finish your payment',
+      text: `We could not confirm a successful payment for ${input.planName} for ${input.businessName}. You can return to checkout to try again, or reply to this email if you need help.` },
+  }[stage];
+  const canResume = input.canResume !== false;
   return {
-    subject: `Complete your ${BRAND} purchase`,
+    subject: copy.subject,
     ...render({
-      preview: `Your ${input.planName} order is saved. Finish your payment in a minute.`,
-      label: 'Your order is saved',
-      heading: 'You are one step away',
-      greeting: input.name,
-      paragraphs: [
-        `It looks like your payment for ${input.planName} was not completed. No problem: we have saved your order for ${input.businessName}, so you can pick up right where you left off.`,
-      ],
+      preview: copy.text, label: copy.label, heading: copy.heading,
+      tone: stage === 'failed' ? 'warning' : 'brand', greeting: input.name,
+      paragraphs: [copy.text, input.existingWorkspace
+        ? 'Sign in to your existing workspace to choose a plan and restore access after payment is confirmed.'
+        : canResume ? 'Your saved checkout keeps the plan and quoted amount shown below.'
+          : 'Use the button below to return to checkout with your contact details prefilled. Review the available plan and finish any required details before payment.'],
       details: [['Plan', input.planName], ['Business', input.businessName]],
-      amount: { label: 'Total due today', value: input.amount, note: 'First month plus the one-time setup fee' },
-      action: { label: 'Complete my payment', url: input.resumeUrl },
-      note: { text: `Want a different plan? Compare all plans at ${input.pricingUrl}. If something went wrong with the payment, just reply to this email and we will help.` },
-      footnote: 'Payments are processed securely by Razorpay. If you have already paid, please ignore this email.',
-      reason: 'You received this email because you started a purchase on bolegaindia.ai. This is a one-time reminder.',
+      amount: { label: canResume ? 'Total due today' : 'Previous checkout total', value: input.amount, note: 'First month plus setup, including any checkout discount' },
+      action: { label: input.existingWorkspace ? 'Open my workspace' : canResume ? stage === 'failed' ? 'Retry my payment' : 'Continue my checkout' : 'Continue to checkout', url: input.resumeUrl },
+      note: { text: stage === 'failed' ? 'If your bank shows a debit, check the payment status or contact us before trying again. We are happy to help.' : 'Have a question about your plan or payment? Reply to this email and our team will help.' },
+      footnote: canResume && !input.existingWorkspace ? 'This private checkout link is valid for 7 days. If you have already paid, please ignore this email.' : 'If you have already completed payment, please ignore this email.',
+      reason: 'You received this follow-up because this email address was used to start a Bolega India checkout.',
     }),
   };
 }

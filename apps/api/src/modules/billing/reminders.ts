@@ -67,11 +67,13 @@ async function sendDueReminders(now = new Date()) {
       .eq('id', id)
       .eq('status', 'created')
       .is('reminder_sent_at', null)
+      .is('followup_claimed_at', null)
       .select('*')
       .maybeSingle<BillingOrderRow>();
     if (claimError || !order) continue;
 
     const sent = await sendEmailSafely(order.email, emailTemplates.paymentReminder({
+      stage: order.payment_error ? 'failed' : order.checkout_dismissed_at ? 'closed' : 'started',
       name: order.full_name,
       businessName: order.business_name,
       planName: order.plan_snapshot.name,
@@ -79,6 +81,9 @@ async function sendDueReminders(now = new Date()) {
       resumeUrl: resumeUrl(order.id, token),
       pricingUrl: `${config.clientUrl}/pricing`,
     }), 'checkout_payment_reminder');
+    if (!sent.delivered) {
+      await supabase.from('billing_orders').update({ reminder_sent_at: null, resume_token_hash: null, reminder_due_at: new Date(Date.now() + REMINDER_AFTER_ABANDON_MS).toISOString() }).eq('id', order.id).eq('resume_token_hash', hashToken(token)).eq('status', 'created');
+    }
     logger.info('[billing] payment reminder', { order: order.id, to: maskEmail(order.email), delivered: sent.delivered });
   }
 }

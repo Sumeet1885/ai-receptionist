@@ -1,3 +1,4 @@
+import { workspaceAllowed } from '../middleware/workspaceAccess';
 import { Request, Response } from 'express';
 import { supabase } from '../services/db';
 import { config } from '../config';
@@ -26,6 +27,7 @@ export const handleCallback = async (req: Request, res: Response) => {
   try {
     if (!code) throw new Error('OAuth authorization code is missing');
     const ownerId = await consumeCalendarOAuthState({ db: supabase, state, provider });
+    if (!await workspaceAllowed(ownerId)) throw new Error('Workspace requires an active plan');
     const adapter = getCalendarAdapter(provider);
     await adapter.handleCallback(code, ownerId);
     res.redirect(`${config.clientUrl}/dashboard?tab=appointments`);

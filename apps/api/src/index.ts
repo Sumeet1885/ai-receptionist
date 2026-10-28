@@ -24,6 +24,7 @@ async function bootstrap(): Promise<void> {
   const { billingPublicRoutes, billingAdminRoutes, razorpayWebhook, startCheckoutReminders } = await import('./modules/billing');
   const { notificationAdminRoutes } = await import('./modules/notifications');
   const { customerAdminRoutes } = await import('./modules/customers');
+  const { customerBillingRoutes } = await import('./modules/billing/customer.routes');
   const { supportPublicRoutes, supportCustomerRoutes, supportAdminRoutes } = await import('./modules/support/routes');
   const { startSupportRetention } = await import('./modules/support/retention');
   const { routeUpgrades }      = await import('./utils/upgradeRouter');
@@ -52,6 +53,12 @@ async function bootstrap(): Promise<void> {
   // Raw body: the Razorpay signature covers the exact bytes, so this route precedes express.json.
   app.post('/api/public/razorpay/webhook', express.raw({ type: 'application/json', limit: '1mb' }), razorpayWebhook);
   app.use(express.json());
+  const { requireAuth } = await import('./middleware/auth');
+  const { requireWorkspaceAccess } = await import('./middleware/workspaceAccess');
+  app.use(['/api/calendar', '/api/crm', '/api/dograh', '/api/campaigns'], (req, res, next) => {
+    if (req.path.includes('/callback/')) return next();
+    requireAuth(req, res, () => void requireWorkspaceAccess(req, res, next));
+  });
 
   app.use('/api/calendar', calendarRoutes);
   app.use('/api/chat',     chatRoutes);
@@ -69,6 +76,7 @@ async function bootstrap(): Promise<void> {
   app.use('/api/admin/notifications', notificationAdminRoutes);
   app.use('/api/admin/customers', customerAdminRoutes);
   app.use('/api/account',  accountRoutes);
+  app.use('/api/workspace-billing', customerBillingRoutes);
   app.use('/api/public/support', supportPublicRoutes);
   app.use('/api/support', supportCustomerRoutes);
   app.use('/api/admin/support', supportAdminRoutes);
