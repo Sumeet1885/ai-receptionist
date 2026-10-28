@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { landingAssets } from './assets';
 import { HeroCanvas } from './HeroCanvas';
 import { HeroListenDock } from './HeroListenDock';
+import { sectionTexture } from './sectionTextures';
 
 export function HeroSection({ onSpeakingChange }: { onSpeakingChange: (speaking: boolean) => void }) {
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -16,7 +17,7 @@ export function HeroSection({ onSpeakingChange }: { onSpeakingChange: (speaking:
   );
 
   return (
-    <section className="hero" id="hero">
+    <section style={sectionTexture('hero')} className="hero" id="hero">
       <div className="hero-backdrop" />
       <div className="cursor-hint">MOVE. TAP. CONNECT.</div>
       <div className="hero-note">

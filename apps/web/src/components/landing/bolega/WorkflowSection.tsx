@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { landingAssets } from './assets';
 import { useLanding, usePauseWhenHidden } from './LandingContext';
 import { Reveal } from './Reveal';
+import { sectionTexture } from './sectionTextures';
 
 const PORTRAIT_QUERY = '(max-width: 700px)';
 const chapters = ['01 Persona', '02 Contacts', '03 Schedule', '04 Conversation', '05 Lead'];
@@ -122,7 +123,7 @@ export function WorkflowSection() {
   };
 
   return (
-    <section ref={sectionRef} className="section video-section" id="workflow">
+    <section style={sectionTexture('workflow')} ref={sectionRef} className="section video-section" id="workflow">
       <span className="section-sticker" aria-hidden="true">
         From hello
         <br />

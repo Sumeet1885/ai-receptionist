@@ -66,7 +66,7 @@ export const AuthConfirmView: React.FC<AuthConfirmViewProps> = ({ navigate, user
   }, [valid, checkingAccount, alreadyVerified, useLink, type, tokenHash]);
 
   return (
-    <div className="relative flex min-h-[calc(100vh-80px)] flex-1 items-center justify-center overflow-hidden bg-background p-4 sm:p-6">
+    <div style={publicTexture('arches')} className="relative flex min-h-[calc(100vh-80px)] flex-1 items-center justify-center overflow-hidden bg-background p-4 sm:p-6">
       <div className="relative z-10 w-full max-w-md">
         <Card variant="floating" padding="lg" className="rounded-large text-center">
           <BrandLogo className="mx-auto mb-6 block" />
@@ -109,3 +109,4 @@ export const AuthConfirmView: React.FC<AuthConfirmViewProps> = ({ navigate, user
     </div>
   );
 };
+import { publicTexture } from '../../lib/publicTexture';

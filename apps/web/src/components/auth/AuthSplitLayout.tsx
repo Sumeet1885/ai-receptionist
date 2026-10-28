@@ -1,4 +1,5 @@
 import React from 'react';
+import { publicTexture, type PublicTexture } from '../../lib/publicTexture';
 
 const ASSISTANT_PORTRAIT = '/bolegaindia/images/hero-ai-human-assistant.webp';
 const BRAND_WEAVE = '/bolegaindia/images/bolegaindia-brand-weave.svg';
@@ -126,7 +127,7 @@ function AccessArt() {
  * On large screens it fills the space under the header exactly, so the page never scrolls;
  * only the form column can scroll, and only on unusually short screens.
  */
-export function AuthSplitLayout({ art, children }: { art: AuthArt; children: React.ReactNode }) {
+export function AuthSplitLayout({ art, texture, children }: { art: AuthArt; texture?: PublicTexture; children: React.ReactNode }) {
   return (
     <div className="flex min-h-0 flex-1">
       <aside
@@ -138,7 +139,7 @@ export function AuthSplitLayout({ art, children }: { art: AuthArt; children: Rea
         {art === 'request' ? <AccessArt /> : <ConversationArt />}
       </aside>
 
-      <section className="flex min-w-0 flex-1 overflow-y-auto bg-background">
+      <section style={publicTexture(texture ?? (art === 'request' ? 'lotus' : 'jaali'))} className="flex min-w-0 flex-1 overflow-y-auto bg-background">
         <div className="m-auto w-full max-w-xl px-4 py-8 sm:px-8 lg:py-5 lg:[@media(max-height:800px)]:py-3">{children}</div>
       </section>
     </div>

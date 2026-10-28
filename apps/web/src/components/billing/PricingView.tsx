@@ -1,4 +1,5 @@
 import { openSupport } from '../../lib/supportDrawer';
+import { publicTexture } from '../../lib/publicTexture';
 import React, { useEffect, useState } from 'react';
 import { Check } from 'lucide-react';
 import { Button } from '../ui/button';
@@ -43,7 +44,7 @@ export const PricingView: React.FC<PricingViewProps> = ({ navigate }) => {
   ];
 
   return (
-    <div className="flex-1 bg-background py-14 sm:py-20">
+    <div style={publicTexture('ajrakh')} className="flex-1 bg-background py-14 sm:py-20">
       <Container>
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-subtle">Pricing</p>

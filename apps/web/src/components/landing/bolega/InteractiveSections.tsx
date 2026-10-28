@@ -6,6 +6,7 @@ import { LandingDialog } from './LandingDialog';
 import { useInView, useLanding } from './LandingContext';
 import { Reveal } from './Reveal';
 import { openSupport } from '../../../lib/supportDrawer';
+import { sectionTexture } from './sectionTextures';
 
 // [shown text, "romanised · language", BCP 47 language] for the 11 landing-page languages.
 const allGreetings = SUPPORTED_LANGUAGES.map((l): [string, string, string] => [l.greeting, `${l.romanised} · ${l.name}`, l.code]);
@@ -37,7 +38,7 @@ export function LanguageWall() {
   );
 
   return (
-    <section id="languages" className="language-wall">
+    <section style={sectionTexture('languages')} id="languages" className="language-wall">
       <Reveal>
         <span className="eyebrow">03 / FAMILIAR FEELS BETTER</span>
         <h2>
@@ -81,7 +82,7 @@ export function LeadStorySection() {
   }, [visible, motionPaused]);
 
   return (
-    <section ref={sectionRef} className="meaning-section lead-story-section" id="lead-story">
+    <section style={sectionTexture('leads')} ref={sectionRef} className="meaning-section lead-story-section" id="lead-story">
       <Reveal className="meaning-heading">
         <div>
           <span className="eyebrow">06 / PREPARE FOR A BETTER FOLLOW-UP</span>
@@ -180,7 +181,7 @@ interface CtaProps {
 
 export function QuestionsSection({ navigate, signedIn }: CtaProps) {
   return (
-    <section className="meaning-section questions-section" id="questions">
+    <section style={sectionTexture('questions')} className="meaning-section questions-section" id="questions">
       <Reveal className="questions-intro">
         <span className="eyebrow">08 / A LITTLE CLARITY</span>
         <h2>
@@ -211,7 +212,7 @@ export function QuestionsSection({ navigate, signedIn }: CtaProps) {
 
 export function ContactCta({ navigate, signedIn }: CtaProps) {
   return (
-    <Reveal as="section" className="contact">
+    <Reveal style={sectionTexture('contact')} as="section" className="contact">
       <span className="eyebrow">YOUR NEXT HELLO STARTS HERE</span>
       <h2>
         Ab business
@@ -243,7 +244,7 @@ export function LandingFooter() {
 
   return (
     <>
-      <footer className="footer">
+      <footer style={sectionTexture('footer')} className="footer">
         <a className="brand" href="#" aria-label="Bolega India, back to top">
           <BrandLogo bare />
         </a>

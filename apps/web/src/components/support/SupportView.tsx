@@ -251,7 +251,7 @@ export function SupportView({
   }
 
   return (
-    <div className={embedded ? 'w-full px-5 py-4' : 'mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 sm:py-12'}>
+    <div style={publicTexture('kolam')} className={embedded ? 'min-h-full w-full px-5 py-4' : 'mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 sm:py-12'}>
       {(!embedded || !creating) && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -631,3 +631,4 @@ export function SupportView({
     </div>
   );
 }
+import { publicTexture } from '../../lib/publicTexture';

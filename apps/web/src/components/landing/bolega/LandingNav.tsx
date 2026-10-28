@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { BrandLogo } from '../../ui/brand-logo';
 import { AppLink } from './AppLink';
+import { FolkNavBorder } from '../../layout/FolkNavBorder';
+import { publicTexture } from '../../../lib/publicTexture';
 
 const sections = [
   { id: 'product-persona', label: 'Product' },
@@ -85,7 +87,8 @@ export function LandingNav({ navigate, signedIn, userMenu }: LandingNavProps) {
   return (
     <>
       <div className="progress" aria-hidden="true" style={{ width: `${progress}%` }} />
-      <header className={`nav${scrolled ? ' scrolled' : ''}`}>
+      <header style={{ ...publicTexture('leaf'), backgroundColor: 'var(--color-background)' }} className={`nav${scrolled ? ' scrolled' : ''}`}>
+        <FolkNavBorder />
         <a className="brand" href="#" aria-label="Bolega India home">
           <BrandLogo bare />
         </a>

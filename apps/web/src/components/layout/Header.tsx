@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { BrandLogo } from '../ui/brand-logo';
 import { Button } from '../ui/button';
 import { UserMenu } from './UserMenu';
+import { FolkNavBorder } from './FolkNavBorder';
+import { publicTexture } from '../../lib/publicTexture';
 
 interface HeaderProps {
   routeName: string;
@@ -75,7 +77,8 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between border-b border-border bg-background/90 px-[5%] py-3 backdrop-blur-xl">
+    <header style={user ? undefined : publicTexture('leaf')} className="sticky top-0 z-40 flex items-center justify-between border-b border-border bg-background px-[5%] py-3 backdrop-blur-xl">
+      {!user && <FolkNavBorder />}
       <a
         href={user ? '/dashboard' : '/'}
         onClick={(e) => {

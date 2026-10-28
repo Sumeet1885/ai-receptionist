@@ -151,7 +151,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
   );
 
   return (
-    <AuthSplitLayout art="signin">
+    <AuthSplitLayout art="signin" texture={mode === 'forgot' ? 'waves' : mode === 'reset' ? 'phulkari' : mode === 'resend' ? 'seed' : 'jaali'}>
       <div className="mx-auto w-full max-w-md">
           <div className="mb-8">
             <h1 className="mb-2 font-display text-4xl font-semibold tracking-[-0.04em] text-text">{titles[mode].title}</h1>
