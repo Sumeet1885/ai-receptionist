@@ -13,6 +13,10 @@ test('alert recipients need a valid email and at least one kind of alert', () =>
   assert.equal(ok.value.email, 'sales@example.com');
   assert.equal(ok.value.notify_payments, false);
   assert.equal(ok.value.is_active, true);
+  const salesOnly = validateNotificationRecipient({ email: 'sales@example.com', sales: true });
+  assert.ok(salesOnly.ok && salesOnly.value.notify_sales && !salesOnly.value.notify_support);
+  const supportOnly = validateNotificationRecipient({ email: 'support@example.com', support: true });
+  assert.ok(supportOnly.ok && supportOnly.value.notify_support && !supportOnly.value.notify_sales);
 
   const none = validateNotificationRecipient({ email: 'ops@example.com' });
   assert.ok('errors' in none && none.errors.events);

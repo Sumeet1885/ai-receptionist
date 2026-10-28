@@ -66,6 +66,12 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const { data: ownerBot, error: ownerError } = await supabase.from('bots').select('owner_id').eq('id', session.bot_id).single();
+    const { data: account, error: accountError } = ownerBot ? await supabase.from('customer_accounts').select('status,trial_days,trial_started_at,access_expires_at,access_starts_at,access_months,plan_started_at').eq('user_id', ownerBot.owner_id).maybeSingle() : { data: null, error: true };
+    if (ownerError || accountError || !account || account.status !== 'active' || (account.access_starts_at && Date.parse(account.access_starts_at) > Date.now()) || (account.access_months != null && !account.plan_started_at) || (account.trial_days != null && !account.trial_started_at) || (account.access_expires_at && Date.parse(account.access_expires_at) <= Date.now())) {
+      return new Response(JSON.stringify({ error: 'Workspace requires an active plan' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // 3. Fetch last 20 messages (conversation history window)
     const { data: messages } = await supabase
       .from('messages')

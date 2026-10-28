@@ -57,7 +57,7 @@ export default function App() {
           : page === 'plans' ? <Plans roles={view.session.roles} />
           : page === 'coupons' ? <Coupons roles={view.session.roles} />
           : page === 'revenue' ? <Revenue />
-          : page === 'leads' ? <SignupLeads />
+          : page === 'leads' ? <SignupLeads roles={view.session.roles} />
           : page === 'notifications' ? <Notifications roles={view.session.roles} />
           : page === 'support' ? <Support roles={view.session.roles} />
           : <Overview session={view.session} />}

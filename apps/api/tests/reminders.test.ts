@@ -35,7 +35,7 @@ test('reminders: 30 minutes after checkout, 5 after closing, sent once by a clai
 
   const reminders = await read('../src/modules/billing/reminders.ts');
   // The claim only succeeds for an unpaid order whose reminder has not gone out.
-  assert.match(reminders, /\.update\(\{ reminder_sent_at: [^}]+resume_token_hash: hashToken\(token\) \}\)\s*\.eq\('id', id\)\s*\.eq\('status', 'created'\)\s*\.is\('reminder_sent_at', null\)/);
+  assert.match(reminders, /\.update\(\{ reminder_sent_at: [^}]+resume_token_hash: hashToken\(token\) \}\)\s*\.eq\('id', id\)\s*\.eq\('status', 'created'\)\s*\.is\('reminder_sent_at', null\)\s*\.is\('followup_claimed_at', null\)/);
   assert.match(await read('../src/index.ts'), /startCheckoutReminders\(\);/);
 
   const sql = await read('../../../supabase/migrations/20261028150000_checkout_reminders.sql');

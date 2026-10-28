@@ -237,8 +237,7 @@ const clarity = [
   },
 ];
 
-export function LandingFooter({ onToggleMotion }: { onToggleMotion: () => void }) {
-  const { motionPaused } = useLanding();
+export function LandingFooter() {
   const [aboutOpen, setAboutOpen] = useState(false);
   const closeAbout = useCallback(() => setAboutOpen(false), []);
 
@@ -249,9 +248,6 @@ export function LandingFooter({ onToggleMotion }: { onToggleMotion: () => void }
           <BrandLogo bare />
         </a>
         <div className="footer-links">
-          <button className="language" id="motion-toggle" type="button" aria-pressed={motionPaused} onClick={onToggleMotion}>
-            {motionPaused ? 'Resume motion' : 'Pause motion'}
-          </button>
           <button className="language" id="about" type="button" onClick={() => setAboutOpen(true)}>
             A little clarity ↗
           </button>

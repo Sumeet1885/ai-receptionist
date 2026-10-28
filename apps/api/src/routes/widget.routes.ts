@@ -1,3 +1,4 @@
+import { requireBotWorkspace } from '../middleware/workspaceAccess';
 import { Router } from 'express';
 import { serveLoader, serveWidgetPage } from '../controllers/widgetController';
 import { widgetRateLimit } from '../middleware/rateLimit';
@@ -10,6 +11,6 @@ router.use(widgetRateLimit);
 router.get('/loader.js', serveLoader);
 
 // Widget HTML page — loaded inside an iframe by the loader
-router.get('/:botId', serveWidgetPage);
+router.get('/:botId', requireBotWorkspace, serveWidgetPage);
 
 export default router;

@@ -71,9 +71,9 @@ export function Revenue() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {!summary ? (error ? null : [0, 1, 2, 3].map((i) => <div key={i} className="h-32 animate-pulse rounded-2xl bg-surface" />)) : (
           <>
-            <Card className="bg-ink p-5 text-white">
+            <Card className="min-w-0 bg-ink! p-5 text-white">
               <p className="text-xs font-semibold uppercase tracking-wider text-white/60">This month</p>
-              <div className="mt-2 [&_p:last-child]:text-white/70"><Amounts money={summary.totals.thisMonth} large /></div>
+              <div className="mt-2"><Amounts money={summary.totals.thisMonth} large /></div>
               <p className="mt-2 text-xs text-white/60">{summary.counts.thisMonth} paid signup{summary.counts.thisMonth === 1 ? '' : 's'}</p>
             </Card>
             <Card className="p-5">
@@ -98,15 +98,15 @@ export function Revenue() {
       </div>
 
       {summary && (
-        <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-          <Card className="p-5">
-            <p className="flex items-center gap-2 text-sm font-semibold"><TrendingUp className="h-4 w-4 text-primary" /> Last 6 months (INR)</p>
-            <div className="mt-5 flex h-44 items-end gap-3" role="list">
+        <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+          <Card className="flex h-80 min-w-0 flex-col overflow-hidden p-4 sm:p-5">
+            <p className="flex shrink-0 items-center gap-2 text-sm font-semibold"><TrendingUp className="h-4 w-4 text-primary" /> Last 6 months (INR)</p>
+            <div className="mt-5 flex min-h-0 flex-1 items-end gap-2 sm:gap-3" role="list" aria-label="Monthly revenue">
               {summary.monthly.map((month) => (
-                <div key={month.month} role="listitem" className="flex flex-1 flex-col items-center gap-2" title={`${formatMoney(month.INR, 'INR')}${month.USD ? ` + ${formatMoney(month.USD, 'USD')}` : ''} · ${month.count} paid`}>
-                  <span className="text-[11px] font-semibold tabular-nums text-subtle">{month.INR ? formatMoney(month.INR, 'INR') : ''}</span>
-                  <div className="flex w-full flex-1 items-end">
-                    <div className="w-full rounded-t-lg bg-primary/80" style={{ height: `${Math.max(month.INR ? 4 : 0, (month.INR / peak) * 100)}%` }} />
+                <div key={month.month} role="listitem" className="flex h-full min-w-0 flex-1 flex-col items-center gap-2" title={`${formatMoney(month.INR, 'INR')}${month.USD ? ` + ${formatMoney(month.USD, 'USD')}` : ''} · ${month.count} paid`}>
+                  <span className="block w-full truncate text-center text-[10px] font-semibold tabular-nums text-subtle sm:text-[11px]">{month.INR ? formatMoney(month.INR, 'INR') : ''}</span>
+                  <div className="flex min-h-0 w-full flex-1 items-end">
+                    <div className="w-full shrink-0 rounded-t-lg bg-primary/80" data-revenue-bar={month.month} style={{ height: `${Math.max(month.INR ? 4 : 0, (month.INR / peak) * 100)}%` }} />
                   </div>
                   <span className="text-xs text-subtle">{monthLabel(month.month)}</span>
                 </div>
@@ -114,24 +114,27 @@ export function Revenue() {
             </div>
           </Card>
 
-          <Card className="overflow-hidden">
-            <p className="border-b border-line px-5 py-4 text-sm font-semibold">By plan</p>
+          <Card className="flex h-80 min-w-0 flex-col overflow-hidden">
+            <p className="flex shrink-0 items-center justify-between gap-2 border-b border-line px-5 py-4 text-sm font-semibold">By plan <span className="text-xs font-normal text-subtle">{summary.byPlan.length} plans</span></p>
             {summary.byPlan.length === 0 ? (
               <p className="px-5 py-8 text-center text-sm text-subtle">No paid signups yet.</p>
             ) : (
-              <table className="w-full text-sm">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" role="region" aria-label="Revenue by plan" tabIndex={0}>
+              <table className="w-full table-fixed text-sm">
+                <colgroup><col style={{ width: '54%' }} /><col style={{ width: '14%' }} /><col style={{ width: '32%' }} /></colgroup>
                 <tbody className="divide-y divide-line">
                   {summary.byPlan.map((row) => (
                     <tr key={row.plan}>
-                      <td className="px-5 py-3 font-medium">{row.plan}</td>
-                      <td className="px-5 py-3 text-subtle tabular-nums">{row.count}×</td>
-                      <td className="px-5 py-3 text-right tabular-nums">
+                      <td className="px-4 py-3 font-medium"><span className="block truncate" title={row.plan}>{row.plan}</span></td>
+                      <td className="px-2 py-3 text-subtle tabular-nums">{row.count}×</td>
+                      <td className="px-4 py-3 text-right text-xs tabular-nums sm:text-sm">
                         {formatMoney(row.INR, 'INR')}{row.USD > 0 && <span className="block text-xs text-subtle">+ {formatMoney(row.USD, 'USD')}</span>}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </Card>
         </div>
@@ -152,9 +155,10 @@ export function Revenue() {
           </div>
         )}
         {data && data.rows.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-line bg-background/60 text-left text-xs uppercase tracking-wider text-subtle">
+          <div className="max-h-[32rem] overflow-auto overscroll-contain" role="region" aria-label="Payments table" tabIndex={0}>
+            <table className="w-full min-w-[860px] table-fixed text-sm">
+              <colgroup><col style={{ width: '30%' }} /><col style={{ width: '19%' }} /><col style={{ width: '12%' }} /><col style={{ width: '13%' }} /><col style={{ width: '12%' }} /><col style={{ width: '14%' }} /></colgroup>
+              <thead className="sticky top-0 z-10 border-b border-line bg-background text-left text-xs uppercase tracking-wider text-subtle">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Customer</th>
                   <th className="px-4 py-3 font-semibold">Plan</th>
@@ -170,10 +174,10 @@ export function Revenue() {
                   return (
                     <tr key={order.id} className="align-top hover:bg-background/50">
                       <td className="px-4 py-3">
-                        <p className="font-medium">{order.business_name}</p>
-                        <p className="text-xs text-subtle">{order.full_name} · {order.email} · {order.phone}</p>
+                        <p className="truncate font-medium" title={order.business_name}>{order.business_name}</p>
+                        <p className="truncate text-xs text-subtle" title={`${order.full_name} / ${order.email}`}>{order.full_name} · {order.email} · {order.phone}</p>
                       </td>
-                      <td className="px-4 py-3">{order.plan_snapshot?.name ?? '—'}</td>
+                      <td className="px-4 py-3"><span className="line-clamp-2 break-words" title={order.plan_snapshot?.name}>{order.plan_snapshot?.name ?? '—'}</span></td>
                       <td className="px-4 py-3 tabular-nums">
                         <p className="font-semibold">{formatMoney(order.total, order.currency)}</p>
                         {order.coupon_code && <p className="text-xs text-subtle"><span className="font-mono">{order.coupon_code}</span> −{formatMoney(order.discount, order.currency)}</p>}
@@ -184,7 +188,7 @@ export function Revenue() {
                         </span>
                         {order.failure_reason && <p className="mt-1 max-w-56 text-xs text-danger">{order.failure_reason}</p>}
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs text-subtle">{order.razorpay_payment_id ?? '—'}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-subtle"><span className="block truncate" title={order.razorpay_payment_id || undefined}>{order.razorpay_payment_id ?? '—'}</span></td>
                       <td className="px-4 py-3 text-subtle">{formatDate(order.paid_at)}</td>
                     </tr>
                   );

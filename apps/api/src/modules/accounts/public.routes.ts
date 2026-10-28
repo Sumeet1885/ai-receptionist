@@ -65,7 +65,8 @@ router.post('/activation-resend', ...guards('activation-resend'), asyncRoute('Ac
       );
     } else if (source && account && account.status === 'active') {
       // Paid signups chose their password at checkout; they only need to confirm the email.
-      const { data } = await supabase.auth.admin.getUserById(source.provisioned_user_id!);
+      const { data, error } = await supabase.auth.admin.getUserById(source.provisioned_user_id!);
+      if (error) throw new Error(`load activation user: ${error.message}`);
       if (data?.user && !data.user.email_confirmed_at) {
         const link = await createVerificationLink(email);
         await sendEmail(
@@ -73,7 +74,11 @@ router.post('/activation-resend', ...guards('activation-resend'), asyncRoute('Ac
           emailTemplates.emailVerification({ verificationUrl: link.url, expiresInHours: config.email.linkExpiryHours }),
           'email_verification',
         );
+      } else {
+        logger.info('[ActivationResend] skipped; no email sent', { to: maskEmail(email), reason: data?.user ? 'already_activated' : 'login_not_found' });
       }
+    } else {
+      logger.info('[ActivationResend] skipped; no email sent', { to: maskEmail(email), reason: !source ? 'no_provisioned_workspace' : !account ? 'workspace_not_found' : 'workspace_inactive' });
     }
   } catch (error: any) {
     logger.error('[ActivationResend] failed', { to: maskEmail(email), error: error?.message });

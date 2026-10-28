@@ -24,7 +24,7 @@ export function Overview({ session }: { session: AdminSession }) {
   const [reload, setReload] = useState(0);
 
   useEffect(() => {
-    accessRequestApi.list({ status: 'pending' })
+    accessRequestApi.list({ status: 'pending', pageSize: 6 })
       .then((list) => { setData(list); setError(''); })
       .catch((err) => setError((err as Error).message));
   }, [version, reload]);
@@ -119,7 +119,7 @@ export function Overview({ session }: { session: AdminSession }) {
             </div>
           ) : (
             <ul className="divide-y divide-line">
-              {data.rows.slice(0, 6).map((row) => (
+              {data.rows.map((row) => (
                 <li key={row.id}>
                   <button
                     type="button"

@@ -1,5 +1,8 @@
+import { notifyAdmins } from '../notifications';
+import { requireWorkspaceAccess } from '../../middleware/workspaceAccess';
 import { Router, type Request, type Response } from 'express';
 import {
+  SALES_SUPPORT_CATEGORY,
   SUPPORT_PRIORITIES,
   SUPPORT_STATUSES,
   supportNumber,
@@ -21,7 +24,7 @@ import {
   requireAdminSession,
   type AdminRequest,
 } from '../admin-auth/middleware';
-import { listActiveSuperAdminEmails, recordAudit } from '../admin-auth/repository';
+import { recordAudit } from '../admin-auth/repository';
 import { checked, supportDetail, supportSettings, supportTicket } from './repository';
 import { customerSupportView, hashSupportToken, newSupportToken, validSupportToken } from './security';
 import { supportUpload, withSupportFiles } from './uploads';
@@ -57,7 +60,7 @@ async function notify(ticket: any, url: string, created: boolean) {
   // Guest confirmations contain no user-controlled subject, name or description.
   await sendEmailSafely(
     ticket.email,
-    emailTemplates.supportNotice({ number: supportNumber(ticket.ticket_number), url, created }),
+    emailTemplates.supportNotice({ number: supportNumber(ticket.ticket_number), url, created, sales: ticket.category === SALES_SUPPORT_CATEGORY.id }),
     created ? 'support_received' : 'support_updated',
   );
 }
@@ -99,7 +102,7 @@ async function adminTicket(req: Request, res: Response) {
   return ticket;
 }
 async function create(req: AuthRequest, res: Response, guest: boolean) {
-  const parsed = validateSupport(req.body, guest);
+  const parsed = validateSupport(req.body?.intent === 'sales' ? { ...req.body, category: SALES_SUPPORT_CATEGORY.id } : req.body, guest);
   if (!parsed.ok)
     return res.status(400).json({ error: 'Please check the highlighted fields.', fields: parsed.errors });
   const category = (await supportSettings()).categories.find(
@@ -139,22 +142,14 @@ async function create(req: AuthRequest, res: Response, guest: boolean) {
   const url = privateToken ? guestLink(privateToken) : `${config.clientUrl}/support?ticket=${id}`;
   const delivery = await sendEmailSafely(
     ticket.email,
-    emailTemplates.supportNotice({ number: supportNumber(ticket.ticket_number), url, created: true }),
+    emailTemplates.supportNotice({ number: supportNumber(ticket.ticket_number), url, created: true, sales: category.id === SALES_SUPPORT_CATEGORY.id }),
     'support_received',
   );
-  void (async () => {
-    for (const email of await listActiveSuperAdminEmails())
-      await sendEmailSafely(
-        email,
-        emailTemplates.supportAdminAlert({
-          number: supportNumber(ticket.ticket_number),
-          subject: ticket.subject,
-          category: category.name,
-          url: `${config.admin.origin}${config.admin.basePath}support?ticket=${id}`,
-        }),
-        'support_admin_alert',
-      );
-  })().catch(() => undefined);
+  void notifyAdmins(category.id === SALES_SUPPORT_CATEGORY.id ? 'sales' : 'support',
+    emailTemplates.supportAdminAlert({ number: supportNumber(ticket.ticket_number), subject: ticket.subject,
+      category: category.name, sales: category.id === SALES_SUPPORT_CATEGORY.id,
+      url: `${config.admin.origin}${config.admin.basePath}support?ticket=${id}` }),
+    category.id === SALES_SUPPORT_CATEGORY.id ? 'sales_enquiry_admin_alert' : 'support_admin_alert');
   // Never disclose a guest's private token or ticket body in the submission response.
   res
     .status(201)
@@ -273,7 +268,7 @@ supportPublicRoutes.get(
   }),
 );
 
-supportCustomerRoutes.use(noStore, requireAuth);
+supportCustomerRoutes.use(noStore, requireAuth, requireWorkspaceAccess);
 supportCustomerRoutes.get(
   '/',
   handle(async (req, res) => {
@@ -282,7 +277,7 @@ supportCustomerRoutes.get(
       .from('support_tickets')
       .select('*', { count: 'exact' })
       .eq('user_id', req.user!.id)
-      .order('updated_at', { ascending: false })
+      .order('updated_at', { ascending: false }).order('id', { ascending: false })
       .range((page - 1) * 25, page * 25 - 1);
     res.json({ tickets: checked(result).map(customerSupportView), total: result.count, page });
   }),
@@ -351,7 +346,7 @@ supportAdminRoutes.put(
     if (
       !Array.isArray(categories) ||
       categories.length < 1 ||
-      categories.length > 30 ||
+      categories.length > 31 ||
       categories.some(
         (c: any) =>
           !c ||
@@ -374,6 +369,8 @@ supportAdminRoutes.put(
           error:
             'Keep at least one active category, unique category IDs, valid priorities, and retention between 0 and 3,650 days.',
         });
+    const sales = categories.find((c: any) => c.id === SALES_SUPPORT_CATEGORY.id);
+    if (!sales || sales.name !== SALES_SUPPORT_CATEGORY.name || sales.defaultPriority !== SALES_SUPPORT_CATEGORY.defaultPriority || sales.archived) return res.status(400).json({ error: 'Pricing & sales is a built-in category and cannot be changed or archived.' });
     const previous = await supportSettings();
     if (previous.categories.some((old) => !categories.some((c: any) => c.id === old.id)))
       return res.status(400).json({ error: 'Archive existing categories instead of deleting them.' });
@@ -390,7 +387,7 @@ supportAdminRoutes.get(
     let query = supabase
       .from('support_tickets')
       .select('*', { count: 'exact' })
-      .order('updated_at', { ascending: false })
+      .order('updated_at', { ascending: false }).order('id', { ascending: false })
       .range((page - 1) * 25, page * 25 - 1);
     if (SUPPORT_STATUSES.includes(req.query.status as any)) query = query.eq('status', req.query.status);
     if (SUPPORT_PRIORITIES.includes(req.query.priority as any))
@@ -399,6 +396,7 @@ supportAdminRoutes.get(
       .slice(0, 100)
       .replace(/[^\p{L}\p{N}@ ._-]/gu, '');
     if (search) query = query.or(`subject.ilike.%${search}%,email.ilike.%${search}%`);
+    if (req.query.category === SALES_SUPPORT_CATEGORY.id) query = query.eq('category', SALES_SUPPORT_CATEGORY.id);
     if (req.query.unread === 'true') query = query.eq('admin_unread', true);
     const result = await query;
     res.json({ tickets: checked(result).map(adminView), total: result.count, page });
@@ -430,6 +428,7 @@ supportAdminRoutes.patch(
       changes.priority = req.body.priority;
     }
     if (req.body.category !== undefined) {
+      if (ticket.category === SALES_SUPPORT_CATEGORY.id && req.body.category !== SALES_SUPPORT_CATEGORY.id) return res.status(400).json({ error: 'The Pricing & sales category is fixed for this enquiry.' });
       if (!(await supportSettings()).categories.some((c) => c.id === req.body.category && !c.archived))
         return res.status(400).json({ error: 'Invalid category.' });
       changes.category = req.body.category;

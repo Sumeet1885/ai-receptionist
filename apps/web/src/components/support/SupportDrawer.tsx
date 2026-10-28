@@ -76,11 +76,15 @@ export function SupportDrawer({
                   ? 'Your support tickets'
                   : request?.view === 'guest-ticket'
                     ? 'Support conversation'
-                    : 'Contact support'}
+                    : request?.intent === 'sales'
+                      ? 'Talk to sales'
+                      : 'Contact support'}
               </h2>
               <p className="mt-1 text-sm text-text-subtle">
                 {request?.view === 'new'
-                  ? 'Send a request to the Bolega India team.'
+                  ? request?.intent === 'sales'
+                    ? 'Tell us about your business. Our sales team will get in touch.'
+                    : 'Send a request to the Bolega India team.'
                   : 'Follow your requests and reply to our team.'}
               </p>
             </div>
@@ -98,6 +102,7 @@ export function SupportDrawer({
               <SupportView
                 key={request.key}
                 embedded
+                intent={request.intent || 'support'}
                 initialCreate={request.view === 'new'}
                 initialTicketId={request.ticketId || ''}
                 guestToken={request.token || ''}

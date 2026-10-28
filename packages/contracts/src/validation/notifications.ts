@@ -7,6 +7,8 @@ export const NOTIFICATION_EVENTS = {
   access_requests: 'New free-access requests',
   payments: 'Payments and paid signups',
   signup_leads: 'Signup leads (closed checkout or failed payment)',
+  sales: 'Pricing and sales enquiries',
+  support: 'Customer support requests',
 } as const;
 
 export type NotificationEvent = keyof typeof NOTIFICATION_EVENTS;
@@ -17,6 +19,8 @@ export interface NotificationRecipientColumns {
   notify_access_requests: boolean;
   notify_payments: boolean;
   notify_signup_leads: boolean;
+  notify_sales?: boolean;
+  notify_support?: boolean;
   is_active: boolean;
 }
 
@@ -30,9 +34,11 @@ export function validateNotificationRecipient(input: unknown): Validated<Notific
     notify_access_requests: raw.accessRequests === true,
     notify_payments: raw.payments === true,
     notify_signup_leads: raw.signupLeads === true,
+    notify_sales: raw.sales === true,
+    notify_support: raw.support === true,
     is_active: raw.isActive !== false,
   };
-  if (!value.notify_access_requests && !value.notify_payments && !value.notify_signup_leads) {
+  if (!value.notify_access_requests && !value.notify_payments && !value.notify_signup_leads && !value.notify_sales && !value.notify_support) {
     errors.events = 'Choose at least one kind of alert.';
   }
   return done(errors, value);

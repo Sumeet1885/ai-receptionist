@@ -42,6 +42,15 @@ export async function fulfilPaidOrder(order: BillingOrderRow, razorpayPaymentId:
   const planName = claimed.plan_snapshot.name;
   const amount = formatMoney(claimed.total, claimed.currency);
 
+  if (claimed.customer_user_id) {
+    const { data, error } = await supabase.rpc('activate_workspace_payment', { p_order: claimed.id });
+    if (error || !data) throw new Error(`Activate workspace payment: ${error?.message || 'activation failed'}`);
+    const done = (await getOrder(claimed.id))!;
+    publishAdminEvent({ type: 'billing_order.updated', id: done.id, status: done.status });
+    void notifyAdmins(done, amount).catch(() => undefined);
+    return done;
+  }
+
   if (await authEmailExists(claimed.email)) {
     const review = await updateOrder(claimed.id, {
       status: 'review',

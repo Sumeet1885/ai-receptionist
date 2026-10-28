@@ -1,3 +1,4 @@
+import { PasswordInput } from '../ui/password-input';
 import React, { useState, useEffect } from 'react';
 import { checkCustomerPassword, LIMITS } from '@ai-receptionist/contracts';
 import { Button } from '../ui/button';
@@ -187,7 +188,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
                       Forgot password?
                     </button>
                   </div>
-                  <Input
+                  <PasswordInput
                     id="auth-password"
                     type="password"
                     required
@@ -276,7 +277,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
               <form onSubmit={handleResetPassword} className="space-y-4">
                 <div>
                   <Label htmlFor="auth-new-password">New password</Label>
-                  <Input
+                  <PasswordInput
                     id="auth-new-password"
                     type="password"
                     required
@@ -290,7 +291,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
                 </div>
                 <div>
                   <Label htmlFor="auth-confirm-password">Confirm new password</Label>
-                  <Input
+                  <PasswordInput
                     id="auth-confirm-password"
                     type="password"
                     required

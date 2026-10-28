@@ -10,6 +10,7 @@ export interface SupportCategory {
   defaultPriority: SupportPriority;
   archived?: boolean;
 }
+export const SALES_SUPPORT_CATEGORY: SupportCategory = { id: 'pricing_sales', name: 'Pricing & sales', defaultPriority: 'high', archived: false };
 export const SUPPORT_CATEGORIES: SupportCategory[] = [
   { id: 'billing', name: 'Billing & payment', defaultPriority: 'high' },
   { id: 'bug_report', name: 'Bug report', defaultPriority: 'high' },

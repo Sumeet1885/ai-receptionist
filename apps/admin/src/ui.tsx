@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
-import { LIMITS } from '@ai-receptionist/contracts';
+import { X } from 'lucide-react';
+import { LIMITS, formatDateTimeIST } from '@ai-receptionist/contracts';
 import type { AccessRequestStatus } from './api';
 
 export function cx(...classes: Array<string | false | null | undefined>) {
@@ -68,7 +69,7 @@ export function initials(name: string) {
 }
 
 export function formatDate(value: string | null) {
-  return value ? new Date(value).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+  return formatDateTimeIST(value);
 }
 
 export function timeAgo(value: string) {
@@ -146,9 +147,14 @@ export function Drawer({ title, subtitle, onClose, children, footer }: { title: 
     <div className="fixed inset-0 z-40 flex justify-end" role="dialog" aria-modal="true" aria-label={title}>
       <button type="button" aria-label="Close" className="absolute inset-0 bg-ink/30" onClick={onClose} />
       <div ref={panel} tabIndex={-1} className="relative flex h-full w-full max-w-xl flex-col bg-surface shadow-2xl outline-none">
-        <div className="border-b border-line px-6 py-5">
-          <h2 className="font-display text-xl font-bold">{title}</h2>
-          {subtitle && <p className="mt-0.5 text-sm text-subtle">{subtitle}</p>}
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-line px-6 py-5">
+          <div className="min-w-0 break-words">
+            <h2 className="font-display text-xl font-bold">{title}</h2>
+            {subtitle && <p className="mt-0.5 text-sm text-subtle">{subtitle}</p>}
+          </div>
+          <button type="button" aria-label="Close dialog" onClick={onClose} className="-mr-2 -mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-subtle transition-colors hover:bg-primary-soft hover:text-ink">
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
         </div>
         <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5">{children}</div>
         <div className="flex items-center justify-end gap-2 border-t border-line bg-background/60 px-6 py-4">{footer}</div>

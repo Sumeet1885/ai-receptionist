@@ -1,3 +1,4 @@
+import { formatDateTimeIST } from '@ai-receptionist/contracts';
 import { ChatSession } from '../types';
 
 export interface ConversationSessionRow {
@@ -30,8 +31,8 @@ export function mapConversationSessions(
     id: session.id,
     botId: session.bot_id,
     visitorId: session.visitor_id || 'Anonymous visitor',
-    startedAt: new Date(session.started_at).toLocaleString(),
-    endedAt: session.ended_at ? new Date(session.ended_at).toLocaleString() : null,
+    startedAt: formatDateTimeIST(session.started_at),
+    endedAt: session.ended_at ? formatDateTimeIST(session.ended_at) : null,
     lastMessage: summaries[session.id]?.lastMessage || 'No messages yet',
     messageCount: summaries[session.id]?.count || 0,
   }));

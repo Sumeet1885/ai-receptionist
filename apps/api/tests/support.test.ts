@@ -162,6 +162,7 @@ test('HTTP routes enforce ownership, guest secrecy, roles, CSRF, attachment priv
     ],
     admin_users: [{ id: 'admin', status: 'active', must_change_password: false, display_name: 'Admin' }],
   };
+  rows.customer_accounts = [{ user_id: 'customer', status: 'active', access_expires_at: null }];
   function query(table: string) {
     let selected = table === 'admin_role_assignments' ? [{ role, admin_user_id: 'admin' }] : [...(rows[table] || [])];
     let single = false;
@@ -397,6 +398,30 @@ test('HTTP routes enforce ownership, guest secrecy, roles, CSRF, attachment priv
       assert.equal((await fetch(`${base}/public`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(guest) })).status, 201);
     }
     assert.equal((await fetch(`${base}/public`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(guest) })).status, 429);
+
+    // Sales intent fixes category/priority on the server even if the browser tampers with it.
+    rows.admin_notification_recipients = [
+      { email: 'sales-one@example.com', is_active: true, notify_sales: true },
+      { email: 'sales-two@example.com', is_active: true, notify_sales: true },
+      { email: 'support-only@example.com', is_active: true, notify_support: true, notify_sales: false },
+      { email: 'disabled@example.com', is_active: false, notify_sales: true },
+    ];
+    const sale = await fetch(`${base}/public`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...guest, email: 'sales-customer@example.com', intent: 'sales', category: 'general', priority: 'low' }) });
+    assert.equal(sale.status, 201);
+    const salesStored = rows.support_tickets.at(-1)!;
+    assert.equal(salesStored.category, 'pricing_sales');
+    assert.equal(salesStored.priority, 'high');
+    await new Promise(resolve => setTimeout(resolve, 20));
+    const salesAlerts = messagesSent.filter(input => input.EmailTags?.[0]?.Value === 'sales_enquiry_admin_alert');
+    assert.deepEqual(salesAlerts.map(input => input.Destination.ToAddresses[0]).sort(), ['sales-one@example.com','sales-two@example.com']);
+    assert.ok(salesAlerts[0].Content.Simple.Subject.Data.includes('pricing & sales'));
+    assert.ok(!salesAlerts[0].Content.Simple.Body.Text.Data.includes('#token='), 'Private guest link never goes to team alert recipients');
+    role = 'super_admin';
+    const settingsResponse = await fetch(`${base}/admin/settings`, { headers: admin });
+    const settingsData = await settingsResponse.json() as any;
+    assert.ok(settingsData.categories.some((category:any) => category.id === 'pricing_sales' && !category.archived));
+    const changeFixed = await fetch(`${base}/admin/settings`, { method: 'PUT', headers: admin, body: JSON.stringify({ ...settingsData, categories: settingsData.categories.map((category:any) => category.id === 'pricing_sales' ? { ...category, archived: true } : category) }) });
+    assert.equal(changeFixed.status, 400);
   } finally {
     supabase.from = originals.from;
     supabase.rpc = originals.rpc;

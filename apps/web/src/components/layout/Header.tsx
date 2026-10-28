@@ -28,12 +28,11 @@ const publicNav = [
 ];
 
 /**
- * Buttons for signed-out visitors, depending on the page: never a link to the page you are on,
- * and no "Get started" (free access) in the middle of buying a plan.
+ * Avoid repeating the current page's action; keep checkout and confirmation focused.
  */
 function publicActions(routeName: string) {
   const signIn = routeName !== 'auth' && routeName !== 'auth-confirm';
-  const getStarted = routeName !== 'request-access' && routeName !== 'checkout';
+  const getStarted = !['request-access', 'checkout', 'auth-confirm'].includes(routeName);
   return { signIn, getStarted };
 }
 
@@ -86,7 +85,7 @@ export const Header: React.FC<HeaderProps> = ({
         aria-label="Bolega India home"
         className="rounded-small"
       >
-        <BrandLogo />
+        <BrandLogo className="h-7 sm:h-9" />
       </a>
 
       <nav aria-label="Main" className="hidden 2xl:flex items-center gap-1 rounded-pill border border-border bg-surface p-1 text-base shadow-card">
@@ -104,6 +103,12 @@ export const Header: React.FC<HeaderProps> = ({
       </nav>
 
       <div className="flex items-center gap-2 sm:gap-4">
+        {!user && actions.signIn && !actions.getStarted && (
+          <Button variant="secondary" size="sm" className="2xl:hidden" onClick={() => navigate('/auth?mode=signin')}>
+            Sign in
+          </Button>
+        )}
+        {!user && actions.getStarted && <Button size="sm" className="px-2 text-xs 2xl:hidden" onClick={() => navigate('/request-access')}>14-day free trial</Button>}
         {user ? (
           <UserMenu email={user.email} navigate={navigate} signOut={() => void handleSignOut()} />
         ) : (
@@ -115,7 +120,7 @@ export const Header: React.FC<HeaderProps> = ({
             )}
             {actions.getStarted && (
               <Button size="md" className="text-base" onClick={() => navigate('/request-access')}>
-                Get started ↗
+                14-day free trial
               </Button>
             )}
           </div>
@@ -193,7 +198,7 @@ export const Header: React.FC<HeaderProps> = ({
                   onClick={() => go('/request-access')}
                   className="w-full rounded-small bg-text px-4 py-3 text-left text-sm font-semibold text-primary-foreground transition hover:bg-primary"
                 >
-                  Get started ↗
+                  14-day free trial
                 </button>
               )}
             </>

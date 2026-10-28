@@ -1,11 +1,12 @@
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react';
-import { BellRing, CheckCircle2, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { BellRing, CheckCircle2, CircleAlert, TriangleAlert, X } from 'lucide-react';
 
 interface Toast {
   id: number;
   title: string;
   description?: string;
-  tone: 'info' | 'success';
+  tone: 'info' | 'success' | 'error' | 'warning';
   action?: { label: string; onClick: () => void };
 }
 
@@ -17,7 +18,9 @@ export const useToast = () => useContext(ToastContext);
 // Short two-note chime for new requests (Web Audio; silently skipped where unavailable).
 export function playChime() {
   try {
-    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    const Ctx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Ctx) return;
     const ctx = new Ctx();
     const osc = ctx.createOscillator();
@@ -42,40 +45,73 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const dismiss = useCallback((id: number) => setToasts((all) => all.filter((t) => t.id !== id)), []);
 
-  const show = useCallback<ShowToast>((toast) => {
-    const id = nextId.current++;
-    setToasts((all) => [...all.slice(-3), { ...toast, id }]);
-    window.setTimeout(() => dismiss(id), 9000);
-  }, [dismiss]);
+  const show = useCallback<ShowToast>(
+    (toast) => {
+      const id = nextId.current++;
+      setToasts((all) => [...all.slice(-3), { ...toast, id }]);
+      window.setTimeout(() => dismiss(id), 9000);
+    },
+    [dismiss],
+  );
 
   return (
     <ToastContext.Provider value={show}>
       {children}
-      <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2" aria-live="polite">
-        {toasts.map((toast) => (
-          <div key={toast.id} className="pointer-events-auto flex animate-toast-in gap-3 rounded-2xl border border-line bg-surface p-4 shadow-card">
-            <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${toast.tone === 'success' ? 'bg-success-surface text-success' : 'bg-lime-soft text-primary'}`}>
-              {toast.tone === 'success' ? <CheckCircle2 className="h-4 w-4" /> : <BellRing className="h-4 w-4" />}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold">{toast.title}</p>
-              {toast.description && <p className="mt-0.5 text-xs text-subtle">{toast.description}</p>}
-              {toast.action && (
-                <button
-                  type="button"
-                  className="mt-2 text-xs font-semibold text-primary hover:underline"
-                  onClick={() => { toast.action!.onClick(); dismiss(toast.id); }}
-                >
-                  {toast.action.label}
-                </button>
-              )}
+      {createPortal(
+        <div className="admin-toast-stack pointer-events-none fixed right-4 top-4 z-[120] flex max-h-[calc(100dvh-2rem)] w-[min(24rem,calc(100vw-2rem))] flex-col gap-2">
+          {toasts.map((toast) => (
+            <div
+              key={toast.id}
+              role={toast.tone === 'error' || toast.tone === 'warning' ? 'alert' : 'status'}
+              aria-atomic="true"
+              className={`pointer-events-auto flex shrink-0 motion-safe:animate-[toast-bounce_1s_infinite] hover:[animation-play-state:paused] focus-within:[animation-play-state:paused] gap-3 rounded-2xl border border-l-4 p-4 shadow-card ${toast.tone === 'error' ? 'border-danger/30 border-l-danger bg-danger-surface text-danger' : toast.tone === 'warning' ? 'border-warning/30 border-l-warning bg-warning-surface text-warning' : toast.tone === 'success' ? 'border-success/30 border-l-success bg-success-surface text-success' : 'border-info/30 border-l-info bg-info-surface text-info'}`}
+            >
+              <span
+                className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${toast.tone === 'error' ? 'bg-danger/10 text-danger' : toast.tone === 'warning' ? 'bg-warning/10 text-warning' : toast.tone === 'success' ? 'bg-success/10 text-success' : 'bg-info/10 text-info'}`}
+              >
+                {toast.tone === 'error' ? (
+                  <CircleAlert className="h-4 w-4" />
+                ) : toast.tone === 'warning' ? (
+                  <TriangleAlert className="h-4 w-4" />
+                ) : toast.tone === 'success' ? (
+                  <CheckCircle2 className="h-4 w-4" />
+                ) : (
+                  <BellRing className="h-4 w-4" />
+                )}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="break-words text-sm font-semibold [overflow-wrap:anywhere]">{toast.title}</p>
+                {toast.description && (
+                  <p className="mt-0.5 break-words text-xs opacity-90 [overflow-wrap:anywhere]">
+                    {toast.description}
+                  </p>
+                )}
+                {toast.action && (
+                  <button
+                    type="button"
+                    className="mt-2 text-xs font-semibold text-primary hover:underline"
+                    onClick={() => {
+                      toast.action!.onClick();
+                      dismiss(toast.id);
+                    }}
+                  >
+                    {toast.action.label}
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                aria-label="Dismiss"
+                className="self-start rounded-lg p-1 text-subtle hover:bg-background"
+                onClick={() => dismiss(toast.id)}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
             </div>
-            <button type="button" aria-label="Dismiss" className="self-start rounded-lg p-1 text-subtle hover:bg-background" onClick={() => dismiss(toast.id)}>
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>,
+        document.body,
+      )}
     </ToastContext.Provider>
   );
 }

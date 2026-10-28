@@ -53,7 +53,7 @@ export interface Message {
 
 export interface Toast {
   message: string;
-  type: 'success' | 'error';
+  type: 'success' | 'error' | 'warning' | 'info';
 }
 
 export interface Profile {

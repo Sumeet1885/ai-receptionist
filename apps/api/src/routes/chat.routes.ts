@@ -1,3 +1,4 @@
+import { workspaceAllowed } from '../middleware/workspaceAccess';
 import { Router, Request, Response } from 'express';
 import { handleChat } from '../controllers/chatController';
 import { analyzeLead } from '../controllers/leadController';
@@ -54,6 +55,7 @@ router.post('/reply', async (req: Request, res: Response): Promise<void> => {
   }
 
   let botId: string | undefined;
+  let workspaceVerified = false;
 
   try {
     // 1. Resolve session -> get bot_id
@@ -84,6 +86,8 @@ router.post('/reply', async (req: Request, res: Response): Promise<void> => {
 
     // CORS Check
     if (!checkCors(req, res, bot.allowed_domains)) return;
+    if (!await workspaceAllowed(bot.owner_id)) { res.status(403).json({ error: 'This receptionist is not available.' }); return; }
+    workspaceVerified = true;
 
     // 3. Fetch last 20 messages (conversation history window)
     const history = await fetchRecentMessageHistory(supabase, sessionId);
@@ -116,6 +120,7 @@ router.post('/reply', async (req: Request, res: Response): Promise<void> => {
     res.json({ reply });
 
   } catch (err: any) {
+    if (!workspaceVerified) { res.status(503).json({ error: 'Could not verify receptionist access. Please try again.' }); return; }
     const requestId = req.headers['x-railway-request-id'] || req.headers['x-request-id'] || 'unknown';
     console.error('Express chat-reply error:', {
       requestId,
@@ -171,6 +176,7 @@ router.get('/bot/:botId', async (req: Request, res: Response): Promise<void> => 
 
     // CORS Check
     if (!checkCors(req, res, bot.allowed_domains)) return;
+    if (!await workspaceAllowed(bot.owner_id)) { res.status(403).json({ error: 'This receptionist is not available.' }); return; }
 
     res.json(toPublicBotResponse(bot));
   } catch (err: any) {
@@ -194,6 +200,7 @@ router.get('/bot/subdomain/:subdomain', async (req: Request, res: Response): Pro
     }
 
     if (!checkCors(req, res, bot.allowed_domains)) return;
+    if (!await workspaceAllowed(bot.owner_id)) { res.status(403).json({ error: 'This receptionist is not available.' }); return; }
     res.json(toPublicBotResponse(bot));
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -212,7 +219,7 @@ router.post('/session', async (req: Request, res: Response): Promise<void> => {
     // Get the bot to check CORS and fetch greeting
     const { data: bot, error: botErr } = await supabase
       .from('bots')
-      .select('greeting, allowed_domains')
+      .select('greeting, allowed_domains, owner_id')
       .eq('id', botId)
       .eq('is_active', true)
       .single();
@@ -224,6 +231,7 @@ router.post('/session', async (req: Request, res: Response): Promise<void> => {
 
     // CORS Check
     if (!checkCors(req, res, bot.allowed_domains)) return;
+    if (!await workspaceAllowed(bot.owner_id)) { res.status(403).json({ error: 'This receptionist is not available.' }); return; }
 
     const { data, error } = await supabase
       .from('chat_sessions')

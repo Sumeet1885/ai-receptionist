@@ -11,6 +11,8 @@ const COUPON_CODE = /^[A-Z0-9][A-Z0-9_-]*$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface PlanColumns {
+  is_trial?: boolean;
+  trial_days?: number | null;
   slug: string;
   name: string;
   tagline: string | null;
@@ -38,14 +40,17 @@ export function parsePlanInput(input: unknown): Validated<PlanColumns> {
 
   const money = (field: string) => integerField(errors, field, raw[field] ?? 0, LIMITS.amount) ?? 0;
   const contactSales = raw.contactSales === true;
+  const trial = raw.isTrial === true;
   const value: PlanColumns = {
     slug,
+    is_trial: trial,
+    trial_days: trial ? integerField(errors, 'trialDays', raw.trialDays, { min: 1, max: 365 }) : null,
     name,
     tagline: optionalText(errors, 'tagline', raw.tagline, 'the tagline', LIMITS.planTagline),
     sort_order: integerField(errors, 'sortOrder', raw.sortOrder ?? 0, LIMITS.planSortOrder) ?? 0,
     is_active: raw.isActive !== false,
-    is_featured: raw.isFeatured === true,
-    contact_sales: contactSales,
+    is_featured: !trial && raw.isFeatured === true,
+    contact_sales: !trial && contactSales,
     monthly_minutes: integerField(errors, 'monthlyMinutes', raw.monthlyMinutes, { ...LIMITS.planMinutes, nullable: true }),
     price_inr: money('priceInr'),
     price_usd: money('priceUsd'),
@@ -56,7 +61,8 @@ export function parsePlanInput(input: unknown): Validated<PlanColumns> {
     feature_values: {},
   };
 
-  if (!contactSales && !errors.priceInr && !errors.priceUsd && value.price_inr === 0 && value.price_usd === 0) {
+  if (trial) { value.price_inr = 0; value.price_usd = 0; value.setup_fee_inr = 0; value.setup_fee_usd = 0; }
+  if (!trial && !contactSales && !errors.priceInr && !errors.priceUsd && value.price_inr === 0 && value.price_usd === 0) {
     errors.priceInr = 'Set a price in at least one currency, or mark the plan as "Talk to sales".';
   }
 

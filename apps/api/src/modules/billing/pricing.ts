@@ -9,6 +9,8 @@ export const CURRENCIES: Currency[] = ['INR', 'USD'];
 export const MINIMUM_CHARGE: Record<Currency, number> = { INR: 100, USD: 50 };
 
 export interface PlanRow {
+  is_trial?: boolean;
+  trial_days?: number | null;
   id: string;
   slug: string;
   name: string;
@@ -69,6 +71,7 @@ export function planPrice(plan: PlanRow, currency: Currency) {
 
 /** Whether a plan can be bought online in this currency (Enterprise and unpriced plans cannot). */
 export function isPurchasable(plan: PlanRow, currency: Currency) {
+  if (plan.is_trial) return false;
   return plan.is_active && !plan.contact_sales && planPrice(plan, currency).planAmount > 0;
 }
 

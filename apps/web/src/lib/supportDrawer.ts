@@ -1,5 +1,6 @@
 export const SUPPORT_DRAWER_EVENT = 'bolega:open-support';
 export interface SupportDrawerRequest {
+  intent?: 'support' | 'sales';
   view?: 'new' | 'tickets' | 'guest-ticket';
   ticketId?: string;
   token?: string;

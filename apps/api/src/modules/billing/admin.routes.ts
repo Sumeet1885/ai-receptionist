@@ -1,18 +1,21 @@
 import { Router, type Response } from 'express';
 import { config } from '../../config';
+import { createRateLimit } from '../../middleware/rateLimit';
+import { followupContent, FollowupError, sendCheckoutFollowup } from './followups';
 import { asyncRoute } from '../../utils/asyncRoute';
 import { getClientIp } from '../../utils/security';
 import { adminOriginGuard, noStore, requireAdminRole, requireAdminSession, type AdminRequest } from '../admin-auth/middleware';
 import { recordAudit } from '../admin-auth/repository';
 import {
+  getOrder,
   createCoupon,
   createPlan,
-  listCoupons,
+  listAdminCoupons,
   listFeatures,
   listOpenLeads,
   listOrders,
   listPaidOrdersForRevenue,
-  listPlans,
+  listAdminPlans,
   replaceFeatures,
   updateCoupon,
   updatePlan,
@@ -51,9 +54,10 @@ function audit(req: AdminRequest, action: string, resourceType: string, resource
 
 // ── plans ────────────────────────────────────────────────────────────────────
 
-router.get('/plans', requireAdminRole('read_only'), handle(async (_req, res) => {
-  const [plans, features] = await Promise.all([listPlans({ activeOnly: false }), listFeatures()]);
-  res.json({ plans, features });
+router.get('/plans', requireAdminRole('read_only'), handle(async (req, res) => {
+  const page = Math.max(1, Math.min(1000, Number.parseInt(String(req.query.page || '1'), 10) || 1));
+  const [result, features] = await Promise.all([listAdminPlans({ page, search: typeof req.query.search === 'string' ? req.query.search : '', activeOnly: req.query.activeOnly === 'true', trialOnly: req.query.trialOnly === 'true', checkoutOnly: req.query.checkoutOnly === 'true' }), listFeatures()]);
+  res.json({ ...result, features });
 }));
 
 router.post('/plans', requireAdminRole('super_admin'), handle(async (req, res) => {
@@ -90,8 +94,9 @@ router.put('/features', requireAdminRole('super_admin'), handle(async (req, res)
 
 // ── coupons ──────────────────────────────────────────────────────────────────
 
-router.get('/coupons', requireAdminRole('read_only'), handle(async (_req, res) => {
-  res.json({ coupons: await listCoupons() });
+router.get('/coupons', requireAdminRole('read_only'), handle(async (req, res) => {
+  const page = Math.max(1, Math.min(1000, Number.parseInt(String(req.query.page || '1'), 10) || 1));
+  res.json(await listAdminCoupons(page));
 }));
 
 router.post('/coupons', requireAdminRole('super_admin'), handle(async (req, res) => {
@@ -130,6 +135,28 @@ router.get('/orders', requireAdminRole('read_only'), handle(async (req, res) => 
     ? await listOrders({ lead: stage, page, pageSize: 25, status: stage ? undefined : 'created' })
     : await listOrders({ status, paidOnly: view === 'revenue', page, pageSize: 25 });
   res.json({ rows, total, page, pageSize: 25 });
+}));
+
+router.get('/orders/:id/email-preview', requireAdminRole('support'), handle(async (req, res) => {
+  if (!UUID.test(req.params.id)) return res.status(404).json({ error: 'Lead not found' });
+  const order = await getOrder(req.params.id);
+  if (!order || order.status !== 'created') return res.status(409).json({ error: 'Only unpaid checkout leads can receive this email.' });
+  const content = followupContent(order);
+  res.json({ ...content, to: order.email, lastSentAt: order.followup_sent_at || order.reminder_sent_at });
+}));
+
+router.post('/orders/:id/send-email', requireAdminRole('support'), createRateLimit({ keyPrefix: 'admin-lead-email', limit: 30, windowMs: 60 * 60_000 }, req => (req as AdminRequest).admin!.adminUser.id), handle(async (req, res) => {
+  if (!UUID.test(req.params.id)) return res.status(404).json({ error: 'Lead not found' });
+  if (!LEAD_STAGES.includes(req.body?.stage)) return res.status(400).json({ error: 'Open the email preview before sending.' });
+  try {
+    const result = await sendCheckoutFollowup(req.params.id, req.admin!.adminUser.id, req.body.stage);
+    await audit(req, 'lead_email.send', 'billing_order', req.params.id, { stage: result.stage, messageId: result.messageId });
+    res.json(result);
+  } catch (error) {
+    if (!(error instanceof FollowupError)) throw error;
+    await audit(req, 'lead_email.send_failed', 'billing_order', req.params.id, { reason: error.message });
+    res.status(error.status).json({ error: error.message });
+  }
 }));
 
 router.get('/revenue', requireAdminRole('read_only'), handle(async (_req, res) => {

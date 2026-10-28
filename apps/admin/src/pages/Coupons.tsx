@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
-import { LIMITS, parseCouponInput } from '@ai-receptionist/contracts';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { LIMITS, parseCouponInput, istDate } from '@ai-receptionist/contracts';
 import { Loader2, Pencil, Plus, TicketPercent } from 'lucide-react';
 import { ApiError, billingAdminApi, formatMoney, type Coupon, type CouponInput, type Plan } from '../api';
 import { useToast } from '../toast';
-import { ActiveBadge, Button, Card, Drawer, Field, INPUT, MONEY_INPUT_LENGTH, PageError, Toggle, cx, digitsFor, formatDate, toMajor, toMinor } from '../ui';
+import { ActiveBadge, Button, Card, Drawer, Field, INPUT, MONEY_INPUT_LENGTH, PageError, Pager, Toggle, cx, digitsFor, formatDate, toMajor, toMinor } from '../ui';
 
 const APPLIES_TO_LABELS: Record<Coupon['applies_to'], string> = {
   total: 'Whole order',
@@ -31,14 +31,10 @@ const EMPTY_FORM: CouponForm = {
   appliesTo: 'total', planIds: [], maxRedemptions: '', startsOn: '', expiresOn: '', isActive: true,
 };
 
-// <input type="date"> works in local days; the API stores instants.
-const toDay = (iso: string | null) => {
-  if (!iso) return '';
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
-const startOfDay = (day: string) => (day ? new Date(`${day}T00:00:00`).toISOString() : null);
-const endOfDay = (day: string) => (day ? new Date(`${day}T23:59:59`).toISOString() : null);
+// Coupon calendar dates are interpreted in IST regardless of the administrator's device.
+const toDay = (iso: string | null) => iso ? istDate(new Date(iso)) : '';
+const startOfDay = (day: string) => day ? new Date(`${day}T00:00:00+05:30`).toISOString() : null;
+const endOfDay = (day: string) => day ? new Date(`${day}T23:59:59.999+05:30`).toISOString() : null;
 
 function toForm(coupon: Coupon): CouponForm {
   return {
@@ -98,18 +94,22 @@ export function Coupons({ roles }: { roles: string[] }) {
   const canEdit = roles.includes('super_admin');
   const toast = useToast();
   const [coupons, setCoupons] = useState<Coupon[] | null>(null);
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [planNames, setPlanNames] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [editing, setEditing] = useState<{ coupon: Coupon | null } | null>(null);
 
+  const loadVersion = useRef(0);
   const load = useCallback(() => {
-    Promise.all([billingAdminApi.coupons(), billingAdminApi.plans()])
-      .then(([couponData, planData]) => { setCoupons(couponData.coupons); setPlans(planData.plans); setError(''); })
-      .catch((err) => setError((err as Error).message));
-  }, []);
+    const version = ++loadVersion.current;
+    billingAdminApi.coupons(page)
+      .then(data => { if (version !== loadVersion.current) return; setCoupons(data.coupons); setTotal(data.total); setPlanNames(data.planNames); setError(''); })
+      .catch((err) => { if (version === loadVersion.current) setError((err as Error).message); });
+  }, [page]);
   useEffect(load, [load]);
 
-  const planName = (id: string) => plans.find((plan) => plan.id === id)?.name ?? 'Removed plan';
+  const planName = (id: string) => planNames[id] ?? 'Removed plan';
 
   return (
     <div className="space-y-6">
@@ -183,10 +183,11 @@ export function Coupons({ roles }: { roles: string[] }) {
         )}
       </Card>
 
+      {coupons && <Pager page={page} pages={Math.max(1, Math.ceil(total / 25))} onPage={setPage} />}
+
       {editing && (
         <CouponDrawer
           coupon={editing.coupon}
-          plans={plans.filter((plan) => !plan.contact_sales)}
           onClose={() => setEditing(null)}
           onSaved={(saved) => {
             setEditing(null);
@@ -199,7 +200,18 @@ export function Coupons({ roles }: { roles: string[] }) {
   );
 }
 
-function CouponDrawer({ coupon, plans, onClose, onSaved }: { coupon: Coupon | null; plans: Plan[]; onClose: () => void; onSaved: (coupon: Coupon) => void }) {
+function CouponDrawer({ coupon, onClose, onSaved }: { coupon: Coupon | null; onClose: () => void; onSaved: (coupon: Coupon) => void }) {
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [planPage, setPlanPage] = useState(1);
+  const [planTotal, setPlanTotal] = useState(0);
+  const [planSearch, setPlanSearch] = useState('');
+  useEffect(() => {
+    let cancelled = false;
+    void billingAdminApi.plans({ page: planPage, search: planSearch, checkoutOnly: true }).then(data => {
+      if (!cancelled) { setPlans(data.plans); setPlanTotal(data.total); }
+    }).catch(err => { if (!cancelled) setError(err.message); });
+    return () => { cancelled = true; };
+  }, [planPage, planSearch]);
   const [form, setForm] = useState<CouponForm>(coupon ? toForm(coupon) : EMPTY_FORM);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
@@ -290,7 +302,7 @@ function CouponDrawer({ coupon, plans, onClose, onSaved }: { coupon: Coupon | nu
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs font-semibold text-ink">Plans <span className="font-normal text-subtle">(none selected = every plan)</span></p>
+        <p className="text-xs font-semibold text-ink">Plans <span className="font-normal text-subtle">(none selected = every plan)</span></p><input type="search" aria-label="Search coupon plans" maxLength={LIMITS.search.max} className={cx(INPUT, 'mt-2')} placeholder="Search plans" value={planSearch} onChange={event => { setPlanSearch(event.target.value); setPlanPage(1); }} /><p className="mt-2 text-xs text-subtle">{form.planIds.length} selected across all pages</p><Pager page={planPage} pages={Math.max(1, Math.ceil(planTotal / 25))} onPage={setPlanPage} />
         <div className="flex flex-wrap gap-2">
           {plans.map((plan) => {
             const on = form.planIds.includes(plan.id);

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, CheckCircle2, LifeBuoy, Loader2, Paperclip, Plus } from 'lucide-react';
 import {
+  SALES_SUPPORT_CATEGORY,
+  formatDateTimeIST,
   SUPPORT_LIMITS,
   supportLabel,
   supportNumber,
@@ -27,8 +29,7 @@ const EMPTY: SupportInput = {
   description: '',
 };
 const SELECT = 'min-h-11 w-full rounded-lg border border-border bg-surface px-3 py-2 text-base';
-const date = (value: string) =>
-  new Date(value).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+const date = formatDateTimeIST;
 
 function RequiredMark() {
   return (
@@ -49,6 +50,7 @@ export function SupportView({
   mode,
   navigate,
   embedded = false,
+  intent = 'support',
   initialCreate,
   initialTicketId,
   guestToken,
@@ -57,6 +59,7 @@ export function SupportView({
   mode: 'customer' | 'guest' | 'guest-ticket';
   navigate: (path: string) => void;
   embedded?: boolean;
+  intent?: 'support' | 'sales';
   initialCreate?: boolean;
   initialTicketId?: string;
   guestToken?: string;
@@ -74,7 +77,8 @@ export function SupportView({
     () => guestToken ?? new URLSearchParams(window.location.hash.slice(1)).get('token') ?? '',
   );
   const [creating, setCreating] = useState(initialCreate ?? mode === 'guest');
-  const [form, setForm] = useState(EMPTY);
+  const sales = intent === 'sales';
+  const [form, setForm] = useState<SupportInput>(() => ({ ...EMPTY, category: sales ? SALES_SUPPORT_CATEGORY.id : EMPTY.category }));
   const [files, setFiles] = useState<File[]>([]);
   const [body, setBody] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -139,6 +143,7 @@ export function SupportView({
   }, [load, creating, mode]);
 
   const set = (key: keyof SupportInput, value: string) => {
+    if (sales && key === 'category') return;
     setForm((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({
       ...prev,
@@ -160,6 +165,7 @@ export function SupportView({
     setError('');
     const payload = new FormData();
     if (creating) {
+      payload.set('intent', intent);
       const result = validateSupport(form, guest);
       if (!categories.some((category) => category.id === result.value.category))
         result.errors.category = 'Choose an available category.';
@@ -308,7 +314,7 @@ export function SupportView({
       {confirmation ? (
         <div className="rounded-2xl border border-border bg-surface p-6">
           <CheckCircle2 className="mb-3 text-success" />
-          <h2 className="text-xl font-semibold">Request received: {confirmation.number}</h2>
+          <h2 className="text-xl font-semibold">{sales ? 'Sales enquiry received' : 'Request received'}: {confirmation.number}</h2>
           <p className="mt-3 text-text-subtle">
             {confirmation.emailSent
               ? 'Check your email for a private link to view this ticket and reply. Keep the link private.'
@@ -389,6 +395,7 @@ export function SupportView({
                 </Label>
                 <select
                   id="support-category"
+                  disabled={sales}
                   required
                   {...fieldProps('category')}
                   value={form.category}
@@ -430,7 +437,7 @@ export function SupportView({
             </div>
             <div>
               <Label htmlFor="support-description">
-                What do you need help with?
+                {sales ? 'What would you like to discuss?' : 'What do you need help with?'}
                 <RequiredMark />
               </Label>
               <Textarea
@@ -480,7 +487,7 @@ export function SupportView({
               <span className="text-sm text-text-subtle">Your ticket link is sent to your email.</span>
             )}
             <Button type="submit" disabled={busy || (guest && !guard.captchaReady) || !categories.length}>
-              {busy && <Loader2 size={16} className="animate-spin" />} Send support request
+              {busy && <Loader2 size={16} className="animate-spin" />} {sales ? 'Send sales enquiry' : 'Send support request'}
             </Button>
           </div>
         </form>

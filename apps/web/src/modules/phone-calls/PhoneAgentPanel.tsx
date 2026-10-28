@@ -1,3 +1,4 @@
+import { formatDateTimeIST } from '@ai-receptionist/contracts';
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { Icons } from '../../components/common/Icons';
 import { validateContactInput } from '../../lib/contactValidation';
@@ -808,7 +809,7 @@ export const PhoneAgentPanel: React.FC<PhoneAgentPanelProps> = ({ botId, showToa
                         {line.configuredAt && (
                           <>
                             <span>•</span>
-                            <span>Added {new Date(line.configuredAt).toLocaleDateString()}</span>
+                            <span>Added {formatDateTimeIST(line.configuredAt)}</span>
                           </>
                         )}
                       </div>

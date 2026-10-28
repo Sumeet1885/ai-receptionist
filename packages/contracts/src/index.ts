@@ -36,6 +36,7 @@ export {
   type Validated,
 } from './validation';
 export { SUPPORTED_LANGUAGES, SUPPORTED_LANGUAGE_LIST, type SupportedLanguage } from './languages';
+export { DISPLAY_TIME_ZONE, formatDateTimeIST, formatExpiryIST, istDate, validISODate, workspacePeriodEnd } from './dates';
 export { FORM_ELAPSED_FIELD, HONEYPOT_FIELD, MIN_FORM_FILL_MS, TURNSTILE_TOKEN_FIELD } from './public-forms';
 export {
   defaultWidgetConfig,

@@ -912,8 +912,10 @@ html.bi-landing-root {
 }
 .bi-landing .footer {
   margin: 0 6%;
-  padding: 25px 0;
+  padding: 25px 0 calc(80px + env(safe-area-inset-bottom, 0px));
   display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
   justify-content: space-between;
   align-items: center;
   border-top: 1px solid var(--line);
@@ -921,9 +923,11 @@ html.bi-landing-root {
 .bi-landing .footer small {
   font-size: 12px;
   color: var(--muted);
+  flex-shrink: 0;
 }
 .bi-landing .footer-links {
   display: flex;
+  flex-wrap: wrap;
   gap: 20px;
   font-size: 13px;
 }

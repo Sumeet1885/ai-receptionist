@@ -41,7 +41,7 @@ export interface CheckoutOrder {
 }
 
 export class BillingError extends Error {
-  constructor(message: string, public field?: string, public fields?: Record<string, string>) {
+  constructor(message: string, public field?: string, public fields?: Record<string, string>, public code?: string) {
     super(message);
   }
 }
@@ -62,7 +62,7 @@ async function call<T>(path: string, body?: unknown): Promise<T> {
   } catch (error) {
     throw new BillingError((error as Error).message);
   }
-  if (!result.ok) throw new BillingError(result.message, result.data.field, result.data.fields);
+  if (!result.ok) throw new BillingError(result.message, result.data.field, result.data.fields, result.data.code);
   return result.data as T;
 }
 
@@ -75,7 +75,7 @@ export const billingApi = {
   // Records a closed checkout or a failed payment attempt on the lead; best effort.
   // "Complete my payment" link from the reminder email: the saved order, ready to pay.
   resume: (resume: string) =>
-    call<{ order: CheckoutOrder; plan: PublicPlan; quote: Quote; businessName: string }>('/checkout/resume', { resume }),
+    call<{ plan: PublicPlan; quote: Quote; businessName: string } & ({ requiresDetails: false; order: CheckoutOrder } | { requiresDetails: true; order: null; contact: { fullName: string; email: string; phone: string; businessName: string } })>('/checkout/resume', { resume }),
   abandoned: (body: { orderId: string; razorpayOrderId: string; reason: 'closed' | 'failed'; message?: string }) =>
     call<{ ok: true }>('/checkout/abandoned', body).catch(() => undefined),
   verify: (body: { orderId: string; razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }) =>

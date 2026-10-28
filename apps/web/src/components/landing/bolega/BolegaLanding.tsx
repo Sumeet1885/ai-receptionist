@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import './landing.css';
 import { HeroSection } from './HeroSection';
 import { ContactCta, LandingFooter, LanguageWall, LeadStorySection, QuestionsSection } from './InteractiveSections';
@@ -47,7 +47,6 @@ export function BolegaLanding({ navigate, signedIn, userMenu }: BolegaLandingPro
     };
   }, [motionPaused]);
 
-  const toggleMotion = useCallback(() => setMotionPaused((paused) => !paused), []);
 
   const className = [
     'bi-landing',
@@ -74,7 +73,7 @@ export function BolegaLanding({ navigate, signedIn, userMenu }: BolegaLandingPro
           <QuestionsSection navigate={navigate} signedIn={signedIn} />
           <ContactCta navigate={navigate} signedIn={signedIn} />
         </main>
-        <LandingFooter onToggleMotion={toggleMotion} />
+        <LandingFooter />
       </div>
     </LandingProvider>
   );

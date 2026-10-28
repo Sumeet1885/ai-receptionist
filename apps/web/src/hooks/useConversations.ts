@@ -88,7 +88,7 @@ export function useConversations() {
         id: m.id,
         sender: m.sender as 'user' | 'bot',
         text: m.content,
-        timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        timestamp: new Date(m.created_at).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })
       })));
     } else {
       setMessages([]);
