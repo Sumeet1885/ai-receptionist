@@ -293,7 +293,7 @@ export default function App() {
 
       if (stage === 'onboarding') {
         if (['support', 'contact-support', 'support-guest-ticket', 'privacy', 'terms'].includes(route.name)) return;
-        if (route.name === 'auth' || route.name === 'auth-confirm' || route.name === 'request-access' || route.name === 'agent-new') {
+        if (route.name === 'auth' || route.name === 'request-access' || route.name === 'agent-new') {
           navigate('/outbound-calls', true);
         }
       } else if (route.name === 'auth' || route.name === 'request-access') {
