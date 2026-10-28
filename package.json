@@ -6,10 +6,10 @@
     "node": ">=20.11 <23"
   },
   "scripts": {
-    "dev": "turbo run dev --env-mode=loose --ui=stream --log-order=stream --log-prefix=task --output-logs=full --filter=@ai-receptionist/web --filter=@ai-receptionist/api --filter=@ai-receptionist/admin",
+    "dev": "turbo run dev --env-mode=loose --ui=stream --log-order=stream --log-prefix=task --output-logs=full --filter=@ai-receptionist/web --filter=@ai-receptionist/api",
     "dev:web": "turbo run dev --env-mode=loose --ui=stream --filter=@ai-receptionist/web",
     "dev:api": "turbo run dev --env-mode=loose --ui=stream --filter=@ai-receptionist/api",
-    "dev:admin": "turbo run dev --env-mode=loose --ui=stream --filter=@ai-receptionist/admin",
+    "dev:admin": "pnpm --filter @ai-receptionist/web dev",
     "dev:functions": "supabase functions serve --no-verify-jwt",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",

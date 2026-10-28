@@ -10,7 +10,7 @@ function requireEnv(name: string): string {
   return value;
 }
 
-const ADMIN_ORIGINS = (process.env.ADMIN_ORIGIN || 'http://127.0.0.1:3000,http://localhost:3000,http://127.0.0.1:3001')
+const ADMIN_ORIGINS = (process.env.ADMIN_ORIGIN || 'http://127.0.0.1:3000,http://localhost:3000')
   .split(',')
   .map((origin) => origin.trim().replace(/\/+$/, ''))
   .filter(Boolean);
@@ -77,8 +77,7 @@ export const config = {
     // Exact origin(s) the admin console is served from (comma-separated); state-changing
     // /api/admin requests and the events socket must come from one of them. Deployed, the console
     // is at /super-admin/ on the app domain, so this is the CLIENT_URL origin. The development
-    // default covers http://127.0.0.1:3000/super-admin/ (proxied by the web dev server), the same
-    // page via localhost, and the admin dev server itself on 3001.
+    // default covers http://127.0.0.1:3000/super-admin/ and the same page via localhost.
     origins: ADMIN_ORIGINS,
     // First origin: used for links in emails.
     origin: ADMIN_ORIGINS[0],

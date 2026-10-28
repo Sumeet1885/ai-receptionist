@@ -5,6 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import { withSeoHtml } from "./src/lib/seoHtml";
 import { seoBuildConfig } from "./src/lib/seo";
+import { samePortAdmin } from './dev-admin';
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -14,6 +15,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       tailwindcss(),
+      samePortAdmin(),
       {
         name: "public-page-seo",
         transformIndexHtml(html, context) {
@@ -33,10 +35,8 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       // Fail instead of moving to another port: the API trusts this exact origin (CLIENT_URL).
       strictPort: true,
-      // The admin console at /super-admin (same path as production), served by the admin dev server
-      // on 3001 behind this one, and its same-origin API calls. ws: live updates and hot reload.
+      // Admin UI is mounted by samePortAdmin; only the backend API needs a proxy.
       proxy: {
-        "/super-admin": { target: "http://127.0.0.1:3001", ws: true },
         "/api/admin": { target: "http://localhost:4000", ws: true },
       },
     },
