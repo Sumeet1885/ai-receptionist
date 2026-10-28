@@ -24,15 +24,32 @@ function check<T>(result: { data: T; error: { message: string } | null }, what: 
   return result.data;
 }
 
-export async function getCustomerAccount(userId: string) {
-  return check(
-    await supabase
-      .from('customer_accounts')
-      .select('user_id,access_request_id,status,password_set_at,onboarding_completed_at,trial_days,trial_started_at,trial_ends_at,access_expires_at,plan_id,plan_started_at,access_months,access_end_date,access_starts_at')
-      .eq('user_id', userId)
-      .maybeSingle<CustomerAccount>(),
-    'get customer account',
-  );
+const FULL_ACCOUNT_SELECT = 'user_id,access_request_id,status,password_set_at,onboarding_completed_at,trial_days,trial_started_at,trial_ends_at,access_expires_at,plan_id,plan_started_at,access_months,access_end_date,access_starts_at';
+const BASE_ACCOUNT_SELECT = 'user_id,access_request_id,status,password_set_at,onboarding_completed_at';
+
+export async function getCustomerAccount(userId: string): Promise<CustomerAccount | null> {
+  const fullResult = await supabase
+    .from('customer_accounts')
+    .select(FULL_ACCOUNT_SELECT)
+    .eq('user_id', userId)
+    .maybeSingle<CustomerAccount>();
+
+  if (fullResult.error) {
+    // If the database has not applied the trial/grant schema migrations yet, fall back to base columns
+    if (fullResult.error.code === '42703' || /does not exist|schema cache/i.test(fullResult.error.message)) {
+      return check(
+        await supabase
+          .from('customer_accounts')
+          .select(BASE_ACCOUNT_SELECT)
+          .eq('user_id', userId)
+          .maybeSingle<CustomerAccount>(),
+        'get customer account (base fallback)',
+      );
+    }
+    throw new Error(`get customer account: ${fullResult.error.message}`);
+  }
+
+  return fullResult.data;
 }
 
 // accessRequestId is null for paid signups (they come from a billing order, not a request).
