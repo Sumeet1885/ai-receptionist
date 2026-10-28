@@ -3,13 +3,15 @@ import { Bot } from '../../types';
 import { supabase } from '../../lib/supabaseClient';
 import { Icons } from '../common/Icons';
 import { RazorpayCheckoutModal } from '../common/RazorpayCheckoutModal';
+import { PricingView } from '../billing/PricingView';
 
 interface PlansViewProps {
   activeBot: Bot | null;
   showToast: (message: string, type?: 'success' | 'error') => void;
+  navigate?: (path: string) => void;
 }
 
-export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) => {
+export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast, navigate }) => {
   const [loading, setLoading] = useState(true);
   const [totalCalls, setTotalCalls] = useState(0);
   const [shortCallsCount, setShortCallsCount] = useState(0);
@@ -152,10 +154,10 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
               </h3>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-body font-bold bg-emerald-500/15 border border-emerald-500/40 text-emerald-700 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                Growth Plan (₹1,299 / month)
+                Active Voice Minutes Pool
               </span>
               <span className="px-2 py-0.5 rounded text-[10px] font-body bg-blue-500/10 border border-blue-500/30 text-blue-700">
-                Sandbox Mode
+                Live
               </span>
             </div>
             <p className="text-xs text-brand-muted mt-1 font-sans">
@@ -173,10 +175,9 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
               <span>Top-up Minutes</span>
             </button>
             <div className="text-left md:text-right border-l md:border-l-0 pl-3 md:pl-0 border-brand-border">
-              <span className="text-[10px] uppercase font-body font-bold text-brand-muted block">Billed Rate</span>
-              <span className="text-lg font-display font-black text-brand-text">
-                ₹{activePlanPrice}
-                <span className="text-xs font-normal text-brand-muted font-sans"> / mo</span>
+              <span className="text-[10px] uppercase font-body font-bold text-brand-muted block">Status</span>
+              <span className="text-sm font-display font-bold text-emerald-700">
+                Active Pool
               </span>
             </div>
           </div>
@@ -263,272 +264,10 @@ export const PlansView: React.FC<PlansViewProps> = ({ activeBot, showToast }) =>
         </div>
       </div>
 
-      {/* 2. THREE-TIER PLANS COMPARISON */}
-      <div>
-        <div className="text-center space-y-2 mb-8">
-          <h2 className="font-display font-extrabold text-2xl sm:text-3xl text-brand-text">
-            Simple, Transparent Voice Plans
-          </h2>
-          <p className="text-sm text-brand-muted max-w-xl mx-auto font-sans">
-            Your active subscription is locked to the <strong>Growth Plan (₹1,299 / month)</strong>. Inbound reception and outbound campaign calling share the unified minute pool.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* TIER 1: STARTER */}
-          <div className="bg-brand-card rounded-2xl border border-brand-border hover:border-brand-border/80 transition-all flex flex-col justify-between p-6 sm:p-7 opacity-85 hover:opacity-100 card-hover-glow">
-            <div className="space-y-5">
-              <div className="flex items-center justify-between">
-                <h4 className="font-display font-bold text-lg text-brand-text">Starter</h4>
-                <span className="text-xs font-body font-semibold text-brand-muted px-2 py-0.5 rounded bg-brand-bg border border-brand-border">
-                  Small Teams
-                </span>
-              </div>
-
-              <div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-display font-black text-brand-text font-body">₹699</span>
-                  <span className="text-sm font-semibold text-brand-muted">/ month</span>
-                </div>
-                <p className="text-xs text-brand-muted mt-1">₹6.99 per minute included</p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-brand-bg/60 border border-brand-border space-y-2">
-                <span className="text-xs font-extrabold text-brand-text uppercase font-body block">
-                  100 Call Minutes
-                </span>
-                <p className="text-xs text-brand-muted leading-relaxed font-sans">
-                  Inbound Receptionist & Outbound Telecaller combined pool.
-                </p>
-              </div>
-
-              <ul className="space-y-2.5 text-xs text-brand-text">
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-700 font-bold">✓</span>
-                  <span>Calls &lt; 25s: <strong>0.5 min deducted</strong> (₹4 equivalent)</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-700 font-bold">✓</span>
-                  <span>Calls ≥ 25s: <strong>1 min / min</strong> (₹7/min rate)</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-700 font-bold">✓</span>
-                  <span>Same price for Inbound & Outbound</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-700 font-bold">✓</span>
-                  <span>Extra minutes at <strong>₹7 / min</strong></span>
-                </li>
-              </ul>
-            </div>
-
-            <div className="pt-6 mt-6 border-t border-brand-border/60">
-              <button
-                type="button"
-                onClick={() => setShowDowngradeModal(true)}
-                className="w-full py-2.5 rounded-xl font-bold text-xs transition shadow-sm bg-brand-bg border border-brand-border hover:border-amber-500/50 text-brand-muted hover:text-amber-700"
-              >
-                Downgrade to Starter
-              </button>
-            </div>
-          </div>
-
-          {/* TIER 2: GROWTH (CURRENT ACTIVE PLAN) */}
-          <div className="bg-brand-card rounded-2xl border-2 border-brand-accent ring-2 ring-brand-accent/30 transition-all flex flex-col justify-between p-6 sm:p-7 relative shadow-xl card-hover-glow">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] font-bold font-body uppercase bg-emerald-500 text-brand-bg shadow-sm tracking-wider flex items-center gap-1.5">
-              <span>●</span>
-              <span>Your Active Plan</span>
-            </div>
-
-            <div className="space-y-5">
-              <div className="flex items-center justify-between">
-                <h4 className="font-display font-bold text-lg text-brand-text">Growth</h4>
-                <span className="text-xs font-body font-bold text-emerald-700 px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40">
-                  Active Subscription
-                </span>
-              </div>
-
-              <div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-display font-black text-brand-accent font-body">₹1,299</span>
-                  <span className="text-sm font-semibold text-brand-muted">/ month</span>
-                </div>
-                <p className="text-xs text-brand-muted mt-1">₹6.49 per minute included (Save ₹100+)</p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-brand-accent/10 border border-brand-accent/30 space-y-2">
-                <span className="text-xs font-extrabold text-brand-accent uppercase font-body block">
-                  200 Call Minutes Pool
-                </span>
-                <p className="text-xs text-brand-text leading-relaxed font-sans font-medium">
-                  Inbound Receptionist & Outbound Telecaller combined pool.
-                </p>
-              </div>
-
-              <ul className="space-y-2.5 text-xs text-brand-text">
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-700 font-bold">✓</span>
-                  <span>Calls &lt; 25s: <strong>0.5 min deducted</strong> (₹4 equivalent)</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-700 font-bold">✓</span>
-                  <span>Calls ≥ 25s: <strong>1 min / min</strong> (₹7/min rate)</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-700 font-bold">✓</span>
-                  <span>Same price for Inbound & Outbound</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-700 font-bold">✓</span>
-                  <span>Extra minutes at <strong>₹7 / min</strong></span>
-                </li>
-              </ul>
-            </div>
-
-            <div className="pt-6 mt-6 border-t border-brand-border/60 space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="flex-1 py-2.5 rounded-xl font-bold text-xs bg-emerald-500/15 border border-emerald-500/40 text-emerald-700 text-center flex items-center justify-center gap-1.5 font-body">
-                  <span>✓</span>
-                  <span>Active Plan</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={handlePayGrowthPlan}
-                  className="px-3.5 py-2.5 rounded-xl text-xs font-bold bg-blue-600/20 border border-blue-500/40 text-blue-700 hover:bg-blue-600 hover:text-white transition flex items-center gap-1.5 shadow-sm"
-                  title="Simulate Razorpay renewal / payment"
-                >
-                  <span>💳</span>
-                  <span>Pay ₹1,299</span>
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowTopupModal(true)}
-                className="w-full py-2 rounded-xl text-xs font-bold bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground transition flex items-center justify-center gap-1.5 shadow-sm"
-              >
-                <span>⚡</span>
-                <span>Add Extra Minutes (Top-up)</span>
-              </button>
-            </div>
-          </div>
-
-          {/* TIER 3: ENTERPRISE */}
-          <div className="bg-brand-card rounded-2xl border border-brand-border hover:border-brand-accent/40 transition-all flex flex-col justify-between p-6 sm:p-7 card-hover-glow">
-            <div className="space-y-5">
-              <div className="flex items-center justify-between">
-                <h4 className="font-display font-bold text-lg text-brand-text">Enterprise</h4>
-                <span className="text-xs font-body font-semibold text-brand-muted px-2 py-0.5 rounded bg-brand-bg border border-brand-border">
-                  Volume Scale
-                </span>
-              </div>
-
-              <div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-3xl sm:text-4xl font-display font-black text-brand-text font-body">Custom</span>
-                </div>
-                <p className="text-xs text-brand-muted mt-1">High-volume discounted minute slabs</p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-brand-bg/60 border border-brand-border space-y-2">
-                <span className="text-xs font-extrabold text-brand-text uppercase font-body block">
-                  500+ Minutes Pool
-                </span>
-                <p className="text-xs text-brand-muted leading-relaxed font-sans">
-                  Unlimited concurrency & pooled minutes across multiple projects and numbers.
-                </p>
-              </div>
-
-              <ul className="space-y-2.5 text-xs text-brand-text">
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-700 font-bold">✓</span>
-                  <span>Volume discounts below ₹6 / minute</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-700 font-bold">✓</span>
-                  <span>Dedicated SIP trunks & local PSTN numbers</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-700 font-bold">✓</span>
-                  <span>Multi-agent workflow orchestration</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-emerald-700 font-bold">✓</span>
-                  <span>Direct phone & WhatsApp enterprise support</span>
-                </li>
-              </ul>
-            </div>
-
-            <div className="pt-6 mt-6 border-t border-brand-border/60 space-y-2">
-              <a
-                href="tel:+917038455063"
-                className="w-full py-2.5 rounded-xl font-bold text-xs bg-brand-bg border border-brand-border hover:border-brand-accent/60 text-brand-text transition flex items-center justify-center gap-2 shadow-sm"
-              >
-                <span>📞</span>
-                <span>Call Sales: +91 70384 55063</span>
-              </a>
-              <a
-                href="https://wa.me/917038455063?text=Hi%2C%20I%20am%20interested%20in%20the%20Enterprise%20Voice%20AI%20Receptionist%20Plan"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full py-2 rounded-xl text-[11px] font-semibold text-emerald-700 hover:text-emerald-700 transition flex items-center justify-center gap-1.5"
-              >
-                <span>💬</span>
-                <span>Chat on WhatsApp</span>
-              </a>
-            </div>
-          </div>
-        </div>
+      {/* 2. REAL SUBSCRIPTION PLANS (SYNCED WITH SUPABASE & RAZORPAY) */}
+      <div className="pt-2">
+        <PricingView navigate={navigate || (() => {})} embedded={true} />
       </div>
-
-      {/* DOWNGRADE ALERT MODAL */}
-      {showDowngradeModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-brand-card border border-brand-border rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-3 text-amber-700">
-              <span className="text-2xl">⚠️</span>
-              <h3 className="font-display font-bold text-lg text-brand-text">
-                Subscription Downgrade Policy
-              </h3>
-            </div>
-            <p className="text-xs text-brand-muted leading-relaxed">
-              Your account is currently active on the <strong>Growth Plan (₹1,299 / month — 200 Minutes)</strong>.
-            </p>
-            <div className="bg-brand-bg border border-brand-border rounded-xl p-3 text-xs space-y-1.5">
-              <div className="flex justify-between text-brand-muted">
-                <span>Current Monthly Pool:</span>
-                <span className="font-bold text-brand-text font-body">200 Minutes</span>
-              </div>
-              <div className="flex justify-between text-brand-muted">
-                <span>Starter Plan Pool:</span>
-                <span className="font-bold text-amber-700 font-body">100 Minutes</span>
-              </div>
-              <div className="flex justify-between text-brand-muted pt-1 border-t border-brand-border/60">
-                <span>Billing Cycle Ends:</span>
-                <span className="font-bold text-brand-text font-body">Next Month</span>
-              </div>
-            </div>
-            <p className="text-[11px] text-brand-muted">
-              Plan changes cannot be toggled instantly without billing cycle reconciliation. To schedule a downgrade at the end of your cycle or speak with billing support:
-            </p>
-            <div className="space-y-2 pt-2">
-              <a
-                href="tel:+917038455063"
-                className="w-full py-2.5 rounded-xl font-bold text-xs bg-brand-bg border border-brand-border hover:border-brand-accent text-brand-text transition flex items-center justify-center gap-2"
-              >
-                <span>📞</span>
-                <span>Contact Billing: +91 70384 55063</span>
-              </a>
-              <button
-                type="button"
-                onClick={() => setShowDowngradeModal(false)}
-                className="w-full py-2 rounded-xl text-xs font-semibold bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground transition"
-              >
-                Keep My Growth Plan (₹1,299)
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* TOP-UP MINUTES MODAL */}
       {showTopupModal && (

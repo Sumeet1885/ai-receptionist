@@ -526,7 +526,7 @@ export default function App() {
 
             {route.name === 'request-access' && <RequestAccessView navigate={navigate} />}
 
-            {(route.name === 'pricing' || route.name === 'plans') && <PricingView navigate={navigate} />}
+            {route.name === 'pricing' && <PricingView navigate={navigate} />}
 
             {route.name === 'checkout' && <CheckoutView navigate={navigate} />}
             {route.name === 'privacy' && <LegalView type="privacy" navigate={navigate} signedIn={Boolean(user)} />}
@@ -707,6 +707,7 @@ export default function App() {
                 <PlansView
                   activeBot={activeBot}
                   showToast={showToast}
+                  navigate={navigate}
                 />
               </PostLoginShell>
             )}

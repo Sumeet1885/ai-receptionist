@@ -7,13 +7,14 @@ import { billingApi, formatMoney, type Currency, type PlanFeature, type PublicPl
 
 interface PricingViewProps {
   navigate: (path: string) => void;
+  embedded?: boolean;
 }
 
 function count(value: number | null, unit = '') {
   return value === null || value === undefined ? '—' : `${value.toLocaleString('en-IN')}${unit}`;
 }
 
-export const PricingView: React.FC<PricingViewProps> = ({ navigate }) => {
+export const PricingView: React.FC<PricingViewProps> = ({ navigate, embedded = false }) => {
   const [currency, setCurrency] = useState<Currency>('INR');
   const [plans, setPlans] = useState<PublicPlan[] | null>(null);
   const [features, setFeatures] = useState<PlanFeature[]>([]);
@@ -42,31 +43,43 @@ export const PricingView: React.FC<PricingViewProps> = ({ navigate }) => {
     { label: 'One-time setup fee', value: (p) => p.contactSales ? '—' : p.setupFee[currency] > 0 ? formatMoney(p.setupFee[currency], currency) : 'Included' },
   ];
 
-  return (
-    <div className="flex-1 bg-background py-14 sm:py-20">
-      <Container>
-        <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-subtle">Pricing</p>
-          <h1 className="mt-3 font-display text-4xl font-semibold tracking-[-0.04em] text-text sm:text-5xl">
-            Plans for every <em className="font-accent font-normal italic">business voice.</em>
-          </h1>
-          <p className="mt-4 text-base text-text-subtle">Pick the minutes you need. Every plan includes your AI receptionist, lead capture and transcripts.</p>
-
-          <div className="mt-8 inline-flex rounded-pill border border-border bg-surface p-1" role="radiogroup" aria-label="Currency">
-            {(['INR', 'USD'] as Currency[]).map((option) => (
-              <button
-                key={option}
-                type="button"
-                role="radio"
-                aria-checked={currency === option}
-                onClick={() => setCurrency(option)}
-                className={`rounded-pill px-5 py-2 text-sm font-semibold transition-colors ${currency === option ? 'bg-text text-primary-foreground' : 'text-text-subtle hover:text-text'}`}
-              >
-                {option === 'INR' ? '₹ India' : '$ International'}
-              </button>
-            ))}
+  const content = (
+    <>
+      <div className={embedded ? "flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2" : "mx-auto max-w-2xl text-center"}>
+        {embedded ? (
+          <div>
+            <h3 className="font-display font-extrabold text-brand-text text-xl sm:text-2xl">
+              Available Subscription Plans
+            </h3>
+            <p className="text-xs sm:text-sm text-brand-muted mt-1 font-sans">
+              Choose your voice plan or scale up monthly calling minutes with instant Razorpay activation.
+            </p>
           </div>
+        ) : (
+          <>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-subtle">Pricing</p>
+            <h1 className="mt-3 font-display text-4xl font-semibold tracking-[-0.04em] text-text sm:text-5xl">
+              Plans for every <em className="font-accent font-normal italic">business voice.</em>
+            </h1>
+            <p className="mt-4 text-base text-text-subtle">Pick the minutes you need. Every plan includes your AI receptionist, lead capture and transcripts.</p>
+          </>
+        )}
+
+        <div className={`${embedded ? "self-start sm:self-auto" : "mt-8"} inline-flex rounded-pill border border-border bg-surface p-1`} role="radiogroup" aria-label="Currency">
+          {(['INR', 'USD'] as Currency[]).map((option) => (
+            <button
+              key={option}
+              type="button"
+              role="radio"
+              aria-checked={currency === option}
+              onClick={() => setCurrency(option)}
+              className={`rounded-pill px-4 py-1.5 text-xs font-semibold transition-colors ${currency === option ? 'bg-text text-primary-foreground' : 'text-text-subtle hover:text-text'}`}
+            >
+              {option === 'INR' ? '₹ India' : '$ International'}
+            </button>
+          ))}
         </div>
+      </div>
 
         {error && (
           <div role="alert" className="mx-auto mt-10 max-w-md rounded-medium bg-danger-surface px-4 py-4 text-center text-sm text-danger">
@@ -171,6 +184,17 @@ export const PricingView: React.FC<PricingViewProps> = ({ navigate }) => {
             </div>
           </section>
         )}
+    </>
+  );
+
+  if (embedded) {
+    return <div className="space-y-6 pt-2">{content}</div>;
+  }
+
+  return (
+    <div className="flex-1 bg-background py-14 sm:py-20">
+      <Container>
+        {content}
       </Container>
     </div>
   );
