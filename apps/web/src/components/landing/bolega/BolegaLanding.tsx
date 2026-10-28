@@ -21,7 +21,7 @@ interface BolegaLandingProps {
  * stylesheet hides them (`display: none !important`), so they are not rendered here.
  */
 export function BolegaLanding({ navigate, signedIn, userMenu }: BolegaLandingProps) {
-  const [motionPaused, setMotionPaused] = useState(() => window.matchMedia(REDUCED_MOTION).matches);
+  const [motionPaused, setMotionPaused] = useState(() => typeof window !== 'undefined' && window.matchMedia(REDUCED_MOTION).matches);
   const [recordingActive, setRecordingActive] = useState(false);
 
   // Follow the OS setting if it changes while the page is open.

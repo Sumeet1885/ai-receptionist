@@ -1,3 +1,4 @@
+import { siteOrigin } from './seo';
 // Company and contact details match own-crm/apps/web/src/lib/legal.ts.
 export const LEGAL = {
   brandName: 'Bolega India',
@@ -7,7 +8,7 @@ export const LEGAL = {
   phone: '+91 94218 09846',
   address:
     '6th Floor, Brand Square, 606, Kunal Icon Rd, Roseland Residency, Pimple Saudagar, Pimpri-Chinchwad, Maharashtra 411027',
-  url: 'https://bolegaindia.ai',
+  url: siteOrigin(import.meta.env?.VITE_SITE_URL),
   effectiveDate: 'October 27, 2026',
 } as const;
 

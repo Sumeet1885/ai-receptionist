@@ -90,15 +90,15 @@ export const Header: React.FC<HeaderProps> = ({
 
       <nav aria-label="Main" className="hidden 2xl:flex items-center gap-1 rounded-pill border border-border bg-surface p-1 text-base shadow-card">
         {(user ? authedNav : publicNav).map(item => (
-          <button
+          <a
             key={item.key}
-            type="button"
-            onClick={() => go(item.path)}
+            href={item.path}
+            onClick={(event) => { if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); go(item.path); }}
             aria-current={isActive(item.key) ? 'page' : undefined}
             className={navClass(isActive(item.key))}
           >
             {item.label}
-          </button>
+          </a>
         ))}
       </nav>
 

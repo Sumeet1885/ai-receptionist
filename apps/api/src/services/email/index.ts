@@ -3,6 +3,7 @@ import { getSesClient } from '../../aws';
 import { config } from '../../config';
 import { logger } from '../cloudwatchLogger';
 import type { EmailContent } from './templates';
+import { withInlineLogo } from './branding';
 
 export * as emailTemplates from './templates';
 
@@ -52,6 +53,7 @@ async function sendEmailContent(to: string, content: EmailContent, tag: string, 
     throw new Error('EMAIL_FROM is not configured');
   }
 
+  const branded = withInlineLogo(content.html);
   const result = await getSesClient().send(new SendEmailCommand({
     FromEmailAddress: `${config.email.fromName} <${config.email.from}>`,
     Destination: { ToAddresses: [to] },
@@ -60,9 +62,10 @@ async function sendEmailContent(to: string, content: EmailContent, tag: string, 
       Simple: {
         Subject: { Data: content.subject, Charset: 'UTF-8' },
         Body: {
-          Html: { Data: content.html, Charset: 'UTF-8' },
+          Html: { Data: branded.html, Charset: 'UTF-8' },
           Text: { Data: content.text, Charset: 'UTF-8' },
         },
+        ...(branded.attachments.length ? { Attachments: branded.attachments } : {}),
       },
     },
     EmailTags: [{ Name: 'type', Value: tag.replace(/[^A-Za-z0-9_-]/g, '_') }],

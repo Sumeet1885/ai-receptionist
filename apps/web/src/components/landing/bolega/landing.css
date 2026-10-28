@@ -6275,3 +6275,50 @@ html.bi-landing-root {
     display: none;
   }
 }
+
+/* Hero content follows its actual text height, including translated fonts and zoom. */
+.bi-landing .hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  padding: 112px 0 48px;
+  gap: 0;
+}
+.bi-landing .hero-bottom {
+  position: relative;
+  inset: auto;
+  width: 90%;
+  flex: none;
+}
+.bi-landing .hero-brand-backdrop {
+  position: relative;
+  top: auto !important;
+  left: auto !important;
+  right: auto;
+  bottom: auto;
+  transform: none;
+  margin: 16px auto 0;
+  flex: none;
+}
+.bi-landing .brand-promise {
+  position: relative;
+  inset: auto;
+  margin: 8px auto 0;
+  flex: none;
+}
+.bi-landing .hero-visual.duo-stage {
+  position: relative;
+  top: auto !important;
+  left: auto;
+  transform: none;
+  margin: 20px auto 0;
+  flex: none;
+}
+@media (max-width: 800px) {
+  .bi-landing .hero { padding-top: 110px; min-height: 0; }
+  .bi-landing .hero-brand-backdrop { margin-top: 16px; }
+  .bi-landing .hero-visual.duo-stage { margin-top: 20px; }
+}

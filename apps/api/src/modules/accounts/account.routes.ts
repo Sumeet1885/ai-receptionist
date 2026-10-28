@@ -33,6 +33,32 @@ router.get('/state', handle(async (req, res) => {
   res.json({ stage, email: req.user!.email, accessExpiresAt: account?.access_expires_at ?? null, trialEndsAt: account?.trial_ends_at ?? null, accessStartsAt: account?.plan_started_at ?? account?.access_starts_at ?? null });
 }));
 
+router.post('/change-password', perUser('account-change-password', 5, 15 * 60_000), handle(async (req, res) => {
+  const { account, stage } = await stageFor(req);
+  if (!account || account.status !== 'active' || !req.user!.emailConfirmedAt || !account.password_set_at || !req.user!.email) return res.status(403).json({ error: 'Activate your account before changing your password.' });
+  const currentPassword = req.body?.currentPassword;
+  const password = req.body?.password;
+  if (typeof currentPassword !== 'string' || !currentPassword || currentPassword.length > 128) return res.status(400).json({ error: 'Enter your current password.' });
+  const problem = checkCustomerPassword(password, req.user!.email);
+  if (problem) return res.status(400).json({ error: problem });
+  if (password === currentPassword) return res.status(400).json({ error: 'Choose a password different from your current password.' });
+  // Reauthenticate without modifying the service-role client's session or trusting a submitted email.
+  let verified: Awaited<ReturnType<typeof fetch>>;
+  try {
+    verified = await fetch(`${config.supabaseUrl}/auth/v1/token?grant_type=password`, {
+      method: 'POST', headers: { apikey: config.supabaseServiceKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: req.user!.email, password: currentPassword }), signal: AbortSignal.timeout(10_000),
+    });
+  } catch { return res.status(503).json({ error: 'Could not verify your current password. Please try again.' }); }
+  if (verified.status === 429 || verified.status >= 500) return res.status(503).json({ error: 'Password verification is temporarily unavailable. Please try again later.' });
+  const result = await verified.json().catch(() => null);
+  if (!verified.ok || result?.user?.id !== req.user!.id) return res.status(400).json({ error: 'Your current password is incorrect.' });
+  const { error } = await supabase.auth.admin.updateUserById(req.user!.id, { password });
+  if (error) return res.status(400).json({ error: 'That password was not accepted. Try a longer or less common password.' });
+  void sendEmailSafely(req.user!.email, emailTemplates.passwordChanged({ email: req.user!.email, when: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) + ' IST', resetUrl: `${config.clientUrl}/auth?mode=forgot` }), 'password_changed');
+  res.json({ stage });
+}));
+
 // Sets the password during activation and for resets (the recovery link signs the person in).
 router.post('/password', perUser('account-password', 10, 15 * 60_000), handle(async (req, res) => {
   const { account, stage } = await stageFor(req);

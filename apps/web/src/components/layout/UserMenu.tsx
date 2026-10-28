@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
-import { ChevronDown, FileText, LifeBuoy, LogOut, ShieldCheck, UserRound } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ChevronDown, FileText, KeyRound, LifeBuoy, LogOut, ShieldCheck, UserRound } from 'lucide-react';
+import { ChangePasswordDialog } from '../auth/ChangePasswordDialog';
 import { openSupport } from '../../lib/supportDrawer';
 
 export function UserMenu({
@@ -12,6 +13,7 @@ export function UserMenu({
   navigate: (path: string) => void;
 }) {
   const ref = useRef<HTMLDetailsElement>(null);
+  const [passwordOpen, setPasswordOpen] = useState(false);
   useEffect(() => {
     const click = (event: MouseEvent) => {
       if (!ref.current?.contains(event.target as Node)) ref.current?.removeAttribute('open');
@@ -36,7 +38,7 @@ export function UserMenu({
   const item =
     'flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-background';
   return (
-    <details ref={ref} className="relative">
+    <><details ref={ref} className="relative">
       <summary
         aria-label="User menu"
         className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-full border border-border bg-surface px-3 py-2 text-sm font-semibold [&::-webkit-details-marker]:hidden"
@@ -47,6 +49,7 @@ export function UserMenu({
       </summary>
       <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-border bg-surface p-2 shadow-lg">
         <p className="break-all border-b border-border px-3 py-3 text-sm text-text-subtle">{email}</p>
+        <button type="button" className={item} onClick={() => act(() => setPasswordOpen(true))}><KeyRound size={17} /> Change password</button>
         <button type="button" className={item} onClick={() => act(() => openSupport({ view: 'tickets' }))}>
           <LifeBuoy size={17} /> Support tickets
         </button>
@@ -64,6 +67,6 @@ export function UserMenu({
           <LogOut size={17} /> Sign out
         </button>
       </div>
-    </details>
+    </details>{passwordOpen && <ChangePasswordDialog email={email} onClose={() => setPasswordOpen(false)} />}</>
   );
 }
