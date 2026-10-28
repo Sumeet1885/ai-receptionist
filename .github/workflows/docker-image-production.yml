@@ -50,12 +50,16 @@ jobs:
           docker push ${{ secrets.DOCKER_USERNAME }}/recrui8-dockerhub-repo-dev:ai-receptionist-server-prod-${{ env.SHORT_SHA }}
 
       # ── Client ──────────────────────────────────────────────────────────────
-      # VITE_* values are baked into apps/web/Dockerfile.prod (recrui8-style).
-      # No --build-arg secrets needed — production URLs live in the Dockerfile itself.
+      # Browser-public defaults live in the Dockerfile; the website origin is configured below.
+      # Public SEO domain comes from repository Variables; this is not a secret.
       - name: Build Client Docker image
+        env:
+          SITE_URL: ${{ vars.PRODUCTION_SITE_URL }}
         run: |
+          : "${SITE_URL:?Set repository variable PRODUCTION_SITE_URL to the public website origin}"
           docker buildx build \
             --platform linux/amd64 \
+            --build-arg VITE_SITE_URL="$SITE_URL" \
             -t ${{ secrets.DOCKER_USERNAME }}/recrui8-dockerhub-repo-dev:ai-receptionist-client-prod-${{ env.SHORT_SHA }} \
             -f apps/web/Dockerfile.prod \
             .

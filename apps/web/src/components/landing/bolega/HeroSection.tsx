@@ -18,13 +18,6 @@ export function HeroSection({ onSpeakingChange }: { onSpeakingChange: (speaking:
   return (
     <section className="hero" id="hero">
       <div className="hero-backdrop" />
-      <div className="hero-brand-backdrop" aria-hidden="true">
-        <img className="india-culture-art" src={landingAssets.heroIndiaArtwork} alt="" />
-        <span lang="hi">बोलेगा</span>
-      </div>
-      <p className="brand-promise">
-        Aapka business. Aapki bhasha. <em>AI ki awaaz.</em>
-      </p>
       <div className="cursor-hint">MOVE. TAP. CONNECT.</div>
       <div className="hero-note">
         <small>YOUR BUSINESS, SPEAKING</small>Teach it your business.
@@ -41,11 +34,18 @@ export function HeroSection({ onSpeakingChange }: { onSpeakingChange: (speaking:
             <em>Your next lead.</em>
           </h1>
           <p className="hero-description">
-            Turn your business context and contact list into conversations, qualified leads, and transcripts.
+            Your AI receptionist for calls and chats in Indian languages. Turn your business context and contact list into conversations, qualified leads, and transcripts.
           </p>
           <div className="eyebrow">BOLEGAINDIA.AI / FROM CONTACT LIST TO CUSTOMER CONTEXT</div>
         </div>
       </div>
+      <div className="hero-brand-backdrop" aria-hidden="true">
+        <img className="india-culture-art" src={landingAssets.heroIndiaArtwork} alt="" />
+        <span lang="hi">बोलेगा</span>
+      </div>
+      <p className="brand-promise">
+        Aapka business. Aapki bhasha. <em>AI ki awaaz.</em>
+      </p>
       <div ref={stageRef} className={`hero-visual duo-stage${talking ? ' talking' : ''}`}>
         <HeroCanvas />
         <div className="conversation-wire wire-left" aria-hidden="true">
@@ -61,7 +61,7 @@ export function HeroSection({ onSpeakingChange }: { onSpeakingChange: (speaking:
         <article className="conversation-person bot-person">
           <div className="person-kicker">YOUR BUSINESS, SPEAKING</div>
           <div className="bot-portrait photo-bot" aria-hidden="true">
-            <img src={landingAssets.heroAiAssistant} alt="" width={800} height={800} />
+            <img src={landingAssets.heroAiAssistant} alt="" width={800} height={800} fetchPriority="high" decoding="async" />
             <span className="portrait-status-dot" />
           </div>
           <h3>Bolega AI</h3>

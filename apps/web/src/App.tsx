@@ -8,6 +8,7 @@ import { getLeadRefreshInterval } from './lib/leadQuery';
 import { useAuth } from './hooks/useAuth';
 import { useAccountState } from './hooks/useAccountState';
 import { isPublicMarketingPage, signedInRedirect } from './lib/customerRoutes';
+import { applyPageSeo, siteOrigin } from './lib/seo';
 import { accountApi } from './lib/accountApi';
 import { useBots } from './hooks/useBots';
 import { useLeads } from './hooks/useLeads';
@@ -47,6 +48,7 @@ const BolegaLanding = React.lazy(() => import('./components/landing/bolega/Boleg
 type AgentTab = 'overview' | 'knowledge' | 'install' | 'crm' | 'preview';
 
 type AppRoute =
+  | { name: 'not-found' }
   | { name: 'landing' }
   | { name: 'auth'; mode: 'signin' | 'forgot' | 'reset' | 'resend' }
   | { name: 'auth-confirm' }
@@ -73,33 +75,6 @@ type AppRoute =
   | { name: 'public-chat'; subdomain: string };
 
 const agentTabs: AgentTab[] = ['overview', 'knowledge', 'install', 'crm', 'preview'];
-
-// Browser tab titles; the landing page keeps the default one from index.html.
-const PAGE_TITLES: Partial<Record<AppRoute['name'], string>> = {
-  auth: 'Sign in',
-  'auth-confirm': 'Confirm your email',
-  'request-access': 'Request free access',
-  pricing: 'Pricing',
-  checkout: 'Checkout',
-  support: 'Support',
-  'contact-support': 'Contact support',
-  'support-guest-ticket': 'Support ticket',
-  privacy: 'Privacy Policy',
-  terms: 'Terms & Conditions',
-  dashboard: 'Dashboard',
-  leads: 'Leads',
-  inbox: 'Inbox',
-  calendar: 'Calendar',
-  calls: 'Calls',
-  'inbound-calls': 'Inbound Calls',
-  'outbound-calls': 'Outbound Calls',
-  recordings: 'Call Recordings',
-  agents: 'Agents',
-  plans: 'Plans',
-  'agent-new': 'New agent',
-  'agent-detail': 'Agent',
-  'public-chat': 'Chat',
-};
 
 function parseRoute(): AppRoute {
   const path = window.location.pathname.replace(/\/+$/, '') || '/';
@@ -155,11 +130,11 @@ function parseRoute(): AppRoute {
     return { name: 'agent-detail', botId: decodeURIComponent(agentMatch[1]), tab };
   }
 
-  return { name: 'landing' };
+  return path === '/' ? { name: 'landing' } : { name: 'not-found' };
 }
 
 function isProtectedRoute(route: AppRoute) {
-  return !['landing', 'auth', 'auth-confirm', 'request-access', 'pricing', 'checkout', 'public-chat', 'contact-support', 'support-guest-ticket', 'privacy', 'terms'].includes(route.name);
+  return !['landing', 'not-found', 'auth', 'auth-confirm', 'request-access', 'pricing', 'checkout', 'public-chat', 'contact-support', 'support-guest-ticket', 'privacy', 'terms'].includes(route.name);
 }
 
 // Routes a signed-in user may see before finishing activation (verify email, set password).
@@ -265,8 +240,13 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const page = PAGE_TITLES[route.name];
-    document.title = page ? `${page} — Bolega India` : 'Bolega India — Ab business bolega.';
+    const origin = siteOrigin(import.meta.env.VITE_SITE_URL);
+    applyPageSeo(window.location.pathname, {
+      origin,
+      indexable: import.meta.env.PROD && !!import.meta.env.VITE_SITE_URL?.trim() && import.meta.env.VITE_INDEXABLE !== 'false' && window.location.origin === origin,
+      routeName: route.name,
+      query: window.location.search,
+    });
   }, [route.name]);
 
   useEffect(() => {
@@ -516,6 +496,17 @@ export default function App() {
               signOut={signOut}
             />
           ) : <>
+            {route.name === 'not-found' && (
+              <div className="mx-auto w-full max-w-xl px-5 py-20 text-center">
+                <h1 className="font-display text-3xl font-semibold">Page not found</h1>
+                <p className="mt-3 text-text-subtle">
+                  This page could not be found. Check the address or return to {user ? 'your workspace' : 'the home page'}.
+                </p>
+                <a className="mt-6 inline-block font-semibold text-primary underline" href={user ? '/dashboard' : '/'}>
+                  {user ? 'Go to workspace' : 'Back to home'}
+                </a>
+              </div>
+            )}
             {route.name === 'auth' && (
               <AuthView
                 setView={legacySetView}

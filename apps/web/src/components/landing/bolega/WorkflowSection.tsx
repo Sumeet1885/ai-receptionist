@@ -20,7 +20,7 @@ export function WorkflowSection() {
   const manualPause = useRef(false);
   const visibleRef = useRef(false);
   const { claimPlayback, registerMedia, setWorkflowPlayer } = useLanding();
-  const [portrait, setPortrait] = useState(() => window.matchMedia(PORTRAIT_QUERY).matches);
+  const [portrait, setPortrait] = useState(() => typeof window !== 'undefined' && window.matchMedia(PORTRAIT_QUERY).matches);
   const [paused, setPaused] = useState(true);
   const [activeChapter, setActiveChapter] = useState(0);
   const { src, poster } = sourceFor(portrait);

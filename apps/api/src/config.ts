@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { clientUrl, emailAssetBase } from './utils/publicUrls';
 dotenv.config();
 
 function requireEnv(name: string): string {
@@ -9,7 +10,7 @@ function requireEnv(name: string): string {
   return value;
 }
 
-const ADMIN_ORIGINS = (process.env.ADMIN_ORIGIN || 'http://127.0.0.1:3000,http://localhost:3000,http://127.0.0.1:3001')
+const ADMIN_ORIGINS = (process.env.ADMIN_ORIGIN || 'http://127.0.0.1:3000,http://localhost:3000')
   .split(',')
   .map((origin) => origin.trim().replace(/\/+$/, ''))
   .filter(Boolean);
@@ -17,7 +18,7 @@ const ADMIN_ORIGINS = (process.env.ADMIN_ORIGIN || 'http://127.0.0.1:3000,http:/
 export const config = {
   environment: process.env.DEPLOY_ENV || 'development',
   port: parseInt(process.env.PORT || '4000', 10),
-  clientUrl: process.env.CLIENT_URL || 'http://localhost:3000',
+  clientUrl: clientUrl(process.env.CLIENT_URL, process.env.DEPLOY_ENV || 'development'),
   supabaseUrl: requireEnv('SUPABASE_URL'),
   supabaseServiceKey: requireEnv('SUPABASE_SERVICE_ROLE_KEY'),
   geminiApiKey: requireEnv('GEMINI_API_KEY'),
@@ -53,6 +54,7 @@ export const config = {
     region: (process.env.AWS_S3_REGION || process.env.AWS_REGION || 'ap-south-1').trim(),
   },
   email: {
+    assetBaseUrl: emailAssetBase(process.env.EMAIL_ASSET_BASE_URL, clientUrl(process.env.CLIENT_URL, process.env.DEPLOY_ENV || 'development')),
     // Verified SES sender. Without it, development logs emails instead of sending them.
     from: (process.env.EMAIL_FROM || '').trim(),
     fromName: (process.env.EMAIL_FROM_NAME || 'Bolega India').trim(),
@@ -75,8 +77,7 @@ export const config = {
     // Exact origin(s) the admin console is served from (comma-separated); state-changing
     // /api/admin requests and the events socket must come from one of them. Deployed, the console
     // is at /super-admin/ on the app domain, so this is the CLIENT_URL origin. The development
-    // default covers http://127.0.0.1:3000/super-admin/ (proxied by the web dev server), the same
-    // page via localhost, and the admin dev server itself on 3001.
+    // default covers http://127.0.0.1:3000/super-admin/ and the same page via localhost.
     origins: ADMIN_ORIGINS,
     // First origin: used for links in emails.
     origin: ADMIN_ORIGINS[0],

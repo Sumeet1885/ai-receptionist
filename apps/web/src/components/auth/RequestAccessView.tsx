@@ -136,7 +136,7 @@ export const RequestAccessView: React.FC<RequestAccessViewProps> = ({ navigate }
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} noValidate className="space-y-3 [@media(max-height:800px)]:space-y-2">
+      <form method="post" onSubmit={handleSubmit} noValidate className="space-y-3 [@media(max-height:800px)]:space-y-2">
         <Honeypot {...guard.honeypotProps} />
         <div className="grid gap-3 sm:grid-cols-2 [@media(max-height:800px)]:gap-y-2">
           <div>

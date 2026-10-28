@@ -43,6 +43,10 @@ ENV VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_fvHLCT-vSL2xPmhEzbVBiA__qYmKzey
 ENV VITE_EXPRESS_SERVER_URL=https://ai-receptionist.agilewaters.com
 ENV VITE_WIDGET_BASE_URL=https://ai-receptionist.agilewaters.com
 
+ARG VITE_SITE_URL
+ENV VITE_SITE_URL=${VITE_SITE_URL}
+ENV VITE_INDEXABLE=true
+
 RUN pnpm --filter @ai-receptionist/web build && pnpm --filter @ai-receptionist/admin build
 
 # ── Stage 2: Serve with Caddy ─────────────────────────────────────────────────

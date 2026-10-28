@@ -33,8 +33,8 @@ export function supportAdminAlert(input: { number: string; subject: string; cate
     action: { label: 'Review ticket', url: input.url }, internal: true,
   }) };
 }
-// Hosted by the web app; mail clients that block images show the alt text instead.
-const LOGO_URL = () => `${config.clientUrl}/bolegaindia/brand/bolegaindia-logo.png`;
+// Browser previews use the web asset. The sender embeds this marked image using a CID attachment.
+const LOGO_URL = () => `${config.email.assetBaseUrl}/bolegaindia/brand/bolegaindia-logo.png`;
 
 const COLOR = {
   page: '#f4f2ea',
@@ -133,7 +133,7 @@ ${layout.note.title ? `<p style="margin:0 0 4px;font-size:14px;font-weight:700;c
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COLOR.page};padding:32px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:${COLOR.card};border:1px solid ${COLOR.border};border-radius:16px;overflow:hidden">
 <tr><td align="center" style="padding:24px 36px;border-top:4px solid ${COLOR.brand};border-bottom:1px solid ${COLOR.border}">
-<img src="${e(LOGO_URL())}" alt="${BRAND}" width="170" height="37" style="display:block;border:0;height:37px;width:170px;font-size:18px;font-weight:700;color:${COLOR.brand}">
+<img src="${e(LOGO_URL())}" data-email-logo="brand" alt="${BRAND}" width="170" height="37" style="display:block;border:0;height:37px;width:170px;font-size:18px;font-weight:700;color:${COLOR.brand}">
 </td></tr>
 <tr><td style="padding:32px 36px 34px">
 <p style="margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${tone.label}">${e(layout.label)}</p>

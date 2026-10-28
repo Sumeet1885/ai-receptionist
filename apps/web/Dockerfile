@@ -42,12 +42,18 @@ ENV VITE_SUPABASE_PUBLISHABLE_KEY=${VITE_SUPABASE_PUBLISHABLE_KEY:-sb_publishabl
 ENV VITE_EXPRESS_SERVER_URL=${VITE_EXPRESS_SERVER_URL:-http://localhost:4000}
 ENV VITE_WIDGET_BASE_URL=${VITE_WIDGET_BASE_URL:-http://localhost:4000}
 
+ARG VITE_SITE_URL
+ARG VITE_INDEXABLE=false
+ENV VITE_SITE_URL=${VITE_SITE_URL}
+ENV VITE_INDEXABLE=${VITE_INDEXABLE}
+
 RUN pnpm --filter @ai-receptionist/web build && pnpm --filter @ai-receptionist/admin build
 
 # ── Stage 2: Serve with Caddy ─────────────────────────────────────────────────
 # Caddy serves the built SPA and reverse-proxies /api/* and /widget/* to the api
 # container — one image, no nginx/certbot config to maintain.
 FROM caddy:2-alpine
+ENV ROBOTS_POLICY="noindex, nofollow, noarchive"
 COPY --from=build /repo/apps/web/dist /srv
 COPY --from=build /repo/apps/admin/dist /srv/super-admin
 COPY apps/web/Caddyfile /etc/caddy/Caddyfile

@@ -8,7 +8,7 @@ type RevealProps = HTMLAttributes<HTMLElement> & {
 /** Adds the landing page's `reveal` entrance; becomes `seen` once it first enters the viewport. */
 export function Reveal({ as: Tag = 'div', className = '', children, ...rest }: RevealProps) {
   const ref = useRef<HTMLElement | null>(null);
-  const [seen, setSeen] = useState(false);
+  const [seen, setSeen] = useState(() => typeof window === 'undefined');
 
   useEffect(() => {
     const el = ref.current;
