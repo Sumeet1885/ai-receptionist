@@ -123,7 +123,7 @@ function parseRoute(): AppRoute {
   if (path === '/recordings' || path === '/calls/recordings') return { name: 'recordings' };
   if (path === '/agents/new') return { name: 'outbound-calls' };
   if (path === '/agents') return { name: 'agents' };
-  if (path === '/plans') return { name: 'plans' };
+  if (path === '/plans' || path === '/billing') return { name: 'plans' };
 
   const agentMatch = path.match(/^\/agents\/([^/]+)(?:\/([^/]+))?/);
   if (agentMatch) {
@@ -206,6 +206,7 @@ export default function App() {
     const map: Record<string, string> = {
       landing: '/',
       'auth-signin': '/auth?mode=signin',
+      'auth-forgot': '/auth?mode=forgot',
       'auth-signup': '/request-access',
       'request-access': '/request-access',
       onboarding: '/outbound-calls',
@@ -460,7 +461,7 @@ export default function App() {
     return <div className="flex min-h-dvh items-center justify-center bg-background text-sm text-text-subtle" role="status">Opening your workspace...</div>;
   }
 
-  if (user && account.stage === 'payment_required') return <WorkspacePaywall trialEndsAt={account.trialEndsAt} signOut={signOut} onActivated={() => account.refresh()} />;
+  if (user && account.stage === 'payment_required' && route.name !== 'auth-confirm' && !(route.name === 'auth' && route.mode === 'reset')) return <WorkspacePaywall trialEndsAt={account.trialEndsAt} signOut={signOut} onActivated={() => account.refresh()} />;
 
   return (
     <div className={`bg-brand-bg text-brand-text font-sans antialiased flex flex-col ${isStandaloneChat ? 'h-screen overflow-hidden' : isAuthScreen ? 'min-h-screen lg:h-dvh lg:overflow-hidden' : 'min-h-screen'}`}>
@@ -473,6 +474,7 @@ export default function App() {
       {!isStandaloneChat && route.name !== 'landing' && route.name !== 'agent-new' && (
         <Header
           routeName={route.name}
+          authMode={route.name === 'auth' ? route.mode : undefined}
           navigate={navigate}
           user={user}
           signOut={signOut}
@@ -698,12 +700,11 @@ export default function App() {
             {route.name === 'plans' && (
               <PostLoginShell
                 title="Plans & Billing"
-                subtitle="Transparent calling minute packages and live voice minutes consumption."
+                subtitle="Track calling minutes, buy top-ups, change your plan and view transaction history."
               >
                 <PlansView
                   activeBot={activeBot}
                   showToast={showToast}
-                  navigate={navigate}
                 />
               </PostLoginShell>
             )}

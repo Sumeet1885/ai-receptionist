@@ -48,10 +48,10 @@ If `git status` shows local modifications on the instance, stop. Find out who ma
 
 ### 3.1 Merge first
 
-Both image workflows only run when dispatched from the `staging` branch (`if: github.ref == 'refs/heads/staging'`). GitHub also runs the workflow file **as it exists on `staging`**. Until the restructure PR is merged, `staging` still has the old `-f server/Dockerfile ./server` steps, and building a new-layout commit with them fails.
+The selected branch must contain the updated workflows and application layout. GitHub runs workflow definitions from the branch chosen under **Use workflow from**. See [manual-workflows.md](manual-workflows.md).
 
-1. Merge the restructure PR into `staging`.
-2. Copy the full merge commit SHA, referred to below as `<SHA>`; `<sha7>` means its first 7 characters.
+1. Commit the workflow changes to the source branch.
+2. Copy the full commit SHA, referred to below as `<SHA>`; `<sha7>` means its first 7 characters.
 
 ### 3.2 Check for paused outbound campaigns
 
@@ -88,9 +88,9 @@ The backup files contain secrets. Keep them only on the instance and delete them
 
 In GitHub → **Actions**, always choose **Use workflow from: `staging`** and enter `<SHA>`:
 
-1. **STAGING - Build project.** It must pass. It now runs `pnpm install --frozen-lockfile`, typecheck and build for all workspaces, plus the boundary check.
-2. **STAGING - Build and Push Docker Images.** It pushes `ai-receptionist-server-staging-<sha7>` and `ai-receptionist-client-staging-<sha7>`, the same names as always.
-3. Check §3.2 again (paused campaigns), then run **STAGING - Deploy via AWS SSM**. It updates `IMAGE_TAG_SERVER` / `IMAGE_TAG_CLIENT` in `.env`, runs `docker-compose -f docker-compose-staging.yml up -d`, and fails if a container exits.
+1. **Build project.** It must pass. It now runs `pnpm install --frozen-lockfile`, typecheck and build for all workspaces, plus the boundary check.
+2. **Build and push Docker images.** It pushes `ai-receptionist-server-staging-<sha7>` and `ai-receptionist-client-staging-<sha7>`, the same names as always.
+3. Check §3.2 again (paused campaigns), then run **Deploy via AWS SSM** with **environment: staging**. It updates `IMAGE_TAG_SERVER` / `IMAGE_TAG_CLIENT` in `.env`, runs `docker-compose -f docker-compose-staging.yml up -d`, and fails if a container exits.
 4. Verify (§7).
 
 <details>
@@ -113,9 +113,9 @@ docker-compose -f docker-compose-staging.yml ps
 
 ## 5. Setup A, production
 
-There is no production deploy workflow; production has always been deployed by hand.
+Use the unified workflows with **environment: production**. Select the source branch and the same full commit SHA for building and deployment. **Deploy via AWS SSM** applies migrations first, then deploys and waits for the SSM result. The manual alternative follows.
 
-1. In GitHub → **Actions** → **PRODUCTION - Build and Push Docker Images**, select **Use workflow from: `staging`** and enter `<SHA>`. Use the same SHA that passed staging verification. This pushes `ai-receptionist-server-prod-<sha7>` and `ai-receptionist-client-prod-<sha7>`.
+1. In GitHub → **Actions** → **Build and push Docker images**, select the source branch, **environment: production**, and enter `<SHA>`. Use the same SHA that passed staging verification. This pushes `ai-receptionist-server-prod-<sha7>` and `ai-receptionist-client-prod-<sha7>`.
 2. Do §3.2 and §3.3 on the production database and host.
 3. On the production host:
 

@@ -517,7 +517,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ navigate }) => {
   );
 
   return (
-    <div className="flex-1 bg-background py-12 sm:py-16">
+    <div style={publicTexture('bandhani')} className="flex-1 bg-background py-12 sm:py-16">
       <Container className="max-w-5xl px-2 min-[360px]:px-4 sm:px-6 lg:px-8">
         <button
           type="button"
@@ -902,3 +902,4 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ navigate }) => {
     </div>
   );
 };
+import { publicTexture } from '../../lib/publicTexture';

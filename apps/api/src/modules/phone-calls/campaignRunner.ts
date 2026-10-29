@@ -1,4 +1,5 @@
 import { workspaceAllowed } from '../../middleware/workspaceAccess';
+import { callingMinutesAvailable } from '../billing/minutes';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { initiateCall } from './dograhClient';
 import { DograhProvisionableBot } from './types';
@@ -79,6 +80,11 @@ async function advanceLoop(
   try {
     const { data: owner, error } = await supabase.from('bots').select('owner_id').eq('id', bot.id).single();
     if (error || !owner || !await workspaceAllowed(owner.owner_id)) { await pauseForRateLimit(campaignId, supabase); return; }
+    if (!await callingMinutesAvailable(owner.owner_id)) {
+      await supabase.from('call_campaigns').update({ status: 'paused' }).eq('id', campaignId);
+      logger.aiReceptionist('Campaign paused: calling minutes exhausted', { campaignId, botId: bot.id });
+      return;
+    }
   } catch { await pauseForRateLimit(campaignId, supabase); return; }
 
   const rateLimitError = checkCampaignRateLimit(bot.id, hourlyCap);

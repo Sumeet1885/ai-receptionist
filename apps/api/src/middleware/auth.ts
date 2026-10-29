@@ -9,6 +9,7 @@ export interface AuthRequest extends Request {
     emailConfirmedAt?: string | null;
     /** From signup / invite metadata, for greetings. */
     name?: string;
+    updatedAt?: string;
   };
 }
 
@@ -30,7 +31,7 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
       return res.status(401).json({ error: 'Invalid token', code: 'invalid_token' });
     }
 
-    req.user = { id: user.id, email: user.email, emailConfirmedAt: user.email_confirmed_at ?? null, name: user.user_metadata?.full_name };
+    req.user = { id: user.id, email: user.email, emailConfirmedAt: user.email_confirmed_at ?? null, name: user.user_metadata?.full_name, updatedAt: user.updated_at };
     next();
   } catch (err) {
     logger.warn('[Auth] verification request failed', { name: err instanceof Error ? err.name : 'unknown' });

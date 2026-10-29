@@ -1,4 +1,5 @@
 import { ArrowLeft, LifeBuoy } from 'lucide-react';
+import { publicTexture } from '../../lib/publicTexture';
 import { LEGAL, PRIVACY_SECTIONS, TERMS_SECTIONS } from '../../lib/legal';
 import { openSupport } from '../../lib/supportDrawer';
 
@@ -14,7 +15,7 @@ export function LegalView({
   const title = type === 'privacy' ? 'Privacy Policy' : 'Terms & Conditions';
   const sections = type === 'privacy' ? PRIVACY_SECTIONS : TERMS_SECTIONS;
   return (
-    <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
+    <div style={publicTexture(type === 'privacy' ? 'leaf' : 'weave')} className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
       <button
         type="button"
         onClick={() => navigate(signedIn ? '/dashboard' : '/')}

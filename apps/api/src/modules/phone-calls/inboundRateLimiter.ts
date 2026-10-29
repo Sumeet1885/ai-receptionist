@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { assignInboundWorkflow, isDograhConfigured } from './dograhClient';
 import { logger } from '../../services/cloudwatchLogger';
+import { callingMinutesAvailable } from '../billing/minutes';
 
 
 export const DEFAULT_INBOUND_COOLDOWN_SECONDS = 10;
@@ -16,6 +17,7 @@ export interface ComputeInboundCapacityUntilOptions {
 }
 
 export interface InboundRateLimitBot {
+  owner_id?: string;
   id: string;
   dograh_workflow_id?: string | null;
   dograh_capacity_workflow_id?: string | null;
@@ -125,12 +127,16 @@ export async function syncInboundRateLimitWorkflow(
   const hourlyCap = bot.dograh_inbound_hourly_cap ?? DEFAULT_INBOUND_HOURLY_CAP;
   const recentAttemptTimes = await loadRecentInboundAttemptTimes(supabase, bot.id, now);
 
-  const capacityUntil = computeInboundCapacityUntil({
+  let capacityUntil = computeInboundCapacityUntil({
     now,
     cooldownSeconds,
     hourlyCap,
     recentAttemptTimes,
   });
+  if (bot.owner_id && !await callingMinutesAvailable(bot.owner_id)) {
+    const recheck = new Date(now.getTime() + 60_000);
+    if (!capacityUntil || capacityUntil < recheck) capacityUntil = recheck;
+  }
 
   if (shouldUseCapacityWorkflow(bot, capacityUntil)) {
     await setInboundWorkflow(
@@ -196,7 +202,7 @@ export async function restoreExpiredInboundCapacityWorkflows(
   const { data, error } = await supabase
     .from('bots')
     .select(
-      'id, dograh_workflow_id, dograh_capacity_workflow_id, dograh_telephony_config_id, dograh_phone_number_id, dograh_inbound_active_workflow, dograh_inbound_rate_limited_until'
+      'id, owner_id, dograh_workflow_id, dograh_capacity_workflow_id, dograh_telephony_config_id, dograh_phone_number_id, dograh_inbound_active_workflow, dograh_inbound_rate_limited_until'
     )
     .eq('dograh_inbound_active_workflow', 'capacity')
     .not('dograh_workflow_id', 'is', null)
@@ -213,6 +219,10 @@ export async function restoreExpiredInboundCapacityWorkflows(
   for (const bot of (data || []) as InboundRateLimitBot[]) {
     if (!bot.dograh_workflow_id) continue;
     try {
+      if (bot.owner_id && !await callingMinutesAvailable(bot.owner_id)) {
+        await syncInboundRateLimitWorkflow(supabase, bot, now);
+        continue;
+      }
       await setInboundWorkflow(supabase, bot, bot.dograh_workflow_id, 'normal', null);
       const timer = restoreTimers.get(bot.id);
       if (timer) {
@@ -226,4 +236,13 @@ export async function restoreExpiredInboundCapacityWorkflows(
   }
 
   return { restored };
+}
+
+/** Reconcile all inbound lines when the shared workspace balance changes. */
+export async function refreshWorkspaceCallingLimits(supabase: SupabaseClient, userId: string) {
+  if (!isDograhConfigured()) return;
+  const { data, error } = await supabase.from('bots').select('id,owner_id,dograh_workflow_id,dograh_capacity_workflow_id,dograh_telephony_config_id,dograh_phone_number_id,dograh_inbound_active_workflow,dograh_inbound_rate_limited_until,dograh_inbound_cooldown_seconds,dograh_inbound_hourly_cap')
+    .eq('owner_id', userId).not('dograh_phone_number_id', 'is', null);
+  if (error) throw error;
+  for (const bot of data || []) await syncInboundRateLimitWorkflow(supabase, bot);
 }

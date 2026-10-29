@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, FileText, KeyRound, LifeBuoy, LogOut, ShieldCheck, UserRound } from 'lucide-react';
+import { ChevronDown, CreditCard, FileText, KeyRound, LifeBuoy, LogOut, ShieldCheck, UserRound } from 'lucide-react';
 import { ChangePasswordDialog } from '../auth/ChangePasswordDialog';
 import { openSupport } from '../../lib/supportDrawer';
 
@@ -49,6 +49,10 @@ export function UserMenu({
       </summary>
       <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-border bg-surface p-2 shadow-lg">
         <p className="break-all border-b border-border px-3 py-3 text-sm text-text-subtle">{email}</p>
+        <button type="button" className={item} onClick={() => act(() => navigate('/billing'))}>
+          <CreditCard size={17} className="shrink-0" />
+          <span>Billing<span className="block text-xs font-normal text-text-subtle">Transactions, plans &amp; minute top-ups</span></span>
+        </button>
         <button type="button" className={item} onClick={() => act(() => setPasswordOpen(true))}><KeyRound size={17} /> Change password</button>
         <button type="button" className={item} onClick={() => act(() => openSupport({ view: 'tickets' }))}>
           <LifeBuoy size={17} /> Support tickets

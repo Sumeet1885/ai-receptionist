@@ -1,21 +1,26 @@
 import { useEffect, useState } from 'react';
 import { CreditCard, Loader2, TrendingUp, UserPlus } from 'lucide-react';
+import { formatExpiryIST } from '@ai-receptionist/contracts';
 import { billingAdminApi, formatMoney, type BillingOrder, type OrderStatus, type RevenueSummary } from '../api';
 import { useLive } from '../live';
 import { navigate } from '../router';
 import { Card, FilterTabs, PageError, Pager, cx, formatDate } from '../ui';
 
 const STATUS: Partial<Record<OrderStatus, { label: string; style: string; hint: string }>> = {
-  paid: { label: 'Setting up', style: 'bg-info-surface text-info', hint: 'Paid; workspace being set up.' },
-  provisioned: { label: 'Active', style: 'bg-success-surface text-success', hint: 'Paid and workspace created.' },
-  review: { label: 'Needs review', style: 'bg-warning-surface text-warning', hint: 'Paid, but the email already has a login. Assign the plan by hand.' },
+  paid: { label: 'Processing', style: 'bg-info-surface text-info', hint: 'Payment received; fulfilment pending.' },
+  provisioned: { label: 'Completed', style: 'bg-success-surface text-success', hint: 'Purchase fulfilled.' },
+  review: { label: 'Needs review', style: 'bg-warning-surface text-warning', hint: 'Payment received; check the reason shown before refunding or granting access.' },
+  created: { label: 'Pending payment', style: 'bg-info-surface text-info', hint: 'Payment has not been confirmed.' },
+  failed: { label: 'Failed', style: 'bg-danger-surface text-danger', hint: 'Payment could not be started.' },
 };
 
 const TABS: Array<{ value: OrderStatus | undefined; label: string }> = [
   { value: undefined, label: 'All paid' },
-  { value: 'provisioned', label: 'Active' },
+  { value: 'provisioned', label: 'Completed' },
   { value: 'review', label: 'Needs review' },
-  { value: 'paid', label: 'Setting up' },
+  { value: 'paid', label: 'Processing' },
+  { value: 'created', label: 'Pending payment' },
+  { value: 'failed', label: 'Failed' },
 ];
 
 /** INR first; USD underneath when there is any. */
@@ -34,6 +39,7 @@ export function Revenue() {
   const { version } = useLive();
   const [summary, setSummary] = useState<RevenueSummary | null>(null);
   const [status, setStatus] = useState<OrderStatus | undefined>(undefined);
+  const [kind, setKind] = useState('');
   const [page, setPage] = useState(1);
   const [data, setData] = useState<{ rows: BillingOrder[]; total: number; pageSize: number } | null>(null);
   const [error, setError] = useState('');
@@ -50,11 +56,11 @@ export function Revenue() {
 
   useEffect(() => {
     let cancelled = false;
-    billingAdminApi.orders({ view: 'revenue', status, page })
+    billingAdminApi.orders({ view: 'revenue', status, page, kind })
       .then((result) => { if (!cancelled) { setData(result); setError(''); } })
       .catch((err) => { if (!cancelled) setError((err as Error).message); });
     return () => { cancelled = true; };
-  }, [status, page, version, reload]);
+  }, [status, page, kind, version, reload]);
 
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
   const peak = summary ? Math.max(1, ...summary.monthly.map((m) => m.INR)) : 1;
@@ -63,7 +69,7 @@ export function Revenue() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-3xl font-bold tracking-tight">Revenue</h1>
-        <p className="mt-1 text-sm text-subtle">Money received through Razorpay checkouts (first month plus setup fee, after discounts). Rupees and dollars are shown separately.</p>
+        <p className="mt-1 text-sm text-subtle">Plan purchases, renewals, plan changes and extra calling minutes. Rupees and dollars are shown separately.</p>
       </div>
 
       {error && <PageError message={error} onRetry={retry} />}
@@ -74,17 +80,17 @@ export function Revenue() {
             <Card className="min-w-0 bg-ink! p-5 text-white">
               <p className="text-xs font-semibold uppercase tracking-wider text-white/60">This month</p>
               <div className="mt-2"><Amounts money={summary.totals.thisMonth} large /></div>
-              <p className="mt-2 text-xs text-white/60">{summary.counts.thisMonth} paid signup{summary.counts.thisMonth === 1 ? '' : 's'}</p>
+              <p className="mt-2 text-xs text-white/60">{summary.counts.thisMonth} payment{summary.counts.thisMonth === 1 ? '' : 's'}</p>
             </Card>
             <Card className="p-5">
               <p className="text-xs font-semibold uppercase tracking-wider text-subtle">Last 30 days</p>
               <div className="mt-2"><Amounts money={summary.totals.last30Days} large /></div>
-              <p className="mt-2 text-xs text-subtle">{summary.counts.last30Days} paid signup{summary.counts.last30Days === 1 ? '' : 's'}</p>
+              <p className="mt-2 text-xs text-subtle">{summary.counts.last30Days} payment{summary.counts.last30Days === 1 ? '' : 's'}</p>
             </Card>
             <Card className="p-5">
               <p className="text-xs font-semibold uppercase tracking-wider text-subtle">All time</p>
               <div className="mt-2"><Amounts money={summary.totals.allTime} large /></div>
-              <p className="mt-2 text-xs text-subtle">{summary.counts.allTime} paid signup{summary.counts.allTime === 1 ? '' : 's'}</p>
+              <p className="mt-2 text-xs text-subtle">{summary.counts.allTime} payment{summary.counts.allTime === 1 ? '' : 's'}</p>
             </Card>
             <Card className="p-5">
               <p className="text-xs font-semibold uppercase tracking-wider text-subtle">Checkout conversion (30 days)</p>
@@ -115,9 +121,9 @@ export function Revenue() {
           </Card>
 
           <Card className="flex h-80 min-w-0 flex-col overflow-hidden">
-            <p className="flex shrink-0 items-center justify-between gap-2 border-b border-line px-5 py-4 text-sm font-semibold">By plan <span className="text-xs font-normal text-subtle">{summary.byPlan.length} plans</span></p>
+            <p className="flex shrink-0 items-center justify-between gap-2 border-b border-line px-5 py-4 text-sm font-semibold">Top 20 plans <span className="text-xs font-normal text-subtle">{summary.byPlan.length} plans</span></p>
             {summary.byPlan.length === 0 ? (
-              <p className="px-5 py-8 text-center text-sm text-subtle">No paid signups yet.</p>
+              <p className="px-5 py-8 text-center text-sm text-subtle">No payments yet.</p>
             ) : (
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" role="region" aria-label="Revenue by plan" tabIndex={0}>
               <table className="w-full table-fixed text-sm">
@@ -141,7 +147,12 @@ export function Revenue() {
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-display text-xl font-bold">Payments</h2>
+        <h2 className="font-display text-xl font-bold">Purchase history</h2>
+        <label className="flex items-center gap-2 text-sm">Purchase type
+          <select className="cursor-pointer rounded-lg border border-line bg-surface px-3 py-2" value={kind} onChange={event => { setKind(event.target.value); setPage(1); }}>
+            <option value="">All purchases</option><option value="initial">New plans</option><option value="renewal">Renewals</option><option value="plan_change">Plan changes</option><option value="topup">Minute top-ups</option>
+          </select>
+        </label>
         <FilterTabs tabs={TABS} value={status} onChange={(value) => { setStatus(value); setPage(1); }} />
       </div>
 
@@ -150,8 +161,8 @@ export function Revenue() {
         {data?.rows.length === 0 && (
           <div className="flex flex-col items-center gap-2 px-6 py-14 text-center">
             <CreditCard className="h-8 w-8 text-subtle" />
-            <p className="font-semibold">No payments here</p>
-            <p className="text-sm text-subtle">Paid checkouts appear as soon as Razorpay confirms them.</p>
+            <p className="font-semibold">{kind === 'topup' ? 'No minute top-ups yet' : kind === 'plan_change' ? 'No plan changes yet' : 'No purchases match these filters'}</p>
+            <p className="text-sm text-subtle">{kind === 'topup' ? 'Saved top-up purchases appear here after payment is confirmed. Temporary test records are rolled back.' : 'Try another purchase type or payment status. Confirmed purchases appear automatically.'}</p>
           </div>
         )}
         {data && data.rows.length > 0 && (
@@ -177,7 +188,11 @@ export function Revenue() {
                         <p className="truncate font-medium" title={order.business_name}>{order.business_name}</p>
                         <p className="truncate text-xs text-subtle" title={`${order.full_name} / ${order.email}`}>{order.full_name} · {order.email} · {order.phone}</p>
                       </td>
-                      <td className="px-4 py-3"><span className="line-clamp-2 break-words" title={order.plan_snapshot?.name}>{order.plan_snapshot?.name ?? '—'}</span></td>
+                      <td className="px-4 py-3"><span className="line-clamp-2 break-words" title={order.plan_snapshot?.name}>{order.plan_snapshot?.name ?? '—'}</span>
+                        <p className="mt-1 text-xs font-semibold text-primary">{order.purchase_kind === 'topup' ? `Top-up · ${order.minutes_added} minutes` : order.purchase_kind === 'plan_change' ? 'Plan change' : order.purchase_kind === 'renewal' ? 'Renewal' : 'New plan'}</p>
+                        {order.target_period_end && <p className="mt-1 text-xs text-subtle">Expires {formatExpiryIST(order.target_period_end)}</p>}
+                        {order.status === 'created' && order.payment_error && <p className="mt-1 text-xs text-danger">Last payment attempt: {order.payment_error}</p>}
+                      </td>
                       <td className="px-4 py-3 tabular-nums">
                         <p className="font-semibold">{formatMoney(order.total, order.currency)}</p>
                         {order.coupon_code && <p className="text-xs text-subtle"><span className="font-mono">{order.coupon_code}</span> −{formatMoney(order.discount, order.currency)}</p>}

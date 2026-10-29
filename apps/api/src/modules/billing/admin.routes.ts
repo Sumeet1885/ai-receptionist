@@ -12,9 +12,8 @@ import {
   createPlan,
   listAdminCoupons,
   listFeatures,
-  listOpenLeads,
   listOrders,
-  listPaidOrdersForRevenue,
+  getRevenueSummary,
   listAdminPlans,
   replaceFeatures,
   updateCoupon,
@@ -22,7 +21,6 @@ import {
   type LeadStage,
   type OrderStatus,
 } from './repository';
-import { summariseRevenue } from './revenue';
 import { parseCouponInput, parseFeatureList, parsePlanInput } from './validation';
 
 // Plans, comparison rows, coupons and payments, mounted at /api/admin/billing.
@@ -131,9 +129,10 @@ router.get('/orders', requireAdminRole('read_only'), handle(async (req, res) => 
   const page = Math.max(1, Math.min(1000, Number.parseInt(String(req.query.page ?? '1'), 10) || 1));
   const view = req.query.view;
   const stage = LEAD_STAGES.includes(req.query.stage as LeadStage) ? req.query.stage as LeadStage : undefined;
+  const purchaseKind = ['initial', 'renewal', 'plan_change', 'topup'].includes(String(req.query.kind)) ? String(req.query.kind) : undefined;
   const { rows, total } = view === 'leads'
-    ? await listOrders({ lead: stage, page, pageSize: 25, status: stage ? undefined : 'created' })
-    : await listOrders({ status, paidOnly: view === 'revenue', page, pageSize: 25 });
+    ? await listOrders({ lead: stage, initialOnly: true, page, pageSize: 25, status: stage ? undefined : 'created' })
+    : await listOrders({ status, paidOnly: view === 'revenue', purchaseKind, page, pageSize: 25 });
   res.json({ rows, total, page, pageSize: 25 });
 }));
 
@@ -160,8 +159,7 @@ router.post('/orders/:id/send-email', requireAdminRole('support'), createRateLim
 }));
 
 router.get('/revenue', requireAdminRole('read_only'), handle(async (_req, res) => {
-  const [paid, leads] = await Promise.all([listPaidOrdersForRevenue(), listOpenLeads()]);
-  res.json(summariseRevenue(paid, leads));
+  res.json(await getRevenueSummary());
 }));
 
 export default router;

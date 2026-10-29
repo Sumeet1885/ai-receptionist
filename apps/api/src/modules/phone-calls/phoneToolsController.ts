@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
+import { callingMinutesAvailable, getMinuteSummary } from '../billing/minutes';
 import { supabase } from '../../services/db';
 import { checkCalendarAvailability, bookCalendarAppointment, serializeCalendarToolError } from '../../services/calendar/calendarOperations';
 import { mergeWidgetConfig } from '../../utils/widgetConfig';
 import { normalizeTimezone } from '../../utils/date';
-import { InboundRateLimitBot, markInboundAttemptAndApplyLimit } from './inboundRateLimiter';
+import { InboundRateLimitBot, markInboundAttemptAndApplyLimit, refreshWorkspaceCallingLimits } from './inboundRateLimiter';
 import { logger } from '../../services/cloudwatchLogger';
 import { findOutboundCall, getLatestOutboundCallForBot } from './outboundTracker';
 
@@ -43,6 +44,11 @@ export async function preCall(req: Request, res: Response): Promise<void> {
   }
 
   const isOutbound = req.query.direction === 'outbound';
+  if (!await callingMinutesAvailable(bot.owner_id)) {
+    await refreshWorkspaceCallingLimits(supabase, bot.owner_id);
+    res.json({ initial_context: { rate_limited: true, minutes_exhausted: true, session_id: null } });
+    return;
+  }
   const outboundMeta = isOutbound
     ? (findOutboundCall({
         botId,
@@ -152,7 +158,7 @@ export async function callTimeRemaining(req: Request, res: Response): Promise<vo
     return;
   }
 
-  const { data: session, error } = await supabase.from('chat_sessions').select('started_at').eq('id', session_id).maybeSingle();
+  const { data: session, error } = await supabase.from('chat_sessions').select('started_at').eq('id', session_id).eq('bot_id', botId).maybeSingle();
   if (error || !session?.started_at) {
     res.json({
       elapsedSeconds: 0,
@@ -163,7 +169,10 @@ export async function callTimeRemaining(req: Request, res: Response): Promise<vo
   }
 
   const elapsedSeconds = Math.max(0, Math.round((Date.now() - new Date(session.started_at).getTime()) / 1000));
-  const remainingSeconds = SOFT_LIMIT_SECONDS - elapsedSeconds;
+  const bot = await loadBotOwner(botId);
+  const balance = bot ? await getMinuteSummary(bot.owner_id) : null;
+  const budgetSeconds = balance?.active ? balance.remainingMinutes === null ? SOFT_LIMIT_SECONDS : Math.max(0, balance.remainingMinutes * 60) : 0;
+  const remainingSeconds = Math.min(SOFT_LIMIT_SECONDS, budgetSeconds) - elapsedSeconds;
   res.json({
     elapsedSeconds,
     remainingSeconds,

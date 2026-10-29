@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
 import { Reveal } from './Reveal';
+import { sectionTexture } from './sectionTextures';
 
 /** Decorative floating stickers. `aria-hidden` and `pointer-events: none` (in landing.css) keep them out of the way. */
 export function AmbientStickers() {
@@ -30,7 +31,7 @@ const tickerItems = ['Your business persona.', 'Your contact list.', 'Calls on y
 
 export function Ticker() {
   return (
-    <div className="ticker" aria-hidden="true">
+    <div style={sectionTexture('ticker')} className="ticker" aria-hidden="true">
       <div className="ticker-track">
         {[...tickerItems, ...tickerItems].map((item, i) => (
           <Fragment key={i}>
@@ -45,7 +46,7 @@ export function Ticker() {
 
 export function BrandValueSection() {
   return (
-    <section className="meaning-section brand-value-section" id="product-persona">
+    <section style={sectionTexture('brand')} className="meaning-section brand-value-section" id="product-persona">
       <Reveal className="meaning-heading">
         <div>
           <span className="eyebrow">04 / MORE THAN A CALL</span>
@@ -108,7 +109,7 @@ export function BrandValueSection() {
 
 export function ContrastSection() {
   return (
-    <section className="value-contrast-section" id="how-system">
+    <section style={sectionTexture('contrast')} className="value-contrast-section" id="how-system">
       <div className="meaning-section">
         <Reveal className="meaning-heading">
           <div>
@@ -225,7 +226,7 @@ const industries = [
 
 export function UseCasesSection() {
   return (
-    <section className="usecase-section" id="use-cases">
+    <section style={sectionTexture('usecases')} className="usecase-section" id="use-cases">
       <div className="meaning-section">
         <Reveal className="meaning-heading">
           <div>

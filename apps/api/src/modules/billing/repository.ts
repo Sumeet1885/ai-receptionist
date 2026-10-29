@@ -8,6 +8,10 @@ import type { CouponColumns, FeatureColumns, PlanColumns } from './validation';
 export type OrderStatus = 'created' | 'paid' | 'provisioned' | 'failed' | 'review';
 
 export interface BillingOrderRow {
+  purchase_kind?: 'initial' | 'renewal' | 'plan_change' | 'topup';
+  minutes_added?: number | null;
+  target_period_start?: string | null;
+  target_period_end?: string | null;
   followup_last_status?: 'sending' | 'sent' | 'failed' | null;
   followup_sent_at?: string | null;
   followup_sent_stage?: 'started' | 'closed' | 'failed' | null;
@@ -185,14 +189,16 @@ export const PAID_STATUSES: OrderStatus[] = ['paid', 'provisioned', 'review'];
  * Orders for the admin tables. `paidOnly` leaves out unpaid checkouts (the revenue page); a lead
  * stage narrows unpaid checkouts (the signup leads page).
  */
-export async function listOrders(filters: { status?: OrderStatus; paidOnly?: boolean; lead?: LeadStage; page: number; pageSize: number }) {
+export async function listOrders(filters: { status?: OrderStatus; paidOnly?: boolean; initialOnly?: boolean; lead?: LeadStage; purchaseKind?: string; page: number; pageSize: number }) {
   let query = supabase
     .from('billing_orders')
-    .select('id,status,currency,total,discount,coupon_code,full_name,email,phone,business_name,plan_snapshot,razorpay_payment_id,paid_at,created_at,failure_reason,checkout_dismissed_at,payment_error,reminder_sent_at,followup_last_status,followup_sent_at,followup_sent_stage', { count: 'exact' })
+    .select('id,status,currency,total,discount,coupon_code,full_name,email,phone,business_name,plan_snapshot,razorpay_payment_id,paid_at,created_at,failure_reason,checkout_dismissed_at,payment_error,reminder_sent_at,followup_last_status,followup_sent_at,followup_sent_stage,purchase_kind,minutes_added,target_period_end', { count: 'exact' })
     .order('created_at', { ascending: false }).order('id', { ascending: false })
     .range((filters.page - 1) * filters.pageSize, filters.page * filters.pageSize - 1);
   if (filters.status) query = query.eq('status', filters.status);
   else if (filters.paidOnly) query = query.in('status', PAID_STATUSES);
+  if (filters.purchaseKind) query = query.eq('purchase_kind', filters.purchaseKind);
+  if (filters.initialOnly) query = query.is('customer_user_id', null);
   if (filters.lead) {
     query = query.eq('status', 'created');
     if (filters.lead === 'failed') query = query.not('payment_error', 'is', null);
@@ -205,20 +211,9 @@ export async function listOrders(filters: { status?: OrderStatus; paidOnly?: boo
   return { rows: data ?? [], total: count ?? 0 };
 }
 
-// Inputs for the revenue summary. Fine at today's volumes; move to SQL aggregates if orders grow
-// into the tens of thousands.
-export async function listPaidOrdersForRevenue() {
-  return (check(
-    await supabase.from('billing_orders').select('total,currency,paid_at,plan_snapshot->name').in('status', PAID_STATUSES).not('paid_at', 'is', null).limit(20_000),
-    'list paid orders',
-  ) ?? []).map((row: any) => ({ total: row.total, currency: row.currency, paid_at: row.paid_at, plan_snapshot: { name: row.name } }));
-}
-
-export async function listOpenLeads() {
-  return (check(
-    await supabase.from('billing_orders').select('created_at,checkout_dismissed_at,payment_error').eq('status', 'created').limit(20_000),
-    'list open leads',
-  ) ?? []) as Array<{ created_at: string; checkout_dismissed_at: string | null; payment_error: string | null }>;
+/** Complete totals with a bounded summary payload (no raw order downloads). */
+export async function getRevenueSummary() {
+  return check(await supabase.rpc('admin_revenue_summary'), 'load revenue summary') as import('./revenue').RevenueSummary;
 }
 
 export async function setCustomerPlan(userId: string, order: BillingOrderRow) {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { LIMITS, parseFeatureList, parsePlanInput } from '@ai-receptionist/contracts';
-import { ArrowDown, ArrowUp, ListChecks, Loader2, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, ListChecks, Loader2, Pencil, Plus, Sparkles, Trash2, Zap } from 'lucide-react';
 import { ApiError, billingAdminApi, formatMoney, type Plan, type PlanFeature, type PlanInput } from '../api';
 import { useToast } from '../toast';
 import { ActiveBadge, Button, Card, Drawer, Field, INPUT, MONEY_INPUT_LENGTH, PageError, Pager, Toggle, cx, digitsFor, toMajor, toMinor } from '../ui';
@@ -72,6 +72,7 @@ export function Plans({ roles }: { roles: string[] }) {
   const [error, setError] = useState('');
   const [editing, setEditing] = useState<{ plan: Plan | null } | null>(null);
   const [editingRows, setEditingRows] = useState(false);
+  const planFeatures = features.filter(feature => !feature.key.startsWith('topup_'));
 
   const loadVersion = useRef(0);
   const load = useCallback(() => {
@@ -123,10 +124,10 @@ export function Plans({ roles }: { roles: string[] }) {
                 </>
               )}
               <dl className="mt-4 space-y-1.5 text-sm">
-                <div className="flex justify-between"><dt className="text-subtle">Minutes</dt><dd>{plan.monthly_minutes?.toLocaleString('en-IN') ?? '—'}</dd></div>
+                <div className="flex justify-between"><dt className="text-subtle">Included minutes</dt><dd>{plan.monthly_minutes?.toLocaleString('en-IN') ?? '—'}</dd></div>
                 <div className="flex justify-between"><dt className="text-subtle">Agents</dt><dd>{plan.max_agents ?? '—'}</dd></div>
                 <div className="flex justify-between"><dt className="text-subtle">Concurrent calls</dt><dd>{plan.max_concurrent_calls ?? '—'}</dd></div>
-                {features.map((feature) => (
+                {planFeatures.map((feature) => (
                   <div key={feature.key} className="flex justify-between gap-2"><dt className="truncate text-subtle">{feature.label}</dt><dd>{plan.feature_values[feature.key] || '—'}</dd></div>
                 ))}
               </dl>
@@ -158,6 +159,7 @@ export function Plans({ roles }: { roles: string[] }) {
           onSaved={() => { setEditingRows(false); load(); toast({ tone: 'success', title: 'Comparison rows saved' }); }}
         />
       )}
+
     </div>
   );
 }
@@ -203,7 +205,7 @@ function PlanDrawer({ plan, features, onClose, onSaved }: { plan: Plan | null; f
   return (
     <Drawer
       title={plan ? `Edit ${plan.name}` : 'New plan'}
-      subtitle="Prices are per month; the setup fee is charged once, with the first month."
+      subtitle="Set the monthly subscription price and included calling minutes."
       onClose={onClose}
       footer={<>
         <Button variant="ghost" onClick={onClose}>Cancel</Button>
@@ -242,11 +244,13 @@ function PlanDrawer({ plan, features, onClose, onSaved }: { plan: Plan | null; f
         <Field label="Concurrent calls" error={errors.maxConcurrentCalls}><input className={INPUT} inputMode="numeric" maxLength={digitsFor(LIMITS.planSeats.max)} value={form.maxConcurrentCalls} onChange={(e) => set('maxConcurrentCalls', e.target.value)} /></Field>
       </div>
 
-      {features.length > 0 && (
+
+
+      {features.some(feature => !feature.key.startsWith('topup_')) && (
         <div className="space-y-3 rounded-2xl border border-line p-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-subtle">Comparison rows</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-subtle">Included plan features</p>
           <div className="grid gap-3 sm:grid-cols-2">
-            {features.map((feature) => (
+            {features.filter(feature => !feature.key.startsWith('topup_')).map((feature) => (
               <Field key={feature.key} label={feature.label} error={errors[`featureValues.${feature.key}`]}>
                 <input
                   className={INPUT}
@@ -261,6 +265,8 @@ function PlanDrawer({ plan, features, onClose, onSaved }: { plan: Plan | null; f
         </div>
       )}
 
+      {!form.isTrial && !form.contactSales && <TopupFields values={form.featureValues} errors={errors} onChange={values => set('featureValues', values)} />}
+
       <Field label="Display order" hint="(lower first)" error={errors.sortOrder}>
         <input className={cx(INPUT, 'max-w-32')} inputMode="numeric" maxLength={digitsFor(LIMITS.planSortOrder.max)} value={form.sortOrder} onChange={(e) => set('sortOrder', e.target.value)} />
       </Field>
@@ -268,8 +274,21 @@ function PlanDrawer({ plan, features, onClose, onSaved }: { plan: Plan | null; f
   );
 }
 
+function TopupFields({ values, errors, onChange }: { values: Record<string, string>; errors: Record<string, string>; onChange: (values: Record<string, string>) => void }) {
+  return <div className="space-y-3 rounded-xl border border-line p-4">
+    <p className="flex items-center gap-2 text-sm font-semibold"><Zap className="h-4 w-4 text-primary" />Top-up</p>
+    <div className="grid gap-3 sm:grid-cols-3">
+      <Field label="Minutes" error={errors['featureValues.topup_minutes']}><input className={INPUT} inputMode="numeric" maxLength={6} value={values.topup_minutes ?? '500'} onChange={event => onChange({ ...values, topup_minutes: event.target.value })} /></Field>
+      {[{ key: 'topup_500_minutes', label: 'INR price', symbol: '\u20B9' }, { key: 'topup_500_minutes_usd', label: 'USD price', symbol: '$' }].map(({ key, label, symbol }) => <Field key={key} label={label} error={errors[`featureValues.${key}`]}>
+        <div className="relative"><span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-subtle">{symbol}</span><input className={cx(INPUT, 'pl-7')} inputMode="decimal" maxLength={MONEY_INPUT_LENGTH} value={values[key] || ''} onChange={event => onChange({ ...values, [key]: event.target.value })} placeholder="Optional" /></div>
+      </Field>)}
+    </div>
+    <p className="text-xs text-subtle">One-time price for the minutes above. Leave a currency price blank to disable it. Minutes expire with the current plan.</p>
+  </div>;
+}
+
 function RowsDrawer({ features, onClose, onSaved }: { features: PlanFeature[]; onClose: () => void; onSaved: () => void }) {
-  const [rows, setRows] = useState(features.map(({ key, label }) => ({ key, label })));
+  const [rows, setRows] = useState(features.filter(feature => !feature.key.startsWith('topup_')).map(({ key, label }) => ({ key, label })));
   const [error, setError] = useState('');
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);

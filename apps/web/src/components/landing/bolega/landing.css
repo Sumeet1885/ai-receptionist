@@ -2593,19 +2593,20 @@ html.bi-landing-root {
   height: 82px;
   padding: 0 5%;
   z-index: 80;
+  isolation: isolate;
+  background-color: var(--color-background);
   border-bottom: 1px solid transparent;
   transition:
     height 0.3s,
-    background 0.3s,
     border-color 0.3s,
     box-shadow 0.3s;
   animation: none;
 }
 .bi-landing .nav.scrolled {
   height: 70px;
-  background: color-mix(in srgb, var(--color-background) 93%, transparent);
-  backdrop-filter: blur(20px);
-  border-color: var(--color-border);
+  background-color: var(--color-background);
+  backdrop-filter: none;
+  border-bottom-color: transparent;
   box-shadow: 0 4px 20px color-mix(in srgb, var(--color-text) 2%, transparent);
 }
 .bi-landing .nav-center {

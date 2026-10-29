@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ArrowUpRight, Zap } from 'lucide-react';
 import {
   ACCESS_REQUEST_INDUSTRIES,
   ACCESS_REQUEST_LANGUAGES,
@@ -134,6 +135,36 @@ export const RequestAccessView: React.FC<RequestAccessViewProps> = ({ navigate }
         <p className="text-sm text-text-subtle">
           Our team reviews your request and sets up your workspace. Your 14-day trial starts after email verification.
         </p>
+      </div>
+
+      <div className="relative mb-4 overflow-hidden rounded-xl bg-text p-3 text-primary-foreground [@media(max-height:800px)]:mb-2.5">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-[0.12]"
+          style={{ backgroundImage: 'radial-gradient(circle, #ffffff 0.7px, transparent 0.7px)', backgroundSize: '7px 7px' }}
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{ backgroundImage: 'radial-gradient(ellipse at 85% 0%, rgba(212, 242, 122, 0.18), transparent 65%)' }}
+        />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 flex items-center gap-1 pr-5 opacity-10">
+          {[12, 24, 40, 20, 52, 32, 16, 44, 28, 12].map((height, index) => (
+            <span key={index} className="w-1.5 rounded-full bg-current" style={{ height }} />
+          ))}
+        </div>
+        <div className="relative flex flex-wrap items-center gap-3">
+          <span aria-hidden="true" className="flex h-10 w-10 shrink-0 -rotate-6 items-center justify-center rounded-xl bg-[#d4f27a] text-text">
+            <Zap className="h-5 w-5" strokeWidth={1.8} />
+          </span>
+          <div className="min-w-0 flex-1 basis-36">
+            <p className="font-display text-lg font-semibold leading-tight tracking-tight">Skip the wait.</p>
+            <p className="mt-1 text-xs leading-relaxed text-primary-foreground/80">Pick a paid plan. No trial approval needed.</p>
+          </div>
+          <Button type="button" size="sm" className="ml-auto shrink-0 cursor-pointer bg-[#d4f27a] text-text hover:bg-[#e0f79f]" onClick={() => navigate('/pricing')}>
+            Explore plans <ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
 
       <form method="post" onSubmit={handleSubmit} noValidate className="space-y-3 [@media(max-height:800px)]:space-y-2">

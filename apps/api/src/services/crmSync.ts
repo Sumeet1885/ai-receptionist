@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { LeadData } from '../controllers/leadController';
+import { sendWebhook } from './safeWebhook';
 
 const MAX_ATTEMPTS = 3;
 const RETRY_BACKOFF_MS = [500, 1500];
@@ -48,15 +49,7 @@ export function mapLeadToCrmPayload(lead: LeadData, ctx: CrmSyncContext) {
   };
 }
 
-async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...init, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-}
+const fetchWithTimeout = (url: string, init: { headers: Record<string, string>; body: string; method: string }, timeoutMs: number) => sendWebhook(url, init.headers, init.body, timeoutMs);
 
 /**
  * Mirrors a captured lead into the business owner's own CRM via their connected
@@ -103,8 +96,7 @@ export async function syncLeadToCrm(
         }
 
         if (response.status >= 400 && response.status < 500 && response.status !== 429) {
-          const text = await response.text().catch(() => '');
-          console.error(`[crm-sync] session ${ctx.sessionId} rejected by CRM (status ${response.status}): ${text}`);
+          console.error(`[crm-sync] session ${ctx.sessionId} rejected by CRM (status ${response.status}).`);
           return false;
         }
 
@@ -164,13 +156,11 @@ export async function testCrmConnection(connection: CrmConnection, ctx: CrmSyncC
 
   try {
     const response = await fetchWithTimeout(connection.webhook_url, { method: 'POST', headers, body }, REQUEST_TIMEOUT_MS);
-    const text = await response.text().catch(() => '');
     if (response.ok) {
       return { ok: true, status: response.status, message: 'Test lead delivered successfully.' };
     }
-    return { ok: false, status: response.status, message: text || `CRM responded with status ${response.status}.` };
+    return { ok: false, status: response.status, message: `CRM responded with status ${response.status}. Check the URL and credentials with your CRM provider.` };
   } catch (err: any) {
-    const message = err?.name === 'AbortError' ? 'Request timed out.' : (err?.message || 'Could not reach the webhook URL.');
-    return { ok: false, message };
+    return { ok: false, message: 'Could not reach an allowed public webhook. Check the URL or try again later.' };
   }
 }

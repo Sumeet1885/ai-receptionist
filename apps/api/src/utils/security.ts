@@ -72,8 +72,9 @@ export function getRuntimeOrigin(req: HeaderSource) {
 }
 
 export function getClientIp(req: HeaderSource) {
-  const forwardedFor = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
-  return forwardedFor || req.ip || req.socket?.remoteAddress || 'unknown';
+  // Express resolves req.ip using its configured proxy trust. Raw upgrades fall
+  // back to the socket; arbitrary forwarding headers never become limiter keys.
+  return req.ip || req.socket?.remoteAddress || 'unknown';
 }
 
 function getSourceOrigin(req: HeaderSource) {
@@ -115,12 +116,8 @@ export function checkAllowedOrigin(req: HeaderSource, options: OriginCheckOption
 
   const sourceHostname = getHostname(sourceOrigin);
 
-  if (options.allowRuntimeOrigin !== false) {
-    const runtimeOrigin = getRuntimeOrigin(req);
-    if (runtimeOrigin && hostnamesMatch(sourceHostname, getHostname(runtimeOrigin))) {
-      return { allowed: true, sourceOrigin, reason: 'Runtime origin' };
-    }
-  }
+  // Runtime Host/X-Forwarded-Host are routing data, not authorization. Only
+  // explicitly configured application origins and bot domains are trusted.
 
   const extraAllowedOrigins = options.extraAllowedOrigins || [];
   const isExtraAllowed = extraAllowedOrigins.some(origin => {

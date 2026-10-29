@@ -212,8 +212,10 @@ router.post('/checkout/abandoned', publicHeaders, abandonLimit, asyncRoute('Bill
   const updated = await transitionOrder(order.id, ['created'], changes);
   if (updated) {
     publishAdminEvent({ type: 'billing_order.updated', id: updated.id, status: reason === 'closed' ? 'abandoned' : 'payment_failed' });
-    void alertLead(updated.id, reason, 'payment_error' in changes ? changes.payment_error : undefined);
-    void scheduleReminder(updated.id, new Date(Date.now() + REMINDER_AFTER_ABANDON_MS));
+    if (!updated.customer_user_id) {
+      void alertLead(updated.id, reason, 'payment_error' in changes ? changes.payment_error : undefined);
+      void scheduleReminder(updated.id, new Date(Date.now() + REMINDER_AFTER_ABANDON_MS));
+    }
   }
   res.json({ ok: true });
 }));
@@ -295,9 +297,15 @@ export const razorpayWebhook = asyncRoute('BillingWebhook', async (req, res) => 
   const raw = Buffer.isBuffer(req.body) ? req.body : Buffer.from('');
   if (!verifyWebhookSignature(raw, signature)) return res.status(400).json({ error: 'Invalid signature' });
 
-  const event = JSON.parse(raw.toString('utf8'));
+  let event: any;
+  try { event = JSON.parse(raw.toString('utf8')); }
+  catch { return res.status(400).json({ error: 'Invalid webhook payload' }); }
   const payment = event?.payload?.payment?.entity;
   if (!['payment.captured', 'order.paid'].includes(event?.event) || !payment?.order_id) return res.json({ ok: true });
+  if (payment.status !== 'captured' || typeof payment.id !== 'string' || !payment.id
+    || typeof payment.order_id !== 'string' || !Number.isSafeInteger(payment.amount) || payment.amount <= 0) {
+    return res.status(400).json({ error: 'Invalid captured payment payload' });
+  }
 
   const order = await getOrderByRazorpayOrderId(payment.order_id);
   if (!order) return res.json({ ok: true });
@@ -305,7 +313,13 @@ export const razorpayWebhook = asyncRoute('BillingWebhook', async (req, res) => 
     logger.error('[billing] webhook payment does not match order', { order: order.id });
     return res.json({ ok: true });
   }
-  await fulfilPaidOrder(order, payment.id);
+  const done = await fulfilPaidOrder(order, payment.id);
+  if (done.status === 'paid') {
+    // Another worker may still own provisioning, or a crashed worker's lease
+    // has not expired. Never acknowledge unfinished fulfilment as delivered.
+    res.setHeader('Retry-After', '120');
+    return res.status(503).json({ error: 'Payment fulfilment is still processing. Retry delivery.' });
+  }
   res.json({ ok: true });
 });
 

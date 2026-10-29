@@ -36,7 +36,7 @@ Only do this once per environment. After that, never apply SQL by hand again.
 
 Follow [release-runbook.md](release-runbook.md): build images → check paused campaigns → **Database - Migrate** (`status`, then `apply`) → deploy images with the AWS CLI → verify.
 
-Optional automation in the repo: the **STAGING - Deploy via AWS SSM** and **PRODUCTION - Deploy via AWS SSM** workflows run the same migration (with the paused-campaign check) as their first job and only deploy if it succeeds. Use them instead of the manual AWS CLI step if you prefer; the production one needs the production deploy secrets listed in the runbook.
+Optional automation in the repo: the **Deploy via AWS SSM** workflow (select staging or production) runs the same migration (with the paused-campaign check) as their first job and only deploy if it succeeds. Use them instead of the manual AWS CLI step if you prefer; production needs the production deploy secrets listed in the runbook.
 
 ## 4. Local development
 

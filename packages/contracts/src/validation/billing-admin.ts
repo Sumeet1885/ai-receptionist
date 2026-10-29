@@ -70,6 +70,15 @@ export function parsePlanInput(input: unknown): Validated<PlanColumns> {
   for (const [key, entry] of Object.entries(asRecord(raw.featureValues))) {
     if (!FEATURE_KEY.test(key)) continue;
     const display = optionalText(errors, `featureValues.${key}`, entry, 'this value', LIMITS.featureValue);
+    if (key === 'topup_minutes' && (!/^\d+$/.test(display || '') || Number(display) < 1 || Number(display) > 100000)) {
+      errors[`featureValues.${key}`] = 'Enter whole minutes from 1 to 100,000.';
+    }
+    if (display && ['topup_500_minutes', 'topup_500_minutes_usd'].includes(key)) {
+      const minimum = key === 'topup_500_minutes' ? 1 : 0.5;
+      if (!/^\d+(\.\d{1,2})?$/.test(display) || Number(display) < minimum || Number(display) > 1000000) {
+        errors[`featureValues.${key}`] = `Enter a price from ${minimum} to 1,000,000 with up to two decimal places, or leave blank.`;
+      }
+    }
     if (display) value.feature_values[key] = display;
   }
 

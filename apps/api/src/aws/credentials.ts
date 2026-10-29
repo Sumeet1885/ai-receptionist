@@ -1,4 +1,5 @@
 import { fromTemporaryCredentials } from '@aws-sdk/credential-providers';
+import { createHash } from 'node:crypto';
 
 // Match own-crm: development uses explicit local keys, optionally to assume a service role.
 // Staging/production use the default chain (EC2 instance role). Temporary role credentials
@@ -18,7 +19,7 @@ export function awsCredentialMode(roleArn: string | undefined, env: CredentialEn
   return env.AWS_ACCESS_KEY_ID && env.AWS_SECRET_ACCESS_KEY ? 'static-keys' : 'default-chain';
 }
 
-const providers = new Map<string, ReturnType<typeof fromTemporaryCredentials>>();
+const providers = new Map<string, { fingerprint: string; provider: ReturnType<typeof fromTemporaryCredentials> }>();
 
 export function awsCredentials(roleArn: string | undefined, sessionName: string, region: string, env: CredentialEnvironment = process.env) {
   const mode = awsCredentialMode(roleArn, env);
@@ -34,16 +35,17 @@ export function awsCredentials(roleArn: string | undefined, sessionName: string,
   if (mode === 'static-keys') return credentials;
 
   const arn = roleArn!.trim();
-  // Include the source credentials so a changed configuration never reuses an old provider.
-  const key = JSON.stringify([arn, sessionName, region, credentials]);
-  let provider = providers.get(key);
-  if (!provider) {
-    provider = fromTemporaryCredentials({
+  const key = JSON.stringify([arn, sessionName, region]);
+  const fingerprint = createHash('sha256').update(JSON.stringify(credentials)).digest('hex');
+  let cached = providers.get(key);
+  if (!cached || cached.fingerprint !== fingerprint) {
+    const provider = fromTemporaryCredentials({
       masterCredentials: credentials,
       params: { RoleArn: arn, RoleSessionName: sessionName, DurationSeconds: 3600 },
       clientConfig: { region },
     });
-    providers.set(key, provider);
+    cached = { fingerprint, provider };
+    providers.set(key, cached);
   }
-  return provider;
+  return cached.provider;
 }

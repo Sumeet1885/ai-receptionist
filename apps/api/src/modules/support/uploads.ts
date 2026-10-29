@@ -8,9 +8,18 @@ import { supportBytesMatch } from './security';
 import { logger } from '../../services/cloudwatchLogger';
 import { deleteSupportObjects, SUPPORT_S3_PREFIX, uploadSupportObject } from './storage';
 
+// Multipart fields (including captcha) exist only after parsing. Bound the bytes
+// held across all concurrent requests, not just the size of each individual file.
+const MAX_UPLOAD_RESERVATIONS = 32 * 1024 * 1024;
+let reservedUploadBytes = 0;
+
 export function supportUpload(creating: boolean): RequestHandler {
   const upload = multer({
     storage: multer.memoryStorage(),
+    fileFilter: (_req, file, done) => {
+      const error = supportFileError([{ name: file.originalname, type: file.mimetype, size: 1 }], creating);
+      if (error) done(new Error(error)); else done(null, true);
+    },
     limits: {
       fileSize: (creating ? 2 : 10) * 1024 * 1024,
       files: creating ? 1 : 3,
@@ -19,8 +28,23 @@ export function supportUpload(creating: boolean): RequestHandler {
       parts: 20,
     },
   }).array('files', creating ? 1 : 3);
-  return (req, res, next) =>
+  return (req, res, next) => {
+    const reservation = (creating ? 3 : 31) * 1024 * 1024;
+    if (reservedUploadBytes + reservation > MAX_UPLOAD_RESERVATIONS) {
+      res.setHeader('Retry-After', '5');
+      res.status(503).json({ error: 'Attachments are busy. Please try again in a moment.' });
+      return;
+    }
+    reservedUploadBytes += reservation;
+    let released = false;
+    const release = () => { clearTimeout(timer); if (!released) { released = true; reservedUploadBytes -= reservation; } };
+    res.once('finish', release);
+    res.once('close', release);
+    const timer = setTimeout(() => { if (!res.headersSent) res.status(408).json({ error: 'Upload took too long. Please try again.' }); req.destroy(); }, 15_000);
+    timer.unref?.();
     upload(req, res, (error) => {
+      clearTimeout(timer);
+      if (res.writableEnded || req.aborted) return;
       if (error)
         return res.status(400).json({
           error:
@@ -37,6 +61,7 @@ export function supportUpload(creating: boolean): RequestHandler {
         return res.status(400).json({ error: issue || 'File contents do not match the selected file type.' });
       next();
     });
+  };
 }
 export interface StoredSupportFile {
   storage_key: string;
