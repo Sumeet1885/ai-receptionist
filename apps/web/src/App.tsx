@@ -122,7 +122,7 @@ function parseRoute(): AppRoute {
   if (path === '/outbound-calls' || path === '/calls/outbound') return { name: 'outbound-calls' };
   if (path === '/recordings' || path === '/calls/recordings') return { name: 'recordings' };
   if (path === '/agents/new') return { name: 'outbound-calls' };
-  if (path === '/agents') return { name: 'agents' };
+  if (path === '/agents') return { name: 'inbound-calls' };
   if (path === '/plans' || path === '/billing') return { name: 'plans' };
 
   const agentMatch = path.match(/^\/agents\/([^/]+)(?:\/([^/]+))?/);
@@ -210,7 +210,7 @@ export default function App() {
       'auth-signup': '/request-access',
       'request-access': '/request-access',
       onboarding: '/outbound-calls',
-      agents: '/agents',
+      agents: '/inbound-calls',
       dashboard: '/dashboard',
       'public-chat': '/dashboard'
     };

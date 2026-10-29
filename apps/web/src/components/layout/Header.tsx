@@ -20,7 +20,6 @@ const authedNav = [
   { label: 'Outbound Calls', path: '/outbound-calls', key: 'outbound-calls' },
   { label: 'Recordings', path: '/recordings', key: 'recordings' },
   { label: 'Calendar', path: '/calendar', key: 'calendar' },
-  { label: 'Agents', path: '/agents', key: 'agents' },
   { label: 'Billing', path: '/billing', key: 'plans' },
 ];
 
