@@ -417,7 +417,7 @@ export const customersApi = {
   assignAgent: (userId: string, botId: string) =>
     request<{ ok: true; botId: string }>(`/customers/${encodeURIComponent(userId)}/assign-agent`, { method: 'POST', body: { botId } }),
   unassignAgent: (userId: string, data: { botId: string; detachPhoneNumber?: boolean }) =>
-    request<{ ok: true; bot: BotSummary }>(`/customers/${encodeURIComponent(userId)}/unassign-agent`, { method: 'POST', body: data }),
+    request<{ ok: true; botId: string }>(`/customers/${encodeURIComponent(userId)}/unassign-agent`, { method: 'POST', body: data }),
   updateAgentLimit: (userId: string, data: { limit: number | null }) =>
     request<{ ok: true; agentLimit: AgentLimitInfo }>(`/customers/${encodeURIComponent(userId)}/agent-limit`, { method: 'POST', body: data }),
   createAgent: (userId: string, data: { businessName: string; industry?: string; greeting?: string; phoneNumber?: string }) =>

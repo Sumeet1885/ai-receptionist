@@ -199,46 +199,35 @@ router.post('/:id/assign-agent', requireAdminRole('support'), handle(async (req,
   res.json({ ok: true, botId });
 }));
 
-// Unassigns / detaches a bot persona from a customer
+// Deletes / removes a bot persona from a customer
 router.post('/:id/unassign-agent', requireAdminRole('support'), handle(async (req, res) => {
   if (!UUID.test(req.params.id)) return res.status(404).json({ error: 'Customer not found' });
-  const { botId, detachPhoneNumber } = req.body || {};
+  const { botId } = req.body || {};
   if (!botId || !UUID.test(botId)) return res.status(400).json({ error: 'Valid botId is required' });
 
   const { data: bot, error: botErr } = await supabase
     .from('bots')
-    .select('id, business_name, owner_id, dograh_phone_number, widget_config')
+    .select('id, business_name, owner_id, dograh_phone_number')
     .eq('id', botId)
     .maybeSingle();
 
   if (botErr || !bot) return res.status(404).json({ error: 'Agent not found' });
 
-  const updates: Record<string, any> = { owner_id: null };
-  if (detachPhoneNumber) {
-    updates.dograh_phone_number = null;
-    updates.phone_number = null;
-    if (bot.widget_config && typeof bot.widget_config === 'object') {
-      const { phoneNumber: _, ...rest } = bot.widget_config as any;
-      updates.widget_config = rest;
-    }
-  }
-
-  const { data: updatedBot, error: updateErr } = await supabase
+  // Delete the bot completely (cascading to leads, conversations, appointments)
+  const { error: deleteErr } = await supabase
     .from('bots')
-    .update(updates)
-    .eq('id', botId)
-    .select('id, business_name, industry, dograh_phone_number, dograh_workflow_id, dograh_outbound_workflow_id, is_active, created_at, owner_id')
-    .single();
+    .delete()
+    .eq('id', botId);
 
-  if (updateErr) return res.status(500).json({ error: updateErr.message });
+  if (deleteErr) return res.status(500).json({ error: deleteErr.message });
 
-  await audit(req, 'customer.unassign_agent', req.params.id, {
+  await audit(req, 'customer.delete_agent', req.params.id, {
     botId,
     botName: bot.business_name,
-    detachedPhoneNumber: Boolean(detachPhoneNumber),
+    previousPhoneNumber: bot.dograh_phone_number,
   });
 
-  res.json({ ok: true, bot: updatedBot });
+  res.json({ ok: true, botId });
 }));
 
 // Updates the custom agent limit restriction for a customer

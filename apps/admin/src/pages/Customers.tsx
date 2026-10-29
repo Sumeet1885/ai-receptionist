@@ -481,16 +481,16 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
                       variant="dangerOutline"
                       disabled={busy}
                       onClick={async () => {
-                        if (!window.confirm(`Remove and unassign agent "${bot.business_name}" from this customer?`)) return;
+                        if (!window.confirm(`Delete voice agent "${bot.business_name}"? This will permanently delete this persona and free up customer quota.`)) return;
                         await act(async () => {
-                          await customersApi.unassignAgent(customer.userId, { botId: bot.id, detachPhoneNumber: false });
+                          await customersApi.unassignAgent(customer.userId, { botId: bot.id });
                           const refreshed = await customersApi.getAgents(customer.userId);
                           setBotData(refreshed);
-                        }, `Agent "${bot.business_name}" unassigned from customer`);
+                        }, `Agent "${bot.business_name}" deleted`);
                       }}
                     >
                       <Trash2 className="h-3 w-3 mr-1" />
-                      Remove Agent
+                      Delete Agent
                     </Button>
                   )}
                 </div>
