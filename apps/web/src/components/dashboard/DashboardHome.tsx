@@ -36,7 +36,8 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
   const appointmentsCount = qualifiedLeads.filter(
     lead => lead.appointmentStatus && lead.appointmentStatus !== 'None' && lead.appointmentStatus !== 'Not Scheduled'
   ).length;
-  const needsAttention = [...hotLeads, ...warmLeads].slice(0, 5);
+  // Top 5 leads directly from the leads pipeline (exact same order: updated_at descending)
+  const needsAttention = qualifiedLeads.slice(0, 5);
 
   return (
     <div className="space-y-6">

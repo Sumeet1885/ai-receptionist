@@ -28,6 +28,7 @@ interface LeadTableProps {
   bots?: Bot[];
   launchPublicChat: (botId: string) => void;
   showToast: (message: string, type?: 'success' | 'error') => void;
+  targetLeadId?: string;
 }
 
 export const LeadTable: React.FC<LeadTableProps> = ({
@@ -37,6 +38,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({
   setSelectedBotId,
   bots = [],
   showToast,
+  targetLeadId,
 }) => {
   const [filterChannel, setFilterChannel] = useState<'all' | 'inbound' | 'outbound'>('all');
   const [filterScore, setFilterScore] = useState<'all' | 'HOT' | 'WARM'>('all');
@@ -55,30 +57,43 @@ export const LeadTable: React.FC<LeadTableProps> = ({
     setCurrentPage(1);
   }, [filterChannel, filterScore, searchQuery, selectedBotId]);
 
+  const activeTargetId = targetLeadId || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('leadId') : null);
+
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const targetLeadId = params.get('leadId');
-    if (targetLeadId && leads.length > 0) {
-      setHighlightedLeadId(targetLeadId);
-      setViewMode('list');
-      setFilterScore('all');
-      setFilterChannel('all');
-      setSearchQuery('');
+    if (!activeTargetId || leads.length === 0) return;
 
-      const leadIndex = leads.findIndex(l => l.id === targetLeadId);
-      if (leadIndex !== -1) {
-        const targetPage = Math.floor(leadIndex / pageSize) + 1;
-        setCurrentPage(targetPage);
-      }
-
-      setTimeout(() => {
-        const el = document.getElementById(`lead-row-${targetLeadId}`);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 400);
+    setHighlightedLeadId(activeTargetId);
+    setViewMode('list');
+    setFilterScore('all');
+    setFilterChannel('all');
+    setSearchQuery('');
+    if (setSelectedBotId) {
+      setSelectedBotId('all');
     }
-  }, [leads, pageSize]);
+
+    const qualified = leads
+      .filter(l => l.channel !== 'web')
+      .filter(l => l.appointmentStatus !== 'ARCHIVED')
+      .filter(l => l.leadScore !== 'COLD');
+
+    const targetIdx = qualified.findIndex(l => l.id === activeTargetId);
+    const targetPage = targetIdx >= 0 ? Math.floor(targetIdx / pageSize) + 1 : 1;
+    setCurrentPage(targetPage);
+
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      const el = document.getElementById('lead-row-' + activeTargetId);
+      if (el) {
+        clearInterval(interval);
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else if (attempts >= 25) {
+        clearInterval(interval);
+      }
+    }, 80);
+
+    return () => clearInterval(interval);
+  }, [activeTargetId, leads, pageSize, setSelectedBotId]);
 
   const handleCardFilter = (score: 'all' | 'HOT' | 'WARM') => {
     if (filterScore === score && score !== 'all') {

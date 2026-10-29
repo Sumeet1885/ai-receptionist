@@ -61,7 +61,7 @@ type AppRoute =
   | { name: 'privacy' }
   | { name: 'terms' }
   | { name: 'dashboard' }
-  | { name: 'leads' }
+  | { name: 'leads'; targetLeadId?: string }
   | { name: 'inbox' }
   | { name: 'calendar' }
   | { name: 'calls' }
@@ -113,7 +113,7 @@ function parseRoute(): AppRoute {
   if (path === '/privacy' || path === '/privacy-policy') return { name: 'privacy' };
   if (path === '/terms' || path === '/terms-and-conditions') return { name: 'terms' };
   if (path === '/dashboard') return { name: 'dashboard' };
-  if (path === '/leads') return { name: 'leads' };
+  if (path === '/leads') return { name: 'leads', targetLeadId: params.get('leadId') || undefined };
   if (path === '/inbox') return { name: 'recordings' };
   if (path === '/calendar') return { name: 'calendar' };
   if (path === '/calls') return { name: 'calls' };
@@ -576,6 +576,7 @@ export default function App() {
                     setSelectedBotId={setLeadAgentFilter}
                     launchPublicChat={launchPublicChat}
                     showToast={showToast}
+                    targetLeadId={route.targetLeadId}
                   />
                 ) : noAgentState}
               </PostLoginShell>
