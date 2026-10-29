@@ -23,16 +23,20 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
   leads,
   navigate
 }) => {
-  const activeBotLeads = activeBot ? leads.filter(lead => lead.botId === activeBot.id) : leads;
-  const voiceLeads = activeBotLeads.filter(lead => lead.channel !== 'web' && lead.appointmentStatus !== 'ARCHIVED');
-  const hotLeads = voiceLeads.filter(lead => lead.leadScore === 'HOT');
-  const warmLeads = voiceLeads.filter(lead => lead.leadScore === 'WARM');
-  const inboundCount = voiceLeads.filter(lead => lead.channel !== 'outbound').length;
-  const outboundCount = voiceLeads.filter(lead => lead.channel === 'outbound').length;
-  const appointmentsCount = voiceLeads.filter(
-    lead => lead.appointmentStatus && lead.appointmentStatus !== 'None' && lead.appointmentStatus !== 'Not Scheduled' && lead.appointmentStatus !== 'ARCHIVED'
+  // Sync exact filtering with Leads Pipeline (LeadTable.tsx)
+  const qualifiedLeads = leads
+    .filter(lead => lead.channel !== 'web')
+    .filter(lead => lead.appointmentStatus !== 'ARCHIVED')
+    .filter(lead => lead.leadScore !== 'COLD');
+
+  const hotLeads = qualifiedLeads.filter(lead => lead.leadScore === 'HOT');
+  const warmLeads = qualifiedLeads.filter(lead => lead.leadScore === 'WARM');
+  const inboundCount = qualifiedLeads.filter(lead => (lead.channel || 'inbound') === 'inbound').length;
+  const outboundCount = qualifiedLeads.filter(lead => lead.channel === 'outbound').length;
+  const appointmentsCount = qualifiedLeads.filter(
+    lead => lead.appointmentStatus && lead.appointmentStatus !== 'None' && lead.appointmentStatus !== 'Not Scheduled'
   ).length;
-  const needsAttention = [...hotLeads, ...voiceLeads.filter(lead => lead.leadScore !== 'HOT')].slice(0, 5);
+  const needsAttention = [...hotLeads, ...warmLeads].slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -106,14 +110,14 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
           className="text-left bg-brand-card hover:bg-brand-bg/50 border border-brand-border hover:border-brand-accent rounded-xl p-4 shadow-sm transition group"
         >
           <div className="flex items-center justify-between text-brand-muted mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider font-body">Total Leads</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider font-body">Qualified Leads</span>
             <span className="text-base">👥</span>
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl sm:text-3xl font-display font-extrabold text-brand-text group-hover:text-brand-accent transition">
-              {voiceLeads.length}
+              {qualifiedLeads.length}
             </span>
-            <span className="text-xs font-semibold text-brand-muted font-body">Qualified</span>
+            <span className="text-xs font-semibold text-brand-muted font-body">Active</span>
           </div>
           <p className="text-[11px] text-brand-muted mt-1 font-body truncate">
             📞 {inboundCount} Inbound · 🚀 {outboundCount} Outbound
