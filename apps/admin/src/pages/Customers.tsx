@@ -165,10 +165,12 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
   const [botData, setBotData] = useState<CustomerAgentsResponse | null>(null);
   const [loadingBots, setLoadingBots] = useState(true);
   const [selectedBotId, setSelectedBotId] = useState('');
+  const [assignDirection, setAssignDirection] = useState<'inbound' | 'outbound' | 'both'>('inbound');
   const [showNewAgentForm, setShowNewAgentForm] = useState(false);
   const [newAgentName, setNewAgentName] = useState(customer.businessName || '');
   const [newAgentIndustry, setNewAgentIndustry] = useState('');
   const [newAgentPhone, setNewAgentPhone] = useState('');
+  const [newAgentDirection, setNewAgentDirection] = useState<'inbound' | 'outbound' | 'both'>('inbound');
 
   // Phone number assignment
   const [showAssignNumberForm, setShowAssignNumberForm] = useState(false);
@@ -416,7 +418,35 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
             {botData?.assigned.map((bot) => (
               <div key={bot.id} className="rounded-xl border border-line bg-surface/50 p-3 space-y-2 text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-ink text-sm">{bot.business_name}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-ink text-sm">{bot.business_name}</span>
+                    {/* Small Glowing Text Badge */}
+                    {(() => {
+                      const dir = bot.widget_config?.agentDirection || (bot.dograh_outbound_workflow_id && !bot.dograh_workflow_id ? 'outbound' : bot.dograh_workflow_id && !bot.dograh_outbound_workflow_id ? 'inbound' : 'both');
+                      if (dir === 'inbound') {
+                        return (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 shadow-[0_0_10px_rgba(16,185,129,0.35)]">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_#10b981]" />
+                            Inbound
+                          </span>
+                        );
+                      }
+                      if (dir === 'outbound') {
+                        return (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase bg-cyan-500/15 border border-cyan-500/40 text-cyan-600 shadow-[0_0_10px_rgba(6,182,212,0.35)]">
+                            <span className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_6px_#06b6d4]" />
+                            Outbound
+                          </span>
+                        );
+                      }
+                      return (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase bg-purple-500/15 border border-purple-500/40 text-purple-600 shadow-[0_0_10px_rgba(168,85,247,0.35)]">
+                          <span className="h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse shadow-[0_0_6px_#a855f7]" />
+                          Inbound & Outbound
+                        </span>
+                      );
+                    })()}
+                  </div>
                   <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success bg-success-surface px-2 py-0.5 rounded-full">
                     <span className="h-1.5 w-1.5 rounded-full bg-success" /> Active
                   </span>
@@ -466,6 +496,45 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
                   )}
                 </div>
 
+                {/* Assigned Direction Switcher */}
+                {canSupport && (
+                  <div className="flex items-center justify-between text-[11px] bg-background/50 px-2.5 py-1.5 rounded-lg border border-line/60">
+                    <span className="text-subtle font-medium">Assigned Call Mode:</span>
+                    <div className="flex rounded-md border border-line bg-white p-0.5 text-[10px]">
+                      {(['inbound', 'outbound', 'both'] as const).map((d) => {
+                        const currentDir = bot.widget_config?.agentDirection || (bot.dograh_outbound_workflow_id && !bot.dograh_workflow_id ? 'outbound' : bot.dograh_workflow_id && !bot.dograh_outbound_workflow_id ? 'inbound' : 'both');
+                        return (
+                          <button
+                            key={d}
+                            type="button"
+                            disabled={busy}
+                            onClick={async () => {
+                              if (currentDir === d) return;
+                              await act(async () => {
+                                await customersApi.updateAgentDirection(customer.userId, { botId: bot.id, direction: d });
+                                const refreshed = await customersApi.getAgents(customer.userId);
+                                setBotData(refreshed);
+                              }, `Agent mode set to ${d}`);
+                            }}
+                            className={cx(
+                              'px-2 py-0.5 rounded font-medium capitalize transition-all',
+                              currentDir === d
+                                ? d === 'inbound'
+                                  ? 'bg-emerald-500 text-white shadow-sm'
+                                  : d === 'outbound'
+                                  ? 'bg-cyan-500 text-white shadow-sm'
+                                  : 'bg-purple-600 text-white shadow-sm'
+                                : 'text-subtle hover:text-ink'
+                            )}
+                          >
+                            {d}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between pt-1 border-t border-line/50">
                   <div className="flex gap-2">
                     <span className={cx('text-[10px] px-2 py-0.5 rounded border', bot.dograh_workflow_id ? 'bg-info-surface text-info border-info/30' : 'bg-background text-subtle border-line')}>
@@ -511,7 +580,7 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
         )}
 
         {canSupport && botData && botData.all.length > 0 && !showNewAgentForm && !(botData.agentLimit?.effectiveLimit !== null && botData.agentLimit?.effectiveLimit !== undefined && botData.assigned.length >= botData.agentLimit.effectiveLimit) && (
-          <div className="rounded-xl border border-line bg-background/50 p-3 space-y-2 text-xs">
+          <div className="rounded-xl border border-line bg-background/50 p-3 space-y-2.5 text-xs">
             <span className="font-semibold text-ink block">Assign Existing Persona</span>
             <div className="flex gap-2">
               <select
@@ -533,7 +602,7 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
                 onClick={async () => {
                   if (!selectedBotId) return;
                   await act(async () => {
-                    await customersApi.assignAgent(customer.userId, selectedBotId);
+                    await customersApi.assignAgent(customer.userId, { botId: selectedBotId, direction: assignDirection });
                     const refreshed = await customersApi.getAgents(customer.userId);
                     setBotData(refreshed);
                     setSelectedBotId('');
@@ -542,6 +611,30 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
               >
                 Assign
               </Button>
+            </div>
+            <div className="flex items-center justify-between pt-1 border-t border-line/60">
+              <span className="text-[11px] text-subtle font-medium">Dedicated Direction:</span>
+              <div className="flex rounded-md border border-line bg-white p-0.5 text-[10px]">
+                {(['inbound', 'outbound', 'both'] as const).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    className={cx(
+                      'px-2.5 py-0.5 rounded font-medium capitalize transition-all',
+                      assignDirection === d
+                        ? d === 'inbound'
+                          ? 'bg-emerald-500 text-white shadow-sm'
+                          : d === 'outbound'
+                          ? 'bg-cyan-500 text-white shadow-sm'
+                          : 'bg-purple-600 text-white shadow-sm'
+                        : 'text-subtle hover:text-ink'
+                    )}
+                    onClick={() => setAssignDirection(d)}
+                  >
+                    {d === 'both' ? 'Both' : `${d} only`}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -556,11 +649,13 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
                   businessName: newAgentName,
                   industry: newAgentIndustry,
                   phoneNumber: newAgentPhone,
+                  direction: newAgentDirection,
                 });
                 const refreshed = await customersApi.getAgents(customer.userId);
                 setBotData(refreshed);
                 setShowNewAgentForm(false);
                 setNewAgentPhone('');
+                setNewAgentDirection('inbound');
               }, 'New agent provisioned and assigned');
             }}
             className="rounded-xl border border-primary/20 bg-primary-soft/10 p-3 space-y-2 text-xs"
@@ -588,6 +683,30 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
               value={newAgentPhone}
               onChange={(e) => setNewAgentPhone(e.target.value)}
             />
+            <div className="flex items-center justify-between pt-1 border-t border-primary/20">
+              <span className="text-[11px] text-subtle font-medium">Dedicated Direction:</span>
+              <div className="flex rounded-md border border-line bg-white p-0.5 text-[10px]">
+                {(['inbound', 'outbound', 'both'] as const).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    className={cx(
+                      'px-2.5 py-0.5 rounded font-medium capitalize transition-all',
+                      newAgentDirection === d
+                        ? d === 'inbound'
+                          ? 'bg-emerald-500 text-white shadow-sm'
+                          : d === 'outbound'
+                          ? 'bg-cyan-500 text-white shadow-sm'
+                          : 'bg-purple-600 text-white shadow-sm'
+                        : 'text-subtle hover:text-ink'
+                    )}
+                    onClick={() => setNewAgentDirection(d)}
+                  >
+                    {d === 'both' ? 'Both' : `${d} only`}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="flex justify-end gap-2 pt-1">
               <Button size="sm" variant="ghost" onClick={() => setShowNewAgentForm(false)}>Cancel</Button>
               <Button size="sm" type="submit" disabled={busy || !newAgentName.trim()}>Provision & Assign</Button>

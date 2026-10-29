@@ -116,7 +116,7 @@ router.get('/:id/agents', requireAdminRole('read_only'), handle(async (req, res)
 
   const { data: assigned, error: assignedErr } = await supabase
     .from('bots')
-    .select('id, business_name, industry, dograh_phone_number, dograh_workflow_id, dograh_outbound_workflow_id, is_active, created_at, owner_id')
+    .select('id, business_name, industry, dograh_phone_number, dograh_workflow_id, dograh_outbound_workflow_id, is_active, created_at, owner_id, widget_config')
     .eq('owner_id', req.params.id)
     .order('created_at', { ascending: false });
 
@@ -124,7 +124,7 @@ router.get('/:id/agents', requireAdminRole('read_only'), handle(async (req, res)
 
   const { data: allBots, error: allErr } = await supabase
     .from('bots')
-    .select('id, business_name, industry, dograh_phone_number, dograh_workflow_id, dograh_outbound_workflow_id, is_active, created_at, owner_id')
+    .select('id, business_name, industry, dograh_phone_number, dograh_workflow_id, dograh_outbound_workflow_id, is_active, created_at, owner_id, widget_config')
     .order('created_at', { ascending: false });
 
   if (allErr) return res.status(500).json({ error: allErr.message });
@@ -159,7 +159,7 @@ router.get('/:id/agents', requireAdminRole('read_only'), handle(async (req, res)
 // Assigns an existing bot persona to a customer
 router.post('/:id/assign-agent', requireAdminRole('support'), handle(async (req, res) => {
   if (!UUID.test(req.params.id)) return res.status(404).json({ error: 'Customer not found' });
-  const botId = req.body?.botId;
+  const { botId, direction } = req.body || {};
   if (!botId || !UUID.test(botId)) return res.status(400).json({ error: 'Valid botId is required' });
 
   // Check agent limit restriction
@@ -177,15 +177,22 @@ router.post('/:id/assign-agent', requireAdminRole('support'), handle(async (req,
 
   const { data: bot, error: botErr } = await supabase
     .from('bots')
-    .select('id, business_name, owner_id')
+    .select('id, business_name, owner_id, widget_config')
     .eq('id', botId)
     .maybeSingle();
 
   if (botErr || !bot) return res.status(404).json({ error: 'Agent not found' });
 
+  const agentDirection = ['inbound', 'outbound', 'both'].includes(direction) ? direction : 'both';
+  const existingWidget = (bot.widget_config && typeof bot.widget_config === 'object') ? bot.widget_config : {};
+  const updatedWidget = { ...existingWidget, agentDirection };
+
   const { error: updateErr } = await supabase
     .from('bots')
-    .update({ owner_id: req.params.id })
+    .update({
+      owner_id: req.params.id,
+      widget_config: updatedWidget,
+    })
     .eq('id', botId);
 
   if (updateErr) return res.status(500).json({ error: updateErr.message });
@@ -194,9 +201,49 @@ router.post('/:id/assign-agent', requireAdminRole('support'), handle(async (req,
     botId,
     previousOwnerId: bot.owner_id,
     botName: bot.business_name,
+    direction: agentDirection,
   });
 
   res.json({ ok: true, botId });
+}));
+
+// Updates dedicated direction (inbound / outbound / both) for an assigned bot
+router.post('/:id/update-agent-direction', requireAdminRole('support'), handle(async (req, res) => {
+  if (!UUID.test(req.params.id)) return res.status(404).json({ error: 'Customer not found' });
+  const { botId, direction } = req.body || {};
+  if (!botId || !UUID.test(botId)) return res.status(400).json({ error: 'Valid botId is required' });
+  if (!['inbound', 'outbound', 'both'].includes(direction)) {
+    return res.status(400).json({ error: 'Direction must be inbound, outbound, or both' });
+  }
+
+  const { data: bot, error: botErr } = await supabase
+    .from('bots')
+    .select('id, business_name, owner_id, widget_config')
+    .eq('id', botId)
+    .eq('owner_id', req.params.id)
+    .maybeSingle();
+
+  if (botErr || !bot) return res.status(404).json({ error: 'Agent not found' });
+
+  const existingWidget = (bot.widget_config && typeof bot.widget_config === 'object') ? bot.widget_config : {};
+  const updatedWidget = { ...existingWidget, agentDirection: direction };
+
+  const { data: updatedBot, error: updateErr } = await supabase
+    .from('bots')
+    .update({ widget_config: updatedWidget })
+    .eq('id', botId)
+    .select('id, business_name, industry, dograh_phone_number, dograh_workflow_id, dograh_outbound_workflow_id, is_active, created_at, owner_id, widget_config')
+    .single();
+
+  if (updateErr) return res.status(500).json({ error: updateErr.message });
+
+  await audit(req, 'customer.update_agent_direction', req.params.id, {
+    botId,
+    botName: bot.business_name,
+    direction,
+  });
+
+  res.json({ ok: true, bot: updatedBot });
 }));
 
 // Deletes / removes a bot persona from a customer
@@ -368,7 +415,7 @@ router.post('/:id/unassign-number', requireAdminRole('support'), handle(async (r
 // Creates and provisions a new bot persona directly assigned to the customer
 router.post('/:id/create-agent', requireAdminRole('support'), handle(async (req, res) => {
   if (!UUID.test(req.params.id)) return res.status(404).json({ error: 'Customer not found' });
-  const { businessName, industry, greeting, phoneNumber } = req.body || {};
+  const { businessName, industry, greeting, phoneNumber, direction } = req.body || {};
   if (!businessName || typeof businessName !== 'string' || !businessName.trim()) {
     return res.status(400).json({ error: 'Business name is required' });
   }
@@ -388,6 +435,7 @@ router.post('/:id/create-agent', requireAdminRole('support'), handle(async (req,
 
   const cleanName = businessName.trim();
   const slug = `${cleanName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Date.now().toString(36)}`;
+  const agentDirection = ['inbound', 'outbound', 'both'].includes(direction) ? direction : 'both';
 
   const { data, error } = await supabase
     .from('bots')
@@ -402,8 +450,12 @@ router.post('/:id/create-agent', requireAdminRole('support'), handle(async (req,
       subdomain: slug,
       dograh_phone_number: (phoneNumber && typeof phoneNumber === 'string' && phoneNumber.trim()) ? phoneNumber.trim() : null,
       is_active: true,
+      widget_config: {
+        agentDirection,
+        ...(phoneNumber ? { phoneNumber: phoneNumber.trim() } : {}),
+      },
     }])
-    .select('id, business_name, industry, dograh_phone_number, dograh_workflow_id, dograh_outbound_workflow_id, is_active, created_at, owner_id')
+    .select('id, business_name, industry, dograh_phone_number, dograh_workflow_id, dograh_outbound_workflow_id, is_active, created_at, owner_id, widget_config')
     .single();
 
   if (error) return res.status(500).json({ error: error.message });
@@ -411,6 +463,7 @@ router.post('/:id/create-agent', requireAdminRole('support'), handle(async (req,
   await audit(req, 'customer.create_agent', req.params.id, {
     botId: data.id,
     botName: data.business_name,
+    direction: agentDirection,
   });
 
   res.json({ ok: true, bot: data });
