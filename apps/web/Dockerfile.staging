@@ -41,6 +41,8 @@ ENV VITE_SUPABASE_URL=https://lckiehhthevtykulfbvw.supabase.co
 ENV VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_OvMrb8UfqZdi3XmztPdniQ_1nwecsPy
 ENV VITE_EXPRESS_SERVER_URL=https://test.ai-receptionist.agilewaters.com
 ENV VITE_WIDGET_BASE_URL=https://test.ai-receptionist.agilewaters.com
+ENV VITE_TURNSTILE_SITE_KEY=0x4AAAAAAFexsT-MRL3xo7sW
+
 
 ARG VITE_SITE_URL
 ENV VITE_SITE_URL=${VITE_SITE_URL}
