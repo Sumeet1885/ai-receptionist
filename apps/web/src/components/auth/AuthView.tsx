@@ -27,6 +27,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
   const [loading, setLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
+  const [checkingRecovery, setCheckingRecovery] = useState(defaultMode === 'reset');
+  const [recoveryEmail, setRecoveryEmail] = useState('');
   const guard = usePublicFormGuard();
 
   useEffect(() => {
@@ -36,18 +38,24 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
   useEffect(() => {
     if (mode !== 'reset') {
       setSessionError(null);
+      setCheckingRecovery(false);
+      setRecoveryEmail('');
       return;
     }
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-
-    if (code) {
-      supabase.auth.exchangeCodeForSession(code).catch((err) => {
-        // If already handled by detectSessionInUrl, ignore duplicate exchange warning
-        console.warn('exchangeCodeForSession:', err?.message);
-      });
-    }
+    let cancelled = false;
+    setCheckingRecovery(true);
+    void supabase.auth.getSession().then(({ data, error }) => {
+      if (cancelled) return;
+      if (error || !data.session || !sessionStorage.getItem('workspace-recovery-proof')) {
+        setSessionError('Open a fresh password reset link from your email to continue. Signing in alone does not authorize a password reset.');
+      } else {
+        setSessionError(null);
+        setRecoveryEmail(data.session.user.email || '');
+      }
+    }).catch(() => {
+      if (!cancelled) setSessionError('We could not check your reset session. Please open your email link again.');
+    }).finally(() => { if (!cancelled) setCheckingRecovery(false); });
+    return () => { cancelled = true; };
   }, [mode]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
@@ -144,6 +152,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
         setResetSent(false);
         setSessionError(null);
         setMode('signin');
+        setView('auth-signin');
       }}
       className="font-medium text-primary hover:underline"
     >
@@ -157,6 +166,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
           <div className="mb-8">
             <h1 className="mb-2 font-display text-4xl font-semibold tracking-[-0.04em] text-text">{titles[mode].title}</h1>
             <p className="text-sm text-text-subtle">{titles[mode].description}</p>
+            {mode === 'reset' && recoveryEmail && !sessionError && <p className="mt-3 break-words text-sm text-primary">Resetting the password for <span className="font-semibold">{recoveryEmail}</span></p>}
           </div>
 
           {mode === 'signin' && (
@@ -254,7 +264,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
           )}
 
           {mode === 'reset' && (
-            sessionError ? (
+            checkingRecovery ? <p role="status" className="text-sm text-text-subtle">Checking your password reset session...</p> : sessionError ? (
               <div role="alert" className="space-y-4 rounded-medium border border-danger/30 bg-danger-surface p-5 text-center">
                 <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-danger/15 text-lg font-bold text-danger" aria-hidden="true">
                   !
@@ -268,6 +278,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
                   onClick={() => {
                     setSessionError(null);
                     setMode('forgot');
+                    setView('auth-forgot');
                   }}
                 >
                   Request new reset link

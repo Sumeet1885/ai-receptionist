@@ -63,7 +63,8 @@ customerBillingRoutes.post(
       (!isTopup && typeof req.body?.plan !== 'string')
     )
       return res.status(400).json({ error: 'Choose a plan and currency.' });
-    const plan = await getPlanBySlug(isTopup ? summary.planSlug! : req.body.plan);
+    const planSlug = (isTopup && typeof req.body?.plan === 'string') ? req.body.plan : (isTopup ? summary.planSlug! : req.body.plan);
+    const plan = await getPlanBySlug(planSlug);
     if (!plan || (isTopup ? !plan.is_active || plan.is_trial || plan.contact_sales : !isPurchasable(plan, currency)))
       return res.status(404).json({ error: 'Choose an available paid plan.' });
     const offer = topupOffer(plan.feature_values, currency);

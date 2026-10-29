@@ -28,5 +28,5 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
 export const workspaceBillingApi = {
   summary: () => request<WorkspaceMinutes>('/summary'),
   history: (page: number) => request<{ rows: WorkspacePurchase[]; total: number; pageSize: number }>('/history?page=' + page),
-  order: (body: { kind: 'topup'; quantity: number; currency: Currency } | { kind: 'plan_change'; plan: string; currency: Currency }) => request<CheckoutOrder>('/order', body),
+  order: (body: { kind: 'topup'; quantity?: number; plan?: string; currency: Currency } | { kind: 'plan_change'; plan: string; currency: Currency }) => request<CheckoutOrder>('/order', body),
 };

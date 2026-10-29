@@ -8,6 +8,7 @@ import { Button } from '../ui/button';
 import { Card } from '../ui/layout';
 import { PlanCard } from './PlanCard';
 import { TopupCard } from './TopupCard';
+import { configuredTopup } from '../../lib/topupCatalogue';
 
 const number = (value: number) => value.toLocaleString('en-IN', { maximumFractionDigits: 1 });
 const purchaseNames = { initial: 'Plan purchase', renewal: 'Plan renewal', plan_change: 'Plan change', topup: 'Minute top-up' };
@@ -45,7 +46,7 @@ interface Props {
   busy: boolean;
   onRefresh: () => void;
   onPage: (page: number) => void;
-  onTopup: (quantity?: number) => void;
+  onTopup: (plan?: PublicPlan) => void;
   onPlan: (plan: PublicPlan) => void;
   onCurrency: (currency: Currency) => void;
 }
@@ -55,13 +56,12 @@ export function BillingWorkspace({ summary, plans, features, history, page, busy
   const total = summary.includedMinutes === null ? null : summary.includedMinutes + summary.topupMinutes;
   const usedPercent = total ? Math.min(100, Math.round(summary.usedMinutes / total * 100)) : 0;
   const exhausted = summary.active && summary.remainingMinutes !== null && summary.remainingMinutes <= 0;
-  const offer = summary.topupOffer;
   const pages = history ? Math.max(1, Math.ceil(history.total / history.pageSize)) : 1;
   const tabId = (key: string) => `billing-tab-${key}`;
-  const hasPreviewPrices = plans.some(plan => {
-    const raw = plan.features[summary.currency === 'INR' ? 'topup_500_minutes' : 'topup_500_minutes_usd'];
-    return !plan.contactSales && raw && /^\d+(\.\d{1,2})?$/.test(raw.trim()) && Number(raw) > 0;
-  });
+  const topupPlans = plans
+    .map(plan => configuredTopup(plan, summary.currency))
+    .filter((item): item is { plan: PublicPlan; minutes: number; amount: number } => item !== null);
+  const hasPreviewPrices = topupPlans.length > 0;
   function chooseTab(key: typeof tab) { setTab(key); }
 
   return <div className="space-y-5">
@@ -88,18 +88,29 @@ export function BillingWorkspace({ summary, plans, features, history, page, busy
     {tab === 'topups' && <section id="billing-panel-topups" role="tabpanel" aria-labelledby={tabId('topups')}>
       <h2 className="font-display text-xl font-semibold">Extra minutes, whenever you need them</h2>
       <p className="mt-2 max-w-3xl text-sm leading-relaxed text-text-subtle">Add minutes without changing your plan. You can purchase before your balance runs out. Extra minutes expire on your current plan’s end date.</p>
-      {offer ? <div className="mt-6 grid gap-4 md:grid-cols-3">{[1, 2, 3].map(quantity => <TopupCard key={quantity} planName={summary.planName || 'Current plan'} minutes={quantity * offer.minutes} amount={quantity * offer.amount} currency={summary.currency} expiry={formatExpiryIST(summary.expiresAt)} busy={busy} onChoose={() => onTopup(quantity)} />)}</div> : <>
+      {(!summary.active || summary.isTrial) && (
         <div className="mt-5 rounded-xl border border-border bg-surface p-4 text-sm leading-relaxed text-text-subtle">{topupUnavailableReason(summary)} {summary.isTrial && 'Here are the minute-pack prices available after you activate a paid plan.'}</div>
-        {!hasPreviewPrices && <p role="status" className="mt-4 rounded-xl border border-warning/20 bg-warning-surface p-4 text-sm">{summary.currency} top-up prices are not available yet. Choose the other currency or contact support. Prices are set by the team; no exchange-rate conversion is applied.</p>}
-        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{plans.filter(plan => !plan.contactSales).map(plan => {
-          const raw = plan.features[summary.currency === 'INR' ? 'topup_500_minutes' : 'topup_500_minutes_usd'];
-          const packMinutes = Number(plan.features.topup_minutes ?? 500);
-          if (!Number.isInteger(packMinutes) || packMinutes < 1 || packMinutes > 100000) return null;
-          if (!raw || !/^\d+(\.\d{1,2})?$/.test(raw.trim()) || Number(raw) <= 0) return null;
-          return <TopupCard key={plan.slug} planName={plan.name} minutes={packMinutes} amount={Math.round(Number(raw) * 100)} currency={summary.currency} preview requiredPlanAmount={plan.price[summary.currency]} busy={busy} onChoose={() => setTab('plans')} />;
-        })}</div>
-        <Button variant="secondary" className="mt-4" onClick={() => summary.isTrial || !summary.active ? setTab('plans') : openSupport({ intent: 'sales', view: 'new' })}>{summary.isTrial || !summary.active ? 'Explore paid plans' : 'Contact our team'}</Button>
-      </>}
+      )}
+      {!hasPreviewPrices && <p role="status" className="mt-4 rounded-xl border border-warning/20 bg-warning-surface p-4 text-sm">{summary.currency} top-up prices are not available yet. Choose the other currency or contact support. Prices are set by the team; no exchange-rate conversion is applied.</p>}
+      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{topupPlans.map(({ plan, minutes, amount }) => {
+        const isCurrent = plan.slug === summary.planSlug;
+        return <TopupCard
+          key={plan.slug}
+          planName={plan.name}
+          minutes={minutes}
+          amount={amount}
+          currency={summary.currency}
+          expiry={summary.expiresAt ? formatExpiryIST(summary.expiresAt) : undefined}
+          preview={!summary.active || summary.isTrial}
+          requiredPlanAmount={plan.price[summary.currency]}
+          isCurrentPlan={isCurrent}
+          busy={busy}
+          onChoose={() => (!summary.active || summary.isTrial ? setTab('plans') : onTopup(plan))}
+        />;
+      })}</div>
+      {(!summary.active || summary.isTrial) && (
+        <Button variant="secondary" className="mt-4" onClick={() => setTab('plans')}>Explore paid plans</Button>
+      )}
     </section>}
 
     {tab === 'overview' && <div id="billing-panel-overview" role="tabpanel" aria-labelledby={tabId('overview')}>
@@ -126,12 +137,24 @@ export function BillingWorkspace({ summary, plans, features, history, page, busy
           <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-accent-lime-soft text-primary"><Zap size={21} /></span>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2"><h2 className="font-display text-xl font-semibold">Minute top-ups</h2><button type="button" className="cursor-pointer text-xs font-semibold text-primary hover:underline" onClick={() => setTab('topups')}>View all packs →</button></div>
           <p className="mt-1 text-sm leading-relaxed text-text-subtle">Buy extra minutes whenever you need them—even if you still have minutes left.</p>
-          {offer ? <>
-            <div className="my-5 space-y-2">{[1, 2, 3].map(quantity => <button key={quantity} type="button" disabled={busy} onClick={() => onTopup(quantity)} className="group flex min-h-16 w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-border bg-background px-4 py-3 text-left transition hover:border-primary hover:bg-primary/5 disabled:cursor-wait disabled:opacity-60">
-              <span><span className="block text-sm font-semibold">+{number(quantity * offer.minutes)} minutes</span><span className="mt-0.5 block text-xs text-text-subtle">{quantity} {quantity === 1 ? 'pack' : 'packs'}</span></span>
-              <span className="flex items-center gap-2 text-sm font-semibold">{formatMoney(quantity * offer.amount, summary.currency)}<ArrowRight size={15} className="text-primary" /></span>
-            </button>)}</div>
-            <Button className="w-full" disabled={busy} onClick={() => onTopup()}><Plus size={16} />Buy minutes</Button>
+          {summary.active && !summary.isTrial && topupPlans.length > 0 ? <>
+            <div className="my-5 space-y-2">
+              {topupPlans.map(({ plan, minutes, amount }) => (
+                <button
+                  key={plan.slug}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onTopup(plan)}
+                  className="group flex min-h-16 w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-border bg-background px-4 py-3 text-left transition hover:border-primary hover:bg-primary/5 disabled:cursor-wait disabled:opacity-60"
+                >
+                  <span>
+                    <span className="block text-sm font-semibold">+{number(minutes)} minutes</span>
+                    <span className="mt-0.5 block text-xs text-text-subtle">{plan.name}{plan.slug === summary.planSlug ? ' (Your plan)' : ''}</span>
+                  </span>
+                  <span className="flex items-center gap-2 text-sm font-semibold">{formatMoney(amount, summary.currency)}<ArrowRight size={15} className="text-primary" /></span>
+                </button>
+              ))}
+            </div>
             <p className="mt-3 flex gap-2 text-xs leading-relaxed text-text-subtle"><Clock3 size={14} className="mt-0.5 shrink-0" />Top-ups expire with your plan. Your plan end date stays the same.</p>
           </> : <div className="mt-5 rounded-xl border border-border bg-background p-4"><p className="text-sm leading-relaxed text-text-subtle">{topupUnavailableReason(summary)}</p><Button variant="secondary" className="mt-3 w-full" onClick={() => summary.isTrial || !summary.active ? setTab('plans') : openSupport({ intent: 'sales', view: 'new' })}>{summary.isTrial || !summary.active ? 'Explore paid plans' : 'Ask about extra minutes'}<ArrowRight size={14} /></Button></div>}
           <div className="mt-5 border-t border-border pt-4"><button type="button" className="flex w-full cursor-pointer items-center justify-between gap-2 text-sm font-medium text-primary" onClick={() => setTab('transactions')}>View your transactions<History size={16} /></button></div>

@@ -55,6 +55,7 @@ export function createRateLimit(options: RateLimitOptions, keyFor: (req: Request
     res.setHeader('RateLimit-Reset', String(Math.ceil(result.resetAt / 1000)));
 
     if (!result.allowed) {
+      res.setHeader('Retry-After', String(Math.max(1, Math.ceil((result.resetAt - Date.now()) / 1000))));
       res.status(429).json({ error: 'Too many requests. Please try again shortly.' });
       return;
     }

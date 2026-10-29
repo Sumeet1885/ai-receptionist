@@ -3,6 +3,7 @@ import 'dotenv/config';
 import { randomUUID } from 'node:crypto';
 import assert from 'node:assert/strict';
 import pg from 'pg';
+import { repairMinuteFixtureAuth } from './minute-fixture-auth';
 
 const email = 'bolega-minute-history-demo@yopmail.com';
 const tag = 'minute-history-demo-v1';
@@ -17,6 +18,7 @@ async function main() {
     const existing = (await db.query('SELECT id,raw_user_meta_data FROM auth.users WHERE email=$1', [email])).rows[0];
     if (existing && (existing.raw_user_meta_data?.fixture_tag !== tag || existing.raw_user_meta_data?.is_dummy !== true)) throw new Error('Fixture email belongs to a different account; refusing to modify it.');
     if (existing) {
+      await repairMinuteFixtureAuth(db, existing.id);
       const saved = await db.query("SELECT purchase_kind,status,minutes_added FROM public.billing_orders WHERE customer_user_id=$1 AND plan_snapshot->>'fixture_tag'=$2 ORDER BY created_at", [existing.id, tag]);
       assert.equal(saved.rowCount, 2, 'Existing fixtures must be complete; do not seed partial records.');
       await db.query('COMMIT');
@@ -27,6 +29,7 @@ async function main() {
     const [starter, next] = plans;
     const user = randomUUID(), bot = randomUUID();
     await db.query("INSERT INTO auth.users(id,email,email_confirmed_at,raw_user_meta_data) VALUES($1,$2,now(),$3)", [user, email, JSON.stringify({ full_name: '[DUMMY] Minute purchase tester', business_name: '[DUMMY] Top-up and plan-switch demo', is_dummy: true, fixture_tag: tag })]);
+    await repairMinuteFixtureAuth(db, user);
     await db.query("INSERT INTO public.customer_accounts(user_id,plan_id,plan_started_at,access_expires_at,current_period_end,plan_currency,password_set_at,onboarding_completed_at) VALUES($1,$2,now()-interval '7 days',now()+interval '23 days',now()+interval '23 days','INR',now(),now()) ON CONFLICT(user_id) DO UPDATE SET plan_id=$2,plan_started_at=now()-interval '7 days',access_expires_at=now()+interval '23 days',current_period_end=now()+interval '23 days',plan_currency='INR',password_set_at=now(),onboarding_completed_at=now()", [user, starter.id]);
     await db.query("INSERT INTO public.bots(id,owner_id,business_name,industry,subdomain,greeting,knowledge_base,is_active) VALUES($1,$2,'[DUMMY] Minute purchase history','Other',$3,'Demo only','Simulated usage for billing tests',false)", [bot, user, `minute-history-${bot}`]);
     await db.query("INSERT INTO public.phone_calls(bot_id,dograh_run_id,started_at,duration_seconds,status) VALUES($1,$2,now()-interval '1 hour',$3,'completed')", [bot, `dummy-${tag}-${bot}`, starter.monthly_minutes * 60]);

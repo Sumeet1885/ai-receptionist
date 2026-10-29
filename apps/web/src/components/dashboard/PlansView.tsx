@@ -8,6 +8,7 @@ import { openSupport } from '../../lib/supportDrawer';
 import { BillingWorkspace, topupUnavailableReason } from '../billing/BillingWorkspace';
 import { loadRazorpay } from '../billing/CheckoutView';
 import { Button } from '../ui/button';
+import { configuredTopup } from '../../lib/topupCatalogue';
 
 interface PlansViewProps { activeBot: Bot | null; showToast: (message: string, type?: 'success' | 'error') => void }
 export function PlansView({ showToast }: PlansViewProps) {
@@ -23,8 +24,11 @@ export function PlansView({ showToast }: PlansViewProps) {
   const [reload, setReload] = useState(0);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [selection, setSelection] = useState<PublicPlan | 'topup' | null>(null);
-  const [quantity, setQuantity] = useState(1);
+  type PurchaseSelection =
+    | { kind: 'plan'; plan: PublicPlan }
+    | { kind: 'topup'; plan: PublicPlan; packMinutes: number; packAmount: number }
+    | null;
+  const [selection, setSelection] = useState<PurchaseSelection>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     let cancelled = false;
@@ -40,13 +44,13 @@ export function PlansView({ showToast }: PlansViewProps) {
   useEffect(() => { if (selection && !dialog.current?.open) dialog.current?.showModal(); else if (!selection) dialog.current?.close(); }, [selection]);
   const refresh = () => { setPage(1); setReload(n => n + 1); };
   async function pay() {
-    if (!summary || !selection || busy || (selection === 'topup' && !summary.topupOffer)) return;
+    if (!summary || !selection || busy) return;
     setBusy(true);
     try {
       await loadRazorpay();
-      const order = await workspaceBillingApi.order(selection === 'topup'
-        ? { kind: 'topup', quantity, currency }
-        : { kind: 'plan_change', plan: selection.slug, currency: summary.currency });
+      const order = await workspaceBillingApi.order(selection.kind === 'topup'
+        ? { kind: 'topup', plan: selection.plan.slug, currency }
+        : { kind: 'plan_change', plan: selection.plan.slug, currency: summary.currency });
       if (!window.Razorpay) throw new Error('Payment window could not load. Please try again.');
       setSelection(null);
       let paymentHandled = false;
@@ -77,30 +81,35 @@ export function PlansView({ showToast }: PlansViewProps) {
       checkout.open();
     } catch (err) { showToast((err as Error).message, 'error'); setBusy(false); }
   }
-  const openTopup = (packs = 1) => { setQuantity(packs); setSelection('topup'); };
-  const topupTotal = summary?.topupOffer ? summary.topupOffer.amount * quantity : 0;
+  const openTopup = (plan?: PublicPlan) => {
+    const targetPlan = plan || plans.find(p => p.slug === summary?.planSlug);
+    if (!targetPlan) return;
+    const pack = configuredTopup(targetPlan, currency);
+    if (!pack) return;
+    setSelection({ kind: 'topup', plan: targetPlan, packMinutes: pack.minutes, packAmount: pack.amount });
+  };
 
   return <div className="mx-auto max-w-6xl pb-8">
     {error && <div role="alert" className="mb-4 rounded-xl border border-danger/30 bg-danger-surface p-4 text-sm text-danger">{error} <button type="button" className="ml-2 underline" onClick={refresh}>Try again</button></div>}
     {!summary && !error && <div role="status" className="space-y-4" aria-label="Loading billing"><div className="h-12 animate-pulse rounded-full bg-surface-sunken" /><div className="grid gap-5 lg:grid-cols-[1.45fr_1fr]"><div className="h-80 animate-pulse rounded-2xl bg-surface-sunken" /><div className="h-80 animate-pulse rounded-2xl bg-surface-sunken" /></div></div>}
-    {summary && <BillingWorkspace summary={summary} plans={plans} features={features} history={history} page={page} busy={busy} onRefresh={refresh} onPage={setPage} onTopup={openTopup} onPlan={setSelection} onCurrency={setSelectedCurrency} />}
+    {summary && <BillingWorkspace summary={summary} plans={plans} features={features} history={history} page={page} busy={busy} onRefresh={refresh} onPage={setPage} onTopup={openTopup} onPlan={plan => setSelection({ kind: 'plan', plan })} onCurrency={setSelectedCurrency} />}
     <dialog ref={dialog} onCancel={() => setSelection(null)} className="m-auto max-h-[90dvh] w-[calc(100%_-_2rem)] max-w-md overflow-y-auto rounded-2xl border border-border bg-surface p-6 text-text shadow-xl backdrop:bg-black/35">
-      <div className="flex items-center justify-between gap-4"><h2 className="font-display text-xl font-semibold">{selection === 'topup' ? 'Add calling minutes' : 'Start a fresh month'}</h2><button type="button" aria-label="Close purchase" className="rounded-full p-2 hover:bg-background" onClick={() => setSelection(null)}><X size={18} /></button></div>
-      {selection === 'topup' && summary?.topupOffer ? <>
+      <div className="flex items-center justify-between gap-4"><h2 className="font-display text-xl font-semibold">{selection?.kind === 'topup' ? 'Add calling minutes' : 'Start a fresh month'}</h2><button type="button" aria-label="Close purchase" className="rounded-full p-2 hover:bg-background" onClick={() => setSelection(null)}><X size={18} /></button></div>
+      {selection?.kind === 'topup' && <>
         <p className="mt-2 text-sm text-text-subtle">Add to your balance without changing your plan.</p>
-        <label htmlFor="topup-quantity" className="mt-5 block text-sm font-medium">Choose a minute pack</label>
-        <select id="topup-quantity" className="mt-2 w-full rounded-xl border border-border bg-surface p-3 text-sm" value={quantity} onChange={event => setQuantity(Number(event.target.value))}>{Array.from({ length: 10 }, (_, n) => <option key={n} value={n + 1}>{((n + 1) * summary.topupOffer!.minutes).toLocaleString('en-IN')} minutes ? {formatMoney((n + 1) * summary.topupOffer!.amount, summary.currency)}</option>)}</select>
         <div className="mt-4 space-y-3 rounded-xl bg-background p-4 text-sm">
-          <div className="flex justify-between gap-3"><span className="text-text-subtle">Minutes added</span><span className="font-semibold">+{(quantity * summary.topupOffer.minutes).toLocaleString('en-IN')}</span></div>
-          <div className="flex justify-between gap-3 border-t border-border pt-3"><span className="font-medium">Total to pay</span><span className="font-display text-xl font-semibold">{formatMoney(topupTotal, summary.currency)}</span></div>
+          <div className="flex justify-between gap-3"><span className="text-text-subtle">Minute pack</span><span className="font-semibold">{selection.plan.name}</span></div>
+          <div className="flex justify-between gap-3"><span className="text-text-subtle">Minutes added</span><span className="font-semibold">+{selection.packMinutes.toLocaleString('en-IN')} minutes</span></div>
+          <div className="flex justify-between gap-3 border-t border-border pt-3"><span className="font-medium">Total to pay</span><span className="font-display text-xl font-semibold">{formatMoney(selection.packAmount, currency)}</span></div>
         </div>
-        <p className="mt-3 text-xs leading-relaxed text-text-subtle">Valid through {formatExpiryIST(summary.expiresAt)}. Buying minutes does not extend your plan. You can buy more packs even before your current minutes run out.</p>
-      </> : selection === 'topup' && summary ? <div className="mt-4 text-sm leading-relaxed text-text-subtle"><p>{topupUnavailableReason(summary)}</p><Button variant="secondary" className="mt-4 w-full" onClick={() => { setSelection(null); openSupport({ intent: 'sales', view: 'new' }); }}>Contact our team</Button></div> : selection && selection !== 'topup' && summary && <>
-        <p className="mt-4 font-semibold">{selection.name} · {formatMoney(selection.price[summary.currency], summary.currency)}/month</p>
+        <p className="mt-3 text-xs leading-relaxed text-text-subtle">{summary?.expiresAt ? `Valid through ${formatExpiryIST(summary.expiresAt)}. ` : ''}Buying minutes does not extend your plan. Extra minutes are added directly to your existing balance.</p>
+      </>}
+      {selection?.kind === 'plan' && <>
+        <p className="mt-4 font-semibold">{selection.plan.name} · {formatMoney(selection.plan.price[summary?.currency ?? currency], summary?.currency ?? currency)}/month</p>
         <p className="mt-2 text-sm text-text-subtle">You are purchasing a monthly subscription. Extra-minute packs are purchased separately.</p>
         <p className="mt-3 text-sm leading-relaxed text-text-subtle">Your new plan starts once payment is confirmed and lasts one calendar month, through 11:59 pm IST on its last day. Remaining minutes and top-ups from your previous plan are replaced. No setup fee or prorated credit.</p>
       </>}
-      {selection && (selection !== 'topup' || summary?.topupOffer) && <><Button className="mt-5 w-full" disabled={busy} onClick={() => void pay()}>{busy ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />}Continue to payment</Button><p className="mt-2 text-center text-xs text-text-subtle">Payment processed securely by Razorpay</p></>}
+      {selection && <><Button className="mt-5 w-full" disabled={busy} onClick={() => void pay()}>{busy ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />}Continue to payment</Button><p className="mt-2 text-center text-xs text-text-subtle">Payment processed securely by Razorpay</p></>}
     </dialog>
   </div>;
 }

@@ -7,6 +7,7 @@ import { publicTexture } from '../../lib/publicTexture';
 
 interface HeaderProps {
   routeName: string;
+  authMode?: string;
   navigate: (path: string) => void;
   user: any;
   signOut: () => Promise<void>;
@@ -41,6 +42,7 @@ function publicActions(routeName: string) {
 /** App navigation for every screen except the landing page (which has its own navbar). */
 export const Header: React.FC<HeaderProps> = ({
   routeName,
+  authMode,
   navigate,
   user,
   signOut
@@ -75,6 +77,14 @@ export const Header: React.FC<HeaderProps> = ({
       console.error('Sign out error:', err);
     }
   };
+
+  // Recovery sessions authorize a password change; keep this task separate from marketing/navigation.
+  if (routeName === 'auth-confirm' || (routeName === 'auth' && authMode === 'reset')) {
+    return <header className="sticky top-0 z-40 flex items-center justify-between gap-4 border-b border-border bg-background px-[5%] py-4">
+      <BrandLogo className="h-7 sm:h-9" />
+      <span className="text-right text-xs font-medium text-text-subtle sm:text-sm">{authMode === 'reset' ? 'Password recovery' : 'Account verification'}</span>
+    </header>;
+  }
 
   return (
     <header style={user ? undefined : publicTexture('leaf')} className="sticky top-0 z-40 flex items-center justify-between border-b border-border bg-background px-[5%] py-3 backdrop-blur-xl">
