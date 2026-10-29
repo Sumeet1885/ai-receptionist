@@ -19,6 +19,7 @@ function getInitials(name: string): string {
 
 export const DashboardHome: React.FC<DashboardHomeProps> = ({
   activeBot,
+  bots = [],
   leads,
   navigate
 }) => {
@@ -31,7 +32,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
   const appointmentsCount = voiceLeads.filter(
     lead => lead.appointmentStatus && lead.appointmentStatus !== 'None' && lead.appointmentStatus !== 'Not Scheduled' && lead.appointmentStatus !== 'ARCHIVED'
   ).length;
-  const needsAttention = [...hotLeads, ...voiceLeads.filter(lead => lead.leadScore !== 'HOT')].slice(0, 6);
+  const needsAttention = [...hotLeads, ...voiceLeads.filter(lead => lead.leadScore !== 'HOT')].slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -161,23 +162,24 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
           </p>
         </button>
 
-        {/* Metric 4: Active Telephony Line */}
+        {/* Metric 4: Total Voice Agents in Workspace */}
         <button
           type="button"
           onClick={() => navigate('/inbound-calls')}
           className="text-left bg-brand-card hover:bg-brand-bg/50 border border-brand-border hover:border-brand-accent rounded-xl p-4 shadow-sm transition group"
         >
           <div className="flex items-center justify-between text-brand-muted mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider font-body">Telephony Line</span>
-            <span className="text-xs px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 font-bold">Online</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider font-body">Total Agents</span>
+            <span className="text-base">🤖</span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-sm sm:text-base font-display font-extrabold text-brand-text truncate">
-              {activeBot?.phoneNumber || '+91 22 6423 0099'}
+            <span className="text-2xl sm:text-3xl font-display font-extrabold text-brand-text group-hover:text-brand-accent transition">
+              {bots.length || (activeBot ? 1 : 0)}
             </span>
+            <span className="text-xs font-semibold text-brand-muted font-body">Active</span>
           </div>
           <p className="text-[11px] text-brand-muted mt-1 font-body truncate">
-            AI Receptionist answering 24/7
+            {activeBot?.phoneNumber ? `Line: ${activeBot.phoneNumber}` : 'Voice receptionists'}
           </p>
         </button>
       </div>
@@ -189,10 +191,10 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
           <div>
             <h3 className="font-display font-bold text-lg text-brand-text flex items-center gap-2">
               <Icons.Users />
-              <span>Needs Attention</span>
+              <span>Needs Attention (Top 5 Leads)</span>
             </h3>
             <p className="text-xs text-brand-muted mt-0.5">
-              High-priority callers and recent qualified inquiries ready for follow-up.
+              Top 5 prioritized callers and recent qualified inquiries ready for follow-up.
             </p>
           </div>
           <button
