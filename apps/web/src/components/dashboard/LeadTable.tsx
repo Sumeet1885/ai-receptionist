@@ -54,6 +54,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({
   const [pageSize, setPageSize] = useState<number>(10);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const pipelineRef = useRef<HTMLDivElement | null>(null);
+  const scrolledTargetRef = useRef<string | null>(null);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -63,6 +64,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({
 
   useEffect(() => {
     if (!activeTargetId || leads.length === 0) return;
+    if (scrolledTargetRef.current === activeTargetId) return;
 
     setHighlightedLeadId(activeTargetId);
     setViewMode('list');
@@ -88,7 +90,11 @@ export const LeadTable: React.FC<LeadTableProps> = ({
       const el = document.getElementById('lead-row-' + activeTargetId);
       if (el) {
         clearInterval(interval);
+        scrolledTargetRef.current = activeTargetId;
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (typeof window !== 'undefined' && window.location.search.includes('leadId=')) {
+          window.history.replaceState({}, '', window.location.pathname);
+        }
       } else if (attempts >= 25) {
         clearInterval(interval);
       }
