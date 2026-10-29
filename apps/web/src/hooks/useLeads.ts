@@ -30,6 +30,7 @@ export function useLeads() {
     let query = supabase
       .from('leads')
       .select(LEAD_SELECT_FIELDS)
+      .neq('appointment_status', 'ARCHIVED')
       .order('updated_at', { ascending: false });
     if (botId) query = query.eq('bot_id', botId);
     const { data: rawLeads } = await query;

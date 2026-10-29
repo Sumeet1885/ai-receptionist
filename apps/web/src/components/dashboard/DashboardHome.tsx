@@ -23,8 +23,14 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
   navigate
 }) => {
   const activeBotLeads = activeBot ? leads.filter(lead => lead.botId === activeBot.id) : leads;
-  const voiceLeads = activeBotLeads.filter(lead => lead.channel !== 'web');
+  const voiceLeads = activeBotLeads.filter(lead => lead.channel !== 'web' && lead.appointmentStatus !== 'ARCHIVED');
   const hotLeads = voiceLeads.filter(lead => lead.leadScore === 'HOT');
+  const warmLeads = voiceLeads.filter(lead => lead.leadScore === 'WARM');
+  const inboundCount = voiceLeads.filter(lead => lead.channel !== 'outbound').length;
+  const outboundCount = voiceLeads.filter(lead => lead.channel === 'outbound').length;
+  const appointmentsCount = voiceLeads.filter(
+    lead => lead.appointmentStatus && lead.appointmentStatus !== 'None' && lead.appointmentStatus !== 'Not Scheduled' && lead.appointmentStatus !== 'ARCHIVED'
+  ).length;
   const needsAttention = [...hotLeads, ...voiceLeads.filter(lead => lead.leadScore !== 'HOT')].slice(0, 6);
 
   return (
@@ -88,6 +94,92 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* ── KEY PERFORMANCE METRICS STRIP (NUMBERS ON DASHBOARD) ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Metric 1: Total Qualified Leads */}
+        <button
+          type="button"
+          onClick={() => navigate('/leads')}
+          className="text-left bg-brand-card hover:bg-brand-bg/50 border border-brand-border hover:border-brand-accent rounded-xl p-4 shadow-sm transition group"
+        >
+          <div className="flex items-center justify-between text-brand-muted mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider font-body">Total Leads</span>
+            <span className="text-base">👥</span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-display font-extrabold text-brand-text group-hover:text-brand-accent transition">
+              {voiceLeads.length}
+            </span>
+            <span className="text-xs font-semibold text-brand-muted font-body">Qualified</span>
+          </div>
+          <p className="text-[11px] text-brand-muted mt-1 font-body truncate">
+            📞 {inboundCount} Inbound · 🚀 {outboundCount} Outbound
+          </p>
+        </button>
+
+        {/* Metric 2: Hot High-Intent Leads */}
+        <button
+          type="button"
+          onClick={() => navigate('/leads')}
+          className="text-left bg-brand-card hover:bg-rose-500/5 border border-rose-500/30 hover:border-rose-500 rounded-xl p-4 shadow-sm transition group"
+        >
+          <div className="flex items-center justify-between text-rose-600 mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider font-body">🔥 Hot Inquiries</span>
+            <span className="text-base">⚡</span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-display font-extrabold text-rose-600">
+              {hotLeads.length}
+            </span>
+            <span className="text-xs font-semibold text-rose-600/80 font-body">High Intent</span>
+          </div>
+          <p className="text-[11px] text-brand-muted mt-1 font-body truncate">
+            Ready for immediate callback
+          </p>
+        </button>
+
+        {/* Metric 3: Scheduled Appointments */}
+        <button
+          type="button"
+          onClick={() => navigate('/calendar')}
+          className="text-left bg-brand-card hover:bg-brand-bg/50 border border-brand-border hover:border-brand-accent rounded-xl p-4 shadow-sm transition group"
+        >
+          <div className="flex items-center justify-between text-brand-muted mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider font-body">Appointments</span>
+            <span className="text-base">📅</span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-display font-extrabold text-brand-text group-hover:text-brand-accent transition">
+              {appointmentsCount}
+            </span>
+            <span className="text-xs font-semibold text-brand-muted font-body">Booked</span>
+          </div>
+          <p className="text-[11px] text-brand-muted mt-1 font-body truncate">
+            Site visits & meetings sync
+          </p>
+        </button>
+
+        {/* Metric 4: Active Telephony Line */}
+        <button
+          type="button"
+          onClick={() => navigate('/inbound-calls')}
+          className="text-left bg-brand-card hover:bg-brand-bg/50 border border-brand-border hover:border-brand-accent rounded-xl p-4 shadow-sm transition group"
+        >
+          <div className="flex items-center justify-between text-brand-muted mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider font-body">Telephony Line</span>
+            <span className="text-xs px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 font-bold">Online</span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-sm sm:text-base font-display font-extrabold text-brand-text truncate">
+              {activeBot?.phoneNumber || '+91 22 6423 0099'}
+            </span>
+          </div>
+          <p className="text-[11px] text-brand-muted mt-1 font-body truncate">
+            AI Receptionist answering 24/7
+          </p>
+        </button>
       </div>
 
 
@@ -191,7 +283,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
 
                   <button
                     type="button"
-                    onClick={() => navigate('/leads')}
+                    onClick={() => navigate(`/leads?leadId=${encodeURIComponent(lead.id)}`)}
                     className="px-3.5 py-1.5 bg-brand-bg hover:bg-brand-card hover:border-brand-accent border border-brand-border rounded-lg text-xs font-bold text-brand-text transition flex items-center gap-1 shadow-sm"
                   >
                     <span>Open Lead</span>

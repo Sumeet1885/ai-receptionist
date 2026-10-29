@@ -1,8 +1,8 @@
 import { formatExpiryIST } from '@ai-receptionist/contracts';
 import { useEffect, useState, type FormEvent } from 'react';
-import { Ban, Loader2, Mail, RotateCcw, Search, Users } from 'lucide-react';
+import { Ban, Bot, Loader2, Mail, PhoneCall, RotateCcw, Search, Users } from 'lucide-react';
 import { LIMITS } from '@ai-receptionist/contracts';
-import { customersApi, type Customer, type CustomerStage } from '../api';
+import { customersApi, type Customer, type CustomerStage, type BotSummary } from '../api';
 import { useToast } from '../toast';
 import { Button, Card, Drawer, FilterTabs, PageError, Pager, cx, formatDate, initials, timeAgo } from '../ui';
 
@@ -162,6 +162,28 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
   const toast = useToast();
   const canSupport = roles.includes('super_admin') || roles.includes('support');
   const canSuspend = roles.includes('super_admin');
+  const [botData, setBotData] = useState<{ assigned: BotSummary[]; all: BotSummary[] } | null>(null);
+  const [loadingBots, setLoadingBots] = useState(true);
+  const [selectedBotId, setSelectedBotId] = useState('');
+  const [showNewAgentForm, setShowNewAgentForm] = useState(false);
+  const [newAgentName, setNewAgentName] = useState(customer.businessName || '');
+  const [newAgentIndustry, setNewAgentIndustry] = useState('');
+  const [newAgentPhone, setNewAgentPhone] = useState('');
+
+  const loadBots = async () => {
+    try {
+      const res = await customersApi.getAgents(customer.userId);
+      setBotData(res);
+    } catch {
+      // Non-blocking
+    } finally {
+      setLoadingBots(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadBots();
+  }, [customer.userId]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const suspended = customer.status === 'suspended';
@@ -235,6 +257,145 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
       </dl>
       {customer.stage === 'verify_email' && <p className="text-xs text-subtle">They have not confirmed their email yet, so they cannot use the app. Resending sends a fresh confirmation link.</p>}
       {customer.stage === 'set_password' && <p className="text-xs text-subtle">Their email is confirmed but no password is set. Resending sends a fresh activation link.</p>}
+
+      <div className="space-y-3 pt-3 border-t border-line">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-sm text-ink flex items-center gap-1.5">
+            <Bot className="h-4 w-4 text-primary" />
+            Assigned Voice Agents ({botData?.assigned.length ?? 0})
+          </h3>
+          {canSupport && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowNewAgentForm((v) => !v)}
+            >
+              {showNewAgentForm ? 'Cancel' : '+ Provision Agent'}
+            </Button>
+          )}
+        </div>
+
+        {loadingBots ? (
+          <div className="flex items-center justify-center py-4 text-xs text-subtle">
+            <Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading assigned agents...
+          </div>
+        ) : botData?.assigned.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-line p-3 text-center text-xs text-subtle">
+            No agent persona currently assigned to this customer.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {botData?.assigned.map((bot) => (
+              <div key={bot.id} className="rounded-xl border border-line bg-surface/50 p-3 space-y-1.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-ink">{bot.business_name}</span>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success bg-success-surface px-2 py-0.5 rounded-full">
+                    <span className="h-1.5 w-1.5 rounded-full bg-success" /> Active
+                  </span>
+                </div>
+                <p className="text-subtle">Industry: {bot.industry || 'General'}</p>
+                <p className="text-subtle flex items-center gap-1.5 font-mono">
+                  <PhoneCall className="h-3.5 w-3.5 text-primary" />
+                  {bot.dograh_phone_number || 'No phone number assigned'}
+                </p>
+                <div className="flex gap-2 pt-1">
+                  <span className={cx('text-[10px] px-2 py-0.5 rounded border', bot.dograh_workflow_id ? 'bg-info-surface text-info border-info/30' : 'bg-background text-subtle border-line')}>
+                    Inbound: {bot.dograh_workflow_id ? 'Configured' : 'Ready'}
+                  </span>
+                  <span className={cx('text-[10px] px-2 py-0.5 rounded border', bot.dograh_outbound_workflow_id ? 'bg-info-surface text-info border-info/30' : 'bg-background text-subtle border-line')}>
+                    Outbound: {bot.dograh_outbound_workflow_id ? 'Configured' : 'Ready'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {canSupport && botData && botData.all.length > 0 && !showNewAgentForm && (
+          <div className="rounded-xl border border-line bg-background/50 p-3 space-y-2 text-xs">
+            <span className="font-semibold text-ink block">Assign Existing Persona</span>
+            <div className="flex gap-2">
+              <select
+                className="flex-1 rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs text-ink focus:border-primary focus:outline-none"
+                value={selectedBotId}
+                onChange={(e) => setSelectedBotId(e.target.value)}
+              >
+                <option value="">Select an agent persona...</option>
+                {botData.all.map((b) => (
+                  <option key={b.id} value={b.id} disabled={b.owner_id === customer.userId}>
+                    {b.business_name} {b.dograh_phone_number ? `(${b.dograh_phone_number})` : ''} {b.owner_id === customer.userId ? '(Assigned to this user)' : ''}
+                  </option>
+                ))}
+              </select>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={!selectedBotId || busy}
+                onClick={async () => {
+                  if (!selectedBotId) return;
+                  await act(async () => {
+                    await customersApi.assignAgent(customer.userId, selectedBotId);
+                    const refreshed = await customersApi.getAgents(customer.userId);
+                    setBotData(refreshed);
+                    setSelectedBotId('');
+                  }, 'Agent persona assigned');
+                }}
+              >
+                Assign
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {canSupport && showNewAgentForm && (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!newAgentName.trim()) return;
+              await act(async () => {
+                await customersApi.createAgent(customer.userId, {
+                  businessName: newAgentName,
+                  industry: newAgentIndustry,
+                  phoneNumber: newAgentPhone,
+                });
+                const refreshed = await customersApi.getAgents(customer.userId);
+                setBotData(refreshed);
+                setShowNewAgentForm(false);
+                setNewAgentPhone('');
+              }, 'New agent provisioned and assigned');
+            }}
+            className="rounded-xl border border-primary/20 bg-primary-soft/10 p-3 space-y-2 text-xs"
+          >
+            <span className="font-semibold text-ink block">Provision & Assign New Persona</span>
+            <input
+              type="text"
+              placeholder="Persona / Business Name"
+              className="w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs text-ink focus:border-primary focus:outline-none"
+              value={newAgentName}
+              onChange={(e) => setNewAgentName(e.target.value)}
+              required
+            />
+            <input
+              type="text"
+              placeholder="Industry (e.g. Healthcare, Real Estate, Retail)"
+              className="w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs text-ink focus:border-primary focus:outline-none"
+              value={newAgentIndustry}
+              onChange={(e) => setNewAgentIndustry(e.target.value)}
+            />
+            <input
+              type="text"
+              placeholder="Assigned Phone Number (e.g. +91 98765 43210)"
+              className="w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs text-ink focus:border-primary focus:outline-none"
+              value={newAgentPhone}
+              onChange={(e) => setNewAgentPhone(e.target.value)}
+            />
+            <div className="flex justify-end gap-2 pt-1">
+              <Button size="sm" variant="ghost" onClick={() => setShowNewAgentForm(false)}>Cancel</Button>
+              <Button size="sm" type="submit" disabled={busy || !newAgentName.trim()}>Provision & Assign</Button>
+            </div>
+          </form>
+        )}
+      </div>
     </Drawer>
   );
 }

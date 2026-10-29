@@ -374,6 +374,18 @@ export interface Customer {
   lastSignInAt: string | null;
 }
 
+export interface BotSummary {
+  id: string;
+  business_name: string;
+  industry: string;
+  dograh_phone_number: string | null;
+  dograh_workflow_id: string | null;
+  dograh_outbound_workflow_id: string | null;
+  is_active: boolean;
+  created_at: string;
+  owner_id: string;
+}
+
 export const customersApi = {
   list: (params: { stage?: CustomerStage; search?: string; page?: number }) => {
     const query = new URLSearchParams();
@@ -385,4 +397,10 @@ export const customersApi = {
   setStatus: (userId: string, status: 'active' | 'suspended') =>
     request<{ ok: true; status: string }>(`/customers/${encodeURIComponent(userId)}/status`, { method: 'POST', body: { status } }),
   resend: (userId: string) => request<{ ok: true }>(`/customers/${encodeURIComponent(userId)}/resend`, { method: 'POST' }),
+  getAgents: (userId: string) =>
+    request<{ assigned: BotSummary[]; all: BotSummary[] }>(`/customers/${encodeURIComponent(userId)}/agents`),
+  assignAgent: (userId: string, botId: string) =>
+    request<{ ok: true; botId: string }>(`/customers/${encodeURIComponent(userId)}/assign-agent`, { method: 'POST', body: { botId } }),
+  createAgent: (userId: string, data: { businessName: string; industry?: string; greeting?: string; phoneNumber?: string }) =>
+    request<{ ok: true; bot: BotSummary }>(`/customers/${encodeURIComponent(userId)}/create-agent`, { method: 'POST', body: data }),
 };

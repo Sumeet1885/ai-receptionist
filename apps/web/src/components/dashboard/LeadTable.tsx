@@ -45,8 +45,40 @@ export const LeadTable: React.FC<LeadTableProps> = ({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [playingLeadId, setPlayingLeadId] = useState<string | null>(null);
+  const [highlightedLeadId, setHighlightedLeadId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const pipelineRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterChannel, filterScore, searchQuery, selectedBotId]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const targetLeadId = params.get('leadId');
+    if (targetLeadId && leads.length > 0) {
+      setHighlightedLeadId(targetLeadId);
+      setViewMode('list');
+      setFilterScore('all');
+      setFilterChannel('all');
+      setSearchQuery('');
+
+      const leadIndex = leads.findIndex(l => l.id === targetLeadId);
+      if (leadIndex !== -1) {
+        const targetPage = Math.floor(leadIndex / pageSize) + 1;
+        setCurrentPage(targetPage);
+      }
+
+      setTimeout(() => {
+        const el = document.getElementById(`lead-row-${targetLeadId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 400);
+    }
+  }, [leads, pageSize]);
 
   const handleCardFilter = (score: 'all' | 'HOT' | 'WARM') => {
     if (filterScore === score && score !== 'all') {
@@ -131,22 +163,27 @@ export const LeadTable: React.FC<LeadTableProps> = ({
   }, []);
 
   const handleDeleteLead = async (leadId: string) => {
+    if (!window.confirm('Archive this lead? It will be safely removed from your active pipeline.')) {
+      return;
+    }
     setDeletingId(leadId);
     setLeads(prev => prev.filter(l => l.id !== leadId));
 
     try {
+      // Soft-delete: mark appointment_status as ARCHIVED to retain call logs, audio & transcripts
       const { error } = await supabase
         .from('leads')
-        .delete()
+        .update({ appointment_status: 'ARCHIVED' })
         .eq('id', leadId);
 
       if (error) {
-        console.error('Failed to delete lead from database:', error);
-        showToast('Failed to delete lead: ' + error.message, 'error');
+        console.error('Failed to archive lead:', error);
+        showToast('Failed to archive lead: ' + error.message, 'error');
         // Restore from database
         const { data } = await supabase
           .from('leads')
           .select(LEAD_SELECT_FIELDS)
+          .neq('appointment_status', 'ARCHIVED')
           .order('updated_at', { ascending: false });
         if (data) {
           setLeads(data.map((l: any) => ({
@@ -162,17 +199,13 @@ export const LeadTable: React.FC<LeadTableProps> = ({
             summary: l.summary,
             appointmentStatus: l.appointment_status,
             date: formatLeadDate(l.updated_at),
-            channel: l.channel,
-            recordingUrl: l.recording_url,
-            durationSeconds: l.duration_seconds
           })));
         }
       } else {
-        showToast('Lead permanently deleted', 'success');
+        showToast('Lead archived (soft-deleted).', 'success');
       }
     } catch (err: any) {
-      console.error('Error deleting lead:', err);
-      showToast('Error deleting lead: ' + (err.message || 'Unknown error'), 'error');
+      showToast('Error archiving lead: ' + err.message, 'error');
     } finally {
       setDeletingId(null);
     }
@@ -262,6 +295,10 @@ export const LeadTable: React.FC<LeadTableProps> = ({
     ? searchedLeads
     : searchedLeads.filter(l => l.leadScore === filterScore);
 
+  const totalPages = Math.max(1, Math.ceil(visibleLeads.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedLeads = visibleLeads.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
+
   const hotCount = channelFilteredLeads.filter(l => l.leadScore === 'HOT').length;
   const warmCount = channelFilteredLeads.filter(l => l.leadScore === 'WARM').length;
 
@@ -276,7 +313,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({
       subtitle: 'Interested · Budget & Requirements Logged',
       leads: kanbanWarmLeads,
       accent: 'border-amber-500/40 text-amber-700 bg-amber-500/10',
-      headerBg: 'bg-amber-50/30 dark:bg-amber-950/20',
+      headerBg: 'bg-amber-50/50',
     },
     {
       id: 'HOT',
@@ -284,7 +321,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({
       subtitle: 'High Intent · Site Visit / Callback Confirmed',
       leads: kanbanHotLeads,
       accent: 'border-rose-500/40 text-rose-700 bg-rose-500/10',
-      headerBg: 'bg-rose-50/30 dark:bg-rose-950/20',
+      headerBg: 'bg-rose-50/50',
     },
   ];
 
@@ -897,11 +934,14 @@ export const LeadTable: React.FC<LeadTableProps> = ({
                 )}
               </div>
             ) : (
-              visibleLeads.map((lead) => (
+              paginatedLeads.map((lead) => (
                 <div
                   key={lead.id}
+                  id={`lead-row-${lead.id}`}
                   className={`p-5 sm:p-6 transition flex flex-col lg:flex-row justify-between gap-5 lg:items-center card-hover-glow ${
-                    lead.leadScore === 'HOT'
+                    lead.id === highlightedLeadId
+                      ? 'ring-2 ring-emerald-500 bg-emerald-500/10 shadow-lg'
+                      : lead.leadScore === 'HOT'
                       ? 'bg-rose-500/[0.04] border-l-4 border-l-rose-500'
                       : 'hover:bg-brand-bg/30'
                   }`}
@@ -1116,7 +1156,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({
                         onClick={() => handleDeleteLead(lead.id)}
                         disabled={deletingId === lead.id}
                         className="h-8 w-8 flex items-center justify-center rounded-lg border border-brand-border bg-brand-bg hover:bg-rose-500/10 hover:border-rose-500/30 hover:text-rose-700 text-brand-muted transition text-xs shadow-sm"
-                        title="Permanently Delete Lead"
+                        title="Archive Lead (Soft-delete)"
                       >
                         <Icons.Trash />
                       </button>
@@ -1124,6 +1164,71 @@ export const LeadTable: React.FC<LeadTableProps> = ({
                   </div>
                 </div>
               ))
+            )}
+
+            {/* Pagination Controls */}
+            {visibleLeads.length > 0 && (
+              <div className="px-5 py-3.5 border-t border-brand-border bg-brand-bg/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-brand-muted">
+                <div className="flex items-center gap-2">
+                  <span>
+                    Showing <span className="font-bold text-brand-text">{(safeCurrentPage - 1) * pageSize + 1}</span> to{' '}
+                    <span className="font-bold text-brand-text">{Math.min(safeCurrentPage * pageSize, visibleLeads.length)}</span> of{' '}
+                    <span className="font-bold text-brand-text">{visibleLeads.length}</span> leads
+                  </span>
+                  <div className="flex items-center gap-1 ml-3 border-l border-brand-border pl-3">
+                    <span className="text-[11px]">Per page:</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="bg-brand-bg border border-brand-border rounded px-2 py-0.5 text-xs text-brand-text cursor-pointer"
+                    >
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    disabled={safeCurrentPage <= 1}
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    className="px-2.5 py-1 rounded border border-brand-border bg-brand-bg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-brand-card text-brand-text font-semibold transition"
+                  >
+                    ← Prev
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(p => p === 1 || p === totalPages || Math.abs(p - safeCurrentPage) <= 1)
+                    .map((p, idx, arr) => (
+                      <React.Fragment key={p}>
+                        {idx > 0 && arr[idx - 1] !== p - 1 && <span className="px-1 text-brand-muted">…</span>}
+                        <button
+                          type="button"
+                          onClick={() => setCurrentPage(p)}
+                          className={`w-7 h-7 rounded text-xs font-bold transition ${
+                            p === safeCurrentPage
+                              ? 'bg-brand-accent text-primary-foreground shadow-sm'
+                              : 'hover:bg-brand-card text-brand-muted border border-brand-border'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      </React.Fragment>
+                    ))}
+                  <button
+                    type="button"
+                    disabled={safeCurrentPage >= totalPages}
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    className="px-2.5 py-1 rounded border border-brand-border bg-brand-bg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-brand-card text-brand-text font-semibold transition"
+                  >
+                    Next →
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         )}
