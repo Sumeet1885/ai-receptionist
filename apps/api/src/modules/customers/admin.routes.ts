@@ -326,7 +326,7 @@ router.post('/:id/assign-plan', requireAdminRole('support'), handle(async (req, 
     ? currency
     : account.plan_currency || (plan.price_usd > 0 && !plan.price_inr ? 'USD' : 'INR');
 
-  const updates: any = {
+  const baseUpdates: any = {
     plan_id: plan.id,
     plan_currency: chosenCurrency,
     plan_started_at: startsAt.toISOString(),
@@ -337,20 +337,18 @@ router.post('/:id/assign-plan', requireAdminRole('support'), handle(async (req, 
     trial_days: plan.is_trial ? (plan.trial_days || 14) : null,
     trial_started_at: plan.is_trial ? startsAt.toISOString() : null,
     trial_ends_at: plan.is_trial ? periodEnd.toISOString() : null,
-    call_minutes_quota: plan.monthly_minutes ?? null,
     updated_at: new Date().toISOString(),
   };
 
   let updateRes = await supabase
     .from('customer_accounts')
-    .update(updates)
+    .update({ ...baseUpdates, call_minutes_quota: plan.monthly_minutes ?? null })
     .eq('user_id', req.params.id);
 
-  if (updateRes.error && updateRes.error.code === '42703') {
-    delete updates.call_minutes_quota;
+  if (updateRes.error && (updateRes.error.message?.includes('call_minutes_quota') || updateRes.error.code === 'PGRST204' || updateRes.error.code === '42703')) {
     updateRes = await supabase
       .from('customer_accounts')
-      .update(updates)
+      .update(baseUpdates)
       .eq('user_id', req.params.id);
   }
 
