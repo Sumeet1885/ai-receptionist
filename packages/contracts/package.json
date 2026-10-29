@@ -1,0 +1,17 @@
+{
+  "name": "@ai-receptionist/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "libphonenumber-js": "^1.13.7"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

@@ -1,0 +1,28 @@
+import type { CustomerAccount } from './repository';
+
+/**
+ * Where a signed-in customer is in their lifecycle. The web app always sends them to this step,
+ * so leaving halfway and coming back resumes exactly where they stopped.
+ *
+ *   not_provisioned → login exists but was never approved (e.g. created before signup was closed)
+ *   suspended       → blocked by an admin
+ *   verify_email    → email not confirmed yet: no access to anything else
+ *   set_password    → activation link used, password not chosen yet
+ *   onboarding      → first-time setup (currently: create the first receptionist)
+ *   active          → full access
+ */
+export type AccountStage = 'not_provisioned' | 'suspended' | 'verify_email' | 'set_password' | 'onboarding' | 'active' | 'payment_required' | 'scheduled';
+
+export function computeAccountStage(account: Pick<CustomerAccount, 'status' | 'password_set_at' | 'onboarding_completed_at' | 'access_expires_at' | 'access_starts_at'> | null, emailConfirmed: boolean): AccountStage {
+  if (!account) return 'not_provisioned';
+  if (account.status === 'suspended') return 'suspended';
+  if (!emailConfirmed) return 'verify_email';
+  if (!account.password_set_at) return 'set_password';
+  if (account.access_expires_at && Date.parse(account.access_expires_at) <= Date.now()) return 'payment_required';
+  if (account.access_starts_at && Date.parse(account.access_starts_at) > Date.now()) return 'scheduled';
+  if (!account.onboarding_completed_at) return 'onboarding';
+  return 'active';
+}
+
+// Customer password rules live with the other shared validation.
+export { checkCustomerPassword } from '@ai-receptionist/contracts';

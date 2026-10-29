@@ -11,3 +11,12 @@ target.md
 .agents
 .superpowers
 .mcp.json
+
+# Supabase CLI local link state (per developer)
+**/supabase/.temp/
+
+# Turborepo local cache and logs
+.turbo
+
+# Local pagination test manifests (dummy account identifiers).
+apps/api/.test-data/

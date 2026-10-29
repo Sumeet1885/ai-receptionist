@@ -1,0 +1,327 @@
+import { PasswordInput } from '../ui/password-input';
+import React, { useState, useEffect } from 'react';
+import { checkCustomerPassword, LIMITS } from '@ai-receptionist/contracts';
+import { Button } from '../ui/button';
+import { Input, Label } from '../ui/field';
+import { AuthSplitLayout } from './AuthSplitLayout';
+import { Honeypot } from '../security/Honeypot';
+import { Turnstile } from '../security/Turnstile';
+import { supabase } from '../../lib/supabaseClient';
+import { accountApi } from '../../lib/accountApi';
+import { postPublic, usePublicFormGuard } from '../../lib/publicForm';
+
+// There is no self-signup: workspaces are created when admin approve an access request.
+export type AuthMode = 'signin' | 'forgot' | 'reset' | 'resend';
+
+interface AuthViewProps {
+  setView: (view: string) => void;
+  showToast: (message: string, type?: 'success' | 'error') => void;
+  defaultMode?: AuthMode;
+}
+
+export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultMode = 'signin' }) => {
+  const [mode, setMode] = useState<AuthMode>(defaultMode);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [sessionError, setSessionError] = useState<string | null>(null);
+  const [checkingRecovery, setCheckingRecovery] = useState(defaultMode === 'reset');
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const guard = usePublicFormGuard();
+
+  useEffect(() => {
+    setMode(defaultMode);
+  }, [defaultMode]);
+
+  useEffect(() => {
+    if (mode !== 'reset') {
+      setSessionError(null);
+      setCheckingRecovery(false);
+      setRecoveryEmail('');
+      return;
+    }
+    let cancelled = false;
+    setCheckingRecovery(true);
+    void supabase.auth.getSession().then(({ data, error }) => {
+      if (cancelled) return;
+      if (error || !data.session || !sessionStorage.getItem('workspace-recovery-proof')) {
+        setSessionError('Open a fresh password reset link from your email to continue. Signing in alone does not authorize a password reset.');
+      } else {
+        setSessionError(null);
+        setRecoveryEmail(data.session.user.email || '');
+      }
+    }).catch(() => {
+      if (!cancelled) setSessionError('We could not check your reset session. Please open your email link again.');
+    }).finally(() => { if (!cancelled) setCheckingRecovery(false); });
+    return () => { cancelled = true; };
+  }, [mode]);
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) return showToast("Please enter email and password", "error");
+    if (email.length > LIMITS.email.max || password.length > LIMITS.customerPassword.max) return showToast("Email or password is too long", "error");
+    
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      // Paid signups have a password before their email is confirmed: offer a new confirmation link.
+      if (error?.code === 'email_not_confirmed') {
+        setMode('resend');
+        return showToast("Confirm your email first. We can send you a new link.", "error");
+      }
+      if (error) throw error;
+      showToast("Signed in successfully!", "success");
+    } catch (err: any) {
+      showToast(err.message, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Password reset and activation resend both email a one-time link through our API (SES).
+  const handleEmailLinkRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return showToast("Please enter your email address", "error");
+    if (!guard.captchaReady) return showToast("Please complete the security check", "error");
+
+    setLoading(true);
+    try {
+      await postPublic(mode === 'resend' ? '/activation-resend' : '/password-reset', { email, ...guard.guardFields() });
+      setResetSent(true);
+    } catch (err: any) {
+      showToast(err.message || "Failed to send the link", "error");
+      guard.resetChallenge();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!password) return showToast("Please enter a new password", "error");
+    const problem = checkCustomerPassword(password, undefined);
+    if (problem) return showToast(problem, "error");
+    if (password !== confirmPassword) return showToast("Passwords do not match", "error");
+
+    setLoading(true);
+    try {
+      // 1. If URL has code parameter, make sure code exchange completes
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      if (code) {
+        try {
+          await supabase.auth.exchangeCodeForSession(code);
+        } catch {
+          // If already exchanged, proceed
+        }
+      }
+
+      // 2. Set the password through the API (same policy as activation; needs the recovery session)
+      await accountApi.setPassword(password, sessionStorage.getItem('workspace-recovery-proof') || undefined);
+      sessionStorage.removeItem('workspace-recovery-proof');
+
+      showToast("Password updated successfully! Welcome back.", "success");
+      setPassword('');
+      setConfirmPassword('');
+      setSessionError(null);
+      setView('dashboard');
+    } catch (err: any) {
+      const msg = err?.message || "Failed to update password";
+      if (msg.includes("Auth session missing") || msg.includes("session")) {
+        setSessionError("Your reset link has expired or is invalid. Please request a new password reset link below.");
+      }
+      showToast(msg, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const titles: Record<AuthMode, { title: string; description: string }> = {
+    signin: { title: 'Welcome back', description: 'Sign in to your Bolega India workspace.' },
+    forgot: { title: 'Reset password', description: 'Enter your account email to receive a password recovery link.' },
+    reset: { title: 'Create a new password', description: 'Please choose a secure new password for your account.' },
+    resend: { title: 'Resend activation link', description: 'Enter the email from your access request or purchase to get a new activation or confirmation link.' },
+  };
+
+  const backToSignIn = (
+    <button
+      type="button"
+      onClick={() => {
+        setResetSent(false);
+        setSessionError(null);
+        setMode('signin');
+        setView('auth-signin');
+      }}
+      className="font-medium text-primary hover:underline"
+    >
+      ← Back to sign in
+    </button>
+  );
+
+  return (
+    <AuthSplitLayout art="signin" texture={mode === 'forgot' ? 'waves' : mode === 'reset' ? 'phulkari' : mode === 'resend' ? 'seed' : 'jaali'}>
+      <div className="mx-auto w-full max-w-md">
+          <div className="mb-8">
+            <h1 className="mb-2 font-display text-4xl font-semibold tracking-[-0.04em] text-text">{titles[mode].title}</h1>
+            <p className="text-sm text-text-subtle">{titles[mode].description}</p>
+            {mode === 'reset' && recoveryEmail && !sessionError && <p className="mt-3 break-words text-sm text-primary">Resetting the password for <span className="font-semibold">{recoveryEmail}</span></p>}
+          </div>
+
+          {mode === 'signin' && (
+            <>
+              <form onSubmit={handleEmailAuth} className="space-y-4">
+                <div>
+                  <Label htmlFor="auth-email">Email address</Label>
+                  <Input
+                    id="auth-email"
+                    type="email"
+                    required
+                    maxLength={LIMITS.email.max}
+                    autoComplete="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="name@company.com"
+                  />
+                </div>
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <Label htmlFor="auth-password" className="mb-0">Password</Label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResetSent(false);
+                        setMode('forgot');
+                      }}
+                      className="text-xs font-medium text-primary hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                  <PasswordInput
+                    id="auth-password"
+                    type="password"
+                    required
+                    maxLength={LIMITS.customerPassword.max}
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                  />
+                </div>
+                <Button type="submit" size="lg" className="mt-2 w-full" disabled={loading}>
+                  {loading ? 'Please wait…' : 'Sign in'}
+                </Button>
+              </form>
+
+              <div className="mt-6 space-y-2 text-center text-sm text-text-subtle">
+                <p>Don&apos;t have a workspace yet? <button type="button" onClick={() => setView('request-access')} className="font-medium text-primary hover:underline">Request free access</button></p>
+                <p>Approved but no activation email? <button type="button" onClick={() => { setResetSent(false); setMode('resend'); }} className="font-medium text-primary hover:underline">Resend it</button></p>
+              </div>
+            </>
+          )}
+
+          {(mode === 'forgot' || mode === 'resend') && (
+            <div className="space-y-4">
+              {resetSent ? (
+                <div role="status" className="space-y-2 rounded-medium border border-success/30 bg-success-surface p-4 text-center">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-success/15 text-lg font-bold text-success" aria-hidden="true">
+                    ✓
+                  </div>
+                  <h2 className="text-sm font-bold text-success">{mode === 'resend' ? 'Activation email requested' : 'Recovery email sent'}</h2>
+                  <p className="text-xs text-text">
+                    {mode === 'resend'
+                      ? <>If <span className="font-semibold">{email}</span> has a workspace waiting to be activated, a new activation link is on its way.</>
+                      : <>If an account exists for <span className="font-semibold">{email}</span>, you will receive a password reset link shortly.</>}
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={handleEmailLinkRequest} className="space-y-4">
+                  <Honeypot {...guard.honeypotProps} />
+                  <div>
+                    <Label htmlFor="auth-recovery-email">Account email</Label>
+                    <Input
+                      id="auth-recovery-email"
+                      type="email"
+                      required
+                      maxLength={LIMITS.email.max}
+                      autoComplete="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="name@company.com"
+                    />
+                  </div>
+                  <Turnstile {...guard.turnstileProps} />
+                  <Button type="submit" size="lg" className="w-full" disabled={loading}>
+                    {loading ? 'Sending link…' : mode === 'resend' ? 'Send activation link' : 'Send reset link'}
+                  </Button>
+                </form>
+              )}
+
+              <div className="mt-6 text-center text-sm">{backToSignIn}</div>
+            </div>
+          )}
+
+          {mode === 'reset' && (
+            checkingRecovery ? <p role="status" className="text-sm text-text-subtle">Checking your password reset session...</p> : sessionError ? (
+              <div role="alert" className="space-y-4 rounded-medium border border-danger/30 bg-danger-surface p-5 text-center">
+                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-danger/15 text-lg font-bold text-danger" aria-hidden="true">
+                  !
+                </div>
+                <div className="space-y-1">
+                  <h2 className="text-sm font-bold text-danger">Session expired or missing</h2>
+                  <p className="text-xs leading-relaxed text-text">{sessionError}</p>
+                </div>
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    setSessionError(null);
+                    setMode('forgot');
+                    setView('auth-forgot');
+                  }}
+                >
+                  Request new reset link
+                </Button>
+                <div className="pt-2 text-center text-xs">{backToSignIn}</div>
+              </div>
+            ) : (
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <div>
+                  <Label htmlFor="auth-new-password">New password</Label>
+                  <PasswordInput
+                    id="auth-new-password"
+                    type="password"
+                    required
+                    autoComplete="new-password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder={`At least ${LIMITS.customerPassword.min} characters`}
+                    minLength={LIMITS.customerPassword.min}
+                    maxLength={LIMITS.customerPassword.max}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="auth-confirm-password">Confirm new password</Label>
+                  <PasswordInput
+                    id="auth-confirm-password"
+                    type="password"
+                    required
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter your new password"
+                    maxLength={LIMITS.customerPassword.max}
+                  />
+                </div>
+                <Button type="submit" size="lg" className="mt-2 w-full" disabled={loading}>
+                  {loading ? 'Updating password…' : 'Update password'}
+                </Button>
+                <div className="mt-6 text-center text-sm">{backToSignIn}</div>
+              </form>
+            )
+          )}
+      </div>
+    </AuthSplitLayout>
+  );
+};

@@ -1,0 +1,119 @@
+/*
+ * Bolega India global theme.
+ *
+ * Single source of truth for colours, typography, spacing, radii, shadows and motion.
+ * Declared in Tailwind's @theme (static, so every variable is always emitted on :root):
+ * plain CSS can use var(--color-primary), and Tailwind generates matching utilities
+ * (bg-primary, text-primary-foreground, border-border, rounded-pill, shadow-card, font-display …).
+ */
+@theme static {
+  /* ── Brand palette ─────────────────────────────────────────────── */
+  --color-background: #f7f6ef;
+  --color-surface: #fffdf8;
+  --color-text: #173e36;
+  --color-primary: #24695b;
+  --color-primary-foreground: #fffdf8;
+  --color-accent-lime: #d4ef7a;
+  --color-accent-orange: #ed754a;
+  --color-text-muted: #768074; /* 3.8:1 on background — large or decorative text only */
+  --color-border: #dce1d2;
+
+  /* ── Derived states (one formula everywhere) ───────────────────── */
+  --color-text-subtle: #5f6a5e; /* muted hue at 5.2:1 — use for small secondary text */
+  --color-surface-sunken: color-mix(in srgb, var(--color-border) 35%, var(--color-background));
+  --color-border-strong: color-mix(in srgb, var(--color-text) 22%, var(--color-border));
+  --color-primary-hover: color-mix(in srgb, var(--color-primary) 82%, var(--color-text));
+  --color-primary-active: var(--color-text);
+  --color-accent-orange-strong: #b9471f; /* orange fill for text buttons: 5.3:1 with white */
+  --color-accent-orange-hover: color-mix(in srgb, var(--color-accent-orange-strong) 85%, var(--color-text));
+  --color-accent-lime-soft: color-mix(in srgb, var(--color-accent-lime) 45%, var(--color-surface));
+  --color-focus-ring: var(--color-accent-orange);
+  --color-disabled: color-mix(in srgb, var(--color-text-muted) 30%, var(--color-background));
+  --color-disabled-foreground: var(--color-text-muted);
+  --color-overlay: color-mix(in srgb, var(--color-text) 45%, transparent);
+
+  /* ── Semantic states (distinct from brand colours) ─────────────── */
+  --color-success: #2e7d4f;
+  --color-success-surface: #e5f2e8;
+  --color-warning: #8a5300;
+  --color-warning-surface: #fbefd9;
+  --color-danger: #b42318;
+  --color-danger-surface: #fbe7e4;
+  --color-info: #2b5f9e;
+  --color-info-surface: #e6eef8;
+
+  /* ── Typography ────────────────────────────────────────────────── */
+  /* Noto Sans Devanagari follows each Latin face so Hindi/Marathi glyphs use it, not a system font. */
+  --font-display: "Bricolage Grotesque", "Noto Sans Devanagari", sans-serif;
+  --font-body: "Hanken Grotesk", "Noto Sans Devanagari", sans-serif;
+  --font-accent: "Fraunces", Georgia, serif;
+  --font-devanagari: "Noto Sans Devanagari", sans-serif;
+  --font-sans: var(--font-body);
+
+  /* ── Radii ─────────────────────────────────────────────────────── */
+  --radius-small: 8px;
+  --radius-medium: 16px;
+  --radius-large: 24px;
+  --radius-pill: 9999px;
+
+  /* ── Shadows ───────────────────────────────────────────────────── */
+  --shadow-card: 0 12px 32px rgb(23 62 54 / 8%);
+  --shadow-floating: 0 20px 55px rgb(35 74 50 / 10%);
+
+  /* ── Spacing (layout rhythm; Tailwind's numeric scale covers the rest) ── */
+  --spacing-gutter: clamp(16px, 5vw, 72px);
+  --spacing-section: clamp(72px, 9vw, 140px);
+  --container-content: 1280px;
+
+  /* ── Motion ────────────────────────────────────────────────────── */
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 150ms;
+  --duration-base: 250ms;
+  --duration-slow: 450ms;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.025em;
+  }
+
+  :lang(hi),
+  :lang(mr) {
+    font-family: var(--font-devanagari);
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-focus-ring);
+    outline-offset: 3px;
+  }
+
+  ::selection {
+    background-color: var(--color-accent-lime);
+    color: var(--color-text);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}

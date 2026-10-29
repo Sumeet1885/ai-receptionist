@@ -1,0 +1,57 @@
+# ── WEB image — PRODUCTION ───────────────────────────────────────────────────
+# recrui8-style per-environment Dockerfile. The browser-public VITE_* values are
+# BAKED IN here (Vite bakes VITE_* into the client bundle at BUILD time, so they
+# cannot be changed at runtime). This file holds the PRODUCTION values;
+# apps/web/Dockerfile.staging holds staging's.
+#
+#   • Local dev                → apps/web/Dockerfile  (localhost defaults)
+#   • CI staging build         → apps/web/Dockerfile.staging
+#   • CI production build      → THIS file  (the unified Docker image workflow selects it for production)
+#
+# NOTE: only browser-PUBLIC config belongs here (it ships to the client anyway).
+# Real secrets (DB, JWT, API keys) are NEVER baked — they stay in server/.env.
+#
+# ✅ CONFIRM the production URLs below before the first production build.
+
+# ── Stage 1: Build ───────────────────────────────────────────────────────────
+FROM node:22-alpine AS build
+WORKDIR /repo
+
+# Install the pnpm version declared in package.json directly, independent of bundled Corepack.
+RUN npm install -g pnpm@10.34.7
+
+# Build context: repository root (pnpm workspace). Every workspace manifest is copied so the
+# shared lockfile can be checked (--frozen-lockfile).
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
+COPY apps/admin/package.json apps/admin/
+COPY packages/contracts/package.json packages/contracts/
+# The image also serves the admin console at /super-admin (see Caddyfile).
+RUN pnpm install --frozen-lockfile --filter "@ai-receptionist/web..." --filter "@ai-receptionist/admin..."
+
+COPY packages/contracts packages/contracts
+COPY apps/web apps/web
+COPY apps/admin apps/admin
+
+# ── PRODUCTION build-time config (baked into the bundle) ─────────────────────
+# These VITE_* values are embedded into the JS bundle by Vite at build time.
+# They must match the production deployment URLs.
+ENV VITE_SUPABASE_URL=https://xdwcrsydlzprtldkwqzh.supabase.co
+ENV VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_fvHLCT-vSL2xPmhEzbVBiA__qYmKzey
+ENV VITE_EXPRESS_SERVER_URL=https://ai-receptionist.agilewaters.com
+ENV VITE_WIDGET_BASE_URL=https://ai-receptionist.agilewaters.com
+
+ARG VITE_SITE_URL
+ENV VITE_SITE_URL=${VITE_SITE_URL}
+ENV VITE_INDEXABLE=true
+
+RUN pnpm --filter @ai-receptionist/web build && pnpm --filter @ai-receptionist/admin build
+
+# ── Stage 2: Serve with Caddy ─────────────────────────────────────────────────
+# Caddy serves the built SPA and reverse-proxies /api/* and /widget/* to the api
+# container — one image, automatic HTTPS, no nginx/certbot config to maintain.
+FROM caddy:2-alpine
+COPY --from=build /repo/apps/web/dist /srv
+COPY --from=build /repo/apps/admin/dist /srv/super-admin
+COPY apps/web/Caddyfile /etc/caddy/Caddyfile

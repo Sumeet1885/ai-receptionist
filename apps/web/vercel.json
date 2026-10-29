@@ -1,0 +1,49 @@
+{
+  "routes": [
+    {
+      "src": "/privacy-policy/?",
+      "status": 301,
+      "headers": {
+        "Location": "/privacy"
+      }
+    },
+    {
+      "src": "/terms-and-conditions/?",
+      "status": 301,
+      "headers": {
+        "Location": "/terms"
+      }
+    },
+    {
+      "src": "/(pricing|request-access|privacy|terms)/",
+      "status": 301,
+      "headers": {
+        "Location": "/$1"
+      }
+    },
+    {
+      "src": "/(pricing|request-access|privacy|terms)(?:\\.html)?",
+      "dest": "/$1.html"
+    },
+    {
+      "src": "/(?:auth(?:/.*)?|login|signin|sign-in|signup|sign-up|register|checkout|dashboard|leads|inbox|calendar|calls|agents(?:/.*)?|plans|support|contact-support(?:/.*)?|chats/.*|app\\.html)/?",
+      "dest": "/app.html",
+      "headers": {
+        "X-Robots-Tag": "noindex, nofollow, noarchive",
+        "Cache-Control": "no-store",
+        "Referrer-Policy": "no-referrer"
+      }
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/.*",
+      "dest": "/404.html",
+      "status": 404,
+      "headers": {
+        "X-Robots-Tag": "noindex, nofollow"
+      }
+    }
+  ]
+}

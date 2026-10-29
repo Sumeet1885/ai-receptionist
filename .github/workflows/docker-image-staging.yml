@@ -1,71 +1,97 @@
-name: STAGING - Build and Push Docker Images
-
+name: Build and push Docker images
+run-name: Docker images - ${{ inputs.environment }} - ${{ github.ref_name }}
 on:
   workflow_dispatch:
     inputs:
-      commit_sha:
-        description: "Full Commit SHA to build from"
+      environment:
+        description: Target environment
+        type: choice
         required: true
+        default: staging
+        options: [staging, production]
+      commit_sha:
+        description: "Optional full commit SHA from the selected branch; leave blank to use its latest commit"
+        type: string
+        required: false
 
+permissions:
+  contents: read
+concurrency:
+  group: docker-images-${{ inputs.environment }}
+  cancel-in-progress: false
 jobs:
   build-and-push:
-    # Safety guard: only allow this workflow to run from the staging branch
-    if: github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
-    environment: staging
-
+    environment: ${{ inputs.environment }}
+    env:
+      DEPLOYMENT_ENV: ${{ inputs.environment }}
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
     steps:
-      - name: Checkout code at specified commit
-        uses: actions/checkout@v3
+      - name: Checkout selected branch or commit
+        uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.commit_sha }}
+          ref: ${{ inputs.commit_sha || github.ref }}
+          fetch-depth: 0
 
-      - name: Compute short commit SHA
+      - name: Resolve and validate commit
+        id: revision
+        env:
+          REQUESTED_SHA: ${{ inputs.commit_sha }}
         run: |
-          COMMIT_SHA="${{ github.event.inputs.commit_sha }}"
-          SHORT_SHA=$(echo $COMMIT_SHA | cut -c1-7)
-          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
+          set -euo pipefail
+          if [ -n "$REQUESTED_SHA" ]; then
+            [[ "$REQUESTED_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo "::error::Use a full 40-character commit SHA."; exit 1; }
+            git merge-base --is-ancestor HEAD "origin/$GITHUB_REF_NAME" || { echo "::error::Commit must belong to the selected branch."; exit 1; }
+          fi
+          SHA=$(git rev-parse HEAD)
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${SHA:0:7}" >> "$GITHUB_OUTPUT"
 
-      - name: Set deployment environment
-        run: echo "DEPLOYMENT_ENV=staging" >> $GITHUB_ENV
-
+      - name: Select environment configuration
+        env:
+          STAGING_SITE_URL: ${{ vars.STAGING_SITE_URL || 'https://test.ai-receptionist.agilewaters.com' }}
+          PRODUCTION_SITE_URL: ${{ vars.PRODUCTION_SITE_URL || 'https://ai-receptionist.agilewaters.com' }}
+        run: |
+          set -euo pipefail
+          case "$DEPLOYMENT_ENV" in
+            staging) TAG_ENV=staging; CLIENT_DOCKERFILE=apps/web/Dockerfile.staging; SITE_URL="$STAGING_SITE_URL" ;;
+            production) TAG_ENV=prod; CLIENT_DOCKERFILE=apps/web/Dockerfile.prod; SITE_URL="$PRODUCTION_SITE_URL" ;;
+            *) echo "::error::Unknown environment"; exit 1 ;;
+          esac
+          : "${SITE_URL:?Configure the selected environment site URL variable}"
+          echo "TAG_ENV=$TAG_ENV" >> "$GITHUB_ENV"
+          echo "CLIENT_DOCKERFILE=$CLIENT_DOCKERFILE" >> "$GITHUB_ENV"
+          echo "SITE_URL=$SITE_URL" >> "$GITHUB_ENV"
+      - uses: docker/setup-buildx-action@v3
       - name: Log in to DockerHub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-
-      # ── Server ──────────────────────────────────────────────────────────────
-      - name: Build Server Docker image
+      - name: Build and push server
+        env:
+          SHORT_SHA: ${{ steps.revision.outputs.short_sha }}
         run: |
-          docker buildx build \
-            --platform linux/amd64 \
-            --build-arg deployment_env=${{ env.DEPLOYMENT_ENV }} \
-            -t ${{ secrets.DOCKER_USERNAME }}/recrui8-dockerhub-repo-dev:ai-receptionist-server-staging-${{ env.SHORT_SHA }} \
-            -f server/Dockerfile \
-            ./server
-
-      - name: Push Server Docker image
+          docker buildx build --push --platform linux/amd64 \
+            --build-arg deployment_env="$DEPLOYMENT_ENV" \
+            -t "$DOCKER_USERNAME/recrui8-dockerhub-repo-dev:ai-receptionist-server-$TAG_ENV-$SHORT_SHA" \
+            -f apps/api/Dockerfile .
+      - name: Build and push client
+        env:
+          SHORT_SHA: ${{ steps.revision.outputs.short_sha }}
         run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/recrui8-dockerhub-repo-dev:ai-receptionist-server-staging-${{ env.SHORT_SHA }}
-
-      # ── Client ──────────────────────────────────────────────────────────────
-      # VITE_* values are baked into client/Dockerfile.staging (recrui8-style).
-      # No --build-arg secrets needed — staging URLs live in the Dockerfile itself.
-      - name: Build Client Docker image
-        run: |
-          docker buildx build \
-            --platform linux/amd64 \
-            -t ${{ secrets.DOCKER_USERNAME }}/recrui8-dockerhub-repo-dev:ai-receptionist-client-staging-${{ env.SHORT_SHA }} \
-            -f client/Dockerfile.staging \
-            ./client
-
-      - name: Push Client Docker image
-        run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/recrui8-dockerhub-repo-dev:ai-receptionist-client-staging-${{ env.SHORT_SHA }}
-
+          docker buildx build --push --platform linux/amd64 \
+            --build-arg VITE_SITE_URL="$SITE_URL" \
+            -t "$DOCKER_USERNAME/recrui8-dockerhub-repo-dev:ai-receptionist-client-$TAG_ENV-$SHORT_SHA" \
+            -f "$CLIENT_DOCKERFILE" .
       - name: Summary
+        env:
+          SHA: ${{ steps.revision.outputs.sha }}
+          SHORT_SHA: ${{ steps.revision.outputs.short_sha }}
         run: |
-          echo "### ✅ Docker Images Pushed" >> $GITHUB_STEP_SUMMARY
-          echo "- **Server:** \`${{ secrets.DOCKER_USERNAME }}/recrui8-dockerhub-repo-dev:ai-receptionist-server-staging-${{ env.SHORT_SHA }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Client:** \`${{ secrets.DOCKER_USERNAME }}/recrui8-dockerhub-repo-dev:ai-receptionist-client-staging-${{ env.SHORT_SHA }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "### Docker images pushed" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Environment: $DEPLOYMENT_ENV" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Branch: $GITHUB_REF_NAME" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit: $SHA (use this SHA when deploying)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Server tag: ai-receptionist-server-$TAG_ENV-$SHORT_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Client tag: ai-receptionist-client-$TAG_ENV-$SHORT_SHA" >> "$GITHUB_STEP_SUMMARY"

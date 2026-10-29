@@ -1,0 +1,380 @@
+@import "tailwindcss";
+@import "./styles/theme.css";
+
+/* Keep interactive controls consistent across all customer screens. */
+button:not(:disabled), a[href], select:not(:disabled), summary,
+[role="button"]:not([aria-disabled="true"]), [role="tab"]:not([aria-disabled="true"]),
+[role="menuitem"]:not([aria-disabled="true"]),
+input:is([type="button"], [type="submit"], [type="reset"], [type="checkbox"], [type="radio"]):not(:disabled),
+input[type="file"]:not(:disabled)::file-selector-button,
+label:has(input[type="checkbox"]:not(:disabled)),
+label:has(input[type="radio"]:not(:disabled)) {
+  cursor: pointer;
+}
+button:disabled, select:disabled, input:disabled, textarea:disabled,
+[aria-disabled="true"] { cursor: not-allowed; }
+
+@keyframes toast-bounce {
+  0%, 100% { transform: translateY(0); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
+  50% { transform: translateY(6px); animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+}
+
+/*
+ * Legacy "brand-*" names used across existing screens, kept as aliases of the Bolega India
+ * theme tokens so every screen follows the same palette. Prefer the theme names in new code.
+ */
+@theme {
+  --color-brand-bg: var(--color-background);
+  --color-brand-card: var(--color-surface);
+  --color-brand-border: var(--color-border);
+
+  --color-brand-accent: var(--color-primary);
+  --color-brand-accent-hover: var(--color-primary-hover);
+  --color-brand-text: var(--color-text);
+  --color-brand-muted: var(--color-text-subtle);
+
+  --color-brand-success: var(--color-success);
+  --color-brand-warning: var(--color-warning);
+  --color-brand-danger: var(--color-danger);
+}
+
+@keyframes hotBlink {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 16px rgba(244, 63, 94, 0.7), 0 0 6px rgba(244, 63, 94, 0.4);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.96);
+    box-shadow: 0 0 4px rgba(244, 63, 94, 0.2);
+  }
+}
+
+.animate-hot-blink {
+  animation: hotBlink 1.2s ease-in-out infinite;
+}
+
+@keyframes soundwaveBar {
+  0%, 100% {
+    height: 3px;
+  }
+  50% {
+    height: 14px;
+  }
+}
+
+.soundwave-bar {
+  display: inline-block;
+  width: 2.5px;
+  background-color: var(--color-brand-accent);
+  border-radius: 9999px;
+  animation: soundwaveBar 0.8s ease-in-out infinite;
+}
+.soundwave-bar:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.soundwave-bar:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.soundwave-bar:nth-child(4) {
+  animation-delay: 0.45s;
+}
+
+@keyframes radarSweep {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-radar-sweep {
+  animation: radarSweep 3.5s linear infinite;
+}
+
+@keyframes sonarRipple {
+  0% {
+    transform: scale(0.65);
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(1.65);
+    opacity: 0;
+  }
+}
+
+.animate-sonar-ripple {
+  animation: sonarRipple 2.8s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+
+@keyframes radarBlip {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  10% {
+    opacity: 1;
+    transform: scale(1.35);
+    filter: drop-shadow(0 0 10px currentColor);
+  }
+  28% {
+    opacity: 0.45;
+    transform: scale(1);
+    filter: drop-shadow(0 0 5px currentColor);
+  }
+  48% {
+    opacity: 0;
+    transform: scale(0.7);
+    filter: none;
+  }
+}
+
+.animate-radar-blip-1 {
+  animation: radarBlip 3.5s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  animation-delay: 0.45s;
+}
+
+.animate-radar-blip-2 {
+  animation: radarBlip 3.5s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  animation-delay: 2.05s;
+}
+
+.animate-radar-blip-3 {
+  animation: radarBlip 3.5s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  animation-delay: 3.05s;
+}
+
+.card-hover-glow {
+  transition: transform var(--duration-base) var(--ease-emphasized), box-shadow var(--duration-base) var(--ease-emphasized),
+    border-color var(--duration-base) var(--ease-emphasized);
+}
+.card-hover-glow:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-floating);
+  border-color: var(--color-border-strong);
+}
+
+.hot-card-glow {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-danger) 35%, transparent), var(--shadow-card);
+  border-color: color-mix(in srgb, var(--color-danger) 45%, transparent);
+}
+
+.btn-whatsapp-glass {
+  background: linear-gradient(135deg, #25D366, #128C7E);
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(37, 211, 102, 0.35);
+  transition: all 0.2s ease;
+}
+.btn-whatsapp-glass:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(37, 211, 102, 0.5);
+  filter: brightness(1.08);
+}
+
+@keyframes scrollTextOnHover {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-40%);
+  }
+}
+
+.group:hover .animate-marquee-hover {
+  display: inline-block;
+  animation: scrollTextOnHover 4s ease-in-out infinite alternate;
+}
+
+/* Chat scrollbar */
+.chat-messages-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.chat-messages-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.chat-messages-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 3px;
+}
+.chat-messages-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* ── Voice call phone input card (Dark Theme & High Contrast) ── */
+.voice-phone-card {
+  width: 100%;
+  background: var(--color-brand-card, #0b1713);
+  border: 1px solid rgba(25, 233, 157, 0.28);
+  border-radius: 14px;
+  overflow: visible;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  position: relative;
+}
+
+.voice-phone-card:focus-within {
+  border-color: #19e99d;
+  box-shadow: 0 0 0 3px rgba(25, 233, 157, 0.18);
+}
+
+.vpc-label {
+  display: block;
+  padding: 10px 14px 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #a7b8b1;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+.vpc-required {
+  color: #f87171;
+}
+
+.vpc-hint {
+  padding: 2px 14px 8px;
+  font-size: 11px;
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+/* react-phone-number-input overrides across all phone components (light theme). */
+.PhoneInput {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  background: transparent;
+  border: none;
+  gap: 0;
+  width: 100%;
+}
+
+.voice-phone-card .PhoneInput {
+  min-height: 46px;
+}
+
+.PhoneInputCountry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  flex-shrink: 0;
+  cursor: pointer;
+  background: var(--color-surface-sunken);
+  border-right: 1px solid var(--color-border);
+  position: relative;
+  align-self: stretch;
+}
+
+.PhoneInputCountryIcon {
+  width: 24px;
+  height: 16px;
+  border-radius: 3px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgb(23 62 54 / 20%);
+  border: 1px solid var(--color-border);
+  flex-shrink: 0;
+  background: var(--color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.PhoneInputCountryIcon--border {
+  box-shadow: 0 0 0 1px var(--color-border);
+}
+
+.PhoneInputCountryIconImg,
+.PhoneInputCountryIcon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.PhoneInputCountrySelectArrow {
+  color: var(--color-text-subtle);
+  opacity: 0.85;
+  width: 7px;
+  height: 7px;
+  border-color: var(--color-text-subtle);
+  border-top-width: 0;
+  border-right-width: 2px;
+  border-bottom-width: 2px;
+  border-left-width: 0;
+  transform: rotate(45deg) translateY(-2px);
+  margin-left: 2px;
+}
+
+.PhoneInputCountrySelect {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.PhoneInputCountrySelect option {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  padding: 6px 10px;
+  font-size: 14px;
+}
+
+.PhoneInputInput {
+  flex: 1;
+  padding: 8px 14px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: var(--color-text);
+  background: transparent;
+  border: none;
+  outline: none;
+  letter-spacing: 0.5px;
+  min-width: 0;
+}
+
+.PhoneInputInput::placeholder {
+  color: var(--color-text-subtle);
+  font-weight: 400;
+  font-size: 14px;
+  font-family: var(--font-body);
+  letter-spacing: 0;
+}
+
+/* The visitor voice-call screen is intentionally dark. */
+.voice-call-screen {
+  color-scheme: dark;
+}
+.voice-call-screen .PhoneInputCountry {
+  background: rgb(7 17 14 / 70%);
+  border-right-color: rgb(255 255 255 / 15%);
+}
+.voice-call-screen .PhoneInputCountryIcon {
+  border-color: rgb(255 255 255 / 20%);
+  background: rgb(0 0 0 / 60%);
+}
+.voice-call-screen .PhoneInputCountrySelectArrow {
+  color: #c7d5cf;
+  border-color: #c7d5cf;
+}
+.voice-call-screen .PhoneInputCountrySelect option {
+  background-color: #0b1713;
+  color: #f8fafc;
+}
+.voice-call-screen .PhoneInputInput {
+  color: #f8fafc;
+}
+.voice-call-screen .PhoneInputInput::placeholder {
+  color: rgb(199 213 207 / 60%);
+}

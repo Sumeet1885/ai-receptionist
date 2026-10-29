@@ -1,0 +1,271 @@
+import { Router, type Response } from 'express';
+import { LIMITS, validateAdminNotes, validateRejectionReason, istDate, validISODate } from '@ai-receptionist/contracts';
+import { config } from '../../config';
+import { emailTemplates, sendEmail, sendEmailSafely } from '../../services/email';
+import { publishAdminEvent } from '../../services/adminEvents';
+import { asyncRoute } from '../../utils/asyncRoute';
+import { getClientIp } from '../../utils/security';
+import { createActivationLink } from '../accounts/links';
+import { getProvisioningPlan } from '../billing/repository';
+import { supabase } from '../../services/db';
+import { getCustomerAccount } from '../accounts/repository';
+import {
+  adminOriginGuard,
+  noStore,
+  requireAdminRole,
+  requireAdminSession,
+  type AdminRequest,
+} from '../admin-auth/middleware';
+import { recordAudit } from '../admin-auth/repository';
+import {
+  addAccessRequestNote,
+  listAccessRequestNotes,
+  authEmailExists,
+  countByStatus,
+  getAccessRequest,
+  listAccessRequests,
+  OPEN_STATUSES,
+  transitionAccessRequest,
+  updateAccessRequest,
+  type AccessRequestRow,
+  type AccessRequestStatus,
+} from './repository';
+
+// Admin review of free-access requests, mounted at /api/admin/access-requests.
+// Reading needs read_only; triage (contacted, notes, reject, resend) needs support;
+// approving, which creates a customer login, needs super_admin.
+
+const router = Router();
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const STATUSES: AccessRequestStatus[] = ['pending', 'contacted', 'approved', 'rejected'];
+const PAGE_SIZE = 25;
+
+const handle = (fn: (req: AdminRequest, res: Response) => Promise<unknown>) => asyncRoute<AdminRequest>('AccessRequestAdmin', fn);
+
+router.use(noStore);
+router.use(adminOriginGuard(config.admin.origins));
+router.use(requireAdminSession);
+
+function audit(req: AdminRequest, action: string, request: Pick<AccessRequestRow, 'id' | 'provisioned_user_id'>, outcome: 'succeeded' | 'failed' = 'succeeded', metadata: Record<string, unknown> = {}) {
+  return recordAudit({
+    action,
+    decision: 'allowed',
+    outcome,
+    actor_admin_user_id: req.admin!.adminUser.id,
+    actor_session_id: req.admin!.sessionId,
+    tenant_owner_id: request.provisioned_user_id,
+    resource_type: 'access_request',
+    resource_id: request.id,
+    ip: getClientIp(req),
+    metadata,
+  });
+}
+
+async function loadRequest(req: AdminRequest, res: Response) {
+  if (!UUID.test(req.params.id)) {
+    res.status(404).json({ error: 'Request not found' });
+    return null;
+  }
+  const request = await getAccessRequest(req.params.id);
+  if (!request) res.status(404).json({ error: 'Request not found' });
+  return request;
+}
+
+async function sendActivation(request: AccessRequestRow) {
+  const link = await createActivationLink({
+    email: request.email,
+    userId: request.provisioned_user_id,
+    fullName: request.full_name,
+    businessName: request.business_name,
+  });
+  await sendEmail(
+    request.email,
+    emailTemplates.workspaceActivation({ name: request.full_name, activationUrl: link.url, expiresInHours: config.email.linkExpiryHours }),
+    'workspace_activation',
+  );
+  return link.userId;
+}
+
+router.get('/', requireAdminRole('read_only'), handle(async (req, res) => {
+  const status = STATUSES.includes(req.query.status as AccessRequestStatus) ? req.query.status as AccessRequestStatus : undefined;
+  const search = typeof req.query.search === 'string' ? req.query.search.trim().slice(0, LIMITS.search.max) : '';
+  const page = Math.max(1, Math.min(1000, Number.parseInt(String(req.query.page ?? '1'), 10) || 1));
+  const pageSize = Math.max(1, Math.min(PAGE_SIZE, Number.parseInt(String(req.query.pageSize || PAGE_SIZE), 10) || PAGE_SIZE));
+  const [{ rows, total }, counts] = await Promise.all([
+    listAccessRequests({ status, search, page, pageSize }),
+    countByStatus(),
+  ]);
+  res.json({ rows, total, page, pageSize, counts });
+}));
+
+router.get('/:id', requireAdminRole('read_only'), handle(async (req, res) => {
+  const request = await loadRequest(req, res);
+  if (!request) return;
+  const account = request.provisioned_user_id ? await getCustomerAccount(request.provisioned_user_id) : null;
+  res.json({
+    request,
+    notes: await listAccessRequestNotes(request.id),
+    account: account && {
+      status: account.status,
+      activated: Boolean(account.password_set_at),
+      onboardingCompleted: Boolean(account.onboarding_completed_at),
+      planId: account.plan_id ?? null,
+      trialDays: account.trial_days ?? null,
+      accessMonths: account.access_months ?? null,
+      accessExpiresAt: account.access_expires_at ?? null,
+      expiryDate: account.access_end_date ?? null,
+      startsAt: account.plan_started_at ?? account.access_starts_at ?? null,
+    },
+  });
+}));
+
+router.patch('/:id', requireAdminRole('support'), handle(async (req, res) => {
+  const request = await loadRequest(req, res);
+  if (!request) return;
+
+  if (req.body?.adminNotes !== undefined) return res.status(400).json({ error: 'Notes are now separate entries. Refresh the page and use Add note.' });
+
+  let updated: AccessRequestRow | null = request;
+  if (req.body?.status === 'contacted') {
+    updated = await transitionAccessRequest(request.id, ['pending'], {
+      status: 'contacted',
+      reviewed_by: req.admin!.adminUser.id,
+      reviewed_at: new Date().toISOString(),
+    });
+    if (!updated) return res.status(409).json({ error: 'Only pending requests can be marked as contacted' });
+  } else if (req.body?.status !== undefined) {
+    return res.status(400).json({ error: 'Use approve or reject to change this status' });
+  }
+
+  await audit(req, 'access_request.update', request, 'succeeded', { status: updated.status });
+  publishAdminEvent({ type: 'access_request.updated', id: request.id, status: updated.status });
+  res.json({ request: updated });
+}));
+
+router.post('/:id/notes', requireAdminRole('support'), handle(async (req, res) => {
+  const request = await loadRequest(req, res);
+  if (!request) return;
+  const parsed = validateAdminNotes(req.body?.body);
+  if ('errors' in parsed) return res.status(400).json({ error: parsed.errors.adminNotes, fields: { body: parsed.errors.adminNotes } });
+  if (!parsed.value) return res.status(400).json({ error: 'Enter a note before adding it.', fields: { body: 'Enter a note.' } });
+  const note = await addAccessRequestNote(request.id, parsed.value, req.admin!.adminUser.id, req.admin!.adminUser.display_name);
+  await audit(req, 'access_request.note_added', request, 'succeeded', { noteId: note.id });
+  publishAdminEvent({ type: 'access_request.updated', id: request.id, status: request.status });
+  res.status(201).json({ note });
+}));
+
+router.post('/:id/reject', requireAdminRole('support'), handle(async (req, res) => {
+  const request = await loadRequest(req, res);
+  if (!request) return;
+  const parsedReason = validateRejectionReason(req.body?.reason);
+  if ('errors' in parsedReason) return res.status(400).json({ error: parsedReason.errors.reason, fields: parsedReason.errors });
+  const reason = parsedReason.value ?? '';
+
+  const updated = await transitionAccessRequest(request.id, OPEN_STATUSES, {
+    status: 'rejected',
+    rejection_reason: reason || null,
+    reviewed_by: req.admin!.adminUser.id,
+    reviewed_at: new Date().toISOString(),
+  });
+  if (!updated) return res.status(409).json({ error: 'This request has already been decided' });
+
+  if (req.body?.notify === true) {
+    await sendEmailSafely(request.email, emailTemplates.accessRequestDeclined({ name: request.full_name, reason: reason || undefined }), 'access_request_declined');
+  }
+  await audit(req, 'access_request.reject', request, 'succeeded', { notified: req.body?.notify === true });
+  publishAdminEvent({ type: 'access_request.updated', id: request.id, status: 'rejected' });
+  res.json({ request: updated });
+}));
+
+router.post('/:id/approve', requireAdminRole('super_admin'), handle(async (req, res) => {
+  const request = await loadRequest(req, res);
+  if (!request) return;
+  const planId = req.body?.planId;
+  if (planId !== undefined && (typeof planId !== 'string' || !UUID.test(planId))) return res.status(400).json({ error: 'Choose an active plan.' });
+  const plan = await getProvisioningPlan(planId);
+  if (!plan) return res.status(400).json({ error: 'Choose an active plan from Plans & pricing.' });
+  const expiryDate = req.body?.expiryDate ?? null;
+  const latest = new Date(); latest.setUTCFullYear(latest.getUTCFullYear() + 5);
+  if (expiryDate !== null && (!validISODate(expiryDate) || expiryDate < istDate() || expiryDate > istDate(latest))) return res.status(400).json({ error: 'Choose a valid expiry date from today to five years ahead.' });
+  const startDate = req.body?.startDate ?? null;
+  if (startDate !== null && (!validISODate(startDate) || startDate < istDate() || startDate > istDate(latest))) return res.status(400).json({ error: 'Choose a valid start date from today to five years ahead.' });
+  if (startDate && expiryDate && expiryDate < startDate) return res.status(400).json({ error: 'Expiry must be on or after the start date.' });
+  if (plan.is_trial && expiryDate !== null) return res.status(400).json({ error: 'Trial duration is configured on the trial plan.' });
+  if (!OPEN_STATUSES.includes(request.status)) return res.status(409).json({ error: 'This request has already been decided' });
+  if (await authEmailExists(request.email)) {
+    return res.status(409).json({ error: 'A customer login already exists for this email. Reject this request or ask them to sign in.' });
+  }
+
+  // Claim first so a second approver cannot provision the same request twice.
+  const claimed = await transitionAccessRequest(request.id, [request.status], {
+    status: 'approved',
+    trial_plan_id: plan.id,
+    assigned_expiry_date: expiryDate,
+    assigned_start_date: startDate,
+    reviewed_by: req.admin!.adminUser.id,
+    reviewed_at: new Date().toISOString(),
+  });
+  if (!claimed) return res.status(409).json({ error: 'This request has already been decided' });
+
+  try {
+    const link = await createActivationLink({ email: request.email, fullName: request.full_name, businessName: request.business_name });
+    const userId = link.userId;
+    // Record the login first: from here on, a failure is recovered with "Resend activation".
+    await updateAccessRequest(request.id, { provisioned_user_id: userId, provisioned_at: new Date().toISOString() });
+    const assigned = await supabase.rpc('assign_workspace_plan', { p_user: userId, p_plan: plan.id, p_request: request.id, p_end_date: expiryDate, p_start_date: startDate });
+    if (assigned.error) throw new Error(`Assign plan: ${assigned.error.message}`);
+    await sendEmail(
+      request.email,
+      emailTemplates.workspaceActivation({ name: request.full_name, activationUrl: link.url, expiresInHours: config.email.linkExpiryHours }),
+      'workspace_activation',
+    );
+  } catch (error: any) {
+    const provisioned = await getAccessRequest(request.id);
+    await audit(req, 'access_request.approve', request, 'failed', {
+      stage: provisioned?.provisioned_user_id ? 'email' : 'provision',
+      error: String(error?.message ?? error).slice(0, 300),
+    });
+    if (provisioned?.provisioned_user_id) {
+      publishAdminEvent({ type: 'access_request.updated', id: request.id, status: 'approved' });
+      return res.status(502).json({ error: 'Provisioning or activation email delivery could not finish. Use "Resend activation" to complete setup safely.' });
+    }
+    // Nothing was created: put the request back so it can be approved again.
+    await transitionAccessRequest(request.id, ['approved'], { status: request.status, reviewed_by: request.reviewed_by, reviewed_at: request.reviewed_at });
+    return res.status(502).json({ error: 'The workspace could not be created. Nothing was changed; try again.' });
+  }
+
+  const updated = await updateAccessRequest(request.id, {
+    activation_sent_at: new Date().toISOString(),
+    activation_send_count: request.activation_send_count + 1,
+  });
+  await audit(req, 'access_request.approve', updated, 'succeeded', { planId: plan.id, startDate, expiryDate });
+  publishAdminEvent({ type: 'access_request.updated', id: request.id, status: 'approved' });
+  res.json({ request: updated });
+}));
+
+router.post('/:id/resend-activation', requireAdminRole('support'), handle(async (req, res) => {
+  const request = await loadRequest(req, res);
+  if (!request) return;
+  if (request.status !== 'approved' || !request.provisioned_user_id) {
+    return res.status(409).json({ error: 'Only approved requests have an activation link' });
+  }
+  const account = await getCustomerAccount(request.provisioned_user_id);
+  if (account?.password_set_at) return res.status(409).json({ error: 'This workspace is already activated' });
+  if (!account || (!account.plan_id && request.trial_plan_id)) {
+    const plan = await getProvisioningPlan(request.trial_plan_id || undefined);
+    if (!plan) return res.status(409).json({ error: 'The assigned plan is unavailable. Enable it before resending activation.' });
+    const assigned = await supabase.rpc('assign_workspace_plan', { p_user: request.provisioned_user_id, p_plan: plan.id, p_request: request.id, p_end_date: request.assigned_expiry_date ?? null, p_start_date: request.assigned_start_date ?? null });
+    if (assigned.error) throw new Error(`Assign plan: ${assigned.error.message}`);
+  }
+
+  await sendActivation(request);
+  const updated = await updateAccessRequest(request.id, {
+    activation_sent_at: new Date().toISOString(),
+    activation_send_count: request.activation_send_count + 1,
+  });
+  await audit(req, 'access_request.resend_activation', updated);
+  publishAdminEvent({ type: 'access_request.updated', id: request.id, status: updated.status });
+  res.json({ request: updated });
+}));
+
+export default router;

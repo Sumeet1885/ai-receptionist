@@ -1,0 +1,69 @@
+# Caddy auto-provisions and renews Let's Encrypt TLS certs automatically.
+# Domains are injected dynamically via APP_DOMAIN and API_DOMAIN environment variables.
+
+{$APP_DOMAIN}, {$API_DOMAIN} {
+	# Staging images set ROBOTS_POLICY=noindex; production defaults to normal crawling.
+	header X-Robots-Tag "{$ROBOTS_POLICY:all}"
+	header Referrer-Policy "strict-origin-when-cross-origin"
+	redir /privacy-policy /privacy 301
+	redir /terms-and-conditions /terms 301
+	redir /index.html / 301
+	redir /pricing.html /pricing 301
+	redir /request-access.html /request-access 301
+	redir /privacy.html /privacy 301
+	redir /terms.html /terms 301
+	@publicSlash path_regexp publicSlash ^/(pricing|request-access|privacy|terms)/+$
+	redir @publicSlash /{re.publicSlash.1} 301
+
+	# All /api/* requests → Express backend (api service on port 4000)
+	handle /api/* {
+		header X-Robots-Tag "noindex, nofollow"
+		reverse_proxy api:4000
+	}
+
+	# All /widget/* requests → Express backend (api service on port 4000)
+	handle /widget/* {
+		header X-Robots-Tag "noindex, nofollow"
+		reverse_proxy api:4000
+	}
+
+	# Admin console (apps/admin, built into /srv/super-admin). Its API calls go to /api/admin/*
+	# through the /api/* rule above, so it is same-origin with the API.
+	handle /super-admin* {
+		header X-Robots-Tag "noindex, nofollow"
+		header X-Frame-Options "DENY"
+		# Pages are never cached (fresh session state); hashed assets may be.
+		@adminPage not path /super-admin/assets/*
+		header @adminPage Cache-Control "no-store"
+		root * /srv
+		encode gzip
+		try_files {path} /super-admin/index.html
+		file_server
+	}
+
+	# Known private routes get a noindex shell, with no public-page canonical.
+	@workspace path /auth /auth/* /login /signin /sign-in /signup /sign-up /register /checkout /dashboard /leads /inbox /calendar /calls /agents /agents/* /plans /support /contact-support /contact-support/* /chats/* /app.html
+	handle @workspace {
+		root * /srv
+		header X-Robots-Tag "noindex, nofollow, noarchive"
+		header Cache-Control "no-store"
+		header Referrer-Policy "no-referrer"
+		rewrite * /app.html
+		file_server
+	}
+
+	# Public pages have real HTML before JavaScript runs. Missing URLs/assets return 404.
+	handle {
+		root * /srv
+		encode gzip
+		try_files {path} {path}.html
+		file_server
+	}
+
+	handle_errors {
+		root * /srv
+		header X-Robots-Tag "noindex, nofollow"
+		rewrite * /404.html
+		file_server
+	}
+}

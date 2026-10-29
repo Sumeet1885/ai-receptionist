@@ -1,0 +1,144 @@
+name: Database - Migrate (Supabase)
+
+# Applies pending files in supabase/migrations/ to one environment's database.
+# - Run by hand (workflow_dispatch): "status" is read-only and the default; "apply" runs pending ones.
+# - Called by the deploy workflows (workflow_call) with action "apply" BEFORE containers restart,
+#   so new code never starts against an old schema. A failed migration stops the deploy.
+# `supabase db push` only applies migrations the database has not recorded yet; it never resets
+# or drops data. Migrations must stay backward compatible with the running code (additive), because
+# they are applied just before the new images start. See docs/deployment/database-migrations.md.
+#
+# Required per GitHub environment (Settings → Environments → staging / production → Secrets):
+#   SUPABASE_DB_URL  Postgres connection string of that project (Supabase dashboard → Connect →
+#                    "Session pooler"), including the database password.
+# Protect the "production" environment with required reviewers so an apply needs approval.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options: [staging, production]
+      action:
+        description: "status = list applied/pending only; apply = run pending migrations"
+        required: true
+        type: choice
+        default: status
+        options: [status, apply]
+      commit_sha:
+        description: "Optional full commit SHA; leave blank to use the selected branch"
+        type: string
+        required: false
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      action:
+        type: string
+        required: true
+      commit_sha:
+        type: string
+        required: true
+      block_on_paused_campaigns:
+        description: "Fail if outbound campaigns are paused (an API restart resumes them and dials)"
+        type: boolean
+        default: false
+      allow_paused_campaigns:
+        description: "Owner confirmed that paused campaigns may resume"
+        type: boolean
+        default: false
+
+concurrency:
+  group: database-migrate-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout code at specified commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha || github.ref }}
+          fetch-depth: 0
+
+      - name: Validate selection
+        env:
+          TARGET: ${{ inputs.environment }}
+          ACTION: ${{ inputs.action }}
+          REQUESTED_SHA: ${{ inputs.commit_sha }}
+        run: |
+          set -euo pipefail
+          case "$TARGET" in staging|production) ;; *) echo "::error::Invalid environment"; exit 1 ;; esac
+          case "$ACTION" in status|apply) ;; *) echo "::error::Invalid migration action"; exit 1 ;; esac
+          if [ -n "$REQUESTED_SHA" ]; then
+            [[ "$REQUESTED_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || { echo "::error::Use a full 40-character commit SHA."; exit 1; }
+            git merge-base --is-ancestor HEAD "origin/$GITHUB_REF_NAME" || { echo "::error::Commit must belong to the selected branch."; exit 1; }
+          fi
+          echo "RESOLVED_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Set up Supabase CLI (same version as pnpm-lock.yaml)
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.106.0
+
+      - name: Check the secret is configured
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::SUPABASE_DB_URL is not set for the '${{ inputs.environment }}' environment."
+            exit 1
+          fi
+
+      # Every API restart switches paused campaigns back to running and starts dialing (audit S09).
+      - name: Check for paused outbound campaigns
+        if: inputs.block_on_paused_campaigns
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          PAUSED=$(psql "$SUPABASE_DB_URL" -tAc "select count(*) from public.call_campaigns where status = 'paused'")
+          echo "Paused campaigns: $PAUSED"
+          if [ "$PAUSED" != "0" ]; then
+            if [ "${{ inputs.allow_paused_campaigns }}" = "true" ]; then
+              echo "::warning::$PAUSED paused campaign(s) will resume dialing after this deploy (confirmed by the person who started it)."
+            else
+              echo "::error::$PAUSED paused campaign(s) would resume dialing when the API restarts. Agree it with the campaign owners, then re-run with 'Allow paused campaigns to resume' ticked."
+              exit 1
+            fi
+          fi
+
+      - name: Migration status (before)
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: supabase migration list --db-url "$SUPABASE_DB_URL"
+
+      - name: Preview pending migrations
+        if: inputs.action == 'apply'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: supabase db push --db-url "$SUPABASE_DB_URL" --dry-run
+
+      - name: Apply pending migrations
+        if: inputs.action == 'apply'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: supabase db push --db-url "$SUPABASE_DB_URL"
+
+      - name: Migration status (after)
+        if: inputs.action == 'apply'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: supabase migration list --db-url "$SUPABASE_DB_URL"
+
+      - name: Summary
+        run: |
+          echo "### Database migrations: ${{ inputs.action }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** $RESOLVED_SHA" >> $GITHUB_STEP_SUMMARY
+          echo "- See the step logs for the Local/Remote migration table." >> $GITHUB_STEP_SUMMARY

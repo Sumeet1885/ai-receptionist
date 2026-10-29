@@ -7,7 +7,7 @@ depends on values collected in the previous one.
 
 | # | Document | What it does |
 |---|---|---|
-| 1 | [`Call/dograh-docker/Dograh_DEPLOYMENT_GUIDE.md`](../Call/dograh-docker/Dograh_DEPLOYMENT_GUIDE.md) | Deploys Dograh itself on its own EC2 instance. |
+| 1 | [`infra/dograh-docker/Dograh_DEPLOYMENT_GUIDE.md`](../infra/dograh-docker/Dograh_DEPLOYMENT_GUIDE.md) | Deploys Dograh itself on its own EC2 instance. |
 | 2 | [`01_CONFIGURE_DOGRAH.md`](01_CONFIGURE_DOGRAH.md) | Configures the Dograh UI: the speech-to-speech model and the Plivo telephony connection. |
 | 3 | [`setup.md`](setup.md) | Creates the Supabase project, Google OAuth client, and collects every credential the app needs. |
 | 4 | [`AWS_DEPLOYMENT.md`](AWS_DEPLOYMENT.md) | Deploys AI Receptionist itself on its own EC2 instance, using the credentials from step 3. |
@@ -21,7 +21,7 @@ works standalone.
 Dograh has to exist and be reachable before AI Receptionist's `.env` can reference it
 (`DOGRAH_API_URL`). Supabase has to exist before AI Receptionist's containers can start at all -
 the backend refuses to boot without `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` (see
-`server/src/config.ts`). So: Dograh first, then credentials, then AI Receptionist itself.
+`apps/api/src/config.ts`). So: Dograh first, then credentials, then AI Receptionist itself.
 
 ## What you end up with
 
