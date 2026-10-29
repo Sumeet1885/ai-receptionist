@@ -49,8 +49,8 @@ jobs:
 
       - name: Select environment configuration
         env:
-          STAGING_SITE_URL: ${{ vars.STAGING_SITE_URL }}
-          PRODUCTION_SITE_URL: ${{ vars.PRODUCTION_SITE_URL }}
+          STAGING_SITE_URL: ${{ vars.STAGING_SITE_URL || 'https://test.ai-receptionist.agilewaters.com' }}
+          PRODUCTION_SITE_URL: ${{ vars.PRODUCTION_SITE_URL || 'https://ai-receptionist.agilewaters.com' }}
         run: |
           set -euo pipefail
           case "$DEPLOYMENT_ENV" in
