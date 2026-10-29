@@ -200,10 +200,10 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
           <div>
             <h3 className="font-display font-bold text-lg text-brand-text flex items-center gap-2">
               <Icons.Users />
-              <span>Needs Attention (Top 5 Leads)</span>
+              <span>Recent Qualified Leads</span>
             </h3>
             <p className="text-xs text-brand-muted mt-0.5">
-              Top 5 prioritized callers and recent qualified inquiries ready for follow-up.
+              Most recent voice call inquiries captured by your AI Call Service.
             </p>
           </div>
           <button

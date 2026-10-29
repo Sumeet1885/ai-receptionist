@@ -34,3 +34,4 @@ export function useAppointments(userSignedIn = false) {
 
   return { appointments, fetchAppointments, loading, count: appointments.length };
 }
+
