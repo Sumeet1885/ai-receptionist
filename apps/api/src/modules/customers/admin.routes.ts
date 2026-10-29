@@ -183,7 +183,7 @@ router.post('/:id/assign-agent', requireAdminRole('support'), handle(async (req,
 
   if (botErr || !bot) return res.status(404).json({ error: 'Agent not found' });
 
-  const agentDirection = ['inbound', 'outbound', 'both'].includes(direction) ? direction : 'both';
+  const agentDirection: 'inbound' | 'outbound' = direction === 'outbound' ? 'outbound' : 'inbound';
   const existingWidget = (bot.widget_config && typeof bot.widget_config === 'object') ? bot.widget_config : {};
   const updatedWidget = { ...existingWidget, agentDirection };
 
@@ -212,8 +212,8 @@ router.post('/:id/update-agent-direction', requireAdminRole('support'), handle(a
   if (!UUID.test(req.params.id)) return res.status(404).json({ error: 'Customer not found' });
   const { botId, direction } = req.body || {};
   if (!botId || !UUID.test(botId)) return res.status(400).json({ error: 'Valid botId is required' });
-  if (!['inbound', 'outbound', 'both'].includes(direction)) {
-    return res.status(400).json({ error: 'Direction must be inbound, outbound, or both' });
+  if (!['inbound', 'outbound'].includes(direction)) {
+    return res.status(400).json({ error: 'Direction must be either inbound or outbound' });
   }
 
   const { data: bot, error: botErr } = await supabase

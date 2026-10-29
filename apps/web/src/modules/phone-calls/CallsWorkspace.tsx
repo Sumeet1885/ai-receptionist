@@ -40,10 +40,10 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
 
   const visibleBots = React.useMemo(() => {
     if (activeTab === 'outgoing') {
-      return bots.filter(b => b.agentDirection !== 'inbound');
+      return bots.filter(b => b.agentDirection === 'outbound');
     }
     if (activeTab === 'incoming') {
-      return bots.filter(b => b.agentDirection !== 'outbound');
+      return bots.filter(b => b.agentDirection === 'inbound');
     }
     return bots;
   }, [bots, activeTab]);

@@ -385,7 +385,7 @@ export interface BotSummary {
   created_at: string;
   owner_id: string;
   widget_config?: {
-    agentDirection?: 'inbound' | 'outbound' | 'both';
+    agentDirection?: 'inbound' | 'outbound';
     [key: string]: any;
   } | null;
 }
@@ -418,15 +418,15 @@ export const customersApi = {
   resend: (userId: string) => request<{ ok: true }>(`/customers/${encodeURIComponent(userId)}/resend`, { method: 'POST' }),
   getAgents: (userId: string) =>
     request<CustomerAgentsResponse>(`/customers/${encodeURIComponent(userId)}/agents`),
-  assignAgent: (userId: string, data: { botId: string; direction?: 'inbound' | 'outbound' | 'both' }) =>
+  assignAgent: (userId: string, data: { botId: string; direction?: 'inbound' | 'outbound' }) =>
     request<{ ok: true; botId: string }>(`/customers/${encodeURIComponent(userId)}/assign-agent`, { method: 'POST', body: data }),
-  updateAgentDirection: (userId: string, data: { botId: string; direction: 'inbound' | 'outbound' | 'both' }) =>
+  updateAgentDirection: (userId: string, data: { botId: string; direction: 'inbound' | 'outbound' }) =>
     request<{ ok: true; bot: BotSummary }>(`/customers/${encodeURIComponent(userId)}/update-agent-direction`, { method: 'POST', body: data }),
   unassignAgent: (userId: string, data: { botId: string; detachPhoneNumber?: boolean }) =>
     request<{ ok: true; botId: string }>(`/customers/${encodeURIComponent(userId)}/unassign-agent`, { method: 'POST', body: data }),
   updateAgentLimit: (userId: string, data: { limit: number | null }) =>
     request<{ ok: true; agentLimit: AgentLimitInfo }>(`/customers/${encodeURIComponent(userId)}/agent-limit`, { method: 'POST', body: data }),
-  createAgent: (userId: string, data: { businessName: string; industry?: string; greeting?: string; phoneNumber?: string; direction?: 'inbound' | 'outbound' | 'both' }) =>
+  createAgent: (userId: string, data: { businessName: string; industry?: string; greeting?: string; phoneNumber?: string; direction?: 'inbound' | 'outbound' }) =>
     request<{ ok: true; bot: BotSummary }>(`/customers/${encodeURIComponent(userId)}/create-agent`, { method: 'POST', body: data }),
   assignNumber: (userId: string, data: { botId: string; phoneNumber: string }) =>
     request<{ ok: true; bot: BotSummary }>(`/customers/${encodeURIComponent(userId)}/assign-number`, { method: 'POST', body: data }),

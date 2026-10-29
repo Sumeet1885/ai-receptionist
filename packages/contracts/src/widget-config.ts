@@ -38,7 +38,7 @@ export interface WidgetConfig {
   inboundPromptTemplate?: string;
   /** Custom prompt template specifically for outbound telecalling calls */
   outboundPromptTemplate?: string;
-  agentDirection?: 'inbound' | 'outbound' | 'both';
+  agentDirection?: 'inbound' | 'outbound';
 }
 
 export const defaultWidgetConfig: WidgetConfig = {

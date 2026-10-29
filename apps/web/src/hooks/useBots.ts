@@ -5,13 +5,11 @@ import { mergeWidgetConfig } from '../lib/widgetConfig';
 import { BOT_SELECT_FIELDS } from '../lib/botQuery';
 
 function mapBotFromDb(b: any): Bot {
-  const agentDirection: 'inbound' | 'outbound' | 'both' =
-    b.widget_config?.agentDirection ||
-    (b.dograh_outbound_workflow_id && !b.dograh_workflow_id
+  const agentDirection: 'inbound' | 'outbound' =
+    b.widget_config?.agentDirection === 'outbound' ||
+    (!b.widget_config?.agentDirection && b.dograh_outbound_workflow_id && !b.dograh_workflow_id)
       ? 'outbound'
-      : b.dograh_workflow_id && !b.dograh_outbound_workflow_id
-      ? 'inbound'
-      : 'both');
+      : 'inbound';
 
   return {
     id: b.id,

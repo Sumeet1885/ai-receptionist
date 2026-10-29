@@ -165,12 +165,12 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
   const [botData, setBotData] = useState<CustomerAgentsResponse | null>(null);
   const [loadingBots, setLoadingBots] = useState(true);
   const [selectedBotId, setSelectedBotId] = useState('');
-  const [assignDirection, setAssignDirection] = useState<'inbound' | 'outbound' | 'both'>('inbound');
+  const [assignDirection, setAssignDirection] = useState<'inbound' | 'outbound'>('inbound');
   const [showNewAgentForm, setShowNewAgentForm] = useState(false);
   const [newAgentName, setNewAgentName] = useState(customer.businessName || '');
   const [newAgentIndustry, setNewAgentIndustry] = useState('');
   const [newAgentPhone, setNewAgentPhone] = useState('');
-  const [newAgentDirection, setNewAgentDirection] = useState<'inbound' | 'outbound' | 'both'>('inbound');
+  const [newAgentDirection, setNewAgentDirection] = useState<'inbound' | 'outbound'>('inbound');
 
   // Phone number assignment
   const [showAssignNumberForm, setShowAssignNumberForm] = useState(false);
@@ -416,38 +416,24 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
         ) : (
           <div className="space-y-2">
             {botData?.assigned.map((bot) => {
-              const currentDir = bot.widget_config?.agentDirection || (bot.dograh_outbound_workflow_id && !bot.dograh_workflow_id ? 'outbound' : bot.dograh_workflow_id && !bot.dograh_outbound_workflow_id ? 'inbound' : 'both');
+              const currentDir: 'inbound' | 'outbound' = bot.widget_config?.agentDirection === 'outbound' || (!bot.widget_config?.agentDirection && bot.dograh_outbound_workflow_id && !bot.dograh_workflow_id) ? 'outbound' : 'inbound';
               return (
               <div key={bot.id} className="rounded-xl border border-line bg-surface/50 p-3 space-y-2 text-xs">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-ink text-sm">{bot.business_name}</span>
                     {/* Small Glowing Text Badge */}
-                    {(() => {
-                      const dir = currentDir;
-                      if (dir === 'inbound') {
-                        return (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 shadow-[0_0_10px_rgba(16,185,129,0.35)]">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_#10b981]" />
-                            Inbound
-                          </span>
-                        );
-                      }
-                      if (dir === 'outbound') {
-                        return (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase bg-cyan-500/15 border border-cyan-500/40 text-cyan-600 shadow-[0_0_10px_rgba(6,182,212,0.35)]">
-                            <span className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_6px_#06b6d4]" />
-                            Outbound
-                          </span>
-                        );
-                      }
-                      return (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase bg-purple-500/15 border border-purple-500/40 text-purple-600 shadow-[0_0_10px_rgba(168,85,247,0.35)]">
-                          <span className="h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse shadow-[0_0_6px_#a855f7]" />
-                          Inbound & Outbound
-                        </span>
-                      );
-                    })()}
+                    {currentDir === 'inbound' ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 shadow-[0_0_10px_rgba(16,185,129,0.35)]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_#10b981]" />
+                        Inbound
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase bg-cyan-500/15 border border-cyan-500/40 text-cyan-600 shadow-[0_0_10px_rgba(6,182,212,0.35)]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_6px_#06b6d4]" />
+                        Outbound
+                      </span>
+                    )}
                   </div>
                   <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success bg-success-surface px-2 py-0.5 rounded-full">
                     <span className="h-1.5 w-1.5 rounded-full bg-success" /> Active
@@ -503,8 +489,8 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
                   <div className="flex items-center justify-between text-[11px] bg-background/50 px-2.5 py-1.5 rounded-lg border border-line/60">
                     <span className="text-subtle font-medium">Assigned Call Mode:</span>
                     <div className="flex rounded-md border border-line bg-white p-0.5 text-[10px]">
-                      {(['inbound', 'outbound', 'both'] as const).map((d) => {
-                        const currentDir = bot.widget_config?.agentDirection || (bot.dograh_outbound_workflow_id && !bot.dograh_workflow_id ? 'outbound' : bot.dograh_workflow_id && !bot.dograh_outbound_workflow_id ? 'inbound' : 'both');
+                      {(['inbound', 'outbound'] as const).map((d) => {
+                        const currentDir: 'inbound' | 'outbound' = bot.widget_config?.agentDirection === 'outbound' || (!bot.widget_config?.agentDirection && bot.dograh_outbound_workflow_id && !bot.dograh_workflow_id) ? 'outbound' : 'inbound';
                         return (
                           <button
                             key={d}
@@ -523,9 +509,7 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
                               currentDir === d
                                 ? d === 'inbound'
                                   ? 'bg-emerald-500 text-white shadow-sm'
-                                  : d === 'outbound'
-                                  ? 'bg-cyan-500 text-white shadow-sm'
-                                  : 'bg-purple-600 text-white shadow-sm'
+                                  : 'bg-cyan-500 text-white shadow-sm'
                                 : 'text-subtle hover:text-ink'
                             )}
                           >
@@ -630,7 +614,7 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
             <div className="flex items-center justify-between pt-1 border-t border-line/60">
               <span className="text-[11px] text-subtle font-medium">Dedicated Direction:</span>
               <div className="flex rounded-md border border-line bg-white p-0.5 text-[10px]">
-                {(['inbound', 'outbound', 'both'] as const).map((d) => (
+                {(['inbound', 'outbound'] as const).map((d) => (
                   <button
                     key={d}
                     type="button"
@@ -639,14 +623,12 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
                       assignDirection === d
                         ? d === 'inbound'
                           ? 'bg-emerald-500 text-white shadow-sm'
-                          : d === 'outbound'
-                          ? 'bg-cyan-500 text-white shadow-sm'
-                          : 'bg-purple-600 text-white shadow-sm'
+                          : 'bg-cyan-500 text-white shadow-sm'
                         : 'text-subtle hover:text-ink'
                     )}
                     onClick={() => setAssignDirection(d)}
                   >
-                    {d === 'both' ? 'Both' : `${d} only`}
+                    {`${d} only`}
                   </button>
                 ))}
               </div>
@@ -701,7 +683,7 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
             <div className="flex items-center justify-between pt-1 border-t border-primary/20">
               <span className="text-[11px] text-subtle font-medium">Dedicated Direction:</span>
               <div className="flex rounded-md border border-line bg-white p-0.5 text-[10px]">
-                {(['inbound', 'outbound', 'both'] as const).map((d) => (
+                {(['inbound', 'outbound'] as const).map((d) => (
                   <button
                     key={d}
                     type="button"
@@ -710,14 +692,12 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
                       newAgentDirection === d
                         ? d === 'inbound'
                           ? 'bg-emerald-500 text-white shadow-sm'
-                          : d === 'outbound'
-                          ? 'bg-cyan-500 text-white shadow-sm'
-                          : 'bg-purple-600 text-white shadow-sm'
+                          : 'bg-cyan-500 text-white shadow-sm'
                         : 'text-subtle hover:text-ink'
                     )}
                     onClick={() => setNewAgentDirection(d)}
                   >
-                    {d === 'both' ? 'Both' : `${d} only`}
+                    {`${d} only`}
                   </button>
                 ))}
               </div>
