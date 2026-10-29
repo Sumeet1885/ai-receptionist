@@ -6323,3 +6323,90 @@ html.bi-landing-root {
   .bi-landing .hero-brand-backdrop { margin-top: 16px; }
   .bi-landing .hero-visual.duo-stage { margin-top: 20px; }
 }
+
+/* Let the portrait film and its controls determine the section height on phones. */
+@media (max-width: 700px) {
+  .bi-landing .nav,
+  .bi-landing .nav.scrolled {
+    gap: 8px;
+    padding-inline: 12px;
+  }
+  .bi-landing .nav .brand {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .bi-landing .nav .brand > img,
+  .bi-landing .nav.scrolled .brand > img {
+    width: min(100%, 150px);
+    height: auto;
+  }
+  .bi-landing .nav-actions {
+    flex: 0 0 auto;
+    gap: 6px;
+  }
+  .bi-landing .nav .btn {
+    min-height: 44px;
+    padding: 10px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .bi-landing .mobile-menu-toggle {
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+  }
+  .bi-landing #workflow.video-section {
+    height: auto;
+    min-height: 0;
+  }
+  .bi-landing #workflow > .section-sticker {
+    display: none;
+  }
+  .bi-landing .video-section .walkthrough-player {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px;
+    grid-template-areas: 'status status' 'video video' 'chapters pause';
+    gap: 12px 8px;
+    height: auto;
+    padding: 84px 16px 20px;
+  }
+  .bi-landing .video-section .walkthrough-player video {
+    grid-area: video;
+    height: auto;
+    aspect-ratio: 9 / 16;
+  }
+  .bi-landing .video-section .film-status {
+    grid-area: status;
+    position: static;
+    justify-self: start;
+  }
+  .bi-landing .video-section .film-chapters {
+    grid-area: chapters;
+    position: static;
+    transform: none;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 100%;
+    max-width: 100%;
+    max-height: none;
+    border-radius: 20px;
+    white-space: normal;
+  }
+  .bi-landing .video-section .film-chapters button {
+    flex: 1 1 auto;
+    min-height: 44px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .bi-landing .video-section .film-pause {
+    grid-area: pause;
+    position: static;
+    align-self: center;
+    width: 44px;
+    height: 44px;
+  }
+  .bi-landing .language-wall > .reveal,
+  .bi-landing .language-wall > .hint {
+    padding-inline: 16px;
+  }
+}
