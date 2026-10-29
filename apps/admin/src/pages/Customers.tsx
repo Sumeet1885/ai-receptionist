@@ -1,8 +1,8 @@
 import { formatExpiryIST } from '@ai-receptionist/contracts';
 import { useEffect, useState, type FormEvent } from 'react';
-import { Ban, Bot, Loader2, Mail, PhoneCall, RotateCcw, Search, Users } from 'lucide-react';
+import { Ban, Bot, Check, Edit2, Loader2, Mail, Phone, PhoneCall, Plus, RotateCcw, Search, Trash2, Users, X } from 'lucide-react';
 import { LIMITS } from '@ai-receptionist/contracts';
-import { customersApi, type Customer, type CustomerStage, type BotSummary } from '../api';
+import { customersApi, type Customer, type CustomerStage, type BotSummary, type CustomerAgentsResponse } from '../api';
 import { useToast } from '../toast';
 import { Button, Card, Drawer, FilterTabs, PageError, Pager, cx, formatDate, initials, timeAgo } from '../ui';
 
@@ -162,13 +162,20 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
   const toast = useToast();
   const canSupport = roles.includes('super_admin') || roles.includes('support');
   const canSuspend = roles.includes('super_admin');
-  const [botData, setBotData] = useState<{ assigned: BotSummary[]; all: BotSummary[] } | null>(null);
+  const [botData, setBotData] = useState<CustomerAgentsResponse | null>(null);
   const [loadingBots, setLoadingBots] = useState(true);
   const [selectedBotId, setSelectedBotId] = useState('');
   const [showNewAgentForm, setShowNewAgentForm] = useState(false);
   const [newAgentName, setNewAgentName] = useState(customer.businessName || '');
   const [newAgentIndustry, setNewAgentIndustry] = useState('');
   const [newAgentPhone, setNewAgentPhone] = useState('');
+
+  // Phone number assignment
+  const [showAssignNumberForm, setShowAssignNumberForm] = useState(false);
+  const [numberMode, setNumberMode] = useState<'custom' | 'pool'>('custom');
+  const [selectedPoolNumber, setSelectedPoolNumber] = useState('');
+  const [customPhoneInput, setCustomPhoneInput] = useState('');
+  const [targetBotIdForNumber, setTargetBotIdForNumber] = useState('');
 
   const loadBots = async () => {
     try {
@@ -286,19 +293,59 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
         ) : (
           <div className="space-y-2">
             {botData?.assigned.map((bot) => (
-              <div key={bot.id} className="rounded-xl border border-line bg-surface/50 p-3 space-y-1.5 text-xs">
+              <div key={bot.id} className="rounded-xl border border-line bg-surface/50 p-3 space-y-2 text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-ink">{bot.business_name}</span>
+                  <span className="font-semibold text-ink text-sm">{bot.business_name}</span>
                   <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success bg-success-surface px-2 py-0.5 rounded-full">
                     <span className="h-1.5 w-1.5 rounded-full bg-success" /> Active
                   </span>
                 </div>
                 <p className="text-subtle">Industry: {bot.industry || 'General'}</p>
-                <p className="text-subtle flex items-center gap-1.5 font-mono">
-                  <PhoneCall className="h-3.5 w-3.5 text-primary" />
-                  {bot.dograh_phone_number || 'No phone number assigned'}
-                </p>
-                <div className="flex gap-2 pt-1">
+                
+                {/* Phone Line Status on Agent Card */}
+                <div className="flex items-center justify-between rounded-lg border border-line bg-background/50 px-2.5 py-1.5">
+                  <span className="font-mono text-ink font-medium flex items-center gap-1.5">
+                    <PhoneCall className="h-3.5 w-3.5 text-primary" />
+                    {bot.dograh_phone_number || <span className="text-subtle font-sans italic font-normal">No line assigned</span>}
+                  </span>
+                  {canSupport && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="text-[11px] font-medium text-primary hover:underline"
+                        onClick={() => {
+                          setTargetBotIdForNumber(bot.id);
+                          setCustomPhoneInput(bot.dograh_phone_number || '');
+                          setShowAssignNumberForm(true);
+                        }}
+                      >
+                        {bot.dograh_phone_number ? 'Change Line' : '+ Assign Line'}
+                      </button>
+                      {bot.dograh_phone_number && (
+                        <>
+                          <span className="text-line">·</span>
+                          <button
+                            type="button"
+                            className="text-[11px] text-danger hover:underline"
+                            disabled={busy}
+                            onClick={async () => {
+                              if (!window.confirm(`Unassign phone line ${bot.dograh_phone_number} from ${bot.business_name}?`)) return;
+                              await act(async () => {
+                                await customersApi.unassignNumber(customer.userId, { botId: bot.id });
+                                const refreshed = await customersApi.getAgents(customer.userId);
+                                setBotData(refreshed);
+                              }, 'Phone line unassigned');
+                            }}
+                          >
+                            Unlink
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2 pt-0.5">
                   <span className={cx('text-[10px] px-2 py-0.5 rounded border', bot.dograh_workflow_id ? 'bg-info-surface text-info border-info/30' : 'bg-background text-subtle border-line')}>
                     Inbound: {bot.dograh_workflow_id ? 'Configured' : 'Ready'}
                   </span>
@@ -394,6 +441,210 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
               <Button size="sm" type="submit" disabled={busy || !newAgentName.trim()}>Provision & Assign</Button>
             </div>
           </form>
+        )}
+      </div>
+
+      {/* Dedicated Section: Assigned Phone Numbers in Same Manner as Agents */}
+      <div className="space-y-3 pt-4 border-t border-line">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-sm text-ink flex items-center gap-1.5">
+            <Phone className="h-4 w-4 text-primary" />
+            Assigned Phone Numbers ({botData?.assigned.filter((b) => Boolean(b.dograh_phone_number)).length ?? 0})
+          </h3>
+          {canSupport && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setShowAssignNumberForm((v) => !v);
+                if (!targetBotIdForNumber && botData?.assigned?.[0]?.id) {
+                  setTargetBotIdForNumber(botData.assigned[0].id);
+                }
+              }}
+            >
+              {showAssignNumberForm ? 'Cancel' : '+ Assign Number'}
+            </Button>
+          )}
+        </div>
+
+        {loadingBots ? (
+          <div className="flex items-center justify-center py-4 text-xs text-subtle">
+            <Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading assigned numbers...
+          </div>
+        ) : !botData?.assigned.some((b) => Boolean(b.dograh_phone_number)) ? (
+          <div className="rounded-xl border border-dashed border-line p-3 text-center text-xs text-subtle">
+            No dedicated phone lines currently assigned to this customer.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {botData.assigned
+              .filter((b) => Boolean(b.dograh_phone_number))
+              .map((bot) => (
+                <div key={`line-${bot.id}`} className="rounded-xl border border-line bg-surface/50 p-3 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono font-bold text-ink text-sm flex items-center gap-1.5">
+                      <PhoneCall className="h-4 w-4 text-primary" />
+                      {bot.dograh_phone_number}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success bg-success-surface px-2 py-0.5 rounded-full">
+                      <span className="h-1.5 w-1.5 rounded-full bg-success" /> Active Line
+                    </span>
+                  </div>
+                  <p className="text-subtle">
+                    Routes to agent: <strong className="text-ink">{bot.business_name}</strong> ({bot.industry || 'General'})
+                  </p>
+                  <div className="flex items-center justify-between pt-1 border-t border-line/50">
+                    <span className="text-[10px] text-subtle">Dedicated Telephony · Inbound & Outbound</span>
+                    {canSupport && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setTargetBotIdForNumber(bot.id);
+                            setCustomPhoneInput(bot.dograh_phone_number || '');
+                            setShowAssignNumberForm(true);
+                          }}
+                        >
+                          Change
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="dangerOutline"
+                          disabled={busy}
+                          onClick={async () => {
+                            if (!window.confirm(`Unassign phone line ${bot.dograh_phone_number} from ${bot.business_name}?`)) return;
+                            await act(async () => {
+                              await customersApi.unassignNumber(customer.userId, { botId: bot.id });
+                              const refreshed = await customersApi.getAgents(customer.userId);
+                              setBotData(refreshed);
+                            }, 'Phone line unassigned');
+                          }}
+                        >
+                          Unassign
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
+
+        {/* Assign Number Form: Choose Pool Number or Enter Custom Dedicated Line */}
+        {canSupport && showAssignNumberForm && (
+          <div className="rounded-xl border border-primary/20 bg-primary-soft/10 p-3 space-y-3 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-ink">Assign Phone Line</span>
+              <div className="flex rounded-lg border border-line bg-white p-0.5 text-[11px]">
+                <button
+                  type="button"
+                  className={cx('px-2 py-0.5 rounded-md transition-colors', numberMode === 'custom' ? 'bg-primary text-white font-medium' : 'text-subtle hover:text-ink')}
+                  onClick={() => setNumberMode('custom')}
+                >
+                  Dedicated Number
+                </button>
+                <button
+                  type="button"
+                  className={cx('px-2 py-0.5 rounded-md transition-colors', numberMode === 'pool' ? 'bg-primary text-white font-medium' : 'text-subtle hover:text-ink')}
+                  onClick={() => setNumberMode('pool')}
+                >
+                  Pool / System
+                </button>
+              </div>
+            </div>
+
+            {botData?.assigned.length === 0 ? (
+              <div className="p-2.5 rounded-lg bg-warning-surface text-warning text-xs">
+                Please assign or provision a voice agent persona above first so incoming and outgoing calls can be answered on this line.
+              </div>
+            ) : (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const phoneToAssign = numberMode === 'custom' ? customPhoneInput.trim() : (selectedPoolNumber || botData?.availableNumbers?.[0] || '').trim();
+                  if (!phoneToAssign) return;
+                  const targetBot = targetBotIdForNumber || botData?.assigned[0]?.id;
+                  if (!targetBot) return;
+
+                  await act(async () => {
+                    await customersApi.assignNumber(customer.userId, {
+                      botId: targetBot,
+                      phoneNumber: phoneToAssign,
+                    });
+                    const refreshed = await customersApi.getAgents(customer.userId);
+                    setBotData(refreshed);
+                    setShowAssignNumberForm(false);
+                    setCustomPhoneInput('');
+                  }, `Phone line ${phoneToAssign} assigned`);
+                }}
+                className="space-y-2.5"
+              >
+                <div>
+                  <label className="text-[11px] font-medium text-subtle block mb-1">Route Calls To Agent Persona</label>
+                  <select
+                    className="w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs text-ink focus:border-primary focus:outline-none"
+                    value={targetBotIdForNumber || (botData?.assigned[0]?.id ?? '')}
+                    onChange={(e) => setTargetBotIdForNumber(e.target.value)}
+                    required
+                  >
+                    {botData?.assigned.map((bot) => (
+                      <option key={bot.id} value={bot.id}>
+                        {bot.business_name} {bot.dograh_phone_number ? `(Current Line: ${bot.dograh_phone_number})` : '(No line)'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {numberMode === 'custom' ? (
+                  <div>
+                    <label className="text-[11px] font-medium text-subtle block mb-1">Dedicated Phone Number (DID / Carrier line)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. +91 98765 43210 or +91 22 6423 0099"
+                      className="w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs text-ink focus:border-primary focus:outline-none font-mono"
+                      value={customPhoneInput}
+                      onChange={(e) => setCustomPhoneInput(e.target.value)}
+                      required
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-[11px] font-medium text-subtle block mb-1">Select from Available System / Pool Numbers</label>
+                    {botData?.availableNumbers && botData.availableNumbers.length > 0 ? (
+                      <select
+                        className="w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs text-ink focus:border-primary focus:outline-none font-mono"
+                        value={selectedPoolNumber || (botData.availableNumbers[0] ?? '')}
+                        onChange={(e) => setSelectedPoolNumber(e.target.value)}
+                        required
+                      >
+                        {botData.availableNumbers.map((num) => (
+                          <option key={num} value={num}>
+                            {num}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className="text-xs text-subtle italic">No pool numbers detected. Use "Dedicated Number" to enter a phone line.</p>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2 pt-1">
+                  <Button size="sm" variant="ghost" onClick={() => setShowAssignNumberForm(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    type="submit"
+                    disabled={busy || (numberMode === 'custom' ? !customPhoneInput.trim() : !selectedPoolNumber && !botData?.availableNumbers?.length)}
+                  >
+                    Assign Number
+                  </Button>
+                </div>
+              </form>
+            )}
+          </div>
         )}
       </div>
     </Drawer>

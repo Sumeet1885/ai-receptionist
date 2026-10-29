@@ -99,9 +99,21 @@ router.get('/:id/agents', requireAdminRole('read_only'), handle(async (req, res)
 
   if (allErr) return res.status(500).json({ error: allErr.message });
 
+  // Extract distinct configured phone numbers across all bots and platform defaults
+  const phoneSet = new Set<string>();
+  if (config.defaultPhoneNumber) {
+    phoneSet.add(config.defaultPhoneNumber);
+  }
+  (allBots || []).forEach((b: any) => {
+    if (b.dograh_phone_number && typeof b.dograh_phone_number === 'string' && b.dograh_phone_number.trim()) {
+      phoneSet.add(b.dograh_phone_number.trim());
+    }
+  });
+
   res.json({
     assigned: assigned || [],
     all: allBots || [],
+    availableNumbers: Array.from(phoneSet),
   });
 }));
 
@@ -133,6 +145,92 @@ router.post('/:id/assign-agent', requireAdminRole('support'), handle(async (req,
   });
 
   res.json({ ok: true, botId });
+}));
+
+// Assigns or updates a phone number on a customer bot
+router.post('/:id/assign-number', requireAdminRole('support'), handle(async (req, res) => {
+  if (!UUID.test(req.params.id)) return res.status(404).json({ error: 'Customer not found' });
+  const { botId, phoneNumber } = req.body || {};
+  if (!botId || !UUID.test(botId)) return res.status(400).json({ error: 'Valid botId is required' });
+  if (!phoneNumber || typeof phoneNumber !== 'string' || !phoneNumber.trim()) {
+    return res.status(400).json({ error: 'Valid phone number is required' });
+  }
+
+  const cleanPhone = phoneNumber.trim();
+
+  const { data: bot, error: botErr } = await supabase
+    .from('bots')
+    .select('id, business_name, owner_id, widget_config')
+    .eq('id', botId)
+    .maybeSingle();
+
+  if (botErr || !bot) return res.status(404).json({ error: 'Agent not found' });
+
+  const existingWidget = (bot.widget_config && typeof bot.widget_config === 'object') ? bot.widget_config : {};
+  const updatedWidget = {
+    ...existingWidget,
+    phoneNumber: cleanPhone,
+  };
+
+  const { data: updatedBot, error: updateErr } = await supabase
+    .from('bots')
+    .update({
+      dograh_phone_number: cleanPhone,
+      phone_number: cleanPhone,
+      widget_config: updatedWidget,
+    })
+    .eq('id', botId)
+    .select('id, business_name, industry, dograh_phone_number, dograh_workflow_id, dograh_outbound_workflow_id, is_active, created_at, owner_id')
+    .single();
+
+  if (updateErr) return res.status(500).json({ error: updateErr.message });
+
+  await audit(req, 'customer.assign_phone_number', req.params.id, {
+    botId,
+    botName: bot.business_name,
+    phoneNumber: cleanPhone,
+  });
+
+  res.json({ ok: true, bot: updatedBot });
+}));
+
+// Unassigns / removes direct phone line from a customer bot
+router.post('/:id/unassign-number', requireAdminRole('support'), handle(async (req, res) => {
+  if (!UUID.test(req.params.id)) return res.status(404).json({ error: 'Customer not found' });
+  const { botId } = req.body || {};
+  if (!botId || !UUID.test(botId)) return res.status(400).json({ error: 'Valid botId is required' });
+
+  const { data: bot, error: botErr } = await supabase
+    .from('bots')
+    .select('id, business_name, owner_id, widget_config, dograh_phone_number')
+    .eq('id', botId)
+    .maybeSingle();
+
+  if (botErr || !bot) return res.status(404).json({ error: 'Agent not found' });
+
+  const existingWidget = (bot.widget_config && typeof bot.widget_config === 'object') ? { ...(bot.widget_config as any) } : {};
+  delete existingWidget.phoneNumber;
+
+  const { data: updatedBot, error: updateErr } = await supabase
+    .from('bots')
+    .update({
+      dograh_phone_number: null,
+      phone_number: null,
+      widget_config: existingWidget,
+    })
+    .eq('id', botId)
+    .select('id, business_name, industry, dograh_phone_number, dograh_workflow_id, dograh_outbound_workflow_id, is_active, created_at, owner_id')
+    .single();
+
+  if (updateErr) return res.status(500).json({ error: updateErr.message });
+
+  await audit(req, 'customer.unassign_phone_number', req.params.id, {
+    botId,
+    botName: bot.business_name,
+    previousPhoneNumber: bot.dograh_phone_number,
+  });
+
+  res.json({ ok: true, bot: updatedBot });
 }));
 
 // Creates and provisions a new bot persona directly assigned to the customer

@@ -386,6 +386,12 @@ export interface BotSummary {
   owner_id: string;
 }
 
+export interface CustomerAgentsResponse {
+  assigned: BotSummary[];
+  all: BotSummary[];
+  availableNumbers: string[];
+}
+
 export const customersApi = {
   list: (params: { stage?: CustomerStage; search?: string; page?: number }) => {
     const query = new URLSearchParams();
@@ -398,9 +404,13 @@ export const customersApi = {
     request<{ ok: true; status: string }>(`/customers/${encodeURIComponent(userId)}/status`, { method: 'POST', body: { status } }),
   resend: (userId: string) => request<{ ok: true }>(`/customers/${encodeURIComponent(userId)}/resend`, { method: 'POST' }),
   getAgents: (userId: string) =>
-    request<{ assigned: BotSummary[]; all: BotSummary[] }>(`/customers/${encodeURIComponent(userId)}/agents`),
+    request<CustomerAgentsResponse>(`/customers/${encodeURIComponent(userId)}/agents`),
   assignAgent: (userId: string, botId: string) =>
     request<{ ok: true; botId: string }>(`/customers/${encodeURIComponent(userId)}/assign-agent`, { method: 'POST', body: { botId } }),
   createAgent: (userId: string, data: { businessName: string; industry?: string; greeting?: string; phoneNumber?: string }) =>
     request<{ ok: true; bot: BotSummary }>(`/customers/${encodeURIComponent(userId)}/create-agent`, { method: 'POST', body: data }),
+  assignNumber: (userId: string, data: { botId: string; phoneNumber: string }) =>
+    request<{ ok: true; bot: BotSummary }>(`/customers/${encodeURIComponent(userId)}/assign-number`, { method: 'POST', body: data }),
+  unassignNumber: (userId: string, data: { botId: string }) =>
+    request<{ ok: true; bot: BotSummary }>(`/customers/${encodeURIComponent(userId)}/unassign-number`, { method: 'POST', body: data }),
 };
