@@ -34,12 +34,44 @@ export const PricingView: React.FC<PricingViewProps> = ({ navigate, embedded = f
 
   const priced = (plan: PublicPlan) => !plan.contactSales && plan.price[currency] > 0;
 
+  function getFeatureLabel(feature: PlanFeature, curr: Currency) {
+    if (feature.key === 'topup_500_minutes') {
+      return curr === 'USD' ? 'Top up Minutes 500 ($)' : 'Top up Minutes 500 (₹)';
+    }
+    if (feature.key === 'calendar_booking') {
+      return curr === 'USD' ? 'Calendar booking' : feature.label;
+    }
+    return feature.label.replace(/\(INR\)/gi, curr === 'USD' ? '($)' : '(₹)');
+  }
+
+  function getFeatureValue(p: PublicPlan, featureKey: string, curr: Currency) {
+    if (featureKey === 'topup_500_minutes') {
+      if (curr === 'USD') {
+        const usdVal = p.features['topup_500_minutes_usd'];
+        if (usdVal) return `$${usdVal}`;
+        if (p.slug === 'ai-starter') return '$50';
+        if (p.slug === 'ai-growth') return '$45';
+        if (p.slug === 'ai-business-pro') return '$38';
+        return p.contactSales ? 'Custom' : '—';
+      } else {
+        const inrVal = p.features['topup_500_minutes'];
+        if (!inrVal) return p.contactSales ? 'Custom' : '—';
+        const num = parseInt(inrVal, 10);
+        return !isNaN(num) ? `₹${num.toLocaleString('en-IN')}` : inrVal;
+      }
+    }
+    return p.features[featureKey] || '—';
+  }
+
   const rows: Array<{ label: string; value: (plan: PublicPlan) => string }> = [
     { label: 'Monthly usage', value: (p) => p.contactSales && p.monthlyMinutes == null ? 'Custom' : count(p.monthlyMinutes, ' minutes') },
     { label: 'Price per month', value: (p) => p.contactSales ? 'Talk to sales' : priced(p) ? formatMoney(p.price[currency], currency) : '—' },
     { label: 'Agents', value: (p) => p.contactSales && p.maxAgents == null ? 'Custom' : count(p.maxAgents) },
     { label: 'Concurrent calls', value: (p) => p.contactSales && p.maxConcurrentCalls == null ? 'Custom' : count(p.maxConcurrentCalls) },
-    ...features.map((feature) => ({ label: feature.label, value: (p: PublicPlan) => p.features[feature.key] || '—' })),
+    ...features.map((feature) => ({
+      label: getFeatureLabel(feature, currency),
+      value: (p: PublicPlan) => getFeatureValue(p, feature.key, currency),
+    })),
     { label: 'One-time setup fee', value: (p) => p.contactSales ? '—' : p.setupFee[currency] > 0 ? formatMoney(p.setupFee[currency], currency) : 'Included' },
   ];
 
@@ -137,8 +169,8 @@ export const PricingView: React.FC<PricingViewProps> = ({ navigate, embedded = f
                 <dl className={`mt-3 divide-y border-t text-sm ${plan.featured ? 'divide-primary-foreground/15 border-primary-foreground/15' : 'divide-border border-border'}`}>
                   {features.map((feature) => (
                     <div key={feature.key} className="grid grid-cols-[minmax(0,1fr)_minmax(0,auto)] items-start gap-3 py-2">
-                      <dt className={`break-words ${plan.featured ? 'text-primary-foreground/75' : 'text-text-subtle'}`}>{feature.label}</dt>
-                      <dd className="max-w-28 break-words text-right font-medium whitespace-pre-line">{plan.features[feature.key] || '—'}</dd>
+                      <dt className={`break-words ${plan.featured ? 'text-primary-foreground/75' : 'text-text-subtle'}`}>{getFeatureLabel(feature, currency)}</dt>
+                      <dd className="max-w-28 break-words text-right font-medium whitespace-pre-line">{getFeatureValue(plan, feature.key, currency)}</dd>
                     </div>
                   ))}
                 </dl>
