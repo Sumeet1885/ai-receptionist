@@ -11,6 +11,7 @@ interface LeadsWorkspaceProps {
   launchPublicChat: (botId: string) => void;
   showToast: (message: string, type?: 'success' | 'error') => void;
   targetLeadId?: string;
+  appointmentsCount?: number;
 }
 
 export const LeadsWorkspace: React.FC<LeadsWorkspaceProps> = ({
@@ -21,7 +22,8 @@ export const LeadsWorkspace: React.FC<LeadsWorkspaceProps> = ({
   setSelectedBotId,
   launchPublicChat,
   showToast,
-  targetLeadId
+  targetLeadId,
+  appointmentsCount,
 }) => {
   return (
     <div className="w-full">
@@ -34,6 +36,7 @@ export const LeadsWorkspace: React.FC<LeadsWorkspaceProps> = ({
         launchPublicChat={launchPublicChat}
         showToast={showToast}
         targetLeadId={targetLeadId}
+        appointmentsCount={appointmentsCount}
       />
     </div>
   );

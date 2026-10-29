@@ -29,6 +29,7 @@ interface LeadTableProps {
   launchPublicChat: (botId: string) => void;
   showToast: (message: string, type?: 'success' | 'error') => void;
   targetLeadId?: string;
+  appointmentsCount?: number;
 }
 
 export const LeadTable: React.FC<LeadTableProps> = ({
@@ -39,6 +40,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({
   bots = [],
   showToast,
   targetLeadId,
+  appointmentsCount,
 }) => {
   const [filterChannel, setFilterChannel] = useState<'all' | 'inbound' | 'outbound'>('all');
   const [filterScore, setFilterScore] = useState<'all' | 'HOT' | 'WARM'>('all');
@@ -282,7 +284,9 @@ export const LeadTable: React.FC<LeadTableProps> = ({
   const totalWarm = botFilteredLeads.filter(l => l.leadScore === 'WARM').length;
   const totalInbound = botFilteredLeads.filter(l => (l.channel || 'inbound') === 'inbound').length;
   const totalOutbound = botFilteredLeads.filter(l => l.channel === 'outbound').length;
-  const totalSiteVisits = botFilteredLeads.filter(
+  const totalSiteVisits = appointmentsCount !== undefined
+    ? appointmentsCount
+    : botFilteredLeads.filter(
     l => l.appointmentStatus && l.appointmentStatus !== 'None' && l.appointmentStatus !== 'Not Scheduled'
   ).length;
   const positiveSentimentCount = botFilteredLeads.filter(l => l.sentiment === 'Positive').length;

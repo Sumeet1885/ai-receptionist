@@ -8,6 +8,7 @@ interface DashboardHomeProps {
   leads: Lead[];
   navigate: (path: string) => void;
   launchPublicChat: (botId: string) => void;
+  appointmentsCount?: number;
 }
 
 function getInitials(name: string): string {
@@ -21,7 +22,8 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
   activeBot,
   bots = [],
   leads,
-  navigate
+  navigate,
+  appointmentsCount: passedAppointmentsCount
 }) => {
   // Sync exact filtering with Leads Pipeline (LeadTable.tsx)
   const qualifiedLeads = leads
@@ -33,9 +35,11 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
   const warmLeads = qualifiedLeads.filter(lead => lead.leadScore === 'WARM');
   const inboundCount = qualifiedLeads.filter(lead => (lead.channel || 'inbound') === 'inbound').length;
   const outboundCount = qualifiedLeads.filter(lead => lead.channel === 'outbound').length;
-  const appointmentsCount = qualifiedLeads.filter(
-    lead => lead.appointmentStatus && lead.appointmentStatus !== 'None' && lead.appointmentStatus !== 'Not Scheduled'
-  ).length;
+  const appointmentsCount = passedAppointmentsCount !== undefined
+    ? passedAppointmentsCount
+    : qualifiedLeads.filter(
+        lead => lead.appointmentStatus && lead.appointmentStatus !== 'None' && lead.appointmentStatus !== 'Not Scheduled'
+      ).length;
   // Top 5 leads directly from the leads pipeline (exact same order: updated_at descending)
   const needsAttention = qualifiedLeads.slice(0, 5);
 

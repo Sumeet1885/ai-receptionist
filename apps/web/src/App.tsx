@@ -13,6 +13,7 @@ import { accountApi } from './lib/accountApi';
 import { useBots } from './hooks/useBots';
 import { useLeads } from './hooks/useLeads';
 import { useChat } from './hooks/useChat';
+import { useAppointments } from './hooks/useAppointments';
 
 import { Toast } from './components/common/Toast';
 import { Header } from './components/layout/Header';
@@ -158,6 +159,7 @@ export default function App() {
   const { bots, setBots, activeBotId, setActiveBotId, fetchBots, createBot, updateBot, deleteBot } = useBots();
   const { leads, setLeads, fetchLeads } = useLeads();
   const chat = useChat();
+  const { count: appointmentsCount } = useAppointments(Boolean(user));
 
   const [newBotName, setNewBotName] = useState('SmileCare Dental & Wellness Clinic');
   const [newBotIndustry, setNewBotIndustry] = useState('Healthcare');
@@ -558,6 +560,7 @@ export default function App() {
                   leads={leads}
                   navigate={navigate}
                   launchPublicChat={launchPublicChat}
+                  appointmentsCount={appointmentsCount}
                 />
               </PostLoginShell>
             )}
@@ -575,6 +578,7 @@ export default function App() {
                     selectedBotId={leadAgentFilter}
                     setSelectedBotId={setLeadAgentFilter}
                     launchPublicChat={launchPublicChat}
+                  appointmentsCount={appointmentsCount}
                     showToast={showToast}
                     targetLeadId={route.targetLeadId}
                   />
