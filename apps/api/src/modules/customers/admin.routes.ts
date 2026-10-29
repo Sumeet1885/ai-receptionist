@@ -80,6 +80,36 @@ router.post('/:id/resend', requireAdminRole('support'), handle(async (req, res) 
   res.json({ ok: true });
 }));
 
+async function getCustomerAgentLimitInfo(userId: string) {
+  const { data: userRecord } = await supabase.auth.admin.getUserById(userId);
+  const userMeta = userRecord?.user?.user_metadata || {};
+  const customLimit = typeof userMeta.custom_agent_limit === 'number'
+    ? userMeta.custom_agent_limit
+    : (userMeta.custom_agent_limit ? parseInt(userMeta.custom_agent_limit, 10) : null);
+
+  const { data: customerAccount } = await supabase
+    .from('customer_accounts')
+    .select('plan_id, plans(id, name, max_agents)')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  const rawPlan = customerAccount?.plans;
+  const plan = (Array.isArray(rawPlan) ? rawPlan[0] : rawPlan) as { id: string; name: string; max_agents: number | null } | null | undefined;
+  const planLimit = plan !== undefined && plan !== null ? plan.max_agents : 1;
+  const planName = plan?.name || 'Trial / Starter';
+
+  const effectiveLimit = customLimit !== null && !isNaN(customLimit)
+    ? customLimit
+    : planLimit;
+
+  return {
+    customLimit: (customLimit !== null && !isNaN(customLimit)) ? customLimit : null,
+    planLimit,
+    planName,
+    effectiveLimit,
+  };
+}
+
 // Lists bots assigned to this customer as well as available bots across the workspace
 router.get('/:id/agents', requireAdminRole('read_only'), handle(async (req, res) => {
   if (!UUID.test(req.params.id)) return res.status(404).json({ error: 'Customer not found' });
@@ -110,10 +140,19 @@ router.get('/:id/agents', requireAdminRole('read_only'), handle(async (req, res)
     }
   });
 
+  const limitInfo = await getCustomerAgentLimitInfo(req.params.id);
+
   res.json({
     assigned: assigned || [],
     all: allBots || [],
     availableNumbers: Array.from(phoneSet),
+    agentLimit: {
+      current: (assigned || []).length,
+      effectiveLimit: limitInfo.effectiveLimit,
+      customLimit: limitInfo.customLimit,
+      planLimit: limitInfo.planLimit,
+      planName: limitInfo.planName,
+    },
   });
 }));
 
@@ -122,6 +161,19 @@ router.post('/:id/assign-agent', requireAdminRole('support'), handle(async (req,
   if (!UUID.test(req.params.id)) return res.status(404).json({ error: 'Customer not found' });
   const botId = req.body?.botId;
   if (!botId || !UUID.test(botId)) return res.status(400).json({ error: 'Valid botId is required' });
+
+  // Check agent limit restriction
+  const limitInfo = await getCustomerAgentLimitInfo(req.params.id);
+  const { count: currentAssignedCount } = await supabase
+    .from('bots')
+    .select('id', { count: 'exact', head: true })
+    .eq('owner_id', req.params.id);
+
+  if (limitInfo.effectiveLimit !== null && (currentAssignedCount || 0) >= limitInfo.effectiveLimit) {
+    return res.status(400).json({
+      error: `Agent limit reached (${currentAssignedCount || 0} of ${limitInfo.effectiveLimit} assigned). Increase the agent limit or unassign an agent first.`
+    });
+  }
 
   const { data: bot, error: botErr } = await supabase
     .from('bots')
@@ -145,6 +197,97 @@ router.post('/:id/assign-agent', requireAdminRole('support'), handle(async (req,
   });
 
   res.json({ ok: true, botId });
+}));
+
+// Unassigns / detaches a bot persona from a customer
+router.post('/:id/unassign-agent', requireAdminRole('support'), handle(async (req, res) => {
+  if (!UUID.test(req.params.id)) return res.status(404).json({ error: 'Customer not found' });
+  const { botId, detachPhoneNumber } = req.body || {};
+  if (!botId || !UUID.test(botId)) return res.status(400).json({ error: 'Valid botId is required' });
+
+  const { data: bot, error: botErr } = await supabase
+    .from('bots')
+    .select('id, business_name, owner_id, dograh_phone_number, widget_config')
+    .eq('id', botId)
+    .maybeSingle();
+
+  if (botErr || !bot) return res.status(404).json({ error: 'Agent not found' });
+
+  const updates: Record<string, any> = { owner_id: null };
+  if (detachPhoneNumber) {
+    updates.dograh_phone_number = null;
+    updates.phone_number = null;
+    if (bot.widget_config && typeof bot.widget_config === 'object') {
+      const { phoneNumber: _, ...rest } = bot.widget_config as any;
+      updates.widget_config = rest;
+    }
+  }
+
+  const { data: updatedBot, error: updateErr } = await supabase
+    .from('bots')
+    .update(updates)
+    .eq('id', botId)
+    .select('id, business_name, industry, dograh_phone_number, dograh_workflow_id, dograh_outbound_workflow_id, is_active, created_at, owner_id')
+    .single();
+
+  if (updateErr) return res.status(500).json({ error: updateErr.message });
+
+  await audit(req, 'customer.unassign_agent', req.params.id, {
+    botId,
+    botName: bot.business_name,
+    detachedPhoneNumber: Boolean(detachPhoneNumber),
+  });
+
+  res.json({ ok: true, bot: updatedBot });
+}));
+
+// Updates the custom agent limit restriction for a customer
+router.post('/:id/agent-limit', requireAdminRole('support'), handle(async (req, res) => {
+  if (!UUID.test(req.params.id)) return res.status(404).json({ error: 'Customer not found' });
+  const { limit } = req.body || {};
+
+  let customLimit: number | null = null;
+  if (limit !== null && limit !== undefined && limit !== '') {
+    const parsed = parseInt(String(limit), 10);
+    if (isNaN(parsed) || parsed < 1 || parsed > 500) {
+      return res.status(400).json({ error: 'Agent limit must be between 1 and 500, or null to follow plan default' });
+    }
+    customLimit = parsed;
+  }
+
+  const { data: userRecord, error: userErr } = await supabase.auth.admin.getUserById(req.params.id);
+  if (userErr || !userRecord?.user) return res.status(404).json({ error: 'Customer not found' });
+
+  const currentMeta = userRecord.user.user_metadata || {};
+  const updatedMeta = { ...currentMeta, custom_agent_limit: customLimit };
+
+  const { error: updateErr } = await supabase.auth.admin.updateUserById(req.params.id, {
+    user_metadata: updatedMeta,
+  });
+
+  if (updateErr) return res.status(500).json({ error: updateErr.message });
+
+  await audit(req, 'customer.update_agent_limit', req.params.id, {
+    customLimit,
+    previousLimit: currentMeta.custom_agent_limit ?? null,
+  });
+
+  const limitInfo = await getCustomerAgentLimitInfo(req.params.id);
+  const { count: currentAssignedCount } = await supabase
+    .from('bots')
+    .select('id', { count: 'exact', head: true })
+    .eq('owner_id', req.params.id);
+
+  res.json({
+    ok: true,
+    agentLimit: {
+      current: currentAssignedCount || 0,
+      effectiveLimit: limitInfo.effectiveLimit,
+      customLimit: limitInfo.customLimit,
+      planLimit: limitInfo.planLimit,
+      planName: limitInfo.planName,
+    },
+  });
 }));
 
 // Assigns or updates a phone number on a customer bot
@@ -239,6 +382,19 @@ router.post('/:id/create-agent', requireAdminRole('support'), handle(async (req,
   const { businessName, industry, greeting, phoneNumber } = req.body || {};
   if (!businessName || typeof businessName !== 'string' || !businessName.trim()) {
     return res.status(400).json({ error: 'Business name is required' });
+  }
+
+  // Check agent limit restriction
+  const limitInfo = await getCustomerAgentLimitInfo(req.params.id);
+  const { count: currentAssignedCount } = await supabase
+    .from('bots')
+    .select('id', { count: 'exact', head: true })
+    .eq('owner_id', req.params.id);
+
+  if (limitInfo.effectiveLimit !== null && (currentAssignedCount || 0) >= limitInfo.effectiveLimit) {
+    return res.status(400).json({
+      error: `Agent limit reached (${currentAssignedCount || 0} of ${limitInfo.effectiveLimit} assigned). Increase the agent limit or unassign an agent first.`
+    });
   }
 
   const cleanName = businessName.trim();

@@ -177,6 +177,11 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
   const [customPhoneInput, setCustomPhoneInput] = useState('');
   const [targetBotIdForNumber, setTargetBotIdForNumber] = useState('');
 
+  // Agent limit restriction
+  const [showLimitEditor, setShowLimitEditor] = useState(false);
+  const [limitChoice, setLimitChoice] = useState<'plan' | 'custom'>('plan');
+  const [customLimitValue, setCustomLimitValue] = useState('1');
+
   const loadBots = async () => {
     try {
       const res = await customersApi.getAgents(customer.userId);
@@ -191,6 +196,18 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
   useEffect(() => {
     void loadBots();
   }, [customer.userId]);
+
+  useEffect(() => {
+    if (botData?.agentLimit) {
+      if (botData.agentLimit.customLimit !== null) {
+        setLimitChoice('custom');
+        setCustomLimitValue(String(botData.agentLimit.customLimit));
+      } else {
+        setLimitChoice('plan');
+        setCustomLimitValue(String(botData.agentLimit.planLimit || 1));
+      }
+    }
+  }, [botData?.agentLimit]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const suspended = customer.status === 'suspended';
@@ -275,12 +292,116 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
             <Button
               variant="ghost"
               size="sm"
+              disabled={!showNewAgentForm && Boolean(botData?.agentLimit?.effectiveLimit !== null && botData?.agentLimit?.effectiveLimit !== undefined && (botData?.assigned.length ?? 0) >= botData.agentLimit.effectiveLimit)}
               onClick={() => setShowNewAgentForm((v) => !v)}
             >
               {showNewAgentForm ? 'Cancel' : '+ Provision Agent'}
             </Button>
           )}
         </div>
+
+        {/* Agent Limit Restriction Card */}
+        {botData?.agentLimit && (
+          <div className="rounded-xl border border-line bg-background/60 p-2.5 space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-ink flex items-center gap-1.5">
+                Agent Limit:
+                <strong className={cx('tabular-nums font-semibold', (botData.agentLimit.effectiveLimit !== null && botData.assigned.length >= botData.agentLimit.effectiveLimit) ? 'text-warning' : 'text-primary')}>
+                  {botData.assigned.length} / {botData.agentLimit.effectiveLimit ?? 'Unlimited'}
+                </strong>
+                {botData.agentLimit.effectiveLimit !== null && botData.assigned.length >= botData.agentLimit.effectiveLimit && (
+                  <span className="text-[10px] bg-warning-surface text-warning px-1.5 py-0.5 rounded font-medium">
+                    Limit Reached
+                  </span>
+                )}
+              </span>
+              {canSupport && (
+                <button
+                  type="button"
+                  className="text-[11px] text-primary font-medium hover:underline flex items-center gap-1"
+                  onClick={() => setShowLimitEditor((v) => !v)}
+                >
+                  <Edit2 className="h-3 w-3" />
+                  {showLimitEditor ? 'Close' : 'Configure Limit'}
+                </button>
+              )}
+            </div>
+
+            <div className="text-[11px] text-subtle flex items-center justify-between">
+              <span>
+                Plan: <strong>{botData.agentLimit.planName}</strong> (Default: {botData.agentLimit.planLimit ?? 'Unlimited'})
+              </span>
+              {botData.agentLimit.customLimit !== null && (
+                <span className="text-info font-medium">
+                  Custom Limit: {botData.agentLimit.customLimit} active personas
+                </span>
+              )}
+            </div>
+
+            {/* Limit Restriction Editor */}
+            {canSupport && showLimitEditor && (
+              <div className="pt-2 border-t border-line space-y-2">
+                <div className="space-y-1.5 text-xs">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="limitChoice"
+                      checked={limitChoice === 'plan'}
+                      onChange={() => setLimitChoice('plan')}
+                    />
+                    <span>Follow Plan Default ({botData.agentLimit.planLimit ?? 'Unlimited'} personas)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="limitChoice"
+                      checked={limitChoice === 'custom'}
+                      onChange={() => setLimitChoice('custom')}
+                    />
+                    <span>Set Custom Limit for this Customer</span>
+                  </label>
+                </div>
+
+                {limitChoice === 'custom' && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={customLimitValue}
+                      onChange={(e) => setCustomLimitValue(e.target.value)}
+                      className="w-24 rounded-lg border border-line bg-white px-2.5 py-1 text-xs text-ink focus:border-primary focus:outline-none font-mono"
+                      placeholder="e.g. 2"
+                      required
+                    />
+                    <span className="text-[11px] text-subtle">Maximum personas allowed for this customer</span>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2 pt-1">
+                  <Button size="sm" variant="ghost" onClick={() => setShowLimitEditor(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={busy}
+                    onClick={async () => {
+                      const limitToSave = limitChoice === 'custom' ? parseInt(customLimitValue, 10) : null;
+                      await act(async () => {
+                        await customersApi.updateAgentLimit(customer.userId, { limit: limitToSave });
+                        const refreshed = await customersApi.getAgents(customer.userId);
+                        setBotData(refreshed);
+                        setShowLimitEditor(false);
+                      }, 'Agent limit restriction updated');
+                    }}
+                  >
+                    Save Limit
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {loadingBots ? (
           <div className="flex items-center justify-center py-4 text-xs text-subtle">
@@ -345,20 +466,51 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
                   )}
                 </div>
 
-                <div className="flex gap-2 pt-0.5">
-                  <span className={cx('text-[10px] px-2 py-0.5 rounded border', bot.dograh_workflow_id ? 'bg-info-surface text-info border-info/30' : 'bg-background text-subtle border-line')}>
-                    Inbound: {bot.dograh_workflow_id ? 'Configured' : 'Ready'}
-                  </span>
-                  <span className={cx('text-[10px] px-2 py-0.5 rounded border', bot.dograh_outbound_workflow_id ? 'bg-info-surface text-info border-info/30' : 'bg-background text-subtle border-line')}>
-                    Outbound: {bot.dograh_outbound_workflow_id ? 'Configured' : 'Ready'}
-                  </span>
+                <div className="flex items-center justify-between pt-1 border-t border-line/50">
+                  <div className="flex gap-2">
+                    <span className={cx('text-[10px] px-2 py-0.5 rounded border', bot.dograh_workflow_id ? 'bg-info-surface text-info border-info/30' : 'bg-background text-subtle border-line')}>
+                      Inbound: {bot.dograh_workflow_id ? 'Configured' : 'Ready'}
+                    </span>
+                    <span className={cx('text-[10px] px-2 py-0.5 rounded border', bot.dograh_outbound_workflow_id ? 'bg-info-surface text-info border-info/30' : 'bg-background text-subtle border-line')}>
+                      Outbound: {bot.dograh_outbound_workflow_id ? 'Configured' : 'Ready'}
+                    </span>
+                  </div>
+                  {canSupport && (
+                    <Button
+                      size="sm"
+                      variant="dangerOutline"
+                      disabled={busy}
+                      onClick={async () => {
+                        if (!window.confirm(`Remove and unassign agent "${bot.business_name}" from this customer?`)) return;
+                        await act(async () => {
+                          await customersApi.unassignAgent(customer.userId, { botId: bot.id, detachPhoneNumber: false });
+                          const refreshed = await customersApi.getAgents(customer.userId);
+                          setBotData(refreshed);
+                        }, `Agent "${bot.business_name}" unassigned from customer`);
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3 mr-1" />
+                      Remove Agent
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {canSupport && botData && botData.all.length > 0 && !showNewAgentForm && (
+        {/* Limit Reached Warning */}
+        {botData?.agentLimit?.effectiveLimit !== null && botData?.agentLimit?.effectiveLimit !== undefined && (botData?.assigned.length ?? 0) >= botData.agentLimit.effectiveLimit && (
+          <div className="rounded-xl border border-warning/30 bg-warning-surface/40 p-3 text-xs text-warning space-y-1">
+            <span className="font-semibold block">Agent Limit Reached</span>
+            <p className="text-[11px] leading-relaxed">
+              This customer has reached their maximum limit of {botData.agentLimit.effectiveLimit} active voice persona(s).
+              To add more, either configure a higher limit above or remove an existing agent.
+            </p>
+          </div>
+        )}
+
+        {canSupport && botData && botData.all.length > 0 && !showNewAgentForm && !(botData.agentLimit?.effectiveLimit !== null && botData.agentLimit?.effectiveLimit !== undefined && botData.assigned.length >= botData.agentLimit.effectiveLimit) && (
           <div className="rounded-xl border border-line bg-background/50 p-3 space-y-2 text-xs">
             <span className="font-semibold text-ink block">Assign Existing Persona</span>
             <div className="flex gap-2">
