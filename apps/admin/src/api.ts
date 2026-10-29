@@ -428,6 +428,11 @@ export const customersApi = {
     request<{ ok: true; bot: BotSummary }>(`/customers/${encodeURIComponent(userId)}/update-agent-direction`, { method: 'POST', body: data }),
   unassignAgent: (userId: string, data: { botId: string; detachPhoneNumber?: boolean }) =>
     request<{ ok: true; botId: string }>(`/customers/${encodeURIComponent(userId)}/unassign-agent`, { method: 'POST', body: data }),
+  assignPlan: (userId: string, data: { planId: string; currency?: 'INR' | 'USD'; expiryDate?: string }) =>
+    request<{ ok: true; plan: { id: string; name: string; currency: string; periodEnd: string; startsAt?: string } }>(
+      `/customers/${encodeURIComponent(userId)}/assign-plan`,
+      { method: 'POST', body: data }
+    ),
   updateAgentLimit: (userId: string, data: { limit: number | null }) =>
     request<{ ok: true; agentLimit: AgentLimitInfo }>(`/customers/${encodeURIComponent(userId)}/agent-limit`, { method: 'POST', body: data }),
   createAgent: (userId: string, data: { businessName: string; industry?: string; greeting?: string; phoneNumber?: string; direction?: 'inbound' | 'outbound' }) =>

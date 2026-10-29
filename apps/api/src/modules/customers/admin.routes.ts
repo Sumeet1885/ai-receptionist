@@ -277,6 +277,107 @@ router.post('/:id/unassign-agent', requireAdminRole('support'), handle(async (re
   res.json({ ok: true, botId });
 }));
 
+// Assigns or switches a plan for an existing customer
+router.post('/:id/assign-plan', requireAdminRole('support'), handle(async (req, res) => {
+  if (!UUID.test(req.params.id)) return res.status(404).json({ error: 'Customer not found' });
+  const { planId, currency, expiryDate } = req.body || {};
+  if (!planId || !UUID.test(planId)) return res.status(400).json({ error: 'Valid planId is required' });
+
+  // 1. Fetch target plan
+  const { data: plan, error: planErr } = await supabase
+    .from('plans')
+    .select('id, name, slug, is_active, is_trial, trial_days, monthly_minutes, max_agents, price_inr, price_usd')
+    .eq('id', planId)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (planErr || !plan) {
+    return res.status(400).json({ error: 'Selected plan is not active or could not be found' });
+  }
+
+  // 2. Fetch existing customer account
+  const { data: account, error: accErr } = await supabase
+    .from('customer_accounts')
+    .select('user_id, plan_id, plan_currency, status')
+    .eq('user_id', req.params.id)
+    .maybeSingle();
+
+  if (accErr || !account) {
+    return res.status(404).json({ error: 'Customer account not found' });
+  }
+
+  // 3. Compute period dates
+  const startsAt = new Date();
+  let periodEnd: Date;
+  if (expiryDate) {
+    periodEnd = new Date(`${expiryDate}T23:59:59+05:30`);
+    if (isNaN(periodEnd.getTime())) {
+      return res.status(400).json({ error: 'Invalid expiry date format' });
+    }
+  } else if (plan.is_trial) {
+    periodEnd = new Date(startsAt.getTime() + (plan.trial_days || 14) * 24 * 60 * 60 * 1000);
+  } else {
+    // 1 calendar month ahead
+    periodEnd = new Date(startsAt);
+    periodEnd.setMonth(periodEnd.getMonth() + 1);
+  }
+
+  const chosenCurrency = ['INR', 'USD'].includes(currency)
+    ? currency
+    : account.plan_currency || (plan.price_usd > 0 && !plan.price_inr ? 'USD' : 'INR');
+
+  const updates: any = {
+    plan_id: plan.id,
+    plan_currency: chosenCurrency,
+    plan_started_at: startsAt.toISOString(),
+    current_period_end: periodEnd.toISOString(),
+    access_expires_at: periodEnd.toISOString(),
+    access_end_date: expiryDate || null,
+    access_months: plan.is_trial ? null : 1,
+    trial_days: plan.is_trial ? (plan.trial_days || 14) : null,
+    trial_started_at: plan.is_trial ? startsAt.toISOString() : null,
+    trial_ends_at: plan.is_trial ? periodEnd.toISOString() : null,
+    call_minutes_quota: plan.monthly_minutes ?? null,
+    updated_at: new Date().toISOString(),
+  };
+
+  let updateRes = await supabase
+    .from('customer_accounts')
+    .update(updates)
+    .eq('user_id', req.params.id);
+
+  if (updateRes.error && updateRes.error.code === '42703') {
+    delete updates.call_minutes_quota;
+    updateRes = await supabase
+      .from('customer_accounts')
+      .update(updates)
+      .eq('user_id', req.params.id);
+  }
+
+  if (updateRes.error) {
+    return res.status(500).json({ error: updateRes.error.message });
+  }
+
+  await audit(req, 'customer.assign_plan', req.params.id, {
+    previousPlanId: account.plan_id,
+    newPlanId: plan.id,
+    newPlanName: plan.name,
+    currency: chosenCurrency,
+    periodEnd: periodEnd.toISOString(),
+  });
+
+  res.json({
+    ok: true,
+    plan: {
+      id: plan.id,
+      name: plan.name,
+      currency: chosenCurrency,
+      periodEnd: periodEnd.toISOString(),
+      startsAt: startsAt.toISOString(),
+    },
+  });
+}));
+
 // Updates the custom agent limit restriction for a customer
 router.post('/:id/agent-limit', requireAdminRole('support'), handle(async (req, res) => {
   if (!UUID.test(req.params.id)) return res.status(404).json({ error: 'Customer not found' });

@@ -1,8 +1,8 @@
 import { formatExpiryIST } from '@ai-receptionist/contracts';
 import { useEffect, useState, type FormEvent } from 'react';
-import { Ban, Bot, Check, Edit2, Loader2, Mail, Phone, PhoneCall, Plus, RotateCcw, Search, Trash2, Users, X } from 'lucide-react';
+import { Ban, Bot, Check, CreditCard, Edit2, Loader2, Mail, Phone, PhoneCall, Plus, RotateCcw, Search, Trash2, Users, X } from 'lucide-react';
 import { LIMITS } from '@ai-receptionist/contracts';
-import { customersApi, type Customer, type CustomerStage, type BotSummary, type CustomerAgentsResponse } from '../api';
+import { customersApi, billingAdminApi, type Customer, type CustomerStage, type BotSummary, type CustomerAgentsResponse, type Plan } from '../api';
 import { useToast } from '../toast';
 import { Button, Card, Drawer, FilterTabs, PageError, Pager, cx, formatDate, initials, timeAgo } from '../ui';
 
@@ -184,6 +184,26 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
   const [limitChoice, setLimitChoice] = useState<'plan' | 'custom'>('plan');
   const [customLimitValue, setCustomLimitValue] = useState('1');
 
+  // Plan Assignment
+  const [showPlanEditor, setShowPlanEditor] = useState(false);
+  const [availablePlans, setAvailablePlans] = useState<Plan[]>([]);
+  const [loadingPlans, setLoadingPlans] = useState(false);
+  const [selectedPlanId, setSelectedPlanId] = useState('');
+  const [planCurrency, setPlanCurrency] = useState<'INR' | 'USD'>((customer.plan?.currency as 'INR' | 'USD') || 'INR');
+  const [customPlanExpiry, setCustomPlanExpiry] = useState('');
+
+  const loadAvailablePlans = async () => {
+    setLoadingPlans(true);
+    try {
+      const res = await billingAdminApi.plans({ page: 1, activeOnly: true });
+      setAvailablePlans(res.plans);
+    } catch {
+      // Non-blocking
+    } finally {
+      setLoadingPlans(false);
+    }
+  };
+
   const loadBots = async () => {
     try {
       const res = await customersApi.getAgents(customer.userId);
@@ -273,6 +293,130 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
     >
       {error && <p role="alert" className="rounded-xl bg-danger-surface px-3 py-2 text-sm text-danger">{error}</p>}
       <StageBadge stage={customer.stage} />
+
+      {/* Plan & Subscription Card */}
+      <div className="rounded-2xl border border-line bg-surface/70 p-3.5 space-y-2.5 text-xs">
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-subtle block">Subscription Plan</span>
+            <div className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-primary" />
+              <span className="text-sm font-bold text-ink">
+                {customer.plan ? customer.plan.name : 'Free Access'}
+              </span>
+              {customer.plan?.currency && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-medium bg-primary/10 text-primary border border-primary/20">
+                  {customer.plan.currency}
+                </span>
+              )}
+            </div>
+          </div>
+          {canSupport && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setShowPlanEditor((v) => !v);
+                if (!availablePlans.length) void loadAvailablePlans();
+              }}
+            >
+              {showPlanEditor ? 'Cancel' : 'Change Plan'}
+            </Button>
+          )}
+        </div>
+
+        {customer.plan?.periodEnd && (
+          <div className="text-[11px] text-subtle flex items-center justify-between pt-1 border-t border-line/50">
+            <span>Current Period Expiry:</span>
+            <span className="font-medium text-ink font-mono">{formatExpiryIST(customer.plan.periodEnd)}</span>
+          </div>
+        )}
+
+        {/* Change Plan Form */}
+        {canSupport && showPlanEditor && (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!selectedPlanId) return;
+              await act(async () => {
+                await customersApi.assignPlan(customer.userId, {
+                  planId: selectedPlanId,
+                  currency: planCurrency,
+                  expiryDate: customPlanExpiry || undefined,
+                });
+                setShowPlanEditor(false);
+                await loadBots();
+              }, 'Plan successfully assigned to customer');
+            }}
+            className="pt-2 border-t border-line space-y-2.5"
+          >
+            <div className="space-y-1">
+              <label className="text-[11px] font-medium text-ink block">Select New Plan:</label>
+              {loadingPlans ? (
+                <div className="flex items-center text-subtle text-xs py-1">
+                  <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> Loading active plans...
+                </div>
+              ) : (
+                <select
+                  className="w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs text-ink focus:border-primary focus:outline-none"
+                  value={selectedPlanId}
+                  onChange={(e) => {
+                    setSelectedPlanId(e.target.value);
+                    const p = availablePlans.find((plan) => plan.id === e.target.value);
+                    if (p?.price_usd && p.price_usd > 0 && !p.price_inr) setPlanCurrency('USD');
+                  }}
+                  required
+                >
+                  <option value="">Choose a plan...</option>
+                  {availablePlans.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} {p.is_trial ? `(${p.trial_days || 14}-day trial)` : p.price_inr ? `(₹${(p.price_inr / 100).toLocaleString('en-IN')}/mo)` : ''} {p.monthly_minutes ? `• ${p.monthly_minutes} mins` : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium text-ink block">Billing Currency:</label>
+                <select
+                  className="w-full rounded-lg border border-line bg-white px-2 py-1.5 text-xs text-ink focus:border-primary focus:outline-none"
+                  value={planCurrency}
+                  onChange={(e) => setPlanCurrency(e.target.value as 'INR' | 'USD')}
+                >
+                  <option value="INR">₹ INR (India)</option>
+                  <option value="USD">$ USD (International)</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium text-ink block">Custom Expiry (optional):</label>
+                <input
+                  type="date"
+                  className="w-full rounded-lg border border-line bg-white px-2 py-1 text-xs text-ink focus:border-primary focus:outline-none"
+                  value={customPlanExpiry}
+                  onChange={(e) => setCustomPlanExpiry(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+            </div>
+
+            <p className="text-[10px] text-subtle leading-relaxed">
+              Assigning this plan immediately updates the customer's minutes quota, active plan status, and default persona limit across the entire platform.
+            </p>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <Button size="sm" variant="ghost" type="button" onClick={() => setShowPlanEditor(false)}>
+                Cancel
+              </Button>
+              <Button size="sm" type="submit" disabled={busy || !selectedPlanId}>
+                Confirm & Assign Plan
+              </Button>
+            </div>
+          </form>
+        )}
+      </div>
       <dl className="divide-y divide-line rounded-2xl border border-line">
         {details.map(([label, value]) => (
           <div key={label} className="flex justify-between gap-4 px-4 py-2.5 text-sm">
