@@ -206,14 +206,49 @@ export async function listOrders(filters: { status?: OrderStatus; paidOnly?: boo
     if (filters.lead === 'closed') query = query.not('checkout_dismissed_at', 'is', null);
     if (filters.lead === 'started') query = query.is('checkout_dismissed_at', null);
   }
-  const { data, error, count } = await query;
+  let { data, error, count } = await query;
+  if (error && (error.message?.includes('purchase_kind') || error.code === '42703')) {
+    let fallbackQuery = supabase
+      .from('billing_orders')
+      .select('id,status,currency,total,discount,coupon_code,full_name,email,phone,business_name,plan_snapshot,razorpay_payment_id,paid_at,created_at,failure_reason,checkout_dismissed_at,payment_error,reminder_sent_at,followup_last_status,followup_sent_at,followup_sent_stage', { count: 'exact' })
+      .order('created_at', { ascending: false }).order('id', { ascending: false })
+      .range((filters.page - 1) * filters.pageSize, filters.page * filters.pageSize - 1);
+    if (filters.status) fallbackQuery = fallbackQuery.eq('status', filters.status);
+    else if (filters.paidOnly) fallbackQuery = fallbackQuery.in('status', PAID_STATUSES);
+    if (filters.initialOnly) fallbackQuery = fallbackQuery.is('customer_user_id', null);
+    if (filters.lead) {
+      fallbackQuery = fallbackQuery.eq('status', 'created');
+      if (filters.lead === 'failed') fallbackQuery = fallbackQuery.not('payment_error', 'is', null);
+      else fallbackQuery = fallbackQuery.is('payment_error', null);
+      if (filters.lead === 'closed') fallbackQuery = fallbackQuery.not('checkout_dismissed_at', 'is', null);
+      if (filters.lead === 'started') fallbackQuery = fallbackQuery.is('checkout_dismissed_at', null);
+    }
+    const fallbackRes = await fallbackQuery;
+    data = fallbackRes.data ? fallbackRes.data.map((r: any) => ({ ...r, purchase_kind: 'initial' })) : [];
+    count = fallbackRes.count;
+    error = fallbackRes.error;
+  }
   if (error) throw new Error(`list orders: ${error.message}`);
   return { rows: data ?? [], total: count ?? 0 };
 }
 
 /** Complete totals with a bounded summary payload (no raw order downloads). */
 export async function getRevenueSummary() {
-  return check(await supabase.rpc('admin_revenue_summary'), 'load revenue summary') as import('./revenue').RevenueSummary;
+  const rpcRes = await supabase.rpc('admin_revenue_summary');
+  if (rpcRes.error && (rpcRes.error.message?.includes('admin_revenue_summary') || rpcRes.error.code === 'PGRST202' || rpcRes.error.code === '42883')) {
+    const { data: paidOrders } = await supabase
+      .from('billing_orders')
+      .select('total,currency,paid_at,plan_snapshot')
+      .in('status', ['paid', 'provisioned', 'review'])
+      .not('paid_at', 'is', null);
+    const { data: leadOrders } = await supabase
+      .from('billing_orders')
+      .select('created_at,checkout_dismissed_at,payment_error')
+      .eq('status', 'created');
+    const { summariseRevenue } = await import('./revenue');
+    return summariseRevenue((paidOrders as any) || [], (leadOrders as any) || []);
+  }
+  return check(rpcRes, 'load revenue summary') as import('./revenue').RevenueSummary;
 }
 
 export async function setCustomerPlan(userId: string, order: BillingOrderRow) {

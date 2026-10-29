@@ -24,10 +24,19 @@ customerBillingRoutes.get('/summary', asyncRoute<AuthRequest>('WorkspaceBilling'
 }));
 customerBillingRoutes.get('/history', asyncRoute<AuthRequest>('WorkspaceBilling', async (req, res) => {
   const page = Math.max(1, Math.min(100000, Number.parseInt(String(req.query.page || '1'), 10) || 1));
-  const { data, error, count } = await supabase.from('billing_orders')
+  let { data, error, count } = await supabase.from('billing_orders')
     .select('id,purchase_kind,minutes_added,plan_snapshot,currency,total,status,created_at,paid_at,razorpay_payment_id,target_period_end,payment_error', { count: 'exact' })
     .or(`customer_user_id.eq.${req.user!.id},provisioned_user_id.eq.${req.user!.id}`)
     .order('created_at', { ascending: false }).order('id', { ascending: false }).range((page - 1) * 10, page * 10 - 1);
+  if (error && (error.message?.includes('purchase_kind') || error.code === '42703')) {
+    const fallbackRes = await supabase.from('billing_orders')
+      .select('id,plan_snapshot,currency,total,status,created_at,paid_at,razorpay_payment_id,payment_error', { count: 'exact' })
+      .or(`customer_user_id.eq.${req.user!.id},provisioned_user_id.eq.${req.user!.id}`)
+      .order('created_at', { ascending: false }).order('id', { ascending: false }).range((page - 1) * 10, page * 10 - 1);
+    data = fallbackRes.data ? fallbackRes.data.map((r: any) => ({ ...r, purchase_kind: 'initial' })) : [];
+    count = fallbackRes.count;
+    error = fallbackRes.error;
+  }
   if (error) throw new Error(`Load purchase history: ${error.message}`);
   res.json({ rows: (data || []).map(({ plan_snapshot, ...row }) => ({ ...row, planName: plan_snapshot?.name || 'Plan' })), total: count || 0, page, pageSize: 10 });
 }));

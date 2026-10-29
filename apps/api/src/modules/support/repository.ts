@@ -6,18 +6,23 @@ export function checked<T>(result: { data: T; error: any }): T {
   return result.data;
 }
 export async function supportSettings(): Promise<{ categories: SupportCategory[]; retention_days: number }> {
-  const row = checked(
-    await supabase.from('support_settings').select('categories,retention_days').eq('id', true).single(),
-  );
-  return {
-    categories: [
-      ...(row.categories.length ? row.categories : SUPPORT_CATEGORIES).filter(
-        (category: any) => category.id !== SALES_SUPPORT_CATEGORY.id,
-      ),
-      SALES_SUPPORT_CATEGORY,
-    ],
-    retention_days: row.retention_days,
-  };
+  try {
+    const { data: row, error } = await supabase.from('support_settings').select('categories,retention_days').eq('id', true).maybeSingle();
+    if (error || !row) {
+      return { categories: [...SUPPORT_CATEGORIES], retention_days: 0 };
+    }
+    return {
+      categories: [
+        ...(row.categories.length ? row.categories : SUPPORT_CATEGORIES).filter(
+          (category: any) => category.id !== SALES_SUPPORT_CATEGORY.id,
+        ),
+        SALES_SUPPORT_CATEGORY,
+      ],
+      retention_days: row.retention_days || 0,
+    };
+  } catch {
+    return { categories: [...SUPPORT_CATEGORIES], retention_days: 0 };
+  }
 }
 export async function supportTicket(id: string) {
   return checked(await supabase.from('support_tickets').select('*').eq('id', id).maybeSingle());
