@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../services/cloudwatchLogger';
+import { getClientIp } from '../utils/security';
 
 export function requestLogger(req: Request, res: Response, next: NextFunction) {
   const start = Date.now();
@@ -19,7 +20,7 @@ export function requestLogger(req: Request, res: Response, next: NextFunction) {
       url: req.originalUrl || req.url,
       status: res.statusCode,
       durationMs,
-      ip: (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress,
+      ip: getClientIp(req),
       origin: (req.headers['origin'] || req.headers['referer']) as string | undefined,
       botId: typeof botId === 'string' ? botId : undefined,
       sessionId: typeof sessionId === 'string' ? sessionId : undefined,

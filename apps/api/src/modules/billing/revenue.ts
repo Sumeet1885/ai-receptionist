@@ -4,6 +4,7 @@ import type { Currency } from './pricing';
 // conversion) and in minor units. Months are calendar months in India time.
 
 export interface PaidOrder {
+  purchase_kind?: string;
   total: number;
   currency: Currency;
   paid_at: string;
@@ -43,6 +44,7 @@ export function summariseRevenue(paid: PaidOrder[], leads: LeadOrder[], now = ne
   const months = lastMonths(now, 6);
   const monthly = new Map(months.map((month) => [month, { month, ...zero(), count: 0 }]));
   const plans = new Map<string, { plan: string; count: number } & Money>();
+  let newPaidSignups = 0;
 
   for (const order of paid) {
     const time = Date.parse(order.paid_at);
@@ -53,6 +55,7 @@ export function summariseRevenue(paid: PaidOrder[], leads: LeadOrder[], now = ne
       counts.thisMonth += 1;
     }
     if (time >= since30) {
+      if (!order.purchase_kind || order.purchase_kind === 'initial') newPaidSignups++;
       totals.last30Days[order.currency] += order.total;
       counts.last30Days += 1;
     }
@@ -76,7 +79,7 @@ export function summariseRevenue(paid: PaidOrder[], leads: LeadOrder[], now = ne
     failed: leads.filter((lead) => lead.payment_error).length,
     last30Days: recentLeads.length,
   };
-  const attempts = counts.last30Days + recentLeads.length;
+  const attempts = newPaidSignups + recentLeads.length;
 
   return {
     totals,
@@ -84,7 +87,7 @@ export function summariseRevenue(paid: PaidOrder[], leads: LeadOrder[], now = ne
     monthly: [...monthly.values()],
     byPlan: [...plans.values()].sort((a, b) => b.count - a.count),
     leads: leadCounts,
-    conversionLast30Days: attempts ? Math.round((counts.last30Days / attempts) * 1000) / 10 : null,
+    conversionLast30Days: attempts ? Math.round((newPaidSignups / attempts) * 1000) / 10 : null,
   };
 }
 

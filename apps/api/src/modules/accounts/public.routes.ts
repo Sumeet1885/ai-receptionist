@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { validateContactInput } from '@ai-receptionist/contracts';
 import { config } from '../../config';
-import { publicFormGuards } from '../../middleware/publicFormGuards';
+import { publicFormGuards, publicHeaders, publicOriginGuard } from '../../middleware/publicFormGuards';
+import { createRateLimit } from '../../middleware/rateLimit';
 import { logger } from '../../services/cloudwatchLogger';
 import { emailTemplates, maskEmail, sendEmail } from '../../services/email';
 import { asyncRoute } from '../../utils/asyncRoute';
@@ -10,11 +11,27 @@ import { findLatestProvisionedOrderByEmail } from '../billing/repository';
 import { supabase } from '../../services/db';
 import { createActivationLink, createRecoveryLink, createVerificationLink } from './links';
 import { getCustomerAccount } from './repository';
+import { issueRecoveryProof } from './recoveryProof';
 
 // Public account emails, mounted at /api/public. Both answer identically whether or not the
 // address has an account, so they cannot be used to find out who is a customer.
 
 const router = Router();
+router.post('/recovery-session', publicHeaders, publicOriginGuard,
+  createRateLimit({ keyPrefix: 'recovery-session', limit: 10, windowMs: 60_000 }),
+  asyncRoute('RecoverySession', async (req, res) => {
+    const tokenHash = req.body?.tokenHash;
+    if (typeof tokenHash !== 'string' || !/^[a-f0-9]{32,128}$/i.test(tokenHash)) return res.status(400).json({ error: 'This reset link is invalid or expired. Request a new one.' });
+    // A separate REST call avoids signing the shared service-role client into a customer's session.
+    const response = await fetch(`${config.supabaseUrl}/auth/v1/verify`, { method: 'POST',
+      headers: { apikey: config.supabaseServiceKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token_hash: tokenHash, type: 'recovery' }), signal: AbortSignal.timeout(10_000) });
+    const result = await response.json().catch(() => null);
+    if (response.status === 429 || response.status >= 500) return res.status(503).json({ error: 'Could not verify the reset link right now. Please try again.' });
+    if (!response.ok || !result?.user?.id || !result.access_token || !result.refresh_token) return res.status(400).json({ error: 'This reset link is invalid or expired. Request a new one.' });
+    const recoveryProof = issueRecoveryProof(result.access_token, { id: result.user.id, updatedAt: result.user.updated_at }, config.supabaseServiceKey);
+    res.json({ accessToken: result.access_token, refreshToken: result.refresh_token, recoveryProof });
+  }));
 const guards = (name: string) => publicFormGuards(name, { floodPer10Min: 20, perIpPerHour: 10, perEmailPerHour: 3 });
 
 function emailFrom(body: any) {

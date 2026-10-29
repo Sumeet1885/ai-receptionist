@@ -3,6 +3,8 @@
 **For:** whoever releases ai-receptionist. Images are built by GitHub Actions; the EC2 host is updated with the AWS CLI.
 **Rule of thumb:** build images → check paused campaigns → apply database migrations → deploy images → verify. Do staging first; production only after staging is verified, with the **same commit**.
 
+For automated deployment with branch and environment selection, use [manual-workflows.md](manual-workflows.md). The AWS CLI steps below remain a manual alternative.
+
 Related: [database-migrations.md](database-migrations.md) (how migrations work, one-time baseline), [deploy-restructured-repo.md](deploy-restructured-repo.md) (host layout, Dograh, detailed troubleshooting).
 
 ---
@@ -13,13 +15,13 @@ Related: [database-migrations.md](database-migrations.md) (how migrations work, 
 | --- | --- | --- |
 | GitHub environment | `staging` | `production` |
 | Supabase project | `lckiehhthevtykulfbvw` | `xdwcrsydlzprtldkwqzh` |
-| Image build workflow | STAGING - Build and Push Docker Images | PRODUCTION - Build and Push Docker Images |
+| Image build workflow | Build and push Docker images (environment: staging) | Build and push Docker images (environment: production) |
 | Image tags | `ai-receptionist-server-staging-<sha7>`, `ai-receptionist-client-staging-<sha7>` | `ai-receptionist-server-prod-<sha7>`, `ai-receptionist-client-prod-<sha7>` |
 | Compose file on host | `docker-compose-staging.yml` | `docker-compose-prod.yml` |
 | API container | `ai-receptionist-api` | `ai-receptionist-api-prod` |
 | Host folder | `/home/ec2-user/ai-receptionist` | `/home/ec2-user/ai-receptionist` |
 
-`<sha>` is the full merge commit on `staging`; `<sha7>` its first 7 characters. Confirm the project refs with the team before the first run; the CLI-linked project in `supabase/config.toml` (`gatzlksagxpdqqonssfq`) is neither of these.
+`<sha>` is the full commit SHA on the selected source branch; `<sha7>` its first 7 characters. Confirm the project refs with the team before the first run; the CLI-linked project in `supabase/config.toml` (`gatzlksagxpdqqonssfq`) is neither of these.
 
 ---
 
@@ -63,7 +65,7 @@ AWS CLI v2 with permission for `ssm:SendCommand` / `ssm:GetCommandInvocation` on
 
 ### Step 1. Build images (GitHub)
 
-Actions → **STAGING - Build project** (must pass) → **STAGING - Build and Push Docker Images**, both with *Use workflow from* `staging` and commit `<sha>`.
+Actions → **Build project** (must pass) → **Build and push Docker images (environment: staging)**, both with the selected source branch, **environment: staging**, and commit `<sha>`.
 
 ### Step 2. Check for paused outbound campaigns
 
@@ -152,7 +154,7 @@ In a browser: sign in, open dashboard / leads / calls; submit the **Get started*
 
 Same steps, production values, **same `<sha>`** that passed staging:
 
-1. **PRODUCTION - Build and Push Docker Images** (*Use workflow from* `staging`, commit `<sha>`).
+1. **Build and push Docker images (environment: production)** (select the source branch, **environment: production**, commit `<sha>`).
 2. Paused-campaign query in the **production** Supabase project.
 3. **Database - Migrate** with environment **`production`**: `status`, then `apply` (approve when GitHub asks). Or the terminal commands with the production `SUPABASE_DB_URL`.
 4. AWS CLI deploy with the production instance ID, `docker-compose-prod.yml` and the `-prod-` tags:

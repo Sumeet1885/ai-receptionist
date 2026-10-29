@@ -6,7 +6,7 @@
 #
 #   • Local dev                → apps/web/Dockerfile  (localhost defaults)
 #   • CI staging build         → apps/web/Dockerfile.staging
-#   • CI production build      → THIS file  (docker-image-production.yml picks it)
+#   • CI production build      → THIS file  (the unified Docker image workflow selects it for production)
 #
 # NOTE: only browser-PUBLIC config belongs here (it ships to the client anyway).
 # Real secrets (DB, JWT, API keys) are NEVER baked — they stay in server/.env.

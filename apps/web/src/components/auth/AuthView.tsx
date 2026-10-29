@@ -111,7 +111,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ setView, showToast, defaultM
       }
 
       // 2. Set the password through the API (same policy as activation; needs the recovery session)
-      await accountApi.setPassword(password);
+      await accountApi.setPassword(password, sessionStorage.getItem('workspace-recovery-proof') || undefined);
+      sessionStorage.removeItem('workspace-recovery-proof');
 
       showToast("Password updated successfully! Welcome back.", "success");
       setPassword('');

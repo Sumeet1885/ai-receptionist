@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { supabase } from '../services/db';
 import { testCrmConnection } from '../services/crmSync';
+import { parseWebhookUrl } from '../services/safeWebhook';
 
 async function loadOwnedBot(botId: string, ownerId: string): Promise<{ id: string; business_name: string } | null> {
   const { data, error } = await supabase
@@ -17,8 +18,8 @@ async function loadOwnedBot(botId: string, ownerId: string): Promise<{ id: strin
 
 function isValidWebhookUrl(value: string): boolean {
   try {
-    const url = new URL(value);
-    return url.protocol === 'http:' || url.protocol === 'https:';
+    parseWebhookUrl(value);
+    return true;
   } catch {
     return false;
   }

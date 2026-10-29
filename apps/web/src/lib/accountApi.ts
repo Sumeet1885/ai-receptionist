@@ -35,7 +35,7 @@ async function accountFetch<T>(path: string, body?: unknown): Promise<T> {
 export const accountApi = {
   changePassword: (currentPassword: string, password: string) => accountFetch<{ stage: AccountStage }>('/change-password', { currentPassword, password }),
   state: () => accountFetch<{ stage: AccountStage; email?: string; accessStartsAt?: string | null; accessExpiresAt?: string | null; trialEndsAt?: string | null }>('/state'),
-  setPassword: (password: string) => accountFetch<{ stage: AccountStage }>('/password', { password }),
+  setPassword: (password: string, recoveryProof?: string) => accountFetch<{ stage: AccountStage }>('/password', { password, recoveryProof }),
   completeOnboarding: () => accountFetch<{ stage: AccountStage }>('/onboarding-complete', {}),
   sendVerificationEmail: () => accountFetch<{ stage: AccountStage; sent: boolean }>('/verification-email', {}),
 };

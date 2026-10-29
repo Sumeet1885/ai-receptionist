@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import { callingMinutesAvailable } from '../billing/minutes';
 import { AuthRequest } from '../../middleware/auth';
 import { supabase } from '../../services/db';
 import { config } from '../../config';
@@ -1313,6 +1314,10 @@ export async function updateInboundRateLimit(req: AuthRequest, res: Response): P
 }
 
 export async function callOut(req: AuthRequest, res: Response): Promise<void> {
+  if (!await callingMinutesAvailable(req.user!.id)) {
+    res.status(402).json({ error: 'Your calling minutes are used up. Add extra minutes or change your plan from Plans.', code: 'minutes_exhausted' });
+    return;
+  }
   const botId = req.params.botId;
   const { phoneNumber, contactName } = req.body || {};
   const normalizedContactName = typeof contactName === 'string' && contactName.trim().length > 0 ? contactName.trim() : undefined;

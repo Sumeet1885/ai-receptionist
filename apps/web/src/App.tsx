@@ -116,7 +116,7 @@ function parseRoute(): AppRoute {
   if (path === '/calls') return { name: 'calls' };
   if (path === '/agents/new') return { name: 'agent-new' };
   if (path === '/agents') return { name: 'agents' };
-  if (path === '/plans') return { name: 'plans' };
+  if (path === '/plans' || path === '/billing') return { name: 'plans' };
 
   const agentMatch = path.match(/^\/agents\/([^/]+)(?:\/([^/]+))?/);
   if (agentMatch) {
@@ -664,8 +664,8 @@ export default function App() {
 
         {route.name === 'plans' && (
           <PostLoginShell
-            title="Plans & Billing"
-            subtitle="Transparent calling minute packages and live voice minutes consumption."
+            title="Billing"
+            subtitle="Track calling minutes, buy top-ups, change your plan and view transaction history."
           >
             <PlansView
               activeBot={activeBot}

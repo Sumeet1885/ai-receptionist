@@ -75,6 +75,8 @@ const END_CALL_CONDITION =
 // attached - see dograhController.ts) instead of having the model guess elapsed time from
 // exchange count. See the MAX_CALL_DURATION_SECONDS comment above for the full mechanism.
 const CALL_PACING_INSTRUCTION =
+  `Before greeting the caller, check the initial context. If minutes_exhausted or rate_limited is true, ` +
+  `say the receptionist is temporarily unavailable and immediately transition to ending the call. ` +
   `This call has a soft time limit. Call the get_call_time_remaining tool once after the first ` +
   `couple of exchanges, and again periodically (every few exchanges) if the conversation is ` +
   `continuing - more often once remainingSeconds is getting low. The moment a call to that tool ` +

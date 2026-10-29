@@ -159,6 +159,9 @@ export interface CouponInput {
 export type OrderStatus = 'created' | 'paid' | 'provisioned' | 'failed' | 'review';
 
 export interface BillingOrder {
+  purchase_kind?: 'initial' | 'renewal' | 'plan_change' | 'topup';
+  minutes_added?: number | null;
+  target_period_end?: string | null;
   followup_last_status?: 'sending' | 'sent' | 'failed' | null;
   followup_sent_at?: string | null;
   followup_sent_stage?: LeadStage | null;
@@ -198,9 +201,10 @@ export const billingAdminApi = {
   createCoupon: (body: CouponInput) => request<{ coupon: Coupon }>('/billing/coupons', { method: 'POST', body }),
   updateCoupon: (id: string, body: CouponInput) => request<{ coupon: Coupon }>(`/billing/coupons/${encodeURIComponent(id)}`, { method: 'PUT', body }),
   // view=revenue: paid orders; view=leads: unpaid checkouts, optionally one stage.
-  orders: (params: { view: 'revenue' | 'leads'; status?: OrderStatus; stage?: LeadStage; page?: number }) => {
+  orders: (params: { view: 'revenue' | 'leads'; status?: OrderStatus; stage?: LeadStage; page?: number; kind?: string }) => {
     const query = new URLSearchParams({ view: params.view });
     if (params.status) query.set('status', params.status);
+    if (params.kind) query.set('kind', params.kind);
     if (params.stage) query.set('stage', params.stage);
     if (params.page) query.set('page', String(params.page));
     return request<{ rows: BillingOrder[]; total: number; page: number; pageSize: number }>(`/billing/orders?${query.toString()}`);

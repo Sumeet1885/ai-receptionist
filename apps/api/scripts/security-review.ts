@@ -48,7 +48,9 @@ try {
   const res: any = { status: (code: number) => { crmStatus = code; return res; }, json: (body: any) => { crmResponse = body; } };
   await testConnection({ user: { id: owner }, params: { botId: 'audit-bot' }, body: { webhookUrl: `${base}/audit-internal-service`, apiKey: 'fake-local-audit-key' } } as any, res);
   results.push({ finding: 'crm_internal_network_ssrf', reproduced: internalRequests === 1 && crmResponse?.message === 'LOCAL_AUDIT_INTERNAL_MARKER', httpStatus: crmStatus, destinationWasLocalAuditServerOnly: true });
-  console.log(JSON.stringify({ localAuditOnly: true, results }, null, 2));
+  const allBlocked = results.every(result => result.reproduced === false) && passwordWrites === 0 && internalRequests === 0;
+  console.log(JSON.stringify({ localAuditOnly: true, allPreviouslyConfirmedAttacksBlocked: allBlocked, results }, null, 2));
+  if (!allBlocked) throw new Error('A previously confirmed security regression is still reproducible.');
 } finally {
   supabase.from = original.from; supabase.auth.getUser = original.getUser; supabase.auth.admin.updateUserById = original.update; ses.send = original.send;
   await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));

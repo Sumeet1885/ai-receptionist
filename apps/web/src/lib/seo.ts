@@ -39,7 +39,7 @@ const PRIVATE_TITLES: Record<string, string> = {
   calendar: "Calendar",
   calls: "Calls",
   agents: "Agents",
-  plans: "Plans",
+  plans: "Billing",
   "agent-new": "Create an agent",
   "agent-detail": "Agent",
   support: "Support",

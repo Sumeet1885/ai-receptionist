@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../../middleware/auth';
+import { asyncRoute } from '../../utils/asyncRoute';
 import * as dograhController from './dograhController';
 
 const router = Router();
@@ -12,7 +13,7 @@ router.post('/bots/:botId/provision', dograhController.provisionBot);
 router.post('/bots/:botId/assign-number', dograhController.assignNumber);
 router.post('/bots/:botId/assign-outbound-number', dograhController.assignOutboundNumber);
 router.post('/bots/:botId/unassign-number', dograhController.unassignNumber);
-router.post('/bots/:botId/call', dograhController.callOut);
+router.post('/bots/:botId/call', asyncRoute('PhoneCalls', dograhController.callOut));
 router.put('/bots/:botId/outbound-rate-limit', dograhController.updateOutboundRateLimit);
 router.put('/bots/:botId/inbound-rate-limit', dograhController.updateInboundRateLimit);
 router.get('/bots/:botId/calls', dograhController.listCalls);

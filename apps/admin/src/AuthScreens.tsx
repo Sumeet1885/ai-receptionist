@@ -10,7 +10,7 @@ function PasswordInput(props: InputHTMLAttributes<HTMLInputElement>) {
   const [visible, setVisible] = useState(false);
   const Icon = visible ? EyeOff : Eye;
   return <div className="relative">
-    <input {...props} type={visible ? 'text' : 'password'} className={`${props.className || INPUT} pr-12`} />
+    <input {...props} maxLength={props.maxLength ?? LIMITS.adminPassword.max} type={visible ? 'text' : 'password'} className={`${props.className || INPUT} pr-12`} />
     <button type="button" disabled={props.disabled} aria-label={visible ? 'Hide password' : 'Show password'} aria-pressed={visible} onClick={() => setVisible(value => !value)} className="absolute inset-y-0 right-1 flex w-10 items-center justify-center rounded-lg text-subtle hover:text-primary">
       <Icon className="h-4 w-4" aria-hidden="true" />
     </button>

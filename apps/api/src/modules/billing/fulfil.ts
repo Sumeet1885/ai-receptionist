@@ -3,6 +3,7 @@ import { logger } from '../../services/cloudwatchLogger';
 import { emailTemplates, maskEmail, sendEmailSafely } from '../../services/email';
 import { publishAdminEvent } from '../../services/adminEvents';
 import { supabase } from '../../services/db';
+import { refreshWorkspaceCallingLimits } from '../phone-calls/inboundRateLimiter';
 import { createVerificationLink } from '../accounts/links';
 import { createCustomerAccount, markCustomerAccount } from '../accounts/repository';
 import { authEmailExists } from '../access-requests/repository';
@@ -46,6 +47,7 @@ export async function fulfilPaidOrder(order: BillingOrderRow, razorpayPaymentId:
     const { data, error } = await supabase.rpc('activate_workspace_payment', { p_order: claimed.id });
     if (error || !data) throw new Error(`Activate workspace payment: ${error?.message || 'activation failed'}`);
     const done = (await getOrder(claimed.id))!;
+    void refreshWorkspaceCallingLimits(supabase, claimed.customer_user_id).catch(error => logger.warn('[billing] inbound minute limit refresh failed', { error: String(error), order: done.id }));
     publishAdminEvent({ type: 'billing_order.updated', id: done.id, status: done.status });
     void notifyAdmins(done, amount).catch(() => undefined);
     return done;

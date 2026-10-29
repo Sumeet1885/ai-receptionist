@@ -9,6 +9,7 @@ import { asyncRoute } from '../../utils/asyncRoute';
 import { createVerificationLink } from './links';
 import { getCustomerAccount, markCustomerAccount } from './repository';
 import { checkCustomerPassword, computeAccountStage } from './stage';
+import { validRecoveryProof } from './recoveryProof';
 
 // Signed-in customer's own lifecycle, mounted at /api/account.
 
@@ -62,6 +63,9 @@ router.post('/change-password', perUser('account-change-password', 5, 15 * 60_00
 // Sets the password during activation and for resets (the recovery link signs the person in).
 router.post('/password', perUser('account-password', 10, 15 * 60_000), handle(async (req, res) => {
   const { account, stage } = await stageFor(req);
+  if (account?.password_set_at && !validRecoveryProof(req.body?.recoveryProof, req.headers.authorization?.slice(7) || '', req.user!, config.supabaseServiceKey)) {
+    return res.status(403).json({ error: 'Use Change password with your current password, or request a fresh password reset link.' });
+  }
   if (!['set_password', 'onboarding', 'active', 'scheduled'].includes(stage)) {
     return res.status(403).json({ error: 'Confirm your email before choosing a password.', stage });
   }

@@ -20,7 +20,7 @@ test('lead dashboard query helper narrows columns and refresh cadence', async ()
 
   assert.equal(
     helper.LEAD_SELECT_FIELDS,
-    'id,bot_id,name,phone,email,requirement,budget,sentiment,lead_score,summary,appointment_status,updated_at'
+    'id,bot_id,name,phone,email,requirement,budget,sentiment,lead_score,summary,appointment_status,updated_at,session_id'
   );
   assert.equal(helper.getLeadRefreshInterval('leads'), 15000);
   assert.equal(helper.getLeadRefreshInterval('dashboard'), 60000);

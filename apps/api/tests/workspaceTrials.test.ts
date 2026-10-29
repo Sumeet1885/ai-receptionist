@@ -82,6 +82,7 @@ test('API denies expired workspace access but permits paid ordering for its auth
     await import('../src/modules/billing/customer.routes');
   const originalFrom = supabase.from;
   const originalAuth = supabase.auth.getUser;
+  const originalRpc = supabase.rpc;
   const originalFetch = globalThis.fetch;
   const plan = {
     id: 'plan',
@@ -94,6 +95,7 @@ test('API denies expired workspace access but permits paid ordering for its auth
     setup_fee_inr: 2000,
     price_usd: 1000,
     setup_fee_usd: 0,
+    feature_values: { topup_500_minutes: '4000' },
   };
   let account: any = {
     user_id: 'owner',
@@ -102,6 +104,16 @@ test('API denies expired workspace access but permits paid ordering for its auth
     access_expires_at: new Date(Date.now() - 1000).toISOString(),
   };
   let inserted: any;
+  let expectedAmount = 10000;
+  let remainingMinutes = 0;
+  (supabase as any).rpc = async (name: string, args: any) => {
+    assert.equal(name, 'workspace_minute_summary');
+    assert.equal(args.p_user, 'owner');
+    return { data: { planId: plan.id, planSlug: plan.slug, planName: plan.name, currency: 'INR',
+      active: Date.parse(account.access_expires_at) > Date.now(), isTrial: plan.is_trial,
+      startsAt: new Date(Date.now() - 7 * 86400000).toISOString(), expiresAt: account.access_expires_at,
+      includedMinutes: 1000, usedMinutes: 1000 - remainingMinutes, topupMinutes: 0, remainingMinutes, features: plan.feature_values }, error: null };
+  };
   (supabase as any).from = (table: string) => {
     let value: any =
       table === 'customer_accounts'
@@ -143,7 +155,7 @@ test('API denies expired workspace access but permits paid ordering for its auth
   globalThis.fetch = (async (url: any, options: any) => {
     if (String(url).startsWith('https://api.razorpay.com/')) {
       const payload = JSON.parse(options.body);
-      assert.equal(payload.amount, 12000);
+      assert.equal(payload.amount, expectedAmount);
       return new Response(
         JSON.stringify({
           id: 'rzp_order',
@@ -192,8 +204,42 @@ test('API denies expired workspace access but permits paid ordering for its auth
     });
     assert.equal(response.status, 200);
     assert.equal(inserted.customer_user_id, 'owner');
-    assert.equal(inserted.total, 12000);
+    assert.equal(inserted.total, 10000);
+    assert.equal(inserted.setup_fee, 0, 'existing customers do not pay setup again');
     assert.equal(inserted.password_hash, null);
+    account.access_expires_at = new Date(Date.now() + 10 * 86400000).toISOString();
+    expectedAmount = 800000;
+    const topup = await fetch(`${base}/billing/order`, { method: 'POST', headers,
+      body: JSON.stringify({ kind: 'topup', quantity: 2, currency: 'INR', total: 1, minutes_added: 999999, customer_user_id: 'attacker' }) });
+    assert.equal(topup.status, 200);
+    assert.equal(inserted.customer_user_id, 'owner');
+    assert.equal(inserted.purchase_kind, 'topup');
+    assert.equal(inserted.currency, 'INR');
+    assert.equal(inserted.minutes_added, 1000);
+    assert.equal(inserted.total, 800000);
+    assert.equal(inserted.target_period_end, account.access_expires_at);
+    const noUsdPrice = await fetch(`${base}/billing/order`, { method: 'POST', headers, body: JSON.stringify({ kind: 'topup', quantity: 1, currency: 'USD' }) });
+    assert.equal(noUsdPrice.status, 409, 'never charge INR amounts as USD when no USD price exists');
+    Object.assign(plan.feature_values, { topup_500_minutes_usd: '48.25' });
+    expectedAmount = 9650;
+    const usdTopup = await fetch(`${base}/billing/order`, { method: 'POST', headers, body: JSON.stringify({ kind: 'topup', quantity: 2, currency: 'USD', total: 1 }) });
+    assert.equal(usdTopup.status, 200);
+    assert.equal(inserted.currency, 'USD');
+    assert.equal(inserted.total, 9650);
+    assert.equal(inserted.minutes_added, 1000);
+    const invalidCurrency = await fetch(`${base}/billing/order`, { method: 'POST', headers, body: JSON.stringify({ kind: 'topup', currency: 'EUR' }) });
+    assert.equal(invalidCurrency.status, 400);
+    remainingMinutes = 250;
+    expectedAmount = 400000;
+    const earlyTopup = await fetch(`${base}/billing/order`, { method: 'POST', headers, body: JSON.stringify({ kind: 'topup', quantity: 1 }) });
+    assert.equal(earlyTopup.status, 200, 'an active paid customer can top up before running out');
+    assert.equal(inserted.minutes_added, 500);
+    assert.equal(inserted.total, 400000);
+    const invalid = await fetch(`${base}/billing/order`, { method: 'POST', headers, body: JSON.stringify({ kind: 'topup', quantity: 1.5 }) });
+    assert.equal(invalid.status, 400);
+    account.access_expires_at = new Date(Date.now() - 1000).toISOString();
+    const expired = await fetch(`${base}/billing/order`, { method: 'POST', headers, body: JSON.stringify({ kind: 'topup' }) });
+    assert.equal(expired.status, 409);
     plan.is_trial = true;
     assert.equal(
       (
@@ -220,6 +266,7 @@ test('API denies expired workspace access but permits paid ordering for its auth
     globalThis.fetch = originalFetch;
     (supabase as any).from = originalFrom;
     supabase.auth.getUser = originalAuth;
+    supabase.rpc = originalRpc;
     await new Promise<void>((resolve, reject) =>
       server.close((err) => (err ? reject(err) : resolve())),
     );

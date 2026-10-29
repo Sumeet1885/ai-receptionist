@@ -5,6 +5,8 @@ import { DograhProvisionableBot, DograhRunDetail } from './types';
 import { config } from '../../config';
 import { logger } from '../../services/cloudwatchLogger';
 import { findOutboundCall } from './outboundTracker';
+import { callingMinutesAvailable } from '../billing/minutes';
+import { refreshWorkspaceCallingLimits } from './inboundRateLimiter';
 
 function maskPhoneNumber(phoneNumber: string): string {
   if (phoneNumber.length <= 4) return '****';
@@ -425,6 +427,9 @@ async function ingestRun(
       })
       .eq('id', callRow.id);
   if (finalizeError) throw finalizeError;
+  try {
+    if (!await callingMinutesAvailable(bot.owner_id)) await refreshWorkspaceCallingLimits(supabase, bot.owner_id);
+  } catch (error) { logger.warn('[phone-calls] minute limit refresh failed', { botId: bot.id, error: String(error) }); }
 
   logger.callEvent('call_mirrored', {
     botId: bot.id,

@@ -19,7 +19,7 @@ const authedNav = [
   { label: 'Calendar', path: '/calendar', key: 'calendar' },
   { label: 'Calls', path: '/calls', key: 'calls' },
   { label: 'Agents', path: '/agents', key: 'agents' },
-  { label: 'Plans', path: '/plans', key: 'plans' },
+  { label: 'Billing', path: '/billing', key: 'plans' },
 ];
 
 // Signed-out pages (pricing, checkout, sign in, request access).

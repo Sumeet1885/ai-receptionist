@@ -5,6 +5,7 @@ import { Button } from '../ui/button';
 import { Card } from '../ui/layout';
 import { supabase } from '../../lib/supabaseClient';
 import type { AccountStage } from '../../lib/accountApi';
+import { publicRequest } from '../../lib/publicForm';
 
 interface AuthConfirmViewProps {
   navigate: (path: string, replace?: boolean) => void;
@@ -39,7 +40,19 @@ export const AuthConfirmView: React.FC<AuthConfirmViewProps> = ({ navigate, user
     setBusy(true);
     setError('');
     try {
-      const { error: verificationError } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+      let verificationError: { message: string; code?: string; status?: number } | null = null;
+      if (type === 'recovery') {
+        const response = await publicRequest('/recovery-session', { tokenHash });
+        if (!response.ok) verificationError = { message: response.message, status: response.status };
+        else {
+          const result = response.data as { accessToken: string; refreshToken: string; recoveryProof: string };
+          const session = await supabase.auth.setSession({ access_token: result.accessToken, refresh_token: result.refreshToken });
+          verificationError = session.error;
+          if (!verificationError) sessionStorage.setItem('workspace-recovery-proof', result.recoveryProof);
+        }
+      } else {
+        verificationError = (await supabase.auth.verifyOtp({ token_hash: tokenHash, type })).error;
+      }
       if (verificationError) {
         if (verificationError.code === 'otp_expired' || [400, 403, 422].includes(verificationError.status || 0)) setFailed(true);
         else setError('We could not check this link right now. Please try again.');
