@@ -1,9 +1,8 @@
 # Build context: repository root (pnpm workspace).
 #   docker build -f apps/api/Dockerfile .
-FROM node:20-alpine
+FROM node:22-alpine
 
-# Same pnpm as package.json "packageManager" (installed with npm: the corepack bundled with
-# node:20 cannot verify current pnpm releases).
+# Install the pnpm version declared in package.json directly, independent of bundled Corepack.
 RUN npm install -g pnpm@10.34.7
 
 WORKDIR /repo
