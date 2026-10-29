@@ -127,8 +127,24 @@ export const AgentSelectorDropdown: React.FC<AgentSelectorDropdownProps> = ({
 
               {/* Business Name & Industry */}
               <div className="truncate min-w-0">
-                <span className="block text-sm font-bold truncate text-brand-text group-hover:text-brand-accent transition-colors">
-                  {selectedBot.businessName}
+                <span className="block text-sm font-bold truncate text-brand-text group-hover:text-brand-accent transition-colors flex items-center gap-2">
+                  <span>{selectedBot.businessName}</span>
+                  {selectedBot.agentDirection === 'inbound' ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wide uppercase bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.35)]">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Inbound
+                    </span>
+                  ) : selectedBot.agentDirection === 'outbound' ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wide uppercase bg-cyan-500/15 border border-cyan-500/40 text-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.35)]">
+                      <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                      Outbound
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wide uppercase bg-purple-500/15 border border-purple-500/40 text-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.35)]">
+                      <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-pulse" />
+                      In & Out
+                    </span>
+                  )}
                 </span>
                 <span className="block text-xs text-brand-muted truncate mt-0.5">
                   {selectedBot.industry || 'General Business'}
@@ -263,9 +279,25 @@ export const AgentSelectorDropdown: React.FC<AgentSelectorDropdownProps> = ({
                         <span
                           className={`block text-xs font-bold truncate ${
                             isSelected ? 'text-brand-accent' : 'text-brand-text'
-                          }`}
+                          } flex items-center gap-1.5`}
                         >
-                          {bot.businessName}
+                          <span>{bot.businessName}</span>
+                          {bot.agentDirection === 'inbound' ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[8px] font-bold uppercase bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 shadow-[0_0_6px_rgba(16,185,129,0.3)]">
+                              <span className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />
+                              Inbound
+                            </span>
+                          ) : bot.agentDirection === 'outbound' ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[8px] font-bold uppercase bg-cyan-500/15 border border-cyan-500/40 text-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.3)]">
+                              <span className="h-1 w-1 rounded-full bg-cyan-400 animate-pulse" />
+                              Outbound
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[8px] font-bold uppercase bg-purple-500/15 border border-purple-500/40 text-purple-400 shadow-[0_0_6px_rgba(168,85,247,0.3)]">
+                              <span className="h-1 w-1 rounded-full bg-purple-400 animate-pulse" />
+                              In & Out
+                            </span>
+                          )}
                         </span>
                         <span className="block text-[10px] text-brand-muted truncate">
                           {bot.industry || 'General Business'}

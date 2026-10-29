@@ -1333,6 +1333,10 @@ export async function callOut(req: AuthRequest, res: Response): Promise<void> {
     return;
   }
   const widgetConfig = (bot as any).widget_config || {};
+  if (widgetConfig.agentDirection === 'inbound') {
+    res.status(400).json({ error: 'This agent is assigned for Inbound calls only. Outbound calling is disabled.' });
+    return;
+  }
   const outboundTelephony = widgetConfig.outboundTelephony || null;
   const activeTelephonyConfigId = outboundTelephony?.telephonyConfigId || bot.dograh_telephony_config_id;
   const activePhoneNumberId = outboundTelephony?.phoneNumberId || bot.dograh_phone_number_id;

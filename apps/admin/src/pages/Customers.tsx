@@ -415,14 +415,16 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
           </div>
         ) : (
           <div className="space-y-2">
-            {botData?.assigned.map((bot) => (
+            {botData?.assigned.map((bot) => {
+              const currentDir = bot.widget_config?.agentDirection || (bot.dograh_outbound_workflow_id && !bot.dograh_workflow_id ? 'outbound' : bot.dograh_workflow_id && !bot.dograh_outbound_workflow_id ? 'inbound' : 'both');
+              return (
               <div key={bot.id} className="rounded-xl border border-line bg-surface/50 p-3 space-y-2 text-xs">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-ink text-sm">{bot.business_name}</span>
                     {/* Small Glowing Text Badge */}
                     {(() => {
-                      const dir = bot.widget_config?.agentDirection || (bot.dograh_outbound_workflow_id && !bot.dograh_workflow_id ? 'outbound' : bot.dograh_workflow_id && !bot.dograh_outbound_workflow_id ? 'inbound' : 'both');
+                      const dir = currentDir;
                       if (dir === 'inbound') {
                         return (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 shadow-[0_0_10px_rgba(16,185,129,0.35)]">
@@ -537,12 +539,24 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
 
                 <div className="flex items-center justify-between pt-1 border-t border-line/50">
                   <div className="flex gap-2">
-                    <span className={cx('text-[10px] px-2 py-0.5 rounded border', bot.dograh_workflow_id ? 'bg-info-surface text-info border-info/30' : 'bg-background text-subtle border-line')}>
-                      Inbound: {bot.dograh_workflow_id ? 'Configured' : 'Ready'}
-                    </span>
-                    <span className={cx('text-[10px] px-2 py-0.5 rounded border', bot.dograh_outbound_workflow_id ? 'bg-info-surface text-info border-info/30' : 'bg-background text-subtle border-line')}>
-                      Outbound: {bot.dograh_outbound_workflow_id ? 'Configured' : 'Ready'}
-                    </span>
+                    {currentDir === 'outbound' ? (
+                      <span className="text-[10px] px-2 py-0.5 rounded border bg-background/50 text-subtle/50 border-line line-through">
+                        Inbound: Disabled
+                      </span>
+                    ) : (
+                      <span className={cx('text-[10px] px-2 py-0.5 rounded border font-medium', bot.dograh_workflow_id ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-background text-subtle border-line')}>
+                        Inbound: {bot.dograh_workflow_id ? 'Configured' : 'Ready'}
+                      </span>
+                    )}
+                    {currentDir === 'inbound' ? (
+                      <span className="text-[10px] px-2 py-0.5 rounded border bg-background/50 text-subtle/50 border-line line-through">
+                        Outbound: Disabled
+                      </span>
+                    ) : (
+                      <span className={cx('text-[10px] px-2 py-0.5 rounded border font-medium', bot.dograh_outbound_workflow_id ? 'bg-cyan-50 text-cyan-700 border-cyan-300' : 'bg-background text-subtle border-line')}>
+                        Outbound: {bot.dograh_outbound_workflow_id ? 'Configured' : 'Ready'}
+                      </span>
+                    )}
                   </div>
                   {canSupport && (
                     <Button
@@ -564,7 +578,8 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
                   )}
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
 

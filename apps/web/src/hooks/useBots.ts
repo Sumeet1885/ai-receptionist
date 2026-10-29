@@ -5,6 +5,14 @@ import { mergeWidgetConfig } from '../lib/widgetConfig';
 import { BOT_SELECT_FIELDS } from '../lib/botQuery';
 
 function mapBotFromDb(b: any): Bot {
+  const agentDirection: 'inbound' | 'outbound' | 'both' =
+    b.widget_config?.agentDirection ||
+    (b.dograh_outbound_workflow_id && !b.dograh_workflow_id
+      ? 'outbound'
+      : b.dograh_workflow_id && !b.dograh_outbound_workflow_id
+      ? 'inbound'
+      : 'both');
+
   return {
     id: b.id,
     businessName: b.business_name,
@@ -17,6 +25,7 @@ function mapBotFromDb(b: any): Bot {
     allowedDomains: b.allowed_domains || [],
     widgetConfig: mergeWidgetConfig(b.widget_config),
     phoneNumber: b.widget_config?.phoneNumber || b.dograh_phone_number || b.phone_number || '',
+    agentDirection,
     createdAt: b.created_at
   };
 }

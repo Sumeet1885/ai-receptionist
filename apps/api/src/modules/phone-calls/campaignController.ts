@@ -68,13 +68,19 @@ export async function uploadCampaign(req: AuthRequest, res: Response): Promise<v
 
   const { data: bot } = await supabase
     .from('bots')
-    .select('id, owner_id, dograh_outbound_workflow_id, dograh_telephony_config_id, dograh_phone_number_id, business_name')
+    .select('id, owner_id, dograh_outbound_workflow_id, dograh_telephony_config_id, dograh_phone_number_id, business_name, widget_config')
     .eq('id', botId)
     .eq('owner_id', ownerId)
     .single();
 
   if (!bot) {
     res.status(404).json({ error: 'Bot not found' });
+    return;
+  }
+
+  const widgetConfig = (bot as any).widget_config || {};
+  if (widgetConfig.agentDirection === 'inbound') {
+    res.status(400).json({ error: 'This agent is assigned for Inbound calls only. Outbound campaigns are disabled.' });
     return;
   }
   if (!bot.dograh_outbound_workflow_id || !bot.dograh_telephony_config_id || !bot.dograh_phone_number_id) {

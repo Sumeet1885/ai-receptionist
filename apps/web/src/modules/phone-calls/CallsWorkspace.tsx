@@ -30,9 +30,6 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
   initialTab,
   hideSubTabs,
 }) => {
-  const selectedBot = bots.find(b => b.id === activeBotId) || bots[0] || null;
-  const selectedBotId = selectedBot?.id || null;
-
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(initialTab || 'incoming');
 
   useEffect(() => {
@@ -40,6 +37,21 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
       setActiveTab(initialTab);
     }
   }, [initialTab]);
+
+  const visibleBots = React.useMemo(() => {
+    if (activeTab === 'outgoing') {
+      return bots.filter(b => b.agentDirection !== 'inbound');
+    }
+    if (activeTab === 'incoming') {
+      return bots.filter(b => b.agentDirection !== 'outbound');
+    }
+    return bots;
+  }, [bots, activeTab]);
+
+  const selectedBot = React.useMemo(() => {
+    return visibleBots.find(b => b.id === activeBotId) || visibleBots[0] || null;
+  }, [visibleBots, activeBotId]);
+  const selectedBotId = selectedBot?.id || null;
   const [outgoingSubTab, setOutgoingSubTab] = useState<OutgoingSubTab>('single');
   const [calls, setCalls] = useState<PhoneCallRecord[]>([]);
   const [numbers, setNumbers] = useState<DograhNumber[]>([]);
@@ -136,6 +148,35 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
     );
   }
 
+  if (visibleBots.length === 0) {
+    if (activeTab === 'outgoing') {
+      return (
+        <div className="bg-brand-card border border-brand-border rounded-2xl p-12 text-center text-brand-muted max-w-lg mx-auto">
+          <div className="w-12 h-12 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-600 flex items-center justify-center mx-auto mb-4 text-xl">
+            📤
+          </div>
+          <h3 className="text-base font-bold text-brand-text">No Outbound Personas Assigned</h3>
+          <p className="text-xs text-brand-muted mt-1.5 leading-relaxed">
+            None of your assigned AI receptionists are configured for outbound calling. If you need outbound dialing or wave campaigns, please reach out to your administrator to assign an Outbound persona.
+          </p>
+        </div>
+      );
+    }
+    if (activeTab === 'incoming') {
+      return (
+        <div className="bg-brand-card border border-brand-border rounded-2xl p-12 text-center text-brand-muted max-w-lg mx-auto">
+          <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 flex items-center justify-center mx-auto mb-4 text-xl">
+            📥
+          </div>
+          <h3 className="text-base font-bold text-brand-text">No Inbound Personas Assigned</h3>
+          <p className="text-xs text-brand-muted mt-1.5 leading-relaxed">
+            None of your assigned AI receptionists are configured for inbound call reception. Please reach out to your administrator to assign an Inbound persona.
+          </p>
+        </div>
+      );
+    }
+  }
+
   const tabs = [
     {
       id: 'incoming' as WorkspaceTab,
@@ -165,7 +206,7 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
       {/* ── TOP HERO ROW: RECEPTIONIST SELECTOR ── */}
       <div className="w-full">
         <AgentSelectorDropdown
-          bots={bots}
+          bots={visibleBots}
           selectedBotId={selectedBotId}
           onSelectBot={setActiveBotId}
           agentStatus={agentStatus}
