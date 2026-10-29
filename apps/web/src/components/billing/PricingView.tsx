@@ -38,6 +38,9 @@ export const PricingView: React.FC<PricingViewProps> = ({ navigate, embedded = f
     if (feature.key === 'topup_500_minutes') {
       return curr === 'USD' ? 'Top up Minutes 500 ($)' : 'Top up Minutes 500 (₹)';
     }
+    if (feature.key === 'telephony') {
+      return curr === 'USD' ? 'Telephony ($)' : 'Telephony (₹)';
+    }
     if (feature.key === 'calendar_booking') {
       return curr === 'USD' ? 'Calendar booking' : feature.label;
     }
@@ -55,6 +58,19 @@ export const PricingView: React.FC<PricingViewProps> = ({ navigate, embedded = f
         return p.contactSales ? 'Custom' : '—';
       } else {
         const inrVal = p.features['topup_500_minutes'];
+        if (!inrVal) return p.contactSales ? 'Custom' : '—';
+        const num = parseInt(inrVal, 10);
+        return !isNaN(num) ? `₹${num.toLocaleString('en-IN')}` : inrVal;
+      }
+    }
+    if (featureKey === 'telephony') {
+      if (curr === 'USD') {
+        const usdVal = p.features['telephony_usd'];
+        if (usdVal) return `$${usdVal}`;
+        if (['ai-starter', 'ai-growth', 'ai-business-pro'].includes(p.slug)) return '$5.99';
+        return p.contactSales ? 'Custom' : '—';
+      } else {
+        const inrVal = p.features['telephony'];
         if (!inrVal) return p.contactSales ? 'Custom' : '—';
         const num = parseInt(inrVal, 10);
         return !isNaN(num) ? `₹${num.toLocaleString('en-IN')}` : inrVal;
