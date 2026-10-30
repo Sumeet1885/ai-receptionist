@@ -271,7 +271,7 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
                   </h3>
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 backdrop-blur-sm border border-brand-border/70 text-xs font-bold text-brand-text shadow-xs">
                     <span className={`w-2 h-2 rounded-full ${connectionState === 'connected' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`} />
-                    <span>{connectionState === 'connected' ? 'Google Calendar Synced' : 'Offline Mode'}</span>
+                    <span>{connectionState === 'connected' ? `${provider === 'outlook' ? 'Outlook' : 'Google'} Calendar Synced` : 'Offline Mode'}</span>
                   </span>
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-success/15 backdrop-blur-sm border border-brand-success/30 text-brand-success text-xs font-bold shadow-xs">
                     <span>Live Slot Engine Active</span>
@@ -300,10 +300,10 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
                 </div>
                 <div>
                   <p className="text-sm font-bold text-brand-text">
-                    {connectionState === 'connected' ? `${provider === 'google' ? 'Google' : 'Outlook'} Calendar connected` : connectionState === 'loading' ? 'Checking calendar connection…' : connectionState === 'error' ? 'Connection status unavailable' : 'Connect a calendar'}
+                    {connectionState === 'connected' ? `${provider === 'outlook' ? 'Outlook' : 'Google'} Calendar connected` : connectionState === 'loading' ? 'Checking calendar connection…' : connectionState === 'error' ? 'Connection status unavailable' : 'Connect Google Calendar'}
                   </p>
                   <p className="text-xs text-brand-muted mt-0.5 font-medium">
-                    {connectionState === 'connected' ? 'Availability checks and new bookings are active.' : 'Connect Google or Outlook to accept new bookings.'}
+                    {connectionState === 'connected' ? 'Availability checks and new bookings are active.' : 'Connect Google Calendar to accept new bookings.'}
                   </p>
                 </div>
               </div>
@@ -319,10 +319,13 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
                   {disconnecting ? 'Disconnecting…' : 'Disconnect Calendar'}
                 </button>
               ) : connectionState !== 'loading' && (
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <button type="button" onClick={() => connectCalendar('google')} className="h-9 px-4 rounded-xl bg-white text-gray-900 border border-gray-300 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs hover:bg-stone-50"><Icons.Google /> Google</button>
-                  <button type="button" onClick={() => connectCalendar('outlook')} className="h-9 px-4 rounded-xl bg-[#0078d4] text-white text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs hover:bg-[#106ebe]"><Icons.Microsoft /> Outlook</button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => connectCalendar('google')}
+                  className="h-9 px-4 rounded-xl bg-white text-gray-900 border border-gray-300 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs hover:bg-stone-50"
+                >
+                  <Icons.Google /> Connect Google Calendar
+                </button>
               )}
             </div>
 
