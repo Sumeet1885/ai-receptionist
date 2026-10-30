@@ -8,13 +8,14 @@ import { billingApi, formatMoney, type Currency, type PlanFeature, type PublicPl
 
 interface PricingViewProps {
   navigate: (path: string) => void;
+  embedded?: boolean;
 }
 
 function count(value: number | null, unit = '') {
   return value === null || value === undefined ? '—' : `${value.toLocaleString('en-IN')}${unit}`;
 }
 
-export const PricingView: React.FC<PricingViewProps> = ({ navigate }) => {
+export const PricingView: React.FC<PricingViewProps> = ({ navigate, embedded = false }) => {
   const [currency, setCurrency] = useState<Currency>('INR');
   const [plans, setPlans] = useState<PublicPlan[] | null>(null);
   const [features, setFeatures] = useState<PlanFeature[]>([]);

@@ -17,6 +17,8 @@ target.md
 
 # Turborepo local cache and logs
 .turbo
+admin_credentials.txt
+ngrok.exe
 
 # Local pagination test manifests (dummy account identifiers).
 apps/api/.test-data/

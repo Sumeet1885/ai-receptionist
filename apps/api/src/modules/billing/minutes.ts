@@ -23,6 +23,31 @@ export function topupOffer(features: Record<string, string>, currency: Currency)
 
 export async function getMinuteSummary(userId: string): Promise<MinuteSummary | null> {
   const { data, error } = await supabase.rpc('workspace_minute_summary', { p_user: userId });
+  if (error && (error.message?.includes('workspace_minute_summary') || error.code === 'PGRST202' || error.code === '42883')) {
+    const { data: account } = await supabase
+      .from('customer_accounts')
+      .select('user_id, status, plan_id, plan_currency, plan_started_at, current_period_end, access_expires_at, is_trial:trial_days, plans(id, name, slug, monthly_minutes, is_trial, feature_values)')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (!account) return null;
+    const plan = (account.plans as any) || {};
+    const available = account.status === 'active' && (!account.access_expires_at || new Date(account.access_expires_at) > new Date());
+    return {
+      planId: account.plan_id,
+      planName: plan.name || 'Plan',
+      planSlug: plan.slug || 'plan',
+      currency: (account.plan_currency as Currency) || 'INR',
+      isTrial: Boolean(account.is_trial || plan.is_trial),
+      startsAt: account.plan_started_at,
+      expiresAt: account.access_expires_at || account.current_period_end,
+      includedMinutes: plan.monthly_minutes ?? null,
+      topupMinutes: 0,
+      usedMinutes: 0,
+      remainingMinutes: plan.monthly_minutes ?? null,
+      active: available,
+      features: (plan.feature_values as Record<string, string>) || {},
+    };
+  }
   if (error) throw new Error(`Load workspace minutes: ${error.message}`);
   return data as MinuteSummary | null;
 }

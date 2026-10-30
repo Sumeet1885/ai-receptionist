@@ -5,6 +5,7 @@ import { initiateCall } from './dograhClient';
 import { DograhProvisionableBot } from './types';
 import { logger } from '../../services/cloudwatchLogger';
 import { registerOutboundCall } from './outboundTracker';
+import { getCustomerConcurrentLimitInfo, trackCallStart, trackCallEnd } from './concurrentTracker';
 
 function maskPhoneNumber(phoneNumber: string): string {
   if (!phoneNumber) return '****';
@@ -85,6 +86,18 @@ async function advanceLoop(
       logger.aiReceptionist('Campaign paused: calling minutes exhausted', { campaignId, botId: bot.id });
       return;
     }
+
+    // Parallel calls check: ensure bulk dialer queue throttles to customer's parallel call limit
+    const concurrentLimit = await getCustomerConcurrentLimitInfo(owner.owner_id);
+    if (concurrentLimit.current >= concurrentLimit.effectiveLimit) {
+      console.log(`[campaign] Bulk campaign ${campaignId} queue waiting: ${concurrentLimit.current} parallel call(s) active (Limit: ${concurrentLimit.effectiveLimit}). Re-checking in 5s...`);
+      const handle = setTimeout(() => {
+        activeCampaigns.delete(campaignId);
+        void advanceLoop(campaignId, bot, hourlyCap, supabase);
+      }, 5000);
+      activeCampaigns.set(campaignId, handle);
+      return;
+    }
   } catch { await pauseForRateLimit(campaignId, supabase); return; }
 
   const rateLimitError = checkCampaignRateLimit(bot.id, hourlyCap);
@@ -153,6 +166,14 @@ async function advanceLoop(
       sessionId: '',
     });
 
+    trackCallStart({
+      key: `campaign_${campaignId}_${contact.id}`,
+      ownerId: bot.owner_id,
+      campaignContactId: contact.id,
+      botId: bot.id,
+      direction: 'outbound',
+    });
+
     console.log(`[campaign] Placed call for contact ${contact.id} (${contact.phone_number}) in campaign ${campaignId}.`);
     logger.callEvent('campaign_call_placed', {
       campaignId,
@@ -164,6 +185,7 @@ async function advanceLoop(
     await supabase.rpc('increment_campaign_called_count', { campaign_id_arg: campaignId });
 
   } catch (err: any) {
+    trackCallEnd(`campaign_${campaignId}_${contact.id}`);
     console.error(`[campaign] Failed to call contact ${contact.id}:`, err.message);
     logger.callEvent('campaign_call_failed', {
       campaignId,

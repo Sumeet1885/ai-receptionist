@@ -10,26 +10,48 @@ import { CallsQuickStartGuide } from './CallsQuickStartGuide';
 import { AgentSelectorDropdown } from './AgentSelectorDropdown';
 import { dograhApi, PhoneAgentStatus, PhoneCallRecord, DograhNumber } from './dograhApi';
 
+export type WorkspaceTab = 'incoming' | 'outgoing' | 'logs';
+export type OutgoingSubTab = 'single' | 'bulk';
+
 interface CallsWorkspaceProps {
   bots: Bot[];
   activeBotId: string | null;
   setActiveBotId: (id: string) => void;
   showToast: (message: string, type?: 'success' | 'error') => void;
+  initialTab?: WorkspaceTab;
+  hideSubTabs?: boolean;
 }
-
-type WorkspaceTab = 'incoming' | 'outgoing' | 'logs';
-type OutgoingSubTab = 'single' | 'bulk';
 
 export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
   bots,
   activeBotId,
   setActiveBotId,
   showToast,
+  initialTab,
+  hideSubTabs,
 }) => {
-  const selectedBot = bots.find(b => b.id === activeBotId) || bots[0] || null;
-  const selectedBotId = selectedBot?.id || null;
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>(initialTab || 'incoming');
 
-  const [activeTab, setActiveTab] = useState<WorkspaceTab>('incoming');
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
+  const visibleBots = React.useMemo(() => {
+    if (activeTab === 'outgoing') {
+      return bots.filter(b => b.agentDirection === 'outbound');
+    }
+    if (activeTab === 'incoming') {
+      return bots.filter(b => b.agentDirection === 'inbound');
+    }
+    return bots;
+  }, [bots, activeTab]);
+
+  const selectedBot = React.useMemo(() => {
+    return visibleBots.find(b => b.id === activeBotId) || visibleBots[0] || null;
+  }, [visibleBots, activeBotId]);
+  const selectedBotId = selectedBot?.id || null;
   const [outgoingSubTab, setOutgoingSubTab] = useState<OutgoingSubTab>('single');
   const [calls, setCalls] = useState<PhoneCallRecord[]>([]);
   const [numbers, setNumbers] = useState<DograhNumber[]>([]);
@@ -73,6 +95,7 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
       const data = await dograhApi.listCalls(botId);
       setCalls(data.calls);
     } catch (err: any) {
+      if (err?.message === 'Invalid token' || err?.message === 'Not signed in') return;
       showToast(err.message || 'Could not load call history', 'error');
     } finally {
       setLoadingCalls(false);
@@ -118,12 +141,41 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
         <div className="w-12 h-12 rounded-full bg-brand-bg border border-brand-border text-brand-muted flex items-center justify-center mx-auto mb-4 text-xl">
           🤖
         </div>
-        <h3 className="text-base font-bold text-brand-text">No Agents Available</h3>
+        <h3 className="text-base font-bold text-brand-text">Telephony Lines</h3>
         <p className="text-xs text-brand-muted mt-1.5">
-          Create an agent first before configuring phone numbers and telephony integrations.
+          Your AI receptionist lines and personas are managed directly via Dograh. Active lines will automatically appear here.
         </p>
       </div>
     );
+  }
+
+  if (visibleBots.length === 0) {
+    if (activeTab === 'outgoing') {
+      return (
+        <div className="bg-brand-card border border-brand-border rounded-2xl p-12 text-center text-brand-muted max-w-lg mx-auto">
+          <div className="w-12 h-12 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-600 flex items-center justify-center mx-auto mb-4 text-xl">
+            📤
+          </div>
+          <h3 className="text-base font-bold text-brand-text">No Outbound Personas Assigned</h3>
+          <p className="text-xs text-brand-muted mt-1.5 leading-relaxed">
+            None of your assigned AI receptionists are configured for outbound calling. If you need outbound dialing or wave campaigns, please reach out to your administrator to assign an Outbound persona.
+          </p>
+        </div>
+      );
+    }
+    if (activeTab === 'incoming') {
+      return (
+        <div className="bg-brand-card border border-brand-border rounded-2xl p-12 text-center text-brand-muted max-w-lg mx-auto">
+          <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 flex items-center justify-center mx-auto mb-4 text-xl">
+            📥
+          </div>
+          <h3 className="text-base font-bold text-brand-text">No Inbound Personas Assigned</h3>
+          <p className="text-xs text-brand-muted mt-1.5 leading-relaxed">
+            None of your assigned AI receptionists are configured for inbound call reception. Please reach out to your administrator to assign an Inbound persona.
+          </p>
+        </div>
+      );
+    }
   }
 
   const tabs = [
@@ -152,295 +204,53 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* ── TOP HERO ROW: RECEPTIONIST SELECTOR & CLEAR KPI STATS ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[340px_1fr] gap-4 items-stretch">
-        {/* Agent Switcher Card (Linear / Vercel Style with Floating Dropdown & Search) */}
+      {/* ── TOP HERO ROW: RECEPTIONIST SELECTOR ── */}
+      <div className="w-full">
         <AgentSelectorDropdown
-          bots={bots}
+          bots={visibleBots}
           selectedBotId={selectedBotId}
           onSelectBot={setActiveBotId}
           agentStatus={agentStatus}
         />
-
-        {/* Hero KPIs Bar: Clarified Incoming vs Outgoing & Leads (Fully Clickable & Linked) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {/* Card 1: Phone Numbers (Inbound & Outbound) -> Click to View Line Setup */}
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('incoming');
-              scrollToSessions();
-            }}
-            className={`bg-brand-card border rounded-2xl p-4 shadow-sm flex flex-col justify-between text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-md group cursor-pointer ${
-              activeTab === 'incoming'
-                ? 'border-emerald-500/60 ring-1 ring-emerald-500/40 bg-emerald-500/[0.04]'
-                : 'border-brand-border hover:border-emerald-500/40'
-            }`}
-          >
-            <div className="flex items-center justify-between w-full">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-brand-muted block group-hover:text-emerald-700 transition-colors">
-                Phone Lines
-              </span>
-              <span className="text-[10px] font-bold text-brand-muted group-hover:text-emerald-700 flex items-center gap-1 transition-colors">
-                Setup →
-              </span>
-            </div>
-            <div className="my-2 space-y-1">
-              <div>
-                <span className="text-[10px] text-brand-muted block">📥 Inbound Line:</span>
-                <span className="text-sm font-body font-extrabold text-brand-text truncate block group-hover:text-emerald-700 transition-colors">
-                  {agentStatus?.phoneNumber || 'No Number Yet'}
-                </span>
-              </div>
-              {agentStatus?.outboundPhoneNumber && agentStatus.outboundPhoneNumber !== agentStatus.phoneNumber && (
-                <div>
-                  <span className="text-[10px] text-sky-700 block">📤 Outbound Caller ID:</span>
-                  <span className="text-xs font-body font-bold text-sky-700 truncate block">
-                    {agentStatus.outboundPhoneNumber}
-                  </span>
-                </div>
-              )}
-              {agentStatus?.connectedLines && agentStatus.connectedLines.some(l => l.type === 'forwarding') && (
-                <div>
-                  <span className="text-[10px] text-cyan-700 block">🔄 Forwarding Mobile SIM:</span>
-                  <span className="text-xs font-body font-bold text-cyan-700 truncate block">
-                    {agentStatus.connectedLines.find(l => l.type === 'forwarding')?.phoneNumber}
-                  </span>
-                </div>
-              )}
-            </div>
-            <div className="flex items-center justify-between text-[10px]">
-              <span className="text-brand-muted truncate group-hover:text-brand-text transition-colors">
-                {agentStatus?.telephony?.provider ? `Via ${agentStatus.telephony.provider.toUpperCase()}` : 'Default Platform Ready'}
-              </span>
-              {agentStatus?.connectedLines && agentStatus.connectedLines.length > 1 && (
-                <span className="px-1.5 py-0.2 rounded font-bold bg-emerald-500/15 text-emerald-700 border border-emerald-500/25 shrink-0">
-                  {agentStatus.connectedLines.length} Lines
-                </span>
-              )}
-            </div>
-          </button>
-
-          {/* Card 2: 📥 Incoming Calls -> Click to View Inbound Call Logs */}
-          <button
-            type="button"
-            onClick={() => {
-              setLogFilterDirection('inbound');
-              setLogFilterScore('all');
-              setActiveTab('logs');
-              scrollToSessions();
-            }}
-            className={`bg-brand-card border rounded-2xl p-4 shadow-sm flex flex-col justify-between text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-md group cursor-pointer ${
-              activeTab === 'logs' && logFilterDirection === 'inbound'
-                ? 'border-emerald-500/60 ring-1 ring-emerald-500/40 bg-emerald-500/[0.04]'
-                : 'border-brand-border hover:border-emerald-500/40'
-            }`}
-          >
-            <div className="flex items-center justify-between w-full">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1.5">
-                📥 Incoming Calls
-              </span>
-              <span className="text-[10px] font-bold text-brand-muted group-hover:text-emerald-700 flex items-center gap-1 transition-colors">
-                View →
-              </span>
-            </div>
-            <div className="my-2 flex items-baseline justify-between">
-              <span className="text-2xl font-extrabold text-brand-text group-hover:text-emerald-700 transition-colors">
-                {inboundCallsCount}
-              </span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 font-bold">
-                Inbound
-              </span>
-            </div>
-            <span className="text-[10px] text-brand-muted block group-hover:text-brand-text transition-colors">
-              Customers who called you →
-            </span>
-          </button>
-
-          {/* Card 3: 📤 Outgoing Calls -> Click to View Outbound Call Logs */}
-          <button
-            type="button"
-            onClick={() => {
-              setLogFilterDirection('outbound');
-              setLogFilterScore('all');
-              setActiveTab('logs');
-              scrollToSessions();
-            }}
-            className={`bg-brand-card border rounded-2xl p-4 shadow-sm flex flex-col justify-between text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-md group cursor-pointer ${
-              activeTab === 'logs' && logFilterDirection === 'outbound'
-                ? 'border-sky-500/60 ring-1 ring-sky-500/40 bg-sky-500/[0.04]'
-                : 'border-brand-border hover:border-sky-500/40'
-            }`}
-          >
-            <div className="flex items-center justify-between w-full">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-sky-700 flex items-center gap-1.5">
-                📤 Outgoing Calls
-              </span>
-              <span className="text-[10px] font-bold text-brand-muted group-hover:text-sky-700 flex items-center gap-1 transition-colors">
-                View →
-              </span>
-            </div>
-            <div className="my-2 flex items-baseline justify-between">
-              <span className="text-2xl font-extrabold text-brand-text group-hover:text-sky-700 transition-colors">
-                {outboundCallsCount}
-              </span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-700 border border-sky-500/20 font-bold">
-                Outbound
-              </span>
-            </div>
-            <span className="text-[10px] text-brand-muted block group-hover:text-brand-text transition-colors">
-              AI called customers / test dials →
-            </span>
-          </button>
-
-          {/* Card 4: Hot Leads -> Click to View Hot Leads */}
-          <button
-            type="button"
-            onClick={() => {
-              setLogFilterDirection('all');
-              setLogFilterScore('hot');
-              setActiveTab('logs');
-              scrollToSessions();
-            }}
-            className={`bg-brand-card border rounded-2xl p-4 shadow-sm flex flex-col justify-between text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-md group cursor-pointer ${
-              activeTab === 'logs' && logFilterScore === 'hot'
-                ? 'border-brand-accent/60 ring-1 ring-brand-accent/40 bg-brand-accent/[0.04]'
-                : 'border-brand-border hover:border-brand-accent/40'
-            }`}
-          >
-            <div className="flex items-center justify-between w-full">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-brand-muted group-hover:text-brand-accent transition-colors flex items-center gap-1.5">
-                🔥 Hot Leads
-              </span>
-              <span className="text-[10px] font-bold text-brand-muted group-hover:text-brand-accent flex items-center gap-1 transition-colors">
-                Filter →
-              </span>
-            </div>
-            <div className="my-2 flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold text-brand-accent block">
-                {hotLeadsCount}
-              </span>
-              <span className="text-xs text-brand-muted">
-                / {totalCallsCount}
-              </span>
-            </div>
-            <span className="text-[10px] text-brand-muted block group-hover:text-brand-text transition-colors">
-              High-intent callers identified →
-            </span>
-          </button>
-        </div>
       </div>
-
-      {/* ── INTERACTIVE 3-STEP QUICK START GUIDE ── */}
-      {selectedBotId && (
-        <CallsQuickStartGuide
-          isProvisioned={Boolean(agentStatus?.provisioned)}
-          hasInboundNumber={Boolean(agentStatus?.phoneNumber)}
-          hasPlacedCall={calls.some(c => c.direction === 'outbound')}
-          phoneNumber={agentStatus?.phoneNumber || null}
-          onProvision={async () => {
-            try {
-              await dograhApi.provision(selectedBotId);
-              showToast('AI Voice Engine provisioned successfully!', 'success');
-              void loadStatus(selectedBotId);
-            } catch (err: any) {
-              showToast(err.message || 'Dograh voice server is unreachable. Check if the EC2 instance is running.', 'error');
-            }
-          }}
-          onNavigateTab={tab => {
-            setActiveTab(tab);
-            scrollToSessions();
-          }}
-          onNavigateOutgoingSubTab={subTab => {
-            setActiveTab('outgoing');
-            setOutgoingSubTab(subTab);
-            scrollToSessions();
-          }}
-        />
-      )}
 
       {/* ── WORKSPACE SESSIONS NAVIGATION (SEPARATE SESSIONS) ── */}
-      <div ref={sessionsNavRef} className="grid grid-cols-1 md:grid-cols-3 gap-3 scroll-mt-6">
-        {tabs.map(tab => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`p-3.5 rounded-2xl text-left border transition-all duration-200 flex flex-col justify-between gap-2.5 ${
-                isActive
-                  ? 'bg-brand-card border-brand-accent shadow-md ring-1 ring-brand-accent/50'
-                  : 'bg-brand-card/60 hover:bg-brand-card border-brand-border hover:border-brand-border/80'
-              }`}
-            >
-              <div className="flex items-center justify-between w-full">
-                <span className={`text-sm font-bold truncate ${isActive ? 'text-brand-text' : 'text-brand-muted'}`}>
-                  {tab.label}
-                </span>
-                {tab.badge && (
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border shrink-0 ${tab.badgeColor}`}>
-                    {tab.badge}
+      {!hideSubTabs && (
+        <div ref={sessionsNavRef} className="grid grid-cols-1 md:grid-cols-3 gap-3 scroll-mt-6">
+          {tabs.map(tab => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`p-3.5 rounded-2xl text-left border transition-all duration-200 flex flex-col justify-between gap-2.5 ${isActive
+                    ? 'bg-brand-card border-brand-accent shadow-md ring-1 ring-brand-accent/50'
+                    : 'bg-brand-card/60 hover:bg-brand-card border-brand-border hover:border-brand-border/80'
+                  }`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <span className={`text-sm font-bold truncate ${isActive ? 'text-brand-text' : 'text-brand-muted'}`}>
+                    {tab.label}
                   </span>
-                )}
-              </div>
-              <p className="text-[11px] text-brand-muted line-clamp-1">
-                {tab.sublabel}
-              </p>
-            </button>
-          );
-        })}
-      </div>
+                  {tab.badge && (
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border shrink-0 ${tab.badgeColor}`}>
+                      {tab.badge}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-brand-muted line-clamp-1">
+                  {tab.sublabel}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* ── SEPARATE SESSION 1: INCOMING CALLS (CUSTOMERS CALL YOU) ── */}
       {selectedBotId && activeTab === 'incoming' && (
         <div className="space-y-6">
-          {/* Session Explainer Banner */}
-          <div className="bg-gradient-to-r from-emerald-500/10 via-brand-card to-brand-card border border-emerald-500/30 rounded-2xl p-5 shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-start gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-700 flex items-center justify-center text-xl shrink-0">
-                  📥
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-base font-display font-extrabold text-brand-text">
-                      Incoming Calls: When Customers Call Your Business
-                    </h3>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-700 border border-emerald-500/30">
-                      Customer Inbound Line
-                    </span>
-                  </div>
-                  <p className="text-xs text-brand-muted mt-1 max-w-3xl">
-                    This is your customer-facing phone line. When callers dial this number, your AI receptionist answers immediately, answers questions using your business details, and takes customer bookings 24/7.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
-                {agentStatus?.phoneNumber && (
-                  <div className="px-4 py-2 rounded-xl bg-brand-bg/80 border border-brand-border">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-brand-muted block">Your Inbound Number</span>
-                    <span className="text-sm font-body font-extrabold text-emerald-700">{agentStatus.phoneNumber}</span>
-                  </div>
-                )}
-                <div className="px-4 py-2 rounded-xl bg-brand-bg/80 border border-brand-border">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-brand-muted block">Calendar Booking Status</span>
-                  {agentStatus?.calendarConnected ? (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                      Live Calendar Booking Active
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700" title="Calendar setup not done. AI Agent notes visit day/time and informs caller sales team will follow up.">
-                      <span className="w-2 h-2 rounded-full bg-amber-400" />
-                      Sales Callback Mode (No Calendar)
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
           <PhoneAgentPanel
             botId={selectedBotId}
             showToast={showToast}
@@ -455,29 +265,6 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
       {/* ── SEPARATE SESSION 2: OUTGOING CALLS (AI CALLS CUSTOMERS) ── */}
       {selectedBotId && activeTab === 'outgoing' && (
         <div className="space-y-6">
-          {/* Session Explainer Banner */}
-          <div className="bg-gradient-to-r from-sky-500/10 via-brand-card to-brand-card border border-sky-500/30 rounded-2xl p-5 shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-start gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-sky-500/20 border border-sky-500/30 text-sky-700 flex items-center justify-center text-xl shrink-0">
-                  📤
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-base font-display font-extrabold text-brand-text">
-                      Outgoing Calls: When Your AI Calls Customers
-                    </h3>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-sky-500/20 text-sky-700 border border-sky-500/30">
-                      Outbound Voice
-                    </span>
-                  </div>
-                  <p className="text-xs text-brand-muted mt-1 max-w-3xl">
-                    Use this session whenever you want your AI receptionist to dial out. You can call your own mobile phone right now to test how the AI speaks, or upload an Excel contact list to run automated outbound calling campaigns.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
 
           {/* Outbound Caller ID Setup Card */}
           <OutboundLineSetupCard
@@ -497,11 +284,10 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
               <button
                 type="button"
                 onClick={() => setOutgoingSubTab('single')}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-                  outgoingSubTab === 'single'
+                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${outgoingSubTab === 'single'
                     ? 'bg-sky-500 text-black shadow-sm font-extrabold'
                     : 'text-brand-muted hover:text-brand-text hover:bg-brand-bg'
-                }`}
+                  }`}
               >
                 <span>📞</span>
                 <span>Live Test Call (Call My Mobile Phone)</span>
@@ -509,11 +295,10 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
               <button
                 type="button"
                 onClick={() => setOutgoingSubTab('bulk')}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-                  outgoingSubTab === 'bulk'
+                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${outgoingSubTab === 'bulk'
                     ? 'bg-sky-500 text-black shadow-sm font-extrabold'
                     : 'text-brand-muted hover:text-brand-text hover:bg-brand-bg'
-                }`}
+                  }`}
               >
                 <span>🚀</span>
                 <span>Automated Campaign (Call Contact List)</span>

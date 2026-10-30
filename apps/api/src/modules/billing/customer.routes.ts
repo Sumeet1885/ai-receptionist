@@ -24,12 +24,37 @@ customerBillingRoutes.get('/summary', asyncRoute<AuthRequest>('WorkspaceBilling'
 }));
 customerBillingRoutes.get('/history', asyncRoute<AuthRequest>('WorkspaceBilling', async (req, res) => {
   const page = Math.max(1, Math.min(100000, Number.parseInt(String(req.query.page || '1'), 10) || 1));
-  const { data, error, count } = await supabase.from('billing_orders')
+  let { data, error, count } = await supabase.from('billing_orders')
     .select('id,purchase_kind,minutes_added,plan_snapshot,currency,total,status,created_at,paid_at,razorpay_payment_id,target_period_end,payment_error', { count: 'exact' })
     .or(`customer_user_id.eq.${req.user!.id},provisioned_user_id.eq.${req.user!.id}`)
     .order('created_at', { ascending: false }).order('id', { ascending: false }).range((page - 1) * 10, page * 10 - 1);
+  if (error && (error.message?.includes('purchase_kind') || error.code === '42703')) {
+    const fallbackRes = await supabase.from('billing_orders')
+      .select('id,plan_snapshot,currency,total,status,created_at,paid_at,razorpay_payment_id,payment_error', { count: 'exact' })
+      .or(`customer_user_id.eq.${req.user!.id},provisioned_user_id.eq.${req.user!.id}`)
+      .order('created_at', { ascending: false }).order('id', { ascending: false }).range((page - 1) * 10, page * 10 - 1);
+    data = fallbackRes.data ? fallbackRes.data.map((r: any) => ({
+      ...r,
+      purchase_kind: r.purchase_kind || r.plan_snapshot?.purchase_kind || 'initial',
+      target_period_end: r.target_period_end || r.plan_snapshot?.target_period_end || null,
+      minutes_added: r.minutes_added || r.plan_snapshot?.monthly_minutes || null,
+    })) : [];
+    count = fallbackRes.count;
+    error = fallbackRes.error;
+  }
   if (error) throw new Error(`Load purchase history: ${error.message}`);
-  res.json({ rows: (data || []).map(({ plan_snapshot, ...row }) => ({ ...row, planName: plan_snapshot?.name || 'Plan' })), total: count || 0, page, pageSize: 10 });
+  res.json({
+    rows: (data || []).map(({ plan_snapshot, ...row }) => ({
+      ...row,
+      planName: plan_snapshot?.name || 'Plan',
+      target_period_end: row.target_period_end || plan_snapshot?.target_period_end || null,
+      purchase_kind: row.purchase_kind || plan_snapshot?.purchase_kind || 'initial',
+      minutes_added: row.minutes_added || plan_snapshot?.monthly_minutes || null,
+    })),
+    total: count || 0,
+    page,
+    pageSize: 10
+  });
 }));
 customerBillingRoutes.post(
   '/order',
@@ -63,7 +88,10 @@ customerBillingRoutes.post(
       (!isTopup && typeof req.body?.plan !== 'string')
     )
       return res.status(400).json({ error: 'Choose a plan and currency.' });
-    const planSlug = (isTopup && typeof req.body?.plan === 'string') ? req.body.plan : (isTopup ? summary.planSlug! : req.body.plan);
+    if (isTopup && req.body?.plan && summary.planSlug && req.body.plan !== summary.planSlug) {
+      return res.status(400).json({ error: 'Extra minutes can only be purchased for your current active plan.' });
+    }
+    const planSlug = isTopup ? (summary.planSlug || req.body?.plan) : req.body.plan;
     const plan = await getPlanBySlug(planSlug);
     if (!plan || (isTopup ? !plan.is_active || plan.is_trial || plan.contact_sales : !isPurchasable(plan, currency)))
       return res.status(404).json({ error: 'Choose an available paid plan.' });

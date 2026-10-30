@@ -22,6 +22,7 @@ export interface Bot {
   allowedDomains?: string[];
   widgetConfig: WidgetConfig;
   phoneNumber?: string;
+  agentDirection?: 'inbound' | 'outbound';
   createdAt: string;
 }
 

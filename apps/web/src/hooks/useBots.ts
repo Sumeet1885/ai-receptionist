@@ -5,6 +5,12 @@ import { mergeWidgetConfig } from '../lib/widgetConfig';
 import { BOT_SELECT_FIELDS } from '../lib/botQuery';
 
 function mapBotFromDb(b: any): Bot {
+  const agentDirection: 'inbound' | 'outbound' =
+    b.widget_config?.agentDirection === 'outbound' ||
+    (!b.widget_config?.agentDirection && b.dograh_outbound_workflow_id && !b.dograh_workflow_id)
+      ? 'outbound'
+      : 'inbound';
+
   return {
     id: b.id,
     businessName: b.business_name,
@@ -17,6 +23,7 @@ function mapBotFromDb(b: any): Bot {
     allowedDomains: b.allowed_domains || [],
     widgetConfig: mergeWidgetConfig(b.widget_config),
     phoneNumber: b.widget_config?.phoneNumber || b.dograh_phone_number || b.phone_number || '',
+    agentDirection,
     createdAt: b.created_at
   };
 }
@@ -33,7 +40,8 @@ export function useBots() {
     const { data } = await supabase
       .from('bots')
       .select(BOT_SELECT_FIELDS)
-      .eq('owner_id', userId);
+      .eq('owner_id', userId)
+      .eq('is_active', true);
     if (data) {
       const mapped = data.map(mapBotFromDb);
       setBots(mapped);

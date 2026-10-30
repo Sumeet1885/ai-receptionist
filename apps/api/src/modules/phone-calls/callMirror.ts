@@ -7,6 +7,7 @@ import { logger } from '../../services/cloudwatchLogger';
 import { findOutboundCall } from './outboundTracker';
 import { callingMinutesAvailable } from '../billing/minutes';
 import { refreshWorkspaceCallingLimits } from './inboundRateLimiter';
+import { trackCallEnd } from './concurrentTracker';
 
 function maskPhoneNumber(phoneNumber: string): string {
   if (phoneNumber.length <= 4) return '****';
@@ -423,10 +424,28 @@ async function ingestRun(
         transcript_url: transcriptUrl,
         cost_info: enrichedCostInfo,
         started_at: run.created_at,
+        ended_at: run.is_completed ? new Date().toISOString() : null,
         ingest_status: 'done',
       })
       .eq('id', callRow.id);
   if (finalizeError) throw finalizeError;
+
+  if (run.is_completed) {
+    if (sessionId) {
+      try {
+        await supabase
+          .from('chat_sessions')
+          .update({ ended_at: new Date().toISOString() })
+          .eq('id', sessionId);
+      } catch (err) {
+        console.warn('[callMirror] Failed to mark chat_session ended_at:', err);
+      }
+      trackCallEnd(sessionId);
+    }
+    if (initialCtx.campaign_contact_id && initialCtx.campaign_id) {
+      trackCallEnd(`campaign_${initialCtx.campaign_id}_${initialCtx.campaign_contact_id}`);
+    }
+  }
   try {
     if (!await callingMinutesAvailable(bot.owner_id)) await refreshWorkspaceCallingLimits(supabase, bot.owner_id);
   } catch (error) { logger.warn('[phone-calls] minute limit refresh failed', { botId: bot.id, error: String(error) }); }

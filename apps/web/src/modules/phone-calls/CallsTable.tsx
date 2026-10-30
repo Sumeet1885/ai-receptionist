@@ -34,6 +34,12 @@ export const CallsTable: React.FC<CallsTableProps> = ({
   const [filterScore, setFilterScore] = useState<string>(initialFilterScore || 'all');
   const [filterDirection, setFilterDirection] = useState<'all' | 'inbound' | 'outbound'>(initialFilterDirection || 'all');
   const [selectedCall, setSelectedCall] = useState<PhoneCallRecord | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterScore, filterDirection, searchQuery]);
 
   useEffect(() => {
     if (initialFilterDirection !== undefined) {
@@ -70,6 +76,10 @@ export const CallsTable: React.FC<CallsTableProps> = ({
 
     return matchesDirection && matchesSearch && matchesScore;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredCalls.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedCalls = filteredCalls.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   return (
     <section className="bg-brand-card border border-brand-border rounded-2xl overflow-hidden shadow-sm space-y-0">
@@ -350,7 +360,7 @@ export const CallsTable: React.FC<CallsTableProps> = ({
           )
         ) : (
           <div className="space-y-3">
-            {filteredCalls.map(call => {
+            {paginatedCalls.map(call => {
               const isLeadHot = call.lead?.lead_score?.toLowerCase() === 'hot';
               const isLeadWarm = call.lead?.lead_score?.toLowerCase() === 'warm';
               const isOutbound = call.direction === 'outbound';
@@ -471,6 +481,71 @@ export const CallsTable: React.FC<CallsTableProps> = ({
                 </article>
               );
             })}
+
+            {/* Pagination Controls */}
+            {filteredCalls.length > 0 && (
+              <div className="px-5 py-3.5 border-t border-brand-border bg-brand-bg/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-brand-muted rounded-b-xl">
+                <div className="flex items-center gap-2">
+                  <span>
+                    Showing <span className="font-bold text-brand-text">{(safePage - 1) * pageSize + 1}</span> to{' '}
+                    <span className="font-bold text-brand-text">{Math.min(safePage * pageSize, filteredCalls.length)}</span> of{' '}
+                    <span className="font-bold text-brand-text">{filteredCalls.length}</span> calls
+                  </span>
+                  <div className="flex items-center gap-1 ml-3 border-l border-brand-border pl-3">
+                    <span className="text-[11px]">Per page:</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="bg-brand-bg border border-brand-border rounded px-2 py-0.5 text-xs text-brand-text cursor-pointer"
+                    >
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    disabled={safePage <= 1}
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    className="px-2.5 py-1 rounded border border-brand-border bg-brand-bg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-brand-card text-brand-text font-semibold transition"
+                  >
+                    ← Prev
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(p => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+                    .map((p, idx, arr) => (
+                      <React.Fragment key={p}>
+                        {idx > 0 && arr[idx - 1] !== p - 1 && <span className="px-1 text-brand-muted">…</span>}
+                        <button
+                          type="button"
+                          onClick={() => setCurrentPage(p)}
+                          className={`w-7 h-7 rounded text-xs font-bold transition ${
+                            p === safePage
+                              ? 'bg-brand-accent text-primary-foreground shadow-sm'
+                              : 'hover:bg-brand-card text-brand-muted border border-brand-border'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      </React.Fragment>
+                    ))}
+                  <button
+                    type="button"
+                    disabled={safePage >= totalPages}
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    className="px-2.5 py-1 rounded border border-brand-border bg-brand-bg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-brand-card text-brand-text font-semibold transition"
+                  >
+                    Next →
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

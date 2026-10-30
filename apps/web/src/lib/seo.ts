@@ -1,5 +1,22 @@
 const LOCAL_SITE_URL = "http://localhost:3000";
 
+export const SEO_KEYWORDS = [
+  "ai call center",
+  "call center automation",
+  "auto dialer",
+  "automatic dialer",
+  "predictive dialer",
+  "conversational ai",
+  "voice ai",
+  "conversational ai chatbot",
+  "ai voice agent india",
+  "ai calling agent india",
+  "ai voice agent",
+  "whatsapp business api",
+  "communication platform for business",
+  "cpaas",
+].join(", ");
+
 export const PUBLIC_PAGES = {
   "/": {
     title: "AI Receptionist for Indian Businesses | Bolega India",
@@ -105,6 +122,7 @@ export function pageSeo(
     title,
     description:
       page?.description || "Secure access to your Bolega India workspace.",
+    keywords: SEO_KEYWORDS,
     canonical:
       page && !privateQuery
         ? `${origin}${cleanPath === "/" ? "/" : cleanPath}`
@@ -133,11 +151,35 @@ export function pageSeo(
               inLanguage: "en-IN",
             },
             {
+              "@type": "SoftwareApplication",
+              "@id": `${origin}/#software`,
+              name: "Bolega India Voice AI & Call Center Platform",
+              applicationCategory: "BusinessApplication",
+              operatingSystem: "Cloud / Web",
+              featureList: [
+                "AI Call Center",
+                "Call Center Automation",
+                "Auto Dialer / Automatic Dialer",
+                "Predictive Dialer",
+                "Conversational AI & Voice AI",
+                "AI Calling Agent India",
+                "WhatsApp Business API",
+                "CPaaS Communication Platform for Business"
+              ],
+              offers: {
+                "@type": "Offer",
+                priceCurrency: "INR",
+                price: "0",
+                description: "14-Day Free Trial Available"
+              }
+            },
+            {
               "@type": "WebPage",
               "@id": `${origin}${cleanPath}#webpage`,
               url: `${origin}${cleanPath}`,
               name: title,
               description: page.description,
+              keywords: SEO_KEYWORDS,
               isPartOf: { "@id": `${origin}/#website` },
               inLanguage: "en-IN",
             },
@@ -167,6 +209,7 @@ export function applyPageSeo(
     element.content = content;
   };
   meta("description", seo.description);
+  meta("keywords", seo.keywords);
   meta("robots", seo.robots);
   meta(
     "referrer",

@@ -40,14 +40,8 @@ export const AgentsPage: React.FC<AgentsPageProps> = ({
     return (
       <div className="bg-brand-card border border-brand-border rounded-lg p-10 text-center text-brand-muted">
         <Icons.Bot />
-        <h3 className="text-xl font-display font-bold text-brand-text mt-4">Create your first receptionist</h3>
-        <p className="text-sm mt-2">Add business details, FAQs, and a greeting so visitors can start chatting.</p>
-        <button
-          onClick={() => navigate('/agents/new')}
-          className="mt-5 px-5 py-2.5 bg-brand-accent text-primary-foreground hover:bg-brand-accent-hover hover:text-primary-foreground rounded-lg text-sm font-bold transition"
-        >
-          Create Agent
-        </button>
+        <h3 className="text-xl font-display font-bold text-brand-text mt-4">Telephony Lines</h3>
+        <p className="text-sm mt-2">Your AI receptionist lines and personas are managed directly in Dograh. Active provisioned lines will appear here.</p>
       </div>
     );
   }

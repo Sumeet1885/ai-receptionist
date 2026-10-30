@@ -27,10 +27,18 @@ export function publicHeaders(_req: Request, res: Response, next: NextFunction) 
 // Browsers always send Origin on cross-origin POSTs; a different site's page cannot submit our forms.
 export function publicOriginGuard(req: Request, res: Response, next: NextFunction) {
   const origin = req.headers.origin;
-  if (origin && origin !== new URL(config.clientUrl).origin) {
-    return res.status(403).json({ error: 'Use the form on our website to continue.' });
+  if (!origin) return next();
+  try {
+    const clientOrigin = new URL(config.clientUrl).origin;
+    if (origin === clientOrigin) return next();
+    const isLoopback = (host: string) => host === 'localhost' || host === '127.0.0.1' || host === '::1';
+    const clientHost = new URL(config.clientUrl).hostname;
+    const originHost = new URL(origin).hostname;
+    if (isLoopback(clientHost) && isLoopback(originHost)) return next();
+  } catch {
+    // continue to reject
   }
-  next();
+  return res.status(403).json({ error: 'Use the form on our website to continue.' });
 }
 
 /**

@@ -5,6 +5,7 @@ export { startCallPoller, stopCallPoller } from './callPoller';
 export { startCampaign } from './campaignRunner';
 export { syncBotCalls } from './callMirror';
 export { refreshWorkspaceCallingLimits } from './inboundRateLimiter';
+export { trackCallStart, trackCallEnd, getActiveCallsCount, getCustomerConcurrentLimitInfo } from './concurrentTracker';
 export {
   buildBusinessPersona,
   buildDograhOutboundInstruction,

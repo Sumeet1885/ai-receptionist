@@ -19,7 +19,7 @@ test('bot dashboard query helper narrows selected bot columns', async () => {
 
   assert.equal(
     helper.BOT_SELECT_FIELDS,
-    'id,business_name,industry,subdomain,greeting,primary_color,languages,knowledge_base,allowed_domains,widget_config,created_at,is_active'
+    'id,business_name,industry,subdomain,greeting,primary_color,languages,knowledge_base,allowed_domains,widget_config,created_at,is_active,dograh_phone_number,dograh_workflow_id,dograh_outbound_workflow_id'
   );
 });
 

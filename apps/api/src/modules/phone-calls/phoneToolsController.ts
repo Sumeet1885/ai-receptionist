@@ -7,6 +7,7 @@ import { normalizeTimezone } from '../../utils/date';
 import { InboundRateLimitBot, markInboundAttemptAndApplyLimit, refreshWorkspaceCallingLimits } from './inboundRateLimiter';
 import { logger } from '../../services/cloudwatchLogger';
 import { findOutboundCall, getLatestOutboundCallForBot } from './outboundTracker';
+import { getCustomerConcurrentLimitInfo, trackCallStart } from './concurrentTracker';
 
 
 /**
@@ -44,6 +45,25 @@ export async function preCall(req: Request, res: Response): Promise<void> {
   }
 
   const isOutbound = req.query.direction === 'outbound';
+
+  // Check parallel calls limit for the customer
+  const concurrentLimit = await getCustomerConcurrentLimitInfo(bot.owner_id);
+  if (concurrentLimit.current >= concurrentLimit.effectiveLimit) {
+    logger.warn('[phone-calls] Inbound parallel call limit reached', {
+      botId,
+      ownerId: bot.owner_id,
+      current: concurrentLimit.current,
+      effectiveLimit: concurrentLimit.effectiveLimit,
+    });
+    res.json({
+      initial_context: {
+        rate_limited: true,
+        concurrent_limit_reached: true,
+        session_id: null,
+      },
+    });
+    return;
+  }
   if (!await callingMinutesAvailable(bot.owner_id)) {
     await refreshWorkspaceCallingLimits(supabase, bot.owner_id);
     res.json({ initial_context: { rate_limited: true, minutes_exhausted: true, session_id: null } });
@@ -91,6 +111,13 @@ export async function preCall(req: Request, res: Response): Promise<void> {
   }
 
   if (req.query.direction === 'inbound') {
+    trackCallStart({
+      key: sessionId,
+      ownerId: bot.owner_id,
+      botId,
+      direction: 'inbound',
+      sessionId,
+    });
     try {
       await markInboundAttemptAndApplyLimit(supabase, bot);
     } catch (err) {
