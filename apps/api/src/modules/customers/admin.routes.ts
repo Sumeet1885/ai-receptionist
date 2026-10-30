@@ -11,6 +11,7 @@ import { adminOriginGuard, noStore, requireAdminRole, requireAdminSession, type 
 import { recordAudit } from '../admin-auth/repository';
 import { getCustomer, listCustomers, setCustomerStatus } from './repository';
 import { getCustomerConcurrentLimitInfo } from '../phone-calls/concurrentTracker';
+import { refreshWorkspaceCallingLimits } from '../phone-calls/inboundRateLimiter';
 
 // Customer workspaces, mounted at /api/admin/customers. Viewing needs read_only; resending an
 // email needs support; suspending or reactivating needs super_admin. Every change is audited.
@@ -347,6 +348,7 @@ router.post('/:id/assign-plan', requireAdminRole('support'), handle(async (req, 
     trial_days: plan.is_trial ? (plan.trial_days || 14) : null,
     trial_started_at: plan.is_trial ? startsAt.toISOString() : null,
     trial_ends_at: plan.is_trial ? periodEnd.toISOString() : null,
+    status: 'active',
     updated_at: new Date().toISOString(),
   };
 
@@ -416,6 +418,12 @@ router.post('/:id/assign-plan', requireAdminRole('support'), handle(async (req, 
     currency: chosenCurrency,
     periodEnd: periodEnd.toISOString(),
   });
+
+  try {
+    await refreshWorkspaceCallingLimits(supabase, req.params.id);
+  } catch (refreshErr) {
+    console.warn('[assign-plan] refreshWorkspaceCallingLimits failed:', refreshErr);
+  }
 
   // Send plan update notification email to the customer
   try {
