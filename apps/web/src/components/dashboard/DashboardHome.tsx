@@ -98,7 +98,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
               <span>{currentBot ? `${currentBot.businessName} Active` : 'Autonomous AI Telecaller & Receptionist Active'}</span>
             </div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-emerald-300 text-xs font-bold shadow-md">
-              <span>📞 Line: {currentBot?.phoneNumber || (bots.length > 1 ? `${bots.length} Active Lines` : '+91 22 6423 0099')}</span>
+              <span>📞 Line: {currentBot?.phoneNumber || (bots.length > 1 ? `${bots.length} Active Lines` : (bots[0]?.phoneNumber || 'Not Assigned'))}</span>
             </div>
           </div>
 
