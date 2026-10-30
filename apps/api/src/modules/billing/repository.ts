@@ -130,7 +130,29 @@ export async function redeemCoupon(couponId: string) {
 // ── orders ───────────────────────────────────────────────────────────────────
 
 export async function insertOrder(row: Omit<BillingOrderRow, 'id' | 'status' | 'failure_reason' | 'checkout_dismissed_at' | 'payment_error' | 'lead_notified_at' | 'reminder_sent_at' | 'resume_token_hash' | 'razorpay_order_id' | 'razorpay_payment_id' | 'paid_at' | 'provisioned_user_id' | 'provisioned_at' | 'created_at' | 'updated_at'> & { ip: string; user_agent: string | null }) {
-  return check(await supabase.from('billing_orders').insert(row).select('*').single<BillingOrderRow>(), 'create order');
+  const result = await supabase.from('billing_orders').insert(row).select('*').single<BillingOrderRow>();
+  if (result.error && (result.error.message?.includes('minutes_added') || result.error.message?.includes('purchase_kind') || result.error.code === '42703')) {
+    const { purchase_kind, minutes_added, target_period_start, target_period_end, ...baseRow } = row as any;
+    const plan_snapshot = {
+      ...(baseRow.plan_snapshot || {}),
+      purchase_kind,
+      minutes_added,
+      target_period_start,
+      target_period_end,
+    };
+    const fallback = await supabase.from('billing_orders').insert({ ...baseRow, plan_snapshot }).select('*').single<BillingOrderRow>();
+    if (fallback.data) {
+      return {
+        ...fallback.data,
+        purchase_kind,
+        minutes_added,
+        target_period_start,
+        target_period_end,
+      };
+    }
+    return check(fallback, 'create order fallback');
+  }
+  return check(result, 'create order');
 }
 
 export async function getOrder(id: string) {
@@ -206,14 +228,61 @@ export async function listOrders(filters: { status?: OrderStatus; paidOnly?: boo
     if (filters.lead === 'closed') query = query.not('checkout_dismissed_at', 'is', null);
     if (filters.lead === 'started') query = query.is('checkout_dismissed_at', null);
   }
-  const { data, error, count } = await query;
+  let { data, error, count } = await query;
+  if (error && (error.message?.includes('purchase_kind') || error.code === '42703')) {
+    let fallbackQuery = supabase
+      .from('billing_orders')
+      .select('id,status,currency,total,discount,coupon_code,full_name,email,phone,business_name,plan_snapshot,razorpay_payment_id,paid_at,created_at,failure_reason,checkout_dismissed_at,payment_error,reminder_sent_at,followup_last_status,followup_sent_at,followup_sent_stage', { count: 'exact' })
+      .order('created_at', { ascending: false }).order('id', { ascending: false })
+      .range((filters.page - 1) * filters.pageSize, filters.page * filters.pageSize - 1);
+    if (filters.status) fallbackQuery = fallbackQuery.eq('status', filters.status);
+    else if (filters.paidOnly) fallbackQuery = fallbackQuery.in('status', PAID_STATUSES);
+    if (filters.initialOnly) fallbackQuery = fallbackQuery.is('customer_user_id', null);
+    if (filters.lead) {
+      fallbackQuery = fallbackQuery.eq('status', 'created');
+      if (filters.lead === 'failed') fallbackQuery = fallbackQuery.not('payment_error', 'is', null);
+      else fallbackQuery = fallbackQuery.is('payment_error', null);
+      if (filters.lead === 'closed') fallbackQuery = fallbackQuery.not('checkout_dismissed_at', 'is', null);
+      if (filters.lead === 'started') fallbackQuery = fallbackQuery.is('checkout_dismissed_at', null);
+    }
+    const fallbackRes = await fallbackQuery;
+    const mapped = (fallbackRes.data || []).map((r: any) => ({
+      ...r,
+      purchase_kind: r.purchase_kind || r.plan_snapshot?.purchase_kind || 'initial',
+      target_period_end: r.target_period_end || r.plan_snapshot?.target_period_end || null,
+      minutes_added: r.minutes_added || r.plan_snapshot?.monthly_minutes || null,
+    }));
+    data = filters.purchaseKind ? mapped.filter((r: any) => r.purchase_kind === filters.purchaseKind) : mapped;
+    count = filters.purchaseKind ? data.length : fallbackRes.count;
+    error = fallbackRes.error;
+  }
   if (error) throw new Error(`list orders: ${error.message}`);
-  return { rows: data ?? [], total: count ?? 0 };
+  const resolved = (data ?? []).map((r: any) => ({
+    ...r,
+    purchase_kind: r.purchase_kind || r.plan_snapshot?.purchase_kind || 'initial',
+    target_period_end: r.target_period_end || r.plan_snapshot?.target_period_end || null,
+    minutes_added: r.minutes_added || r.plan_snapshot?.monthly_minutes || null,
+  }));
+  return { rows: resolved, total: count ?? 0 };
 }
 
 /** Complete totals with a bounded summary payload (no raw order downloads). */
 export async function getRevenueSummary() {
-  return check(await supabase.rpc('admin_revenue_summary'), 'load revenue summary') as import('./revenue').RevenueSummary;
+  const rpcRes = await supabase.rpc('admin_revenue_summary');
+  if (rpcRes.error && (rpcRes.error.message?.includes('admin_revenue_summary') || rpcRes.error.code === 'PGRST202' || rpcRes.error.code === '42883')) {
+    const { data: paidOrders } = await supabase
+      .from('billing_orders')
+      .select('total,currency,paid_at,plan_snapshot')
+      .in('status', ['paid', 'provisioned', 'review'])
+      .not('paid_at', 'is', null);
+    const { data: leadOrders } = await supabase
+      .from('billing_orders')
+      .select('created_at,checkout_dismissed_at,payment_error')
+      .eq('status', 'created');
+    const { summariseRevenue } = await import('./revenue');
+    return summariseRevenue((paidOrders as any) || [], (leadOrders as any) || []);
+  }
+  return check(rpcRes, 'load revenue summary') as import('./revenue').RevenueSummary;
 }
 
 export async function setCustomerPlan(userId: string, order: BillingOrderRow) {

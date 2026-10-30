@@ -58,9 +58,12 @@ export function BillingWorkspace({ summary, plans, features, history, page, busy
   const exhausted = summary.active && summary.remainingMinutes !== null && summary.remainingMinutes <= 0;
   const pages = history ? Math.max(1, Math.ceil(history.total / history.pageSize)) : 1;
   const tabId = (key: string) => `billing-tab-${key}`;
-  const topupPlans = plans
+  const availableTopups = plans
     .map(plan => configuredTopup(plan, summary.currency))
     .filter((item): item is { plan: PublicPlan; minutes: number; amount: number } => item !== null);
+  const topupPlans = summary.planSlug
+    ? availableTopups.filter(item => item.plan.slug === summary.planSlug)
+    : availableTopups;
   const hasPreviewPrices = topupPlans.length > 0;
   function chooseTab(key: typeof tab) { setTab(key); }
 
@@ -92,7 +95,7 @@ export function BillingWorkspace({ summary, plans, features, history, page, busy
         <div className="mt-5 rounded-xl border border-border bg-surface p-4 text-sm leading-relaxed text-text-subtle">{topupUnavailableReason(summary)} {summary.isTrial && 'Here are the minute-pack prices available after you activate a paid plan.'}</div>
       )}
       {!hasPreviewPrices && <p role="status" className="mt-4 rounded-xl border border-warning/20 bg-warning-surface p-4 text-sm">{summary.currency} top-up prices are not available yet. Choose the other currency or contact support. Prices are set by the team; no exchange-rate conversion is applied.</p>}
-      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{topupPlans.map(({ plan, minutes, amount }) => {
+      <div className={`mt-6 grid gap-4 ${topupPlans.length === 1 ? 'max-w-md' : 'md:grid-cols-2 xl:grid-cols-3'}`}>{topupPlans.map(({ plan, minutes, amount }) => {
         const isCurrent = plan.slug === summary.planSlug;
         return <TopupCard
           key={plan.slug}
@@ -135,7 +138,7 @@ export function BillingWorkspace({ summary, plans, features, history, page, busy
         </div>
         <Card className="min-w-0">
           <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-accent-lime-soft text-primary"><Zap size={21} /></span>
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2"><h2 className="font-display text-xl font-semibold">Minute top-ups</h2><button type="button" className="cursor-pointer text-xs font-semibold text-primary hover:underline" onClick={() => setTab('topups')}>View all packs →</button></div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2"><h2 className="font-display text-xl font-semibold">Minute top-ups</h2><button type="button" className="cursor-pointer text-xs font-semibold text-primary hover:underline" onClick={() => setTab('topups')}>{topupPlans.length > 1 ? 'View all packs →' : 'View top-up →'}</button></div>
           <p className="mt-1 text-sm leading-relaxed text-text-subtle">Buy extra minutes whenever you need them—even if you still have minutes left.</p>
           {summary.active && !summary.isTrial && topupPlans.length > 0 ? <>
             <div className="my-5 space-y-2">
@@ -175,7 +178,7 @@ export function BillingWorkspace({ summary, plans, features, history, page, busy
         <div className="space-y-3 md:hidden">{history.rows.map(row => <Card key={row.id} padding="sm">
           <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-sm font-semibold">{purchaseNames[row.purchase_kind] || 'Plan purchase'}</p><p className="mt-1 break-words text-xs text-text-subtle">{row.minutes_added ? `+${number(row.minutes_added)} minutes · ` : ''}{row.planName}</p></div><p className="shrink-0 text-sm font-semibold">{formatMoney(row.total, row.currency)}</p></div>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2"><Status row={row} /><span className="text-xs text-text-subtle">{formatDateTimeIST(row.paid_at || row.created_at)}</span></div>
-          {row.target_period_end && <p className="mt-3 text-xs text-text-subtle">Top-up expiry: {formatExpiryIST(row.target_period_end)}</p>}
+          {row.target_period_end && <p className="mt-3 text-xs text-text-subtle">{row.purchase_kind === 'topup' ? 'Top-up expiry: ' : 'Plan expires: '}{formatExpiryIST(row.target_period_end)}</p>}
           <p className="mt-3 break-all border-t border-border pt-3 text-xs text-text-subtle">Payment reference: <span className="font-mono">{row.razorpay_payment_id || 'Not available yet'}</span></p>
         </Card>)}</div>
         <Card padding="none" className="hidden overflow-hidden md:block"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-background text-xs text-text-subtle"><tr>{['Purchase', 'Amount', 'Status', 'Date (IST)', 'Payment reference'].map(label => <th key={label} className="px-4 py-3 font-medium">{label}</th>)}</tr></thead><tbody>{history.rows.map(row => <tr key={row.id} className="border-t border-border"><td className="max-w-72 px-4 py-4"><p className="font-medium">{purchaseNames[row.purchase_kind] || 'Plan purchase'}{row.minutes_added ? ` · +${number(row.minutes_added)} min` : ''}</p><p className="mt-1 break-words text-xs text-text-subtle">{row.planName}</p>{row.target_period_end && <p className="mt-1 text-xs text-text-subtle">Expires {formatExpiryIST(row.target_period_end)}</p>}</td><td className="whitespace-nowrap px-4 py-4 font-semibold tabular-nums">{formatMoney(row.total, row.currency)}</td><td className="px-4 py-4"><Status row={row} /></td><td className="px-4 py-4 text-xs text-text-subtle">{formatDateTimeIST(row.paid_at || row.created_at)}</td><td className="max-w-44 break-all px-4 py-4 font-mono text-xs text-text-subtle">{row.razorpay_payment_id || '—'}</td></tr>)}</tbody></table></div></Card>

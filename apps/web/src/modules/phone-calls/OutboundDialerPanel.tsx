@@ -277,15 +277,12 @@ export const OutboundDialerPanel: React.FC<OutboundDialerPanelProps> = ({
               </div>
             )}
 
-            {/* Test Tips */}
-            <div className="p-4 rounded-xl bg-brand-bg/70 border border-brand-border text-xs text-brand-muted space-y-2">
-              <p className="font-bold text-brand-text">What happens during this test call?</p>
-              <ul className="space-y-1.5 text-[11px] list-disc list-inside">
-                <li>Dograh initiates an outbound PSTN call from your assigned caller ID (<strong>{callerId}</strong>).</li>
-                <li>When you answer, the AI receptionist introduces itself according to your bot persona and business knowledge base.</li>
-                <li>Try asking questions about your services, booking an appointment, or testing qualification questions.</li>
-                <li>After you hang up, the full audio recording, transcript, and lead scoring will appear in the <strong>Call Logs</strong> tab.</li>
-              </ul>
+            {/* Quick Test Tip */}
+            <div className="p-3 rounded-xl bg-brand-bg/80 border border-brand-border flex items-center gap-2.5 text-xs text-brand-muted">
+              <span className="text-sky-700 font-bold text-sm">💡</span>
+              <span>
+                The AI will ring your phone immediately to test the live conversation. Full call logs and transcripts will appear in <strong>Recordings</strong>.
+              </span>
             </div>
           </div>
 

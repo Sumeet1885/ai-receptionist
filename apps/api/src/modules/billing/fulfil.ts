@@ -49,6 +49,21 @@ export async function fulfilPaidOrder(order: BillingOrderRow, razorpayPaymentId:
     const done = (await getOrder(claimed.id))!;
     void refreshWorkspaceCallingLimits(supabase, claimed.customer_user_id).catch(error => logger.warn('[billing] inbound minute limit refresh failed', { error: String(error), order: done.id }));
     publishAdminEvent({ type: 'billing_order.updated', id: done.id, status: done.status });
+    if (claimed.email) {
+      void sendEmailSafely(
+        claimed.email,
+        emailTemplates.customerPaymentReceipt({
+          name: claimed.full_name || 'Customer',
+          businessName: claimed.business_name || 'Workspace',
+          planName,
+          amount,
+          kind: claimed.purchase_kind,
+          minutesAdded: claimed.minutes_added,
+          dashboardUrl: config.clientUrl + '/dashboard',
+        }),
+        'workspace_payment_receipt',
+      ).catch(() => undefined);
+    }
     void notifyAdmins(done, amount).catch(() => undefined);
     return done;
   }

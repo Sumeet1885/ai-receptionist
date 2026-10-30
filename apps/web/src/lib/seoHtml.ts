@@ -17,6 +17,7 @@ export function withSeoHtml(
   const tags = [
     `<title>${escape(seo.title)}</title>`,
     `<meta name="description" content="${escape(seo.description)}" />`,
+    `<meta name="keywords" content="${escape(seo.keywords)}" />`,
     `<meta name="robots" content="${seo.robots}" />`,
     `<meta name="referrer" content="${seo.canonical ? "strict-origin-when-cross-origin" : "no-referrer"}" />`,
     ...Object.entries({
@@ -53,7 +54,7 @@ export function withSeoHtml(
   return html
     .replace(/<title>[^]*?<\/title>/gi, "")
     .replace(
-      /<meta\s+(?:name|property)="(?:description|robots|referrer|og:[^"]*|twitter:[^"]*)"[^>]*>/gi,
+      /<meta\s+(?:name|property)="(?:keywords|description|robots|referrer|og:[^"]*|twitter:[^"]*)"[^>]*>/gi,
       "",
     )
     .replace(/<link\s+rel="canonical"[^>]*>/gi, "")

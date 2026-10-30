@@ -378,7 +378,62 @@ export interface Customer {
   lastSignInAt: string | null;
 }
 
+export interface BotSummary {
+  id: string;
+  business_name: string;
+  industry: string;
+  dograh_phone_number: string | null;
+  dograh_workflow_id: string | null;
+  dograh_outbound_workflow_id: string | null;
+  is_active: boolean;
+  created_at: string;
+  owner_id: string;
+  widget_config?: {
+    agentDirection?: 'inbound' | 'outbound';
+    [key: string]: any;
+  } | null;
+}
+
+export interface ConcurrentLimitInfo {
+  current: number;
+  effectiveLimit: number;
+  customLimit: number | null;
+  planLimit: number | null;
+  planName: string;
+}
+
+export interface AgentLimitInfo {
+  current: number;
+  effectiveLimit: number | null;
+  customLimit: number | null;
+  planLimit: number | null;
+  planName: string;
+}
+
+export interface CustomerAgentsResponse {
+  assigned: BotSummary[];
+  all: BotSummary[];
+  availableNumbers: string[];
+  agentLimit?: AgentLimitInfo;
+  concurrentLimit?: ConcurrentLimitInfo;
+}
+
+export interface CustomerUsage {
+  inboundCalls: number;
+  inboundSeconds: number;
+  inboundMinutes: number;
+  outboundCalls: number;
+  outboundSeconds: number;
+  outboundMinutes: number;
+  totalCalls: number;
+  totalSeconds: number;
+  totalMinutes: number;
+  botsCount: number;
+}
+
 export const customersApi = {
+  getUsage: (userId: string) =>
+    request<CustomerUsage>(`/customers/${encodeURIComponent(userId)}/usage`),
   list: (params: { stage?: CustomerStage; search?: string; page?: number }) => {
     const query = new URLSearchParams();
     if (params.stage) query.set('stage', params.stage);
@@ -389,4 +444,29 @@ export const customersApi = {
   setStatus: (userId: string, status: 'active' | 'suspended') =>
     request<{ ok: true; status: string }>(`/customers/${encodeURIComponent(userId)}/status`, { method: 'POST', body: { status } }),
   resend: (userId: string) => request<{ ok: true }>(`/customers/${encodeURIComponent(userId)}/resend`, { method: 'POST' }),
+  getAgents: (userId: string) =>
+    request<CustomerAgentsResponse>(`/customers/${encodeURIComponent(userId)}/agents`),
+  assignAgent: (userId: string, data: { botId: string; direction?: 'inbound' | 'outbound' }) =>
+    request<{ ok: true; botId: string }>(`/customers/${encodeURIComponent(userId)}/assign-agent`, { method: 'POST', body: data }),
+  updateAgentDirection: (userId: string, data: { botId: string; direction: 'inbound' | 'outbound' }) =>
+    request<{ ok: true; bot: BotSummary }>(`/customers/${encodeURIComponent(userId)}/update-agent-direction`, { method: 'POST', body: data }),
+  unassignAgent: (userId: string, data: { botId: string; detachPhoneNumber?: boolean }) =>
+    request<{ ok: true; botId: string }>(`/customers/${encodeURIComponent(userId)}/unassign-agent`, { method: 'POST', body: data }),
+  assignPlan: (userId: string, data: { planId: string; currency?: 'INR' | 'USD'; expiryDate?: string }) =>
+    request<{ ok: true; plan: { id: string; name: string; currency: string; periodEnd: string; startsAt?: string } }>(
+      `/customers/${encodeURIComponent(userId)}/assign-plan`,
+      { method: 'POST', body: data }
+    ),
+  getConcurrentLimit: (userId: string) =>
+    request<{ ok: true; concurrentLimit: ConcurrentLimitInfo }>(`/customers/${encodeURIComponent(userId)}/concurrent-limit`),
+  updateConcurrentLimit: (userId: string, data: { limit: number | null }) =>
+    request<{ ok: true; concurrentLimit: ConcurrentLimitInfo }>(`/customers/${encodeURIComponent(userId)}/concurrent-limit`, { method: 'POST', body: data }),
+  updateAgentLimit: (userId: string, data: { limit: number | null }) =>
+    request<{ ok: true; agentLimit: AgentLimitInfo }>(`/customers/${encodeURIComponent(userId)}/agent-limit`, { method: 'POST', body: data }),
+  createAgent: (userId: string, data: { businessName: string; industry?: string; greeting?: string; phoneNumber?: string; direction?: 'inbound' | 'outbound' }) =>
+    request<{ ok: true; bot: BotSummary }>(`/customers/${encodeURIComponent(userId)}/create-agent`, { method: 'POST', body: data }),
+  assignNumber: (userId: string, data: { botId: string; phoneNumber: string }) =>
+    request<{ ok: true; bot: BotSummary }>(`/customers/${encodeURIComponent(userId)}/assign-number`, { method: 'POST', body: data }),
+  unassignNumber: (userId: string, data: { botId: string }) =>
+    request<{ ok: true; bot: BotSummary }>(`/customers/${encodeURIComponent(userId)}/unassign-number`, { method: 'POST', body: data }),
 };

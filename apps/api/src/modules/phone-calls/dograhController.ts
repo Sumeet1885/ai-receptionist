@@ -28,6 +28,7 @@ import {
 import { DograhProvisionableBot, ConnectedPhoneLine } from './types';
 import { buildCapacityWorkflowDefinition, buildLeadExtractionVariables, buildSingleNodeWorkflowDefinition, MAX_CALL_DURATION_SECONDS } from './workflowDefinition';
 import { syncInboundRateLimitWorkflow } from './inboundRateLimiter';
+import { getCustomerConcurrentLimitInfo, trackCallStart } from './concurrentTracker';
 import { logger } from '../../services/cloudwatchLogger';
 
 
@@ -1338,6 +1339,10 @@ export async function callOut(req: AuthRequest, res: Response): Promise<void> {
     return;
   }
   const widgetConfig = (bot as any).widget_config || {};
+  if (widgetConfig.agentDirection === 'inbound') {
+    res.status(400).json({ error: 'This agent is assigned for Inbound calls only. Outbound calling is disabled.' });
+    return;
+  }
   const outboundTelephony = widgetConfig.outboundTelephony || null;
   const activeTelephonyConfigId = outboundTelephony?.telephonyConfigId || bot.dograh_telephony_config_id;
   const activePhoneNumberId = outboundTelephony?.phoneNumberId || bot.dograh_phone_number_id;
@@ -1368,6 +1373,24 @@ export async function callOut(req: AuthRequest, res: Response): Promise<void> {
       toPhoneNumber: maskPhoneNumber(validation.normalized),
       contactName: normalizedContactName,
     };
+    // Rate limit: Check parallel calls limit for the customer
+    const concurrentLimit = await getCustomerConcurrentLimitInfo(bot.owner_id);
+    if (concurrentLimit.current >= concurrentLimit.effectiveLimit) {
+      logger.warn('[phone-calls] Outbound parallel call limit reached', {
+        botId,
+        ownerId: bot.owner_id,
+        current: concurrentLimit.current,
+        effectiveLimit: concurrentLimit.effectiveLimit,
+      });
+      res.status(429).json({
+        error: `Parallel call limit reached (${concurrentLimit.current} of ${concurrentLimit.effectiveLimit} active calls). Please wait for an active call to finish or increase your limit in Super Admin.`,
+        code: 'concurrent_limit_exceeded',
+        current: concurrentLimit.current,
+        limit: concurrentLimit.effectiveLimit,
+      });
+      return;
+    }
+
     console.log('[phone-calls] Initiating Dograh outbound call:', callContext);
     logger.callEvent('outbound_call_initiated', {
       botId,
@@ -1426,6 +1449,14 @@ export async function callOut(req: AuthRequest, res: Response): Promise<void> {
       toPhoneNumber: maskPhoneNumber(validation.normalized),
       response: dograhResponse,
     });
+    trackCallStart({
+      key: sessionId || `out_${validation.normalized}_${Date.now()}`,
+      ownerId: bot.owner_id,
+      botId,
+      direction: 'outbound',
+      sessionId,
+    });
+
     console.log('[phone-calls] Dograh outbound call accepted:', {
       ...callContext,
       dograhResponse,

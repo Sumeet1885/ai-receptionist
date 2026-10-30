@@ -526,7 +526,12 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ navigate }) => {
         >
           ← All plans
         </button>
-        <h1 className="mt-3 font-display text-4xl font-semibold tracking-[-0.04em] text-text">Checkout</h1>
+        <div className="mt-3 flex items-center gap-3">
+          <h1 className="font-display text-4xl font-semibold tracking-[-0.04em] text-text">Checkout</h1>
+          <span className="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+            🧪 Test Environment
+          </span>
+        </div>
 
         {loadError ? (
           <p role="alert" className="mt-8 rounded-medium bg-danger-surface px-4 py-3 text-sm text-danger">

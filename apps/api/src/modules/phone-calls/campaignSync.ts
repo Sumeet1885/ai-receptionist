@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { trackCallEnd } from './concurrentTracker';
 
 export async function syncCampaignResults(supabase: SupabaseClient): Promise<void> {
   const { data: contacts, error } = await supabase
@@ -96,6 +97,8 @@ export async function syncCampaignResults(supabase: SupabaseClient): Promise<voi
               call_summary: 'User was not available to connect / Call not picked up',
             })
             .eq('id', contact.id);
+          trackCallEnd(`campaign_${contact.campaign_id}_${contact.id}`);
+          if (contact.session_id) trackCallEnd(contact.session_id);
           continue;
         }
 
@@ -167,6 +170,9 @@ export async function syncCampaignResults(supabase: SupabaseClient): Promise<voi
             call_duration: duration,
           })
           .eq('id', contact.id);
+
+        trackCallEnd(`campaign_${contact.campaign_id}_${contact.id}`);
+        if (sessionId) trackCallEnd(sessionId);
 
         await supabase.rpc('increment_campaign_called_count', { campaign_id_arg: contact.campaign_id });
 

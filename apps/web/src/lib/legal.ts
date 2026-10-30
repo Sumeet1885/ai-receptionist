@@ -4,7 +4,7 @@ export const LEGAL = {
   brandName: 'Bolega India',
   legalEntity: 'AgileWaters LLC',
   attribution: 'Bolega India is a product built by AgileWaters LLC (CA, USA) in association with ACPL India.',
-  email: 'support@ezeebzee.com',
+  email: 'Support@AgileWaters.com',
   phone: '+91 94218 09846',
   address:
     '6th Floor, Brand Square, 606, Kunal Icon Rd, Roseland Residency, Pimple Saudagar, Pimpri-Chinchwad, Maharashtra 411027',
