@@ -95,6 +95,7 @@ export const CallsWorkspace: React.FC<CallsWorkspaceProps> = ({
       const data = await dograhApi.listCalls(botId);
       setCalls(data.calls);
     } catch (err: any) {
+      if (err?.message === 'Invalid token' || err?.message === 'Not signed in') return;
       showToast(err.message || 'Could not load call history', 'error');
     } finally {
       setLoadingCalls(false);

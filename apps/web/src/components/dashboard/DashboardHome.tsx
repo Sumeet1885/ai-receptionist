@@ -1,14 +1,17 @@
 import React from 'react';
-import { Bot, Lead } from '../../types';
+import { Bot, Lead, Appointment } from '../../types';
 import { Icons } from '../common/Icons';
 
 interface DashboardHomeProps {
   activeBot: Bot | null;
   bots: Bot[];
   leads: Lead[];
+  appointments?: Appointment[];
   navigate: (path: string) => void;
   launchPublicChat: (botId: string) => void;
   appointmentsCount?: number;
+  selectedBotId?: string;
+  onSelectBotId?: (botId: string) => void;
 }
 
 function getInitials(name: string): string {
@@ -22,11 +25,29 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
   activeBot,
   bots = [],
   leads,
+  appointments = [],
   navigate,
-  appointmentsCount: passedAppointmentsCount
+  appointmentsCount: passedAppointmentsCount,
+  selectedBotId: passedSelectedBotId,
+  onSelectBotId
 }) => {
+  // If explicitly selected 'all', treat as workspace-wide overview.
+  // Otherwise scope to the selected bot ID or activeBot.
+  const effectiveBotId = passedSelectedBotId !== undefined
+    ? (passedSelectedBotId === 'all' ? null : passedSelectedBotId)
+    : (activeBot ? activeBot.id : null);
+
+  const currentBot = effectiveBotId
+    ? (bots.find(b => b.id === effectiveBotId) || (activeBot?.id === effectiveBotId ? activeBot : null))
+    : null;
+
+  // Filter leads according to the selected bot persona
+  const scopedLeads = currentBot
+    ? leads.filter(lead => lead.botId === currentBot.id)
+    : leads;
+
   // Sync exact filtering with Leads Pipeline (LeadTable.tsx)
-  const qualifiedLeads = leads
+  const qualifiedLeads = scopedLeads
     .filter(lead => lead.channel !== 'web')
     .filter(lead => lead.appointmentStatus !== 'ARCHIVED')
     .filter(lead => lead.leadScore !== 'COLD');
@@ -35,12 +56,21 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
   const warmLeads = qualifiedLeads.filter(lead => lead.leadScore === 'WARM');
   const inboundCount = qualifiedLeads.filter(lead => (lead.channel || 'inbound') === 'inbound').length;
   const outboundCount = qualifiedLeads.filter(lead => lead.channel === 'outbound').length;
-  const appointmentsCount = passedAppointmentsCount !== undefined
-    ? passedAppointmentsCount
-    : qualifiedLeads.filter(
-        lead => lead.appointmentStatus && lead.appointmentStatus !== 'None' && lead.appointmentStatus !== 'Not Scheduled'
-      ).length;
-  // Top 5 leads directly from the leads pipeline (exact same order: updated_at descending)
+
+  // Compute appointments strictly for the selected bot, or across workspace if aggregate
+  const appointmentsCount = appointments && appointments.length > 0
+    ? (currentBot ? appointments.filter(a => a.botId === currentBot.id).length : appointments.length)
+    : (currentBot
+        ? qualifiedLeads.filter(
+            lead => lead.appointmentStatus && lead.appointmentStatus !== 'None' && lead.appointmentStatus !== 'Not Scheduled'
+          ).length
+        : (passedAppointmentsCount !== undefined
+            ? passedAppointmentsCount
+            : qualifiedLeads.filter(
+                lead => lead.appointmentStatus && lead.appointmentStatus !== 'None' && lead.appointmentStatus !== 'Not Scheduled'
+              ).length));
+
+  // Top 5 leads directly from the scoped leads pipeline (exact same order: updated_at descending)
   const needsAttention = qualifiedLeads.slice(0, 5);
 
   return (
@@ -65,10 +95,10 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-900/75 backdrop-blur-md border border-white/15 text-white text-xs font-semibold shadow-md">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Autonomous AI Telecaller & Receptionist Active</span>
+              <span>{currentBot ? `${currentBot.businessName} Active` : 'Autonomous AI Telecaller & Receptionist Active'}</span>
             </div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-emerald-300 text-xs font-bold shadow-md">
-              <span>📞 Line: {activeBot?.phoneNumber || '+91 22 6423 0099'}</span>
+              <span>📞 Line: {currentBot?.phoneNumber || (bots.length > 1 ? `${bots.length} Active Lines` : '+91 22 6423 0099')}</span>
             </div>
           </div>
 
@@ -76,10 +106,12 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div className="max-w-xl text-white">
               <h2 className="font-display font-extrabold text-xl sm:text-2xl lg:text-3xl tracking-tight drop-shadow-sm">
-                {activeBot?.businessName || 'Bolega Autonomous Voice Reception'}
+                {currentBot?.businessName || 'All Voice Receptionists'}
               </h2>
               <p className="text-xs sm:text-sm text-stone-200/90 mt-1 line-clamp-2 font-sans font-medium drop-shadow-sm">
-                Answering incoming inquiries 24/7, qualifying high-intent buyers, and booking site visits directly to your calendar.
+                {currentBot
+                  ? 'Answering incoming inquiries 24/7, qualifying high-intent buyers, and booking site visits directly to your calendar.'
+                  : `Consolidated voice leads, inquiries, and booked appointments across all ${bots.length} active receptionists.`}
               </p>
             </div>
 
@@ -174,21 +206,23 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
         {/* Metric 4: Total Voice Agents in Workspace */}
         <button
           type="button"
-          onClick={() => navigate('/inbound-calls')}
+          onClick={() => navigate('/agents')}
           className="text-left bg-brand-card hover:bg-brand-bg/50 border border-brand-border hover:border-brand-accent rounded-xl p-4 shadow-sm transition group"
         >
           <div className="flex items-center justify-between text-brand-muted mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider font-body">Total Agents</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider font-body">{currentBot ? 'Active Agent' : 'Total Agents'}</span>
             <span className="text-base">🤖</span>
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl sm:text-3xl font-display font-extrabold text-brand-text group-hover:text-brand-accent transition">
-              {bots.length || (activeBot ? 1 : 0)}
+              {currentBot ? '1' : (bots.length || 1)}
             </span>
             <span className="text-xs font-semibold text-brand-muted font-body">Active</span>
           </div>
           <p className="text-[11px] text-brand-muted mt-1 font-body truncate">
-            {activeBot?.phoneNumber ? `Line: ${activeBot.phoneNumber}` : 'Voice receptionists'}
+            {currentBot
+              ? (currentBot.phoneNumber ? `Line: ${currentBot.phoneNumber}` : `${bots.length} in workspace`)
+              : `${bots.length} voice receptionists`}
           </p>
         </button>
       </div>
@@ -201,9 +235,16 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
             <h3 className="font-display font-bold text-lg text-brand-text flex items-center gap-2">
               <Icons.Users />
               <span>Recent Qualified Leads</span>
+              {currentBot && (
+                <span className="text-xs font-normal text-brand-muted">
+                  ({currentBot.businessName})
+                </span>
+              )}
             </h3>
             <p className="text-xs text-brand-muted mt-0.5">
-              Most recent voice call inquiries captured by your AI Call Service.
+              {currentBot
+                ? `Most recent voice call inquiries captured by ${currentBot.businessName}.`
+                : 'Most recent voice call inquiries captured across all AI receptionists.'}
             </p>
           </div>
           <button

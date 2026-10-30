@@ -1,7 +1,8 @@
+import { randomBytes } from 'node:crypto';
 import { Router, type Response } from 'express';
 import { LIMITS } from '@ai-receptionist/contracts';
 import { config } from '../../config';
-import { emailTemplates, sendEmail } from '../../services/email';
+import { emailTemplates, sendEmail, sendEmailSafely } from '../../services/email';
 import { supabase } from '../../services/db';
 import { asyncRoute } from '../../utils/asyncRoute';
 import { getClientIp } from '../../utils/security';
@@ -9,6 +10,7 @@ import { createActivationLink, createVerificationLink } from '../accounts/links'
 import { adminOriginGuard, noStore, requireAdminRole, requireAdminSession, type AdminRequest } from '../admin-auth/middleware';
 import { recordAudit } from '../admin-auth/repository';
 import { getCustomer, listCustomers, setCustomerStatus } from './repository';
+import { getCustomerConcurrentLimitInfo } from '../phone-calls/concurrentTracker';
 
 // Customer workspaces, mounted at /api/admin/customers. Viewing needs read_only; resending an
 // email needs support; suspending or reactivating needs super_admin. Every change is audited.
@@ -141,6 +143,7 @@ router.get('/:id/agents', requireAdminRole('read_only'), handle(async (req, res)
   });
 
   const limitInfo = await getCustomerAgentLimitInfo(req.params.id);
+  const concurrentLimit = await getCustomerConcurrentLimitInfo(req.params.id);
 
   res.json({
     assigned: assigned || [],
@@ -153,6 +156,7 @@ router.get('/:id/agents', requireAdminRole('read_only'), handle(async (req, res)
       planLimit: limitInfo.planLimit,
       planName: limitInfo.planName,
     },
+    concurrentLimit,
   });
 }));
 
@@ -356,6 +360,49 @@ router.post('/:id/assign-plan', requireAdminRole('support'), handle(async (req, 
     return res.status(500).json({ error: updateRes.error.message });
   }
 
+  // Record plan assignment / change in billing_orders so it appears in purchase history
+  try {
+    const { data: userAuth } = await supabase.auth.admin.getUserById(req.params.id);
+    const fullName = userAuth?.user?.user_metadata?.full_name || userAuth?.user?.user_metadata?.name || 'Customer';
+    const email = userAuth?.user?.email || '';
+    const isUpgrade = Boolean(account.plan_id);
+    const purchaseKind = isUpgrade ? 'plan_change' : 'initial';
+    const planSnapshot = {
+      ...plan,
+      purchase_kind: purchaseKind,
+      target_period_start: startsAt.toISOString(),
+      target_period_end: periodEnd.toISOString(),
+      admin_assigned: true,
+    };
+    const orderPayload: any = {
+      customer_user_id: req.params.id,
+      provisioned_user_id: req.params.id,
+      plan_id: plan.id,
+      plan_snapshot: planSnapshot,
+      currency: chosenCurrency,
+      plan_amount: chosenCurrency === 'INR' ? plan.price_inr : plan.price_usd,
+      setup_fee: 0,
+      discount: 0,
+      total: chosenCurrency === 'INR' ? plan.price_inr : plan.price_usd,
+      full_name: fullName,
+      email: email.toLowerCase(),
+      phone: '',
+      business_name: fullName,
+      status: 'provisioned',
+      paid_at: startsAt.toISOString(),
+      provisioned_at: startsAt.toISOString(),
+      razorpay_payment_id: `admin_${randomBytes(6).toString('hex')}`,
+      ip: getClientIp(req) || '127.0.0.1',
+      user_agent: req.get('user-agent') || 'admin_console',
+    };
+    const { data: createdOrder } = await supabase.from('billing_orders').insert(orderPayload).select('id').maybeSingle();
+    if (createdOrder) {
+      await supabase.from('customer_accounts').update({ billing_order_id: createdOrder.id }).eq('user_id', req.params.id);
+    }
+  } catch {
+    // Non-blocking for the plan assignment
+  }
+
   await audit(req, 'customer.assign_plan', req.params.id, {
     previousPlanId: account.plan_id,
     newPlanId: plan.id,
@@ -363,6 +410,28 @@ router.post('/:id/assign-plan', requireAdminRole('support'), handle(async (req, 
     currency: chosenCurrency,
     periodEnd: periodEnd.toISOString(),
   });
+
+  // Send plan update notification email to the customer
+  try {
+    const { data: userAuth } = await supabase.auth.admin.getUserById(req.params.id);
+    const customerEmail = userAuth?.user?.email;
+    const customerName = userAuth?.user?.user_metadata?.full_name || userAuth?.user?.user_metadata?.name || 'there';
+    if (customerEmail) {
+      void sendEmailSafely(
+        customerEmail,
+        emailTemplates.planUpdateNotice({
+          name: customerName,
+          planName: plan.name,
+          monthlyMinutes: plan.monthly_minutes,
+          periodEnd: periodEnd ? periodEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : null,
+          dashboardUrl: `${config.clientUrl}/dashboard`,
+        }),
+        'customer_plan_updated'
+      ).catch(() => undefined);
+    }
+  } catch {
+    // Non-blocking
+  }
 
   res.json({
     ok: true,
@@ -566,6 +635,123 @@ router.post('/:id/create-agent', requireAdminRole('support'), handle(async (req,
   });
 
   res.json({ ok: true, bot: data });
+}));
+
+// Returns aggregated usage (inbound/outbound call counts and minutes) for the customer's agents
+router.get('/:id/usage', requireAdminRole('read_only'), handle(async (req, res) => {
+  if (!UUID.test(req.params.id)) return res.status(404).json({ error: 'Customer not found' });
+
+  const { data: bots, error: botsErr } = await supabase
+    .from('bots')
+    .select('id, business_name, dograh_outbound_workflow_id')
+    .eq('owner_id', req.params.id);
+
+  if (botsErr) return res.status(500).json({ error: botsErr.message });
+
+  if (!bots || bots.length === 0) {
+    return res.json({
+      inboundCalls: 0,
+      inboundSeconds: 0,
+      inboundMinutes: 0,
+      outboundCalls: 0,
+      outboundSeconds: 0,
+      outboundMinutes: 0,
+      totalCalls: 0,
+      totalSeconds: 0,
+      totalMinutes: 0,
+      botsCount: 0,
+    });
+  }
+
+  const botIds = bots.map((b) => b.id);
+  const outboundWorkflowIds = new Set(
+    bots.map((b) => b.dograh_outbound_workflow_id).filter((id): id is string => Boolean(id))
+  );
+
+  const { data: calls, error: callsErr } = await supabase
+    .from('phone_calls')
+    .select('id, bot_id, duration_seconds, cost_info, dograh_workflow_id')
+    .in('bot_id', botIds);
+
+  if (callsErr) return res.status(500).json({ error: callsErr.message });
+
+  let inboundCalls = 0;
+  let inboundSeconds = 0;
+  let outboundCalls = 0;
+  let outboundSeconds = 0;
+
+  for (const call of (calls || [])) {
+    const dur = Math.max(0, Number(call.duration_seconds) || 0);
+    const costInfo = call.cost_info as Record<string, unknown> | null;
+    const direction = typeof costInfo === 'object' && costInfo !== null ? (costInfo as any).direction : null;
+    const isOutbound = direction === 'outbound' || (call.dograh_workflow_id && outboundWorkflowIds.has(call.dograh_workflow_id));
+
+    if (isOutbound) {
+      outboundCalls += 1;
+      outboundSeconds += dur;
+    } else {
+      inboundCalls += 1;
+      inboundSeconds += dur;
+    }
+  }
+
+  const totalCalls = inboundCalls + outboundCalls;
+  const totalSeconds = inboundSeconds + outboundSeconds;
+
+  res.json({
+    inboundCalls,
+    inboundSeconds,
+    inboundMinutes: Math.round((inboundSeconds / 60) * 10) / 10,
+    outboundCalls,
+    outboundSeconds,
+    outboundMinutes: Math.round((outboundSeconds / 60) * 10) / 10,
+    totalCalls,
+    totalSeconds,
+    totalMinutes: Math.round((totalSeconds / 60) * 10) / 10,
+    botsCount: bots.length,
+  });
+}));
+
+// Gets the parallel calls / concurrent calls limit for a customer
+router.get('/:id/concurrent-limit', requireAdminRole('read_only'), handle(async (req, res) => {
+  if (!UUID.test(req.params.id)) return res.status(404).json({ error: 'Customer not found' });
+  const concurrentLimit = await getCustomerConcurrentLimitInfo(req.params.id);
+  res.json({ ok: true, concurrentLimit });
+}));
+
+// Updates the custom parallel calls / concurrent calls limit for a customer
+router.post('/:id/concurrent-limit', requireAdminRole('support'), handle(async (req, res) => {
+  if (!UUID.test(req.params.id)) return res.status(404).json({ error: 'Customer not found' });
+  const { limit } = req.body || {};
+
+  let customLimit: number | null = null;
+  if (limit !== null && limit !== undefined && limit !== '') {
+    const parsed = parseInt(String(limit), 10);
+    if (isNaN(parsed) || parsed < 1 || parsed > 100) {
+      return res.status(400).json({ error: 'Parallel call limit must be between 1 and 100, or null to follow plan default' });
+    }
+    customLimit = parsed;
+  }
+
+  const { data: userRecord, error: userErr } = await supabase.auth.admin.getUserById(req.params.id);
+  if (userErr || !userRecord?.user) return res.status(404).json({ error: 'Customer not found' });
+
+  const currentMeta = userRecord.user.user_metadata || {};
+  const updatedMeta = { ...currentMeta, custom_concurrent_calls_limit: customLimit };
+
+  const { error: updateErr } = await supabase.auth.admin.updateUserById(req.params.id, {
+    user_metadata: updatedMeta,
+  });
+
+  if (updateErr) return res.status(500).json({ error: updateErr.message });
+
+  await audit(req, 'customer.update_concurrent_limit', req.params.id, {
+    customLimit,
+    previousLimit: currentMeta.custom_concurrent_calls_limit ?? null,
+  });
+
+  const concurrentLimit = await getCustomerConcurrentLimitInfo(req.params.id);
+  res.json({ ok: true, concurrentLimit });
 }));
 
 export default router;

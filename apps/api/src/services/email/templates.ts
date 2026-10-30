@@ -447,6 +447,71 @@ export function adminSignupLead(input: {
   };
 }
 
+export function customerPaymentReceipt(input: {
+  name: string;
+  businessName: string;
+  planName: string;
+  amount: string;
+  kind?: string;
+  minutesAdded?: number | null;
+  dashboardUrl: string;
+}): EmailContent {
+  const isTopup = input.kind === 'topup';
+  const title = isTopup ? 'Calling minutes top-up confirmed' : 'Payment successful & plan active';
+  return {
+    subject: `Payment receipt: ${input.planName} (${input.amount})`,
+    ...render({
+      preview: `Thank you for your payment of ${input.amount}. Your receipt from ${BRAND}.`,
+      label: 'Payment receipt',
+      tone: 'success',
+      heading: title,
+      paragraphs: [
+        `Thank you for your payment, ${input.name}. Your transaction was successful.`,
+        isTopup
+          ? `${input.minutesAdded || 'Extra'} calling minutes have been added to your ${input.businessName} workspace balance.`
+          : `Your subscription to ${input.planName} is active for your workspace.`,
+      ],
+      amount: { label: 'Amount paid', value: input.amount, note: input.planName },
+      details: [
+        ['Business', input.businessName],
+        ['Plan / Item', input.planName],
+        ['Amount', input.amount],
+        ...(input.minutesAdded ? [['Minutes added', `${input.minutesAdded} minutes`]] : []),
+      ],
+      action: { label: 'Open my dashboard', url: input.dashboardUrl },
+      reason: 'You received this receipt because a payment was completed for your workspace.',
+    }),
+  };
+}
+
+export function planUpdateNotice(input: {
+  name: string;
+  planName: string;
+  monthlyMinutes?: number | null;
+  periodEnd?: string | null;
+  dashboardUrl: string;
+}): EmailContent {
+  return {
+    subject: `Your plan has been updated: ${input.planName}`,
+    ...render({
+      preview: `An administrator has updated your workspace plan to ${input.planName}.`,
+      label: 'Plan update',
+      tone: 'success',
+      heading: 'Your plan has been updated',
+      paragraphs: [
+        `Hello ${input.name}, an administrator has updated your workspace plan to ${input.planName}. Your new minutes quota and features are now active on your dashboard.`,
+      ],
+      details: [
+        ['New plan', input.planName],
+        ...(input.monthlyMinutes ? [['Monthly minutes', `${input.monthlyMinutes} minutes`]] : []),
+        ...(input.periodEnd ? [['Access valid until', input.periodEnd]] : []),
+      ],
+      action: { label: 'Open My Workspace', url: input.dashboardUrl },
+      reason: 'You received this notification because an administrator updated your plan on Bolega India.',
+    }),
+  };
+}
+
 export function adminTestAlert(input: { consoleUrl: string }): EmailContent {
   return {
     subject: `Test alert from ${BRAND}`,

@@ -130,7 +130,29 @@ export async function redeemCoupon(couponId: string) {
 // ── orders ───────────────────────────────────────────────────────────────────
 
 export async function insertOrder(row: Omit<BillingOrderRow, 'id' | 'status' | 'failure_reason' | 'checkout_dismissed_at' | 'payment_error' | 'lead_notified_at' | 'reminder_sent_at' | 'resume_token_hash' | 'razorpay_order_id' | 'razorpay_payment_id' | 'paid_at' | 'provisioned_user_id' | 'provisioned_at' | 'created_at' | 'updated_at'> & { ip: string; user_agent: string | null }) {
-  return check(await supabase.from('billing_orders').insert(row).select('*').single<BillingOrderRow>(), 'create order');
+  const result = await supabase.from('billing_orders').insert(row).select('*').single<BillingOrderRow>();
+  if (result.error && (result.error.message?.includes('minutes_added') || result.error.message?.includes('purchase_kind') || result.error.code === '42703')) {
+    const { purchase_kind, minutes_added, target_period_start, target_period_end, ...baseRow } = row as any;
+    const plan_snapshot = {
+      ...(baseRow.plan_snapshot || {}),
+      purchase_kind,
+      minutes_added,
+      target_period_start,
+      target_period_end,
+    };
+    const fallback = await supabase.from('billing_orders').insert({ ...baseRow, plan_snapshot }).select('*').single<BillingOrderRow>();
+    if (fallback.data) {
+      return {
+        ...fallback.data,
+        purchase_kind,
+        minutes_added,
+        target_period_start,
+        target_period_end,
+      };
+    }
+    return check(fallback, 'create order fallback');
+  }
+  return check(result, 'create order');
 }
 
 export async function getOrder(id: string) {
@@ -224,12 +246,24 @@ export async function listOrders(filters: { status?: OrderStatus; paidOnly?: boo
       if (filters.lead === 'started') fallbackQuery = fallbackQuery.is('checkout_dismissed_at', null);
     }
     const fallbackRes = await fallbackQuery;
-    data = fallbackRes.data ? fallbackRes.data.map((r: any) => ({ ...r, purchase_kind: 'initial' })) : [];
-    count = fallbackRes.count;
+    const mapped = (fallbackRes.data || []).map((r: any) => ({
+      ...r,
+      purchase_kind: r.purchase_kind || r.plan_snapshot?.purchase_kind || 'initial',
+      target_period_end: r.target_period_end || r.plan_snapshot?.target_period_end || null,
+      minutes_added: r.minutes_added || r.plan_snapshot?.monthly_minutes || null,
+    }));
+    data = filters.purchaseKind ? mapped.filter((r: any) => r.purchase_kind === filters.purchaseKind) : mapped;
+    count = filters.purchaseKind ? data.length : fallbackRes.count;
     error = fallbackRes.error;
   }
   if (error) throw new Error(`list orders: ${error.message}`);
-  return { rows: data ?? [], total: count ?? 0 };
+  const resolved = (data ?? []).map((r: any) => ({
+    ...r,
+    purchase_kind: r.purchase_kind || r.plan_snapshot?.purchase_kind || 'initial',
+    target_period_end: r.target_period_end || r.plan_snapshot?.target_period_end || null,
+    minutes_added: r.minutes_added || r.plan_snapshot?.monthly_minutes || null,
+  }));
+  return { rows: resolved, total: count ?? 0 };
 }
 
 /** Complete totals with a bounded summary payload (no raw order downloads). */

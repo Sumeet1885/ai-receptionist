@@ -1,8 +1,8 @@
 import { formatExpiryIST } from '@ai-receptionist/contracts';
 import { useEffect, useState, type FormEvent } from 'react';
-import { Ban, Bot, Check, CreditCard, Edit2, Loader2, Mail, Phone, PhoneCall, Plus, RotateCcw, Search, Trash2, Users, X } from 'lucide-react';
+import { Activity, Ban, Bot, Check, CreditCard, Edit2, Loader2, Mail, Phone, PhoneCall, PhoneIncoming, PhoneOutgoing, Plus, RotateCcw, Search, Trash2, Users, X } from 'lucide-react';
 import { LIMITS } from '@ai-receptionist/contracts';
-import { customersApi, billingAdminApi, type Customer, type CustomerStage, type BotSummary, type CustomerAgentsResponse, type Plan } from '../api';
+import { customersApi, billingAdminApi, type Customer, type CustomerStage, type BotSummary, type CustomerAgentsResponse, type Plan, type CustomerUsage } from '../api';
 import { useToast } from '../toast';
 import { Button, Card, Drawer, FilterTabs, PageError, Pager, cx, formatDate, initials, timeAgo } from '../ui';
 
@@ -164,6 +164,8 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
   const canSuspend = roles.includes('super_admin');
   const [botData, setBotData] = useState<CustomerAgentsResponse | null>(null);
   const [loadingBots, setLoadingBots] = useState(true);
+  const [usage, setUsage] = useState<CustomerUsage | null>(null);
+  const [loadingUsage, setLoadingUsage] = useState(true);
   const [selectedBotId, setSelectedBotId] = useState('');
   const [assignDirection, setAssignDirection] = useState<'inbound' | 'outbound'>('inbound');
   const [showNewAgentForm, setShowNewAgentForm] = useState(false);
@@ -183,6 +185,11 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
   const [showLimitEditor, setShowLimitEditor] = useState(false);
   const [limitChoice, setLimitChoice] = useState<'plan' | 'custom'>('plan');
   const [customLimitValue, setCustomLimitValue] = useState('1');
+
+  // Parallel / Concurrent Calls limit
+  const [showConcurrentLimitEditor, setShowConcurrentLimitEditor] = useState(false);
+  const [concurrentLimitChoice, setConcurrentLimitChoice] = useState<'plan' | 'custom'>('plan');
+  const [customConcurrentLimitValue, setCustomConcurrentLimitValue] = useState('2');
 
   // Plan Assignment
   const [showPlanEditor, setShowPlanEditor] = useState(false);
@@ -215,8 +222,21 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
     }
   };
 
+  const loadUsage = async () => {
+    setLoadingUsage(true);
+    try {
+      const res = await customersApi.getUsage(customer.userId);
+      setUsage(res);
+    } catch {
+      // Non-blocking
+    } finally {
+      setLoadingUsage(false);
+    }
+  };
+
   useEffect(() => {
     void loadBots();
+    void loadUsage();
   }, [customer.userId]);
 
   useEffect(() => {
@@ -230,6 +250,18 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
       }
     }
   }, [botData?.agentLimit]);
+
+  useEffect(() => {
+    if (botData?.concurrentLimit) {
+      if (botData.concurrentLimit.customLimit !== null) {
+        setConcurrentLimitChoice('custom');
+        setCustomConcurrentLimitValue(String(botData.concurrentLimit.customLimit));
+      } else {
+        setConcurrentLimitChoice('plan');
+        setCustomConcurrentLimitValue(String(botData.concurrentLimit.planLimit || 1));
+      }
+    }
+  }, [botData?.concurrentLimit]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const suspended = customer.status === 'suspended';
@@ -417,6 +449,88 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
           </form>
         )}
       </div>
+
+      {/* Usage & Telephony Activity Card */}
+      <div className="rounded-2xl border border-line bg-surface/70 p-3.5 space-y-3 text-xs">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Activity className="h-4 w-4" />
+            </div>
+            <div>
+              <h4 className="font-semibold text-sm text-ink leading-tight">Telephony & Service Usage</h4>
+              <p className="text-[11px] text-subtle">Real-time inbound & outbound activity tracking</p>
+            </div>
+          </div>
+          {loadingUsage ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-subtle" />
+          ) : (
+            <span className="text-[11px] font-bold font-mono text-ink bg-white px-2 py-0.5 rounded-full border border-line shadow-sm">
+              {usage?.totalCalls ?? 0} calls · {usage?.totalMinutes ?? 0}m
+            </span>
+          )}
+        </div>
+
+        {loadingUsage ? (
+          <div className="flex items-center justify-center py-4 text-xs text-subtle">
+            <Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading telephony usage metrics...
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            <div className="grid grid-cols-2 gap-2.5">
+              {/* Inbound Stats */}
+              <div className="rounded-xl border border-emerald-500/20 bg-emerald-50/50 p-2.5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1">
+                    <PhoneIncoming className="h-3 w-3 text-emerald-600" /> Inbound
+                  </span>
+                  <span className="text-xs font-bold text-emerald-900 font-mono">
+                    {usage?.inboundCalls ?? 0} calls
+                  </span>
+                </div>
+                <div className="pt-1 border-t border-emerald-200/50 flex items-baseline justify-between">
+                  <span className="text-[11px] text-emerald-800">Duration:</span>
+                  <span className="text-xs font-semibold text-emerald-950 font-mono">
+                    {usage?.inboundMinutes ?? 0}m <span className="text-[10px] text-emerald-700 font-normal">({usage?.inboundSeconds ?? 0}s)</span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Outbound Stats */}
+              <div className="rounded-xl border border-sky-500/20 bg-sky-50/50 p-2.5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-sky-700 flex items-center gap-1">
+                    <PhoneOutgoing className="h-3 w-3 text-sky-600" /> Outbound
+                  </span>
+                  <span className="text-xs font-bold text-sky-900 font-mono">
+                    {usage?.outboundCalls ?? 0} calls
+                  </span>
+                </div>
+                <div className="pt-1 border-t border-sky-200/50 flex items-baseline justify-between">
+                  <span className="text-[11px] text-sky-800">Duration:</span>
+                  <span className="text-xs font-semibold text-sky-950 font-mono">
+                    {usage?.outboundMinutes ?? 0}m <span className="text-[10px] text-sky-700 font-normal">({usage?.outboundSeconds ?? 0}s)</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {usage && usage.totalCalls > 0 ? (
+              <div className="rounded-lg bg-surface/80 border border-line/60 px-2.5 py-1.5 flex items-center justify-between text-[11px] text-subtle">
+                <span>Cumulative Voice Traffic:</span>
+                <span className="font-semibold text-ink font-mono">
+                  {usage.totalMinutes} total minutes ({usage.botsCount} active {usage.botsCount === 1 ? 'agent' : 'agents'})
+                </span>
+              </div>
+            ) : (
+              <p className="text-[11px] text-subtle text-center py-1 italic">
+                No inbound or outbound calls recorded yet for this customer.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
       <dl className="divide-y divide-line rounded-2xl border border-line">
         {details.map(([label, value]) => (
           <div key={label} className="flex justify-between gap-4 px-4 py-2.5 text-sm">
@@ -445,6 +559,99 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
             </Button>
           )}
         </div>
+
+        {/* Parallel / Concurrent Calls Rate Limit Card */}
+        {botData?.concurrentLimit && (
+          <div className="rounded-xl border border-line bg-surface/60 p-3 space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-subtle block">Parallel Calls Rate Limit</span>
+                <span className="text-ink font-semibold">
+                  {botData.concurrentLimit.current} active · Limit: {botData.concurrentLimit.effectiveLimit} concurrent {botData.concurrentLimit.effectiveLimit === 1 ? 'call' : 'calls'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={cx(
+                  'text-[10px] px-2 py-0.5 rounded font-medium',
+                  botData.concurrentLimit.customLimit !== null
+                    ? 'bg-amber-500/10 text-amber-700 border border-amber-500/20'
+                    : 'bg-primary/10 text-primary border border-primary/20'
+                )}>
+                  {botData.concurrentLimit.customLimit !== null ? 'Custom Override' : `Plan Default (${botData.concurrentLimit.planName})`}
+                </span>
+                {canSupport && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setShowConcurrentLimitEditor((v) => !v)}
+                  >
+                    {showConcurrentLimitEditor ? 'Close' : 'Edit'}
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Concurrent Limit Form */}
+            {canSupport && showConcurrentLimitEditor && (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const targetLimit = concurrentLimitChoice === 'plan' ? null : parseInt(customConcurrentLimitValue, 10);
+                  await act(async () => {
+                    await customersApi.updateConcurrentLimit(customer.userId, { limit: targetLimit });
+                    setShowConcurrentLimitEditor(false);
+                    await loadBots();
+                  }, 'Parallel call limit updated');
+                }}
+                className="pt-2 border-t border-line space-y-2"
+              >
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-2 cursor-pointer text-ink">
+                    <input
+                      type="radio"
+                      name="concurrentLimitChoice"
+                      checked={concurrentLimitChoice === 'plan'}
+                      onChange={() => setConcurrentLimitChoice('plan')}
+                    />
+                    <span>Follow Plan Default ({botData.concurrentLimit.planLimit ?? 'Unlimited'} concurrent calls)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-ink">
+                    <input
+                      type="radio"
+                      name="concurrentLimitChoice"
+                      checked={concurrentLimitChoice === 'custom'}
+                      onChange={() => setConcurrentLimitChoice('custom')}
+                    />
+                    <span>Set Custom Limit for Customer:</span>
+                  </label>
+                  {concurrentLimitChoice === 'custom' && (
+                    <div className="pl-6 flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        maxLength={4}
+                        className="w-24 rounded-lg border border-line bg-white px-2 py-1 text-xs text-ink focus:border-primary focus:outline-none"
+                        value={customConcurrentLimitValue}
+                        onChange={(e) => setCustomConcurrentLimitValue(e.target.value)}
+                        required
+                      />
+                      <span className="text-subtle text-[11px]">parallel calls allowed</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex justify-end gap-2 pt-1">
+                  <Button size="sm" variant="ghost" type="button" onClick={() => setShowConcurrentLimitEditor(false)}>
+                    Cancel
+                  </Button>
+                  <Button size="sm" type="submit" disabled={busy}>
+                    Save Parallel Limit
+                  </Button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
 
         {/* Agent Limit Restriction Card */}
         {botData?.agentLimit && (
@@ -514,6 +721,7 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
                       type="number"
                       min="1"
                       max="100"
+                      maxLength={4}
                       value={customLimitValue}
                       onChange={(e) => setCustomLimitValue(e.target.value)}
                       className="w-24 rounded-lg border border-line bg-white px-2.5 py-1 text-xs text-ink focus:border-primary focus:outline-none font-mono"
@@ -805,6 +1013,7 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
             <input
               type="text"
               placeholder="Persona / Business Name"
+              maxLength={120}
               className="w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs text-ink focus:border-primary focus:outline-none"
               value={newAgentName}
               onChange={(e) => setNewAgentName(e.target.value)}
@@ -813,6 +1022,7 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
             <input
               type="text"
               placeholder="Industry (e.g. Healthcare, Real Estate, Retail)"
+              maxLength={60}
               className="w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs text-ink focus:border-primary focus:outline-none"
               value={newAgentIndustry}
               onChange={(e) => setNewAgentIndustry(e.target.value)}
@@ -820,6 +1030,7 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
             <input
               type="text"
               placeholder="Assigned Phone Number (e.g. +91 98765 43210)"
+              maxLength={30}
               className="w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs text-ink focus:border-primary focus:outline-none"
               value={newAgentPhone}
               onChange={(e) => setNewAgentPhone(e.target.value)}
@@ -1012,6 +1223,7 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
                     <input
                       type="text"
                       placeholder="e.g. +91 98765 43210 or +91 22 6423 0099"
+                      maxLength={30}
                       className="w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs text-ink focus:border-primary focus:outline-none font-mono"
                       value={customPhoneInput}
                       onChange={(e) => setCustomPhoneInput(e.target.value)}

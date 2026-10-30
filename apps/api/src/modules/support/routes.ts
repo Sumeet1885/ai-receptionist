@@ -69,14 +69,17 @@ async function guestTicket(req: Request, res: Response) {
     res.status(404).json({ error: 'Ticket link is invalid or expired.' });
     return null;
   }
-  const ticket = checked(
-    await supabase
-      .from('support_tickets')
-      .select('*')
-      .eq('guest_token_hash', hashSupportToken(token(req)))
-      .gt('guest_expires_at', new Date().toISOString())
-      .maybeSingle(),
-  );
+  const resGuest = await supabase
+    .from('support_tickets')
+    .select('*')
+    .eq('guest_token_hash', hashSupportToken(token(req)))
+    .gt('guest_expires_at', new Date().toISOString())
+    .maybeSingle();
+  if (resGuest.error && (resGuest.error.code === '42P01' || resGuest.error.code === 'PGRST205' || resGuest.error.message?.includes('support_tickets') || resGuest.error.message?.includes('schema cache'))) {
+    res.status(404).json({ error: 'Ticket link is invalid or expired.' });
+    return null;
+  }
+  const ticket = checked(resGuest);
   if (!ticket) res.status(404).json({ error: 'Ticket link is invalid or expired.' });
   return ticket;
 }
@@ -85,14 +88,17 @@ async function ownedTicket(req: AuthRequest, res: Response) {
     res.status(404).json({ error: 'Ticket not found.' });
     return null;
   }
-  const ticket = checked(
-    await supabase
-      .from('support_tickets')
-      .select('*')
-      .eq('id', req.params.id)
-      .eq('user_id', req.user!.id)
-      .maybeSingle(),
-  );
+  const resTicket = await supabase
+    .from('support_tickets')
+    .select('*')
+    .eq('id', req.params.id)
+    .eq('user_id', req.user!.id)
+    .maybeSingle();
+  if (resTicket.error && (resTicket.error.code === '42P01' || resTicket.error.code === 'PGRST205' || resTicket.error.message?.includes('support_tickets') || resTicket.error.message?.includes('schema cache'))) {
+    res.status(404).json({ error: 'Ticket not found.' });
+    return null;
+  }
+  const ticket = checked(resTicket);
   if (!ticket) res.status(404).json({ error: 'Ticket not found.' });
   return ticket;
 }
@@ -279,6 +285,9 @@ supportCustomerRoutes.get(
       .eq('user_id', req.user!.id)
       .order('updated_at', { ascending: false }).order('id', { ascending: false })
       .range((page - 1) * 25, page * 25 - 1);
+    if (result.error && (result.error.code === '42P01' || result.error.code === 'PGRST205' || result.error.message?.includes('support_tickets') || result.error.message?.includes('schema cache'))) {
+      return res.json({ tickets: [], total: 0, page });
+    }
     res.json({ tickets: checked(result).map(customerSupportView), total: result.count, page });
   }),
 );
@@ -399,6 +408,9 @@ supportAdminRoutes.get(
     if (req.query.category === SALES_SUPPORT_CATEGORY.id) query = query.eq('category', SALES_SUPPORT_CATEGORY.id);
     if (req.query.unread === 'true') query = query.eq('admin_unread', true);
     const result = await query;
+    if (result.error && (result.error.code === '42P01' || result.error.code === 'PGRST205' || result.error.message?.includes('support_tickets') || result.error.message?.includes('schema cache'))) {
+      return res.json({ tickets: [], total: 0, page });
+    }
     res.json({ tickets: checked(result).map(adminView), total: result.count, page });
   }),
 );

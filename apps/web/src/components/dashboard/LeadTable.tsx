@@ -290,7 +290,7 @@ export const LeadTable: React.FC<LeadTableProps> = ({
   const totalWarm = botFilteredLeads.filter(l => l.leadScore === 'WARM').length;
   const totalInbound = botFilteredLeads.filter(l => (l.channel || 'inbound') === 'inbound').length;
   const totalOutbound = botFilteredLeads.filter(l => l.channel === 'outbound').length;
-  const totalSiteVisits = appointmentsCount !== undefined
+  const totalSiteVisits = (selectedBotId === 'all' && appointmentsCount !== undefined)
     ? appointmentsCount
     : botFilteredLeads.filter(
     l => l.appointmentStatus && l.appointmentStatus !== 'None' && l.appointmentStatus !== 'Not Scheduled'

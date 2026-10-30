@@ -5,6 +5,7 @@ import { initiateCall } from './dograhClient';
 import { DograhProvisionableBot } from './types';
 import { logger } from '../../services/cloudwatchLogger';
 import { registerOutboundCall } from './outboundTracker';
+import { getCustomerConcurrentLimitInfo, trackCallStart } from './concurrentTracker';
 
 function maskPhoneNumber(phoneNumber: string): string {
   if (!phoneNumber) return '****';
@@ -85,6 +86,18 @@ async function advanceLoop(
       logger.aiReceptionist('Campaign paused: calling minutes exhausted', { campaignId, botId: bot.id });
       return;
     }
+
+    // Parallel calls check: ensure bulk dialer queue throttles to customer's parallel call limit
+    const concurrentLimit = await getCustomerConcurrentLimitInfo(owner.owner_id);
+    if (concurrentLimit.current >= concurrentLimit.effectiveLimit) {
+      console.log(`[campaign] Bulk campaign ${campaignId} queue waiting: ${concurrentLimit.current} parallel call(s) active (Limit: ${concurrentLimit.effectiveLimit}). Re-checking in 5s...`);
+      const handle = setTimeout(() => {
+        activeCampaigns.delete(campaignId);
+        void advanceLoop(campaignId, bot, hourlyCap, supabase);
+      }, 5000);
+      activeCampaigns.set(campaignId, handle);
+      return;
+    }
   } catch { await pauseForRateLimit(campaignId, supabase); return; }
 
   const rateLimitError = checkCampaignRateLimit(bot.id, hourlyCap);
@@ -151,6 +164,13 @@ async function advanceLoop(
       phoneNumber: contact.phone_number,
       contactName: contact.name || undefined,
       sessionId: '',
+    });
+
+    trackCallStart({
+      key: `campaign_${campaignId}_${contact.id}`,
+      ownerId: owner.owner_id,
+      botId: bot.id,
+      direction: 'outbound',
     });
 
     console.log(`[campaign] Placed call for contact ${contact.id} (${contact.phone_number}) in campaign ${campaignId}.`);

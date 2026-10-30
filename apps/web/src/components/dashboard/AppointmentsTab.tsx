@@ -130,7 +130,12 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
     refresh();
   }, [refresh]);
 
-  const grouped = useMemo(() => groupAppointments(appointments), [appointments]);
+  const visibleAppointments = useMemo(() => {
+    if (!activeBot) return appointments;
+    return appointments.filter(app => !app.botId || app.botId === activeBot.id);
+  }, [appointments, activeBot]);
+
+  const grouped = useMemo(() => groupAppointments(visibleAppointments), [visibleAppointments]);
 
   // Compute 7 days of the active week
   const weekDays = useMemo(() => {
@@ -159,7 +164,7 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
   };
 
   const getAppointmentsForDay = (day: Date) => {
-    return appointments.filter(app => {
+    return visibleAppointments.filter(app => {
       const appDate = new Date(app.startTime);
       return (
         appDate.getDate() === day.getDate() &&
@@ -174,7 +179,7 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
     const sundayEnd = new Date(weekDays[6]);
     sundayEnd.setHours(23, 59, 59, 999);
 
-    const weekList = appointments.filter(app => {
+    const weekList = visibleAppointments.filter(app => {
       const t = new Date(app.startTime).getTime();
       return t >= monday.getTime() && t <= sundayEnd.getTime();
     });
@@ -188,7 +193,7 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
       total: weekList.length,
       weekend: weekendVisits.length,
     };
-  }, [appointments, weekDays]);
+  }, [visibleAppointments, weekDays]);
 
   const connectCalendar = async (targetProvider: 'google' | 'outlook') => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -406,7 +411,7 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
               <h4 className="text-base font-bold text-brand-text flex items-center gap-2">
                 <span>Site Visit Schedule</span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-body bg-brand-accent/10 border border-brand-accent/30 text-brand-accent">
-                  {appointments.length} Booked
+                  {visibleAppointments.length} Booked
                 </span>
               </h4>
             </div>
@@ -450,7 +455,7 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = ({
             <p className="text-xs text-brand-muted">{appointmentsError}</p>
             <button type="button" onClick={() => void loadAppointments()} className="h-9 px-4 rounded-md bg-brand-accent text-primary-foreground text-xs font-bold">Try again</button>
           </div>
-        ) : appointments.length === 0 ? (
+        ) : visibleAppointments.length === 0 ? (
           <div className="py-14 text-center">
             <div className="mx-auto w-12 h-12 rounded-full bg-brand-bg border border-brand-border text-brand-muted flex items-center justify-center"><Icons.Calendar /></div>
             <p className="text-sm font-semibold text-brand-text mt-4">No appointments yet</p>

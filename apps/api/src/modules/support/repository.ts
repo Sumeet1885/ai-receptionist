@@ -25,7 +25,11 @@ export async function supportSettings(): Promise<{ categories: SupportCategory[]
   }
 }
 export async function supportTicket(id: string) {
-  return checked(await supabase.from('support_tickets').select('*').eq('id', id).maybeSingle());
+  const res = await supabase.from('support_tickets').select('*').eq('id', id).maybeSingle();
+  if (res.error && (res.error.code === '42P01' || res.error.code === 'PGRST205' || res.error.message?.includes('support_tickets') || res.error.message?.includes('schema cache'))) {
+    return null;
+  }
+  return checked(res);
 }
 export async function supportDetail(ticket: any, admin: boolean) {
   let query = supabase
@@ -34,5 +38,9 @@ export async function supportDetail(ticket: any, admin: boolean) {
     .eq('ticket_id', ticket.id)
     .order('created_at');
   if (!admin) query = query.eq('is_internal', false);
-  return { ...ticket, messages: checked(await query) };
+  const res = await query;
+  if (res.error && (res.error.code === '42P01' || res.error.code === 'PGRST205' || res.error.message?.includes('support_messages') || res.error.message?.includes('schema cache'))) {
+    return { ...ticket, messages: [] };
+  }
+  return { ...ticket, messages: checked(res) };
 }

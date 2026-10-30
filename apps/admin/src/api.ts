@@ -394,6 +394,14 @@ export interface BotSummary {
   } | null;
 }
 
+export interface ConcurrentLimitInfo {
+  current: number;
+  effectiveLimit: number;
+  customLimit: number | null;
+  planLimit: number | null;
+  planName: string;
+}
+
 export interface AgentLimitInfo {
   current: number;
   effectiveLimit: number | null;
@@ -407,9 +415,25 @@ export interface CustomerAgentsResponse {
   all: BotSummary[];
   availableNumbers: string[];
   agentLimit?: AgentLimitInfo;
+  concurrentLimit?: ConcurrentLimitInfo;
+}
+
+export interface CustomerUsage {
+  inboundCalls: number;
+  inboundSeconds: number;
+  inboundMinutes: number;
+  outboundCalls: number;
+  outboundSeconds: number;
+  outboundMinutes: number;
+  totalCalls: number;
+  totalSeconds: number;
+  totalMinutes: number;
+  botsCount: number;
 }
 
 export const customersApi = {
+  getUsage: (userId: string) =>
+    request<CustomerUsage>(`/customers/${encodeURIComponent(userId)}/usage`),
   list: (params: { stage?: CustomerStage; search?: string; page?: number }) => {
     const query = new URLSearchParams();
     if (params.stage) query.set('stage', params.stage);
@@ -433,6 +457,10 @@ export const customersApi = {
       `/customers/${encodeURIComponent(userId)}/assign-plan`,
       { method: 'POST', body: data }
     ),
+  getConcurrentLimit: (userId: string) =>
+    request<{ ok: true; concurrentLimit: ConcurrentLimitInfo }>(`/customers/${encodeURIComponent(userId)}/concurrent-limit`),
+  updateConcurrentLimit: (userId: string, data: { limit: number | null }) =>
+    request<{ ok: true; concurrentLimit: ConcurrentLimitInfo }>(`/customers/${encodeURIComponent(userId)}/concurrent-limit`, { method: 'POST', body: data }),
   updateAgentLimit: (userId: string, data: { limit: number | null }) =>
     request<{ ok: true; agentLimit: AgentLimitInfo }>(`/customers/${encodeURIComponent(userId)}/agent-limit`, { method: 'POST', body: data }),
   createAgent: (userId: string, data: { businessName: string; industry?: string; greeting?: string; phoneNumber?: string; direction?: 'inbound' | 'outbound' }) =>

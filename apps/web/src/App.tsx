@@ -159,7 +159,7 @@ export default function App() {
   const { bots, setBots, activeBotId, setActiveBotId, fetchBots, createBot, updateBot, deleteBot } = useBots();
   const { leads, setLeads, fetchLeads } = useLeads();
   const chat = useChat();
-  const { count: appointmentsCount } = useAppointments(Boolean(user));
+  const { appointments, count: appointmentsCount } = useAppointments(Boolean(user));
 
   const [newBotName, setNewBotName] = useState('SmileCare Dental & Wellness Clinic');
   const [newBotIndustry, setNewBotIndustry] = useState('Healthcare');
@@ -170,7 +170,21 @@ export default function App() {
   const [newBotPrompts, setNewBotPrompts] = useState<string[]>(BUSINESS_TEMPLATES[0].suggestedPrompts);
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
   const [newlyCreatedBotId, setNewlyCreatedBotId] = useState<string | null>(null);
-  const [leadAgentFilter, setLeadAgentFilter] = useState<string | 'all'>('all');
+  const [leadAgentFilter, setLeadAgentFilter] = useState<string | 'all'>(activeBotId || 'all');
+
+  // Synchronize leads filter with activeBotId when user changes persona
+  useEffect(() => {
+    if (activeBotId) {
+      setLeadAgentFilter(activeBotId);
+    }
+  }, [activeBotId]);
+
+  const handleAgentFilterChange = (id: string) => {
+    setLeadAgentFilter(id);
+    if (id !== 'all') {
+      setActiveBotId(id);
+    }
+  };
 
   const navigate = (path: string, replace = false) => {
     const destination = new URL(path, window.location.origin);
@@ -555,14 +569,34 @@ export default function App() {
               <PostLoginShell
                 title="Dashboard"
                 subtitle="Your daily home for leads, appointments, and receptionist health."
+                actions={bots.length > 1 ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-text-subtle uppercase tracking-wider">Receptionist:</span>
+                    <select
+                      value={leadAgentFilter}
+                      onChange={(e) => handleAgentFilterChange(e.target.value)}
+                      className="h-9 px-3 rounded-xl border border-border bg-surface text-sm font-semibold text-text focus:border-primary focus:outline-none shadow-sm cursor-pointer"
+                    >
+                      <option value="all">All Receptionists ({bots.length})</option>
+                      {bots.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.businessName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : undefined}
               >
                 <DashboardHome
-                  activeBot={activeBot}
+                  activeBot={leadAgentFilter !== 'all' ? (bots.find(b => b.id === leadAgentFilter) || activeBot) : null}
                   bots={bots}
                   leads={leads}
+                  appointments={appointments}
+                  selectedBotId={leadAgentFilter}
+                  onSelectBotId={handleAgentFilterChange}
                   navigate={navigate}
                   launchPublicChat={launchPublicChat}
-                  appointmentsCount={appointmentsCount}
+                  appointmentsCount={leadAgentFilter !== 'all' ? appointments.filter(a => a.botId === leadAgentFilter).length : appointments.length}
                 />
               </PostLoginShell>
             )}
@@ -571,6 +605,23 @@ export default function App() {
               <PostLoginShell
                 title="Lead Pipeline"
                 subtitle="Autonomous voice call leads, caller inquiries, and scheduled site visits."
+                actions={bots.length > 1 ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-text-subtle uppercase tracking-wider">Receptionist:</span>
+                    <select
+                      value={leadAgentFilter}
+                      onChange={(e) => handleAgentFilterChange(e.target.value)}
+                      className="h-9 px-3 rounded-xl border border-border bg-surface text-sm font-semibold text-text focus:border-primary focus:outline-none shadow-sm cursor-pointer"
+                    >
+                      <option value="all">All Receptionists ({bots.length})</option>
+                      {bots.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.businessName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : undefined}
               >
                 {activeBot ? (
                   <LeadsWorkspace
@@ -578,9 +629,9 @@ export default function App() {
                     leads={leads}
                     setLeads={setLeads}
                     selectedBotId={leadAgentFilter}
-                    setSelectedBotId={setLeadAgentFilter}
+                    setSelectedBotId={handleAgentFilterChange}
                     launchPublicChat={launchPublicChat}
-                  appointmentsCount={appointmentsCount}
+                    appointmentsCount={leadAgentFilter !== 'all' ? appointments.filter(a => a.botId === leadAgentFilter).length : appointments.length}
                     showToast={showToast}
                     targetLeadId={route.targetLeadId}
                   />
@@ -601,10 +652,27 @@ export default function App() {
               <PostLoginShell
                 title="Calendar"
                 subtitle="Connect your calendar and review bookings created by the receptionist."
+                actions={bots.length > 1 ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-text-subtle uppercase tracking-wider">Receptionist:</span>
+                    <select
+                      value={leadAgentFilter}
+                      onChange={(e) => handleAgentFilterChange(e.target.value)}
+                      className="h-9 px-3 rounded-xl border border-border bg-surface text-sm font-semibold text-text focus:border-primary focus:outline-none shadow-sm cursor-pointer"
+                    >
+                      <option value="all">All Receptionists ({bots.length})</option>
+                      {bots.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.businessName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : undefined}
               >
                 <AppointmentsTab
                   bots={bots}
-                  activeBot={activeBot}
+                  activeBot={leadAgentFilter !== 'all' ? (bots.find(b => b.id === leadAgentFilter) || activeBot) : null}
                   updateBot={updateBot}
                   showToast={showToast}
                 />
