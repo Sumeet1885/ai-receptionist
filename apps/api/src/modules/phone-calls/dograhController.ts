@@ -1454,6 +1454,7 @@ export async function callOut(req: AuthRequest, res: Response): Promise<void> {
       ownerId: bot.owner_id,
       botId,
       direction: 'outbound',
+      sessionId,
     });
 
     console.log('[phone-calls] Dograh outbound call accepted:', {

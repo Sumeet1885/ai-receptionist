@@ -120,6 +120,7 @@ router.get('/:id/agents', requireAdminRole('read_only'), handle(async (req, res)
     .from('bots')
     .select('id, business_name, industry, dograh_phone_number, dograh_workflow_id, dograh_outbound_workflow_id, is_active, created_at, owner_id, widget_config')
     .eq('owner_id', req.params.id)
+    .eq('is_active', true)
     .order('created_at', { ascending: false });
 
   if (assignedErr) return res.status(500).json({ error: assignedErr.message });
@@ -171,7 +172,8 @@ router.post('/:id/assign-agent', requireAdminRole('support'), handle(async (req,
   const { count: currentAssignedCount } = await supabase
     .from('bots')
     .select('id', { count: 'exact', head: true })
-    .eq('owner_id', req.params.id);
+    .eq('owner_id', req.params.id)
+    .eq('is_active', true);
 
   if (limitInfo.effectiveLimit !== null && (currentAssignedCount || 0) >= limitInfo.effectiveLimit) {
     return res.status(400).json({
@@ -196,6 +198,7 @@ router.post('/:id/assign-agent', requireAdminRole('support'), handle(async (req,
     .update({
       owner_id: req.params.id,
       widget_config: updatedWidget,
+      is_active: true,
     })
     .eq('id', botId);
 
@@ -250,7 +253,7 @@ router.post('/:id/update-agent-direction', requireAdminRole('support'), handle(a
   res.json({ ok: true, bot: updatedBot });
 }));
 
-// Deletes / removes a bot persona from a customer
+// Unassigns / soft-deactivates an agent persona from a customer (preserves historical leads and calls)
 router.post('/:id/unassign-agent', requireAdminRole('support'), handle(async (req, res) => {
   if (!UUID.test(req.params.id)) return res.status(404).json({ error: 'Customer not found' });
   const { botId } = req.body || {};
@@ -264,21 +267,24 @@ router.post('/:id/unassign-agent', requireAdminRole('support'), handle(async (re
 
   if (botErr || !bot) return res.status(404).json({ error: 'Agent not found' });
 
-  // Delete the bot completely (cascading to leads, conversations, appointments)
-  const { error: deleteErr } = await supabase
+  // Soft-deactivate: frees up customer agent quota while preserving all leads, chat sessions, appointments, and call history
+  const { error: updateErr } = await supabase
     .from('bots')
-    .delete()
+    .update({
+      is_active: false,
+    })
     .eq('id', botId);
 
-  if (deleteErr) return res.status(500).json({ error: deleteErr.message });
+  if (updateErr) return res.status(500).json({ error: updateErr.message });
 
-  await audit(req, 'customer.delete_agent', req.params.id, {
+  await audit(req, 'customer.unassign_agent', req.params.id, {
     botId,
     botName: bot.business_name,
     previousPhoneNumber: bot.dograh_phone_number,
+    action: 'soft_deactivate',
   });
 
-  res.json({ ok: true, botId });
+  res.json({ ok: true, botId, unassigned: true });
 }));
 
 // Assigns or switches a plan for an existing customer
@@ -593,7 +599,8 @@ router.post('/:id/create-agent', requireAdminRole('support'), handle(async (req,
   const { count: currentAssignedCount } = await supabase
     .from('bots')
     .select('id', { count: 'exact', head: true })
-    .eq('owner_id', req.params.id);
+    .eq('owner_id', req.params.id)
+    .eq('is_active', true);
 
   if (limitInfo.effectiveLimit !== null && (currentAssignedCount || 0) >= limitInfo.effectiveLimit) {
     return res.status(400).json({

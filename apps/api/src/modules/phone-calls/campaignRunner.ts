@@ -5,7 +5,7 @@ import { initiateCall } from './dograhClient';
 import { DograhProvisionableBot } from './types';
 import { logger } from '../../services/cloudwatchLogger';
 import { registerOutboundCall } from './outboundTracker';
-import { getCustomerConcurrentLimitInfo, trackCallStart } from './concurrentTracker';
+import { getCustomerConcurrentLimitInfo, trackCallStart, trackCallEnd } from './concurrentTracker';
 
 function maskPhoneNumber(phoneNumber: string): string {
   if (!phoneNumber) return '****';
@@ -168,7 +168,8 @@ async function advanceLoop(
 
     trackCallStart({
       key: `campaign_${campaignId}_${contact.id}`,
-      ownerId: owner.owner_id,
+      ownerId: bot.owner_id,
+      campaignContactId: contact.id,
       botId: bot.id,
       direction: 'outbound',
     });
@@ -184,6 +185,7 @@ async function advanceLoop(
     await supabase.rpc('increment_campaign_called_count', { campaign_id_arg: campaignId });
 
   } catch (err: any) {
+    trackCallEnd(`campaign_${campaignId}_${contact.id}`);
     console.error(`[campaign] Failed to call contact ${contact.id}:`, err.message);
     logger.callEvent('campaign_call_failed', {
       campaignId,

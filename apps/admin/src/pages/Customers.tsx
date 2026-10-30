@@ -1,6 +1,6 @@
 import { formatExpiryIST } from '@ai-receptionist/contracts';
 import { useEffect, useState, type FormEvent } from 'react';
-import { Activity, Ban, Bot, Check, CreditCard, Edit2, Loader2, Mail, Phone, PhoneCall, PhoneIncoming, PhoneOutgoing, Plus, RotateCcw, Search, Trash2, Users, X } from 'lucide-react';
+import { Activity, Ban, Bot, Check, CreditCard, Edit2, Loader2, Mail, Phone, PhoneCall, PhoneIncoming, PhoneOutgoing, Plus, RotateCcw, Search, Trash2, UserMinus, Users, X } from 'lucide-react';
 import { LIMITS } from '@ai-receptionist/contracts';
 import { customersApi, billingAdminApi, type Customer, type CustomerStage, type BotSummary, type CustomerAgentsResponse, type Plan, type CustomerUsage } from '../api';
 import { useToast } from '../toast';
@@ -287,6 +287,24 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
       : `Suspend ${customer.email}? They are signed out and cannot sign in until reactivated.`;
     if (!window.confirm(question)) return;
     void act(() => customersApi.setStatus(customer.userId, suspended ? 'active' : 'suspended'), suspended ? 'Customer reactivated' : 'Customer suspended');
+  };
+
+  const handleDirectionChange = async (botId: string, nextDir: 'inbound' | 'outbound', currentDir: 'inbound' | 'outbound') => {
+    if (currentDir === nextDir) return;
+    await act(async () => {
+      await customersApi.updateAgentDirection(customer.userId, { botId, direction: nextDir });
+      const refreshed = await customersApi.getAgents(customer.userId);
+      setBotData(refreshed);
+    }, `Agent mode set to ${nextDir}`);
+  };
+
+  const handleUnassignAgent = async (botId: string, businessName: string) => {
+    if (!window.confirm(`Unassign voice agent "${businessName}"? This will detach this persona and free up customer quota while preserving all historical leads, appointments, and call logs.`)) return;
+    await act(async () => {
+      await customersApi.unassignAgent(customer.userId, { botId });
+      const refreshed = await customersApi.getAgents(customer.userId);
+      setBotData(refreshed);
+    }, `Agent "${businessName}" unassigned`);
   };
 
   const details: Array<[string, string]> = [
@@ -848,14 +866,7 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
                             key={d}
                             type="button"
                             disabled={busy}
-                            onClick={async () => {
-                              if (currentDir === d) return;
-                              await act(async () => {
-                                await customersApi.updateAgentDirection(customer.userId, { botId: bot.id, direction: d });
-                                const refreshed = await customersApi.getAgents(customer.userId);
-                                setBotData(refreshed);
-                              }, `Agent mode set to ${d}`);
-                            }}
+                            onClick={() => handleDirectionChange(bot.id, d, currentDir)}
                             className={cx(
                               'px-2 py-0.5 rounded font-medium capitalize transition-all',
                               currentDir === d
@@ -899,17 +910,10 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
                       size="sm"
                       variant="dangerOutline"
                       disabled={busy}
-                      onClick={async () => {
-                        if (!window.confirm(`Delete voice agent "${bot.business_name}"? This will permanently delete this persona and free up customer quota.`)) return;
-                        await act(async () => {
-                          await customersApi.unassignAgent(customer.userId, { botId: bot.id });
-                          const refreshed = await customersApi.getAgents(customer.userId);
-                          setBotData(refreshed);
-                        }, `Agent "${bot.business_name}" deleted`);
-                      }}
+                      onClick={() => handleUnassignAgent(bot.id, bot.business_name)}
                     >
-                      <Trash2 className="h-3 w-3 mr-1" />
-                      Delete Agent
+                      <UserMinus className="h-3 w-3 mr-1" />
+                      Unassign Agent
                     </Button>
                   )}
                 </div>

@@ -40,7 +40,8 @@ export function useBots() {
     const { data } = await supabase
       .from('bots')
       .select(BOT_SELECT_FIELDS)
-      .eq('owner_id', userId);
+      .eq('owner_id', userId)
+      .eq('is_active', true);
     if (data) {
       const mapped = data.map(mapBotFromDb);
       setBots(mapped);

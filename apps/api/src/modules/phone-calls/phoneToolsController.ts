@@ -111,6 +111,13 @@ export async function preCall(req: Request, res: Response): Promise<void> {
   }
 
   if (req.query.direction === 'inbound') {
+    trackCallStart({
+      key: sessionId,
+      ownerId: bot.owner_id,
+      botId,
+      direction: 'inbound',
+      sessionId,
+    });
     try {
       await markInboundAttemptAndApplyLimit(supabase, bot);
     } catch (err) {
