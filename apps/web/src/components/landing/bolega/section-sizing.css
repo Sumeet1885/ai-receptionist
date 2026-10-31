@@ -1,0 +1,128 @@
+/* Give the product visuals the space previously occupied by oversized display copy. */
+.bi-landing main > section { scroll-margin-top: 94px; }
+.bi-landing .nav-center { display: flex; align-items: center; gap: clamp(12px, 1.2vw, 22px); }
+.bi-landing .nav-center a { font-size: 13px; white-space: nowrap; }
+.bi-landing .nav-center a.nav-pricing-highlight { display: inline-flex; align-items: center; padding: 4px 11px; border-radius: 999px; background: color-mix(in srgb, var(--lime) 50%, var(--color-background)); border: 1px solid #c2db7e; color: var(--ink); font-weight: 600; font-size: 12.5px; line-height: 1.25; transition: background .2s, border-color .2s; }
+.bi-landing .nav-center a.nav-pricing-highlight:hover { background: var(--lime); border-color: #aecd58; }
+.bi-landing .nav-center a.nav-pricing-highlight::after { display: none; }
+.bi-landing .mobile-menu a.nav-pricing-highlight { display: inline-flex; align-items: center; justify-content: space-between; background: color-mix(in srgb, var(--lime) 45%, var(--color-background)); border: 1px solid #c2db7e; color: var(--ink); font-weight: 600; border-radius: 10px; padding: 10px 14px; margin-block: 6px; }
+.bi-landing a.nav-pricing-highlight:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+.bi-landing .mobile-menu a[aria-current="location"] { color: var(--green); font-weight: 700; }
+@media (min-width: 801px) and (max-width: 1350px) {
+  .bi-landing .nav-center { display: none; }
+  .bi-landing .mobile-menu-toggle { display: block; }
+}
+@media (max-width: 1350px) {
+  .bi-landing .mobile-menu { max-height: calc(100svh - 100px); overflow-y: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bi-landing #business-persona, .bi-landing #business-persona * { animation: none !important; transition: none !important; }
+}
+@media (min-width: 701px) {
+  .bi-landing #product-persona.brand-value-section { padding-block: 30px; }
+  .bi-landing #product-persona .meaning-heading { display: block; margin-bottom: 20px; }
+  .bi-landing #product-persona .meaning-heading h2 { margin-block: 10px 12px; font-size: clamp(25px, 2.3vw, 38px); }
+  .bi-landing #product-persona .meaning-heading > p { margin: 0; max-width: none; font-size: 13px; }
+  .bi-landing #product-persona .meaning-heading > p br { display: none; }
+  .bi-landing #product-persona .brand-photo-gallery { width: min(100%, 1060px); margin-inline: auto; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(20px, 3vw, 44px); align-items: start; }
+  .bi-landing #product-persona .brand-photo-media { aspect-ratio: 4 / 5; height: auto; background: transparent; border-radius: 12px; }
+  .bi-landing #product-persona .brand-photo-media img { object-fit: contain; object-position: center; }
+  .bi-landing #product-persona .brand-photo-story:first-child { padding-top: 24px; }
+  .bi-landing #product-persona .brand-photo-story:last-child { padding-top: 48px; }
+  .bi-landing #product-persona .brand-photo-story figcaption { padding-top: 14px; }
+  .bi-landing #product-persona .brand-photo-story h3 { font-size: clamp(21px, 1.7vw, 25px); margin-block: 8px; line-height: 1.2; }
+  .bi-landing #product-persona .brand-photo-story p { font-size: 14px; line-height: 1.65; }
+  .bi-landing #product-persona .meaning-bottom { margin-top: 20px; }
+}
+@media (min-width: 701px) and (max-height: 850px) {
+  .bi-landing #product-persona .brand-photo-gallery { max-width: 800px; }
+  .bi-landing #product-persona.brand-value-section { padding-block: 20px; }
+  .bi-landing #product-persona .brand-photo-story:first-child { padding-top: 14px; }
+  .bi-landing #product-persona .brand-photo-story:last-child { padding-top: 28px; }
+  .bi-landing #product-persona .brand-photo-story h3 { font-size: 21px; }
+}
+@media (max-width: 700px) {
+  .bi-landing #product-persona .meaning-heading h2 em { display: block; }
+}
+.bi-landing main > .meaning-section, .bi-landing main > section > .meaning-section { max-width: 1600px; padding-inline: 4%; }
+.bi-landing .meaning-heading h2 { font-size: clamp(28px, 2.6vw, 40px); line-height: 1.12; letter-spacing: -.035em; }
+.bi-landing .meaning-heading { margin-bottom: 24px; gap: 24px; }
+.bi-landing .meaning-heading > p { font-size: 14px; line-height: 1.65; }
+.bi-landing .context-cinema h2 { font-size: clamp(32px, 3.2vw, 48px); }
+.bi-landing .context-cinema-copy { padding: clamp(28px, 4vw, 64px); }
+.bi-landing .context-cinema p { font-size: 15px; line-height: 1.7; }
+.bi-landing #how-system .meaning-heading h2 { font-size: clamp(28px, 2.6vw, 40px); }
+.bi-landing .conversation-explorer-heading h3 { font-size: clamp(26px, 2.6vw, 36px); }
+.bi-landing .conversation-explorer-heading { margin-bottom: 20px; gap: 20px; }
+.bi-landing .conversation-explorer-heading > p { font-size: 13px; line-height: 1.6; }
+@media (min-width: 701px) {
+  .bi-landing .conversation-moments { margin-bottom: 18px; }
+  .bi-landing .conversation-moments button { min-height: 54px; padding-block: 8px; font-size: 15px; }
+  .bi-landing .conversation-moment { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 32px; }
+  .bi-landing .moment-photo-story { min-height: 0; aspect-ratio: auto; padding: 22px; border-radius: 16px; }
+  .bi-landing .moment-photo-caption { padding-top: 60px; }
+  .bi-landing .moment-question { font-size: 14px; margin-block: 8px 12px; }
+  .bi-landing .moment-photo-story blockquote { min-height: 0; margin-bottom: 18px; }
+  .bi-landing .moment-photo-story blockquote p { font-size: clamp(23px, 2vw, 29px); }
+  .bi-landing .moment-insight { padding: 0; }
+  .bi-landing .moment-insight h4 { min-height: 0; font-size: 25px; margin-block: 14px 18px; }
+  .bi-landing .moment-captured { padding-bottom: 16px; }
+  .bi-landing .moment-captured strong { font-size: 18px; }
+  .bi-landing .moment-next { margin-block: 18px; }
+  .bi-landing .moment-next-button { padding-top: 14px; min-height: 44px; }
+}
+@media (max-width: 700px) {
+  .bi-landing .conversation-explorer-heading h3 em { display: block; }
+}
+.bi-landing #questions h2 { font-size: clamp(30px, 3vw, 42px); }
+.bi-landing #languages h2 { font-size: clamp(30px, 3vw, 42px); }
+@media (min-width: 701px) {
+  .bi-landing #use-cases > .meaning-section { padding-block: 30px; }
+  .bi-landing #use-cases .meaning-heading { display: block; margin-bottom: 20px; }
+  .bi-landing #use-cases .meaning-heading h2 { font-size: clamp(26px, 2.3vw, 36px); margin-block: 10px 12px; }
+  .bi-landing #use-cases .meaning-heading > p { max-width: none; margin: 0; font-size: 13px; }
+  .bi-landing #use-cases .meaning-heading > p br { display: none; }
+  .bi-landing #use-cases .industry-explorer { gap: 32px; grid-template-columns: minmax(220px, .7fr) minmax(0, 1.3fr); }
+  .bi-landing #use-cases .industry-selector { padding-top: 0; }
+  .bi-landing #use-cases .industry-options { margin-top: 14px; }
+  .bi-landing #use-cases .industry-option { min-height: 60px; padding-block: 12px; }
+  .bi-landing #use-cases .industry-selector-note { margin-top: 18px; font-size: 13px; line-height: 1.6; }
+  .bi-landing #use-cases .industry-preview-intro { min-height: 100px; padding: 16px 22px 0; grid-template-columns: minmax(0, 1fr) 120px; }
+  .bi-landing #use-cases .industry-preview h3 { font-size: 25px; margin-top: 8px; }
+  .bi-landing #use-cases .industry-description { min-height: 0; margin: 12px 22px 16px; font-size: 13px; }
+  .bi-landing #use-cases .industry-conversation { padding: 16px 22px; }
+  .bi-landing #use-cases .industry-conversation-top { padding-bottom: 12px; }
+  .bi-landing #use-cases .industry-question { min-height: 0; font-size: 18px; margin-block: 8px 12px; }
+  .bi-landing #use-cases .industry-answer { min-height: 0; padding: 12px 16px; }
+}
+@media (max-width: 700px) {
+  .bi-landing #use-cases .meaning-heading h2 em { display: block; }
+}
+@media (min-width: 701px) {
+  .bi-landing #lead-story { padding-block: 24px; }
+  .bi-landing #lead-story > .meaning-heading { display: block; margin-bottom: 14px; }
+  .bi-landing #lead-story > .meaning-heading h2 { font-size: clamp(26px, 2vw, 34px); line-height: 1.1; margin-block: 8px 0; }
+  .bi-landing #lead-story > .meaning-heading > p { font-size: 13px; line-height: 1.5; margin: 8px 0 0; max-width: none; }
+  .bi-landing #lead-story > .meaning-heading > p br { display: none; }
+  .bi-landing #lead-story .product-film { width: min(100%, calc((100svh - 245px) * 16 / 9)); margin: 0 auto 28px; }
+  .bi-landing #lead-story .product-film figcaption { padding: 10px 16px; font-size: 10px; }
+  .bi-landing #lead-story .recorded-transcript { padding: 12px 16px; }
+  .bi-landing #lead-story .recorded-transcript summary { font-size: 12px; }
+  .bi-landing #workflow .meaning-section { padding-block: 20px; }
+  .bi-landing #workflow .meaning-heading { align-items: center; margin-bottom: 16px; }
+  .bi-landing #workflow .meaning-heading h2 { font-size: clamp(25px, 2vw, 32px); margin-top: 8px; }
+  .bi-landing #workflow .meaning-heading > p { margin: 0; max-width: 260px; font-size: 13px; }
+  .bi-landing #workflow .workflow-film { width: min(100%, calc((100svh - 245px) * 16 / 9)); }
+  .bi-landing #workflow .workflow-film figcaption { padding: 10px 16px; }
+}
+@media (max-width: 700px) {
+  .bi-landing main > .meaning-section, .bi-landing main > section > .meaning-section { padding-inline: 6%; }
+  .bi-landing .meaning-heading h2, .bi-landing #how-system .meaning-heading h2 { font-size: 28px; }
+  .bi-landing #workflow .meaning-heading h2 { font-size: 26px; }
+  .bi-landing #workflow .meaning-heading > p { font-size: 13px; margin-top: 10px; }
+  .bi-landing .workflow-picture-toggle > span { padding: 12px 16px; font-size: 12px; gap: 8px; }
+}
+@media (min-width: 480px) and (max-width: 700px) {
+  .bi-landing #workflow .workflow-film { width: min(100%, calc((100svh - 320px) * .75)); margin-inline: auto; }
+  .bi-landing #lead-story .product-film { width: min(100%, calc((100svh - 320px) * .75)); margin-inline: auto; }
+}

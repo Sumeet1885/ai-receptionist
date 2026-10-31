@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 import { SUPPORTED_LANGUAGES, SUPPORTED_LANGUAGE_LIST } from '@ai-receptionist/contracts';
-import { BrandLogo } from '../../ui/brand-logo';
 import { AppLink } from './AppLink';
 import { LandingDialog } from './LandingDialog';
-import { useInView, useLanding } from './LandingContext';
+import { useInView, useLanding, usePauseWhenHidden } from './LandingContext';
 import { Reveal } from './Reveal';
 import { openSupport } from '../../../lib/supportDrawer';
 import { sectionTexture } from './sectionTextures';
+import { CustomerConversationFilm, ReceptionistPortrait } from './ProductVisuals';
+import { ConversationExplorer } from './ConversationExplorer';
 
 // [shown text, "romanised · language", BCP 47 language] for the 11 landing-page languages.
 const allGreetings = SUPPORTED_LANGUAGES.map((l): [string, string, string] => [l.greeting, `${l.romanised} · ${l.name}`, l.code]);
@@ -14,11 +15,31 @@ const greetings = allGreetings.slice(0, 6);
 const greetingsReverse = allGreetings.slice(6);
 
 export function LanguageWall() {
-  const { motionPaused } = useLanding();
-  const [note, setNote] = useState('Tap a hello to hear which language it is.');
+  const { motionPaused, registerMedia, claimPlayback } = useLanding();
+  const [ref, visible] = useInView<HTMLElement>();
+  const audio = useRef<HTMLAudioElement | null>(null);
+  const requestSerial = useRef(0);
+  const [speaking, setSpeaking] = useState<string | null>(null);
+  const [note, setNote] = useState('Tap a hello to hear it in that language.');
+  const pause = useCallback(() => audio.current?.pause(), []);
+  useEffect(() => registerMedia('language-greeting', pause), [registerMedia, pause]);
+  useEffect(() => { if (!visible) pause(); }, [visible, pause]);
+  usePauseWhenHidden(pause);
 
-  const greet = (e: MouseEvent<HTMLButtonElement>, shown: string, name: string) => {
+  const greet = (e: MouseEvent<HTMLButtonElement>, shown: string, name: string, lang: string) => {
     setNote(`${shown} — ${name}`);
+    const element = audio.current;
+    if (element) {
+      const request = ++requestSerial.current;
+      element.pause();
+      element.dataset.language = lang;
+      element.src = `/bolegaindia/audio/greetings/${lang}.mp3`;
+      element.play().catch((reason: unknown) => {
+        if (request !== requestSerial.current || (reason instanceof DOMException && reason.name === 'AbortError')) return;
+        setSpeaking(null);
+        setNote('The greeting could not play. Tap a hello to try again.');
+      });
+    }
     if (!motionPaused) {
       e.currentTarget.animate(
         [{ transform: 'scale(1)' }, { transform: 'scale(1.15) rotate(-5deg)' }, { transform: 'scale(1)' }],
@@ -30,7 +51,7 @@ export function LanguageWall() {
   const belt = (items: [string, string, string][], reverse: boolean) => (
     <div className={`language-belt${reverse ? ' reverse' : ''}`}>
       {[...items, ...items].map(([shown, name, lang], i) => (
-        <button key={i} type="button" className="word-pill" lang={lang} onClick={(e) => greet(e, shown, name)}>
+        <button key={i} type="button" className="word-pill" lang={lang} aria-label={`Hear ${SUPPORTED_LANGUAGES.find(language => language.code === lang)?.name} greeting`} aria-pressed={speaking === lang} onClick={(e) => greet(e, shown, name, lang)}>
           {shown}
         </button>
       ))}
@@ -38,9 +59,9 @@ export function LanguageWall() {
   );
 
   return (
-    <section style={sectionTexture('languages')} id="languages" className="language-wall">
+    <section ref={ref} style={sectionTexture('languages')} id="languages" className="language-wall">
       <Reveal>
-        <span className="eyebrow">03 / FAMILIAR FEELS BETTER</span>
+        <span className="eyebrow">06 / FAMILIAR FEELS BETTER</span>
         <h2>
           Many ways to say hello.
           <br />
@@ -52,43 +73,19 @@ export function LanguageWall() {
       <div className="hint" id="greeting-note" role="status">
         {note}
       </div>
-      <p className="hint">Supported languages: {SUPPORTED_LANGUAGE_LIST}.</p>
+      <audio ref={audio} preload="none" onPlay={() => { setSpeaking(audio.current?.dataset.language || null); claimPlayback('language-greeting'); }} onPause={() => setSpeaking(null)} onEnded={() => setSpeaking(null)} onError={() => { setSpeaking(null); setNote('The greeting could not play. Tap a hello to try again.'); }} />
     </section>
   );
 }
 
-const facts = [
-  { label: 'REQUIREMENT', value: 'A solution for a growing team' },
-  { label: 'PRIORITIES', value: 'Fit, pricing, and setup time' },
-  { label: 'NEXT STEP', value: 'A conversation with your team' },
-];
-const transcript = [
-  { ask: '“What are you looking for?”', answer: '“Something that works for our growing team.”' },
-  { ask: '“What would help you decide?”', answer: '“The right fit, pricing, and how soon we can start.”' },
-  { ask: '“Would you like our team to follow up?”', answer: '“Yes. I’d like to discuss it.”' },
-];
-
 export function LeadStorySection() {
-  const { motionPaused } = useLanding();
-  const [sectionRef, visible] = useInView<HTMLElement>();
-  const [factIndex, setFactIndex] = useState(0);
-
-  useEffect(() => {
-    if (!visible || motionPaused) return;
-    const timer = window.setInterval(() => {
-      if (!document.hidden) setFactIndex((i) => (i + 1) % facts.length);
-    }, 3200);
-    return () => window.clearInterval(timer);
-  }, [visible, motionPaused]);
-
   return (
-    <section style={sectionTexture('leads')} ref={sectionRef} className="meaning-section lead-story-section" id="lead-story">
+    <section style={sectionTexture('leads')} className="meaning-section lead-story-section" id="lead-story">
       <Reveal className="meaning-heading">
         <div>
           <span className="eyebrow">06 / PREPARE FOR A BETTER FOLLOW-UP</span>
           <h2>
-            Your next conversation.
-            <br />
+            Your next conversation.{' '}
             <em>Already informed.</em>
           </h2>
         </div>
@@ -98,50 +95,8 @@ export function LeadStorySection() {
           Bring the right questions to your follow-up.
         </p>
       </Reveal>
-      <Reveal className="lead-story-grid">
-        <article className="result-card">
-          <div className="result-card-top">
-            <span className="eyebrow">ILLUSTRATIVE CUSTOMER ENQUIRY</span>
-            <span className="ready-pill">Intent captured</span>
-          </div>
-          <div className="result-person">
-            <span aria-hidden="true">AK</span>
-            <div>
-              <h3>Aarav Kumar</h3>
-              <small>New business enquiry</small>
-            </div>
-          </div>
-          {facts.map((fact, i) => (
-            <div key={fact.label} className={`lead-fact${factIndex === i ? ' active' : ''}`} data-fact={i}>
-              <span>{fact.label}</span>
-              <strong>{fact.value}</strong>
-              <i>{String(i + 1).padStart(2, '0')}</i>
-            </div>
-          ))}
-          <div className="result-footer">✦ &nbsp; Your qualification criteria. Useful customer context.</div>
-        </article>
-        <article className="transcript-story">
-          <div className="transcript-story-top">
-            <span className="eyebrow">THE REASON BEHIND THE REQUIREMENT</span>
-            <span className="transcript-live">
-              <i /> Sample transcript
-            </span>
-          </div>
-          {transcript.map((pair, i) => (
-            <div key={i} className={`transcript-pair${factIndex === i ? ' active' : ''}`} data-transcript={i}>
-              <span className="transcript-role">AI PERSONA</span>
-              <p>{pair.ask}</p>
-              <div className="customer-quote">{pair.answer}</div>
-            </div>
-          ))}
-        </article>
-      </Reveal>
-      <div className="meaning-bottom">
-        <span>Illustrative conversation · Not a live call result</span>
-        <span className="autoplay-caption">
-          See the context behind each priority <i />
-        </span>
-      </div>
+      <CustomerConversationFilm />
+      <ConversationExplorer />
     </section>
   );
 }
@@ -183,6 +138,7 @@ export function QuestionsSection({ navigate, signedIn }: CtaProps) {
   return (
     <section style={sectionTexture('questions')} className="meaning-section questions-section" id="questions">
       <Reveal className="questions-intro">
+        <div className="questions-illustration" aria-hidden="true"><span>hello.</span><span>Let’s talk.</span><i>?</i></div>
         <span className="eyebrow">08 / A LITTLE CLARITY</span>
         <h2>
           Good questions.
@@ -212,17 +168,20 @@ export function QuestionsSection({ navigate, signedIn }: CtaProps) {
 
 export function ContactCta({ navigate, signedIn }: CtaProps) {
   return (
-    <Reveal style={sectionTexture('contact')} as="section" className="contact">
-      <span className="eyebrow">YOUR NEXT HELLO STARTS HERE</span>
-      <h2>
-        Ab business
-        <br />
-        <em>bolega.</em>
-      </h2>
-      <AppLink className="btn" to={signedIn ? '/agents/new' : '/request-access'} navigate={navigate}>
-        Build your business persona <span>↗</span>
-      </AppLink>
-      <div className="cta-sub">Start with your business. Make every conversation count.</div>
+    <Reveal style={sectionTexture('contact')} as="section" className="contact visual-contact" id="get-started">
+      <div className="contact-copy">
+        <span className="eyebrow">YOUR NEXT HELLO STARTS HERE</span>
+        <h2>
+          Ab business
+          <br />
+          <em>bolega.</em>
+        </h2>
+        <AppLink className="btn" to={signedIn ? '/agents/new' : '/request-access'} navigate={navigate}>
+          Build your business persona <span>↗</span>
+        </AppLink>
+        <div className="cta-sub">Start with your business. Make every conversation count.</div>
+      </div>
+      <div className="contact-portrait"><ReceptionistPortrait variant="closing" /><span className="contact-hello" aria-hidden="true">Your next hello. ↗</span></div>
     </Reveal>
   );
 }
@@ -246,7 +205,7 @@ export function LandingFooter() {
     <>
       <footer style={sectionTexture('footer')} className="footer">
         <a className="brand" href="#" aria-label="Bolega India, back to top">
-          <BrandLogo bare />
+          <span className="footer-wordmark">BolegaIndia<span>.ai</span></span>
         </a>
         <div className="footer-links">
           <button className="language" id="about" type="button" onClick={() => setAboutOpen(true)}>

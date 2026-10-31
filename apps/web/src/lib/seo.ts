@@ -21,7 +21,7 @@ export const PUBLIC_PAGES = {
   "/": {
     title: "AI Receptionist for Indian Businesses | Bolega India",
     description:
-      "Answer calls and chats in Indian languages, capture leads and book appointments with Bolega India. Request a 14-day free trial for your business.",
+      "Answer calls and chats in Indian languages, capture leads and book appointments with Bolega India. Request a 7-day free trial for your business.",
   },
   "/pricing": {
     title: "AI Receptionist Plans & Pricing | Bolega India",
@@ -29,9 +29,9 @@ export const PUBLIC_PAGES = {
       "Compare Bolega India plans for AI call minutes, agents and concurrent calls. View India and international pricing, setup fees and business features.",
   },
   "/request-access": {
-    title: "Request a 14-Day Free Trial | Bolega India",
+    title: "Request a 7-Day Free Trial | Bolega India",
     description:
-      "Request a 14-day free trial of Bolega India for your business. Our team reviews your request; your trial begins after email verification. No card required.",
+      "Request a 7-day free trial of Bolega India for your business. Our team reviews your request; your trial begins after email verification. No card required.",
   },
   "/privacy": {
     title: "Privacy Policy | Bolega India",
@@ -170,7 +170,7 @@ export function pageSeo(
                 "@type": "Offer",
                 priceCurrency: "INR",
                 price: "0",
-                description: "14-Day Free Trial Available"
+                description: "7-Day Free Trial Available"
               }
             },
             {

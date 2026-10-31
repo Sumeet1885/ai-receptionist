@@ -3,13 +3,8 @@ import { BrandLogo } from '../../ui/brand-logo';
 import { AppLink } from './AppLink';
 import { FolkNavBorder } from '../../layout/FolkNavBorder';
 import { publicTexture } from '../../../lib/publicTexture';
+import { landingNavigation as sections } from './landingNavigation';
 
-const sections = [
-  { id: 'product-persona', label: 'Product' },
-  { id: 'workflow', label: 'How it works' },
-  { id: 'use-cases', label: 'Use cases' },
-  { id: 'questions', label: 'FAQs' },
-];
 
 interface LandingNavProps {
   navigate: (path: string) => void;
@@ -33,6 +28,17 @@ export function LandingNav({ navigate, signedIn, userMenu }: LandingNavProps) {
       const scrollable = doc.scrollHeight - window.innerHeight;
       setScrolled(window.scrollY > 25);
       setProgress(scrollable > 0 ? (100 * window.scrollY) / scrollable : 0);
+      // Select the last section whose top has crossed the navigation edge.
+      // This also keeps a group active through long sections and their internal content.
+      const edge = (document.querySelector('.bi-landing .nav')?.getBoundingClientRect().height || 82) + 32;
+      let nextActive: string | null = null;
+      sections.forEach(group => group.sections.forEach(id => {
+        const section = document.getElementById(id);
+        if (section && section.getBoundingClientRect().top <= edge) nextActive = group.id;
+      }));
+      const startSection = document.getElementById('get-started');
+      if (startSection && startSection.getBoundingClientRect().top <= edge) nextActive = null;
+      setActive(nextActive);
     };
     const onScroll = () => {
       if (!frame) frame = requestAnimationFrame(update);
@@ -40,24 +46,18 @@ export function LandingNav({ navigate, signedIn, userMenu }: LandingNavProps) {
     update();
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll);
+    window.addEventListener('hashchange', onScroll);
+    const observer = new ResizeObserver(onScroll);
+    if (document.querySelector('.bi-landing main')) observer.observe(document.querySelector('.bi-landing main')!);
     return () => {
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
+      window.removeEventListener('hashchange', onScroll);
+      observer.disconnect();
       if (frame) cancelAnimationFrame(frame);
     };
   }, []);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => entries.forEach((entry) => entry.isIntersecting && setActive(entry.target.id)),
-      { rootMargin: '-20% 0px -50% 0px' },
-    );
-    sections.forEach(({ id }) => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    });
-    return () => observer.disconnect();
-  }, []);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -81,7 +81,7 @@ export function LandingNav({ navigate, signedIn, userMenu }: LandingNavProps) {
 
   const primary = signedIn
     ? { to: '/dashboard', label: 'Open dashboard ↗' }
-    : { to: '/request-access', label: '14-day free trial' };
+    : { to: '/request-access', label: '7-day free trial' };
   const secondary = signedIn ? { to: '/dashboard', label: 'Dashboard' } : { to: '/auth?mode=signin', label: 'Sign in' };
 
   return (
@@ -89,16 +89,16 @@ export function LandingNav({ navigate, signedIn, userMenu }: LandingNavProps) {
       <div className="progress" aria-hidden="true" style={{ width: `${progress}%` }} />
       <header style={{ ...publicTexture('leaf'), backgroundColor: 'var(--color-background)' }} className={`nav${scrolled ? ' scrolled' : ''}`}>
         <FolkNavBorder />
-        <a className="brand" href="#" aria-label="Bolega India home">
+        <a className="brand" href="#hero" aria-label="Bolega India home">
           <BrandLogo bare />
         </a>
         <nav className="nav-center" aria-label="Main navigation">
           {sections.map(({ id, label }) => (
-            <a key={id} href={`#${id}`} className={active === id ? 'active' : undefined}>
+            <a key={id} href={`#${id}`} className={active === id ? 'active' : undefined} aria-current={active === id ? 'location' : undefined}>
               {label}
             </a>
           ))}
-          <AppLink to="/pricing" navigate={navigate}>
+          <AppLink className="nav-pricing-highlight" to="/pricing" navigate={navigate}>
             Pricing
           </AppLink>
         </nav>
@@ -124,11 +124,11 @@ export function LandingNav({ navigate, signedIn, userMenu }: LandingNavProps) {
       </header>
       <nav ref={menuRef} id="mobile-menu" className="mobile-menu" aria-label="Mobile navigation" hidden={!menuOpen}>
         {sections.map(({ id, label }, i) => (
-          <a key={id} href={`#${id}`} onClick={() => setMenuOpen(false)}>
+          <a key={id} href={`#${id}`} aria-current={active === id ? 'location' : undefined} onClick={() => setMenuOpen(false)}>
             {label} <span>{String(i + 1).padStart(2, '0')}</span>
           </a>
         ))}
-        <AppLink to="/pricing" navigate={navigate} onClick={() => setMenuOpen(false)}>
+        <AppLink className="nav-pricing-highlight" to="/pricing" navigate={navigate} onClick={() => setMenuOpen(false)}>
           Pricing ↗
         </AppLink>
         <AppLink to={secondary.to} navigate={navigate} onClick={() => setMenuOpen(false)}>
