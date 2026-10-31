@@ -123,7 +123,7 @@ export const Header: React.FC<HeaderProps> = ({
             Sign in
           </Button>
         )}
-        {!user && actions.getStarted && <Button size="sm" className="px-2 text-xs 2xl:hidden" onClick={() => navigate('/request-access')}>14-day free trial</Button>}
+        {!user && actions.getStarted && <Button size="sm" className="px-2 text-xs 2xl:hidden" onClick={() => navigate('/request-access')}>7-day free trial</Button>}
         {user ? (
           <UserMenu email={user.email} navigate={navigate} signOut={() => void handleSignOut()} />
         ) : (
@@ -135,7 +135,7 @@ export const Header: React.FC<HeaderProps> = ({
             )}
             {actions.getStarted && (
               <Button size="md" className="text-base" onClick={() => navigate('/request-access')}>
-                14-day free trial
+                7-day free trial
               </Button>
             )}
           </div>
@@ -213,7 +213,7 @@ export const Header: React.FC<HeaderProps> = ({
                   onClick={() => go('/request-access')}
                   className="w-full rounded-small bg-text px-4 py-3 text-left text-sm font-semibold text-primary-foreground transition hover:bg-primary"
                 >
-                  14-day free trial
+                  7-day free trial
                 </button>
               )}
             </>

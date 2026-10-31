@@ -5,7 +5,7 @@ ALTER TABLE public.plans ADD CONSTRAINT plans_trial_duration CHECK (
   OR (NOT is_trial AND trial_days IS NULL)
 );
 INSERT INTO public.plans(slug,name,tagline,sort_order,is_trial,trial_days,monthly_minutes,max_agents,max_concurrent_calls)
-VALUES('trial-period','Trial Period','Private trial assigned by the support team',0,true,14,100,1,1)
+VALUES('trial-period','Trial Period','Private trial assigned by the support team',0,true,7,100,1,1)
 ON CONFLICT(slug) DO NOTHING;
 
 ALTER TABLE public.customer_accounts ADD COLUMN trial_days integer CHECK(trial_days BETWEEN 1 AND 365);

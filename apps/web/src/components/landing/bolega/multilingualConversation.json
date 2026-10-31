@@ -1,0 +1,174 @@
+{
+  "id": "across-india",
+  "title": "Many languages. The same understanding.",
+  "topic": "Across India",
+  "agentGender": "Female",
+  "customerGender": "Male",
+  "languages": "Tamil · Telugu · Bengali · Kannada · Malayalam · Gujarati · Punjabi · Odia · Urdu",
+  "outcome": "Nine short appointment enquiries. The AI replies in the customer's language.",
+  "lines": [
+    {
+      "speaker": "Customer",
+      "language": "Tamil",
+      "lang": "ta",
+      "text": "வணக்கம், நாளைக்கு நேரம் கிடைக்குமா?",
+      "translation": "Hello, is there a slot available tomorrow?",
+      "start": 0,
+      "end": 3
+    },
+    {
+      "speaker": "Agent",
+      "language": "Tamil",
+      "lang": "ta",
+      "text": "வணக்கம்! உங்களுக்கு காலை நேரம் வசதியா, மாலை நேரம் வசதியா?",
+      "translation": "Hello! Would morning or evening work better for you?",
+      "start": 3,
+      "end": 8.08
+    },
+    {
+      "speaker": "Customer",
+      "language": "Telugu",
+      "lang": "te",
+      "text": "నమస్కారం, రేపు అపాయింట్‌మెంట్ దొరుకుతుందా?",
+      "translation": "Hello, can I get an appointment tomorrow?",
+      "start": 8.08,
+      "end": 12.440000000000001
+    },
+    {
+      "speaker": "Agent",
+      "language": "Telugu",
+      "lang": "te",
+      "text": "తప్పకుండా! మీకు ఉదయం కావాలా, సాయంత్రం కావాలా?",
+      "translation": "Of course! Would you prefer morning or evening?",
+      "start": 12.440000000000001,
+      "end": 16.64
+    },
+    {
+      "speaker": "Customer",
+      "language": "Bengali",
+      "lang": "bn",
+      "text": "নমস্কার, কাল কি সময় পাওয়া যাবে?",
+      "translation": "Hello, is there any availability tomorrow?",
+      "start": 16.64,
+      "end": 20.080000000000002
+    },
+    {
+      "speaker": "Agent",
+      "language": "Bengali",
+      "lang": "bn",
+      "text": "নিশ্চয়ই! আপনার সকালে সুবিধা হবে, না বিকেলে?",
+      "translation": "Certainly! Would morning or afternoon suit you?",
+      "start": 20.080000000000002,
+      "end": 24.480000000000004
+    },
+    {
+      "speaker": "Customer",
+      "language": "Kannada",
+      "lang": "kn",
+      "text": "ನಮಸ್ಕಾರ, ನಾಳೆ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ಸಿಗುತ್ತದೆಯಾ?",
+      "translation": "Hello, is an appointment available tomorrow?",
+      "start": 24.480000000000004,
+      "end": 27.960000000000004
+    },
+    {
+      "speaker": "Agent",
+      "language": "Kannada",
+      "lang": "kn",
+      "text": "ಖಂಡಿತ! ನಿಮಗೆ ಬೆಳಿಗ್ಗೆ ಅನುಕೂಲವೇ, ಸಂಜೆ ಅನುಕೂಲವೇ?",
+      "translation": "Certainly! Is morning or evening convenient for you?",
+      "start": 27.960000000000004,
+      "end": 32.64
+    },
+    {
+      "speaker": "Customer",
+      "language": "Malayalam",
+      "lang": "ml",
+      "text": "നമസ്കാരം, നാളെ സമയം കിട്ടുമോ?",
+      "translation": "Hello, is there a slot tomorrow?",
+      "start": 32.64,
+      "end": 35.76
+    },
+    {
+      "speaker": "Agent",
+      "language": "Malayalam",
+      "lang": "ml",
+      "text": "തീർച്ചയായും! നിങ്ങൾക്ക് രാവിലെയാണോ വൈകുന്നേരമാണോ സൗകര്യം?",
+      "translation": "Of course! Would morning or evening be convenient?",
+      "start": 35.76,
+      "end": 39.879999999999995
+    },
+    {
+      "speaker": "Customer",
+      "language": "Gujarati",
+      "lang": "gu",
+      "text": "નમસ્તે, કાલે એપોઇન્ટમેન્ટ મળી શકે?",
+      "translation": "Hello, can I get an appointment tomorrow?",
+      "start": 39.879999999999995,
+      "end": 42.99999999999999
+    },
+    {
+      "speaker": "Agent",
+      "language": "Gujarati",
+      "lang": "gu",
+      "text": "ચોક્કસ! તમને સવારે ફાવશે કે સાંજે?",
+      "translation": "Certainly! Would morning or evening suit you?",
+      "start": 42.99999999999999,
+      "end": 46.83999999999999
+    },
+    {
+      "speaker": "Customer",
+      "language": "Punjabi",
+      "lang": "pa",
+      "text": "ਸਤ ਸ੍ਰੀ ਅਕਾਲ, ਕੱਲ੍ਹ ਲਈ ਸਮਾਂ ਮਿਲ ਸਕਦਾ ਹੈ?",
+      "translation": "Hello, can I get a time for tomorrow?",
+      "start": 46.83999999999999,
+      "end": 50.11999999999999
+    },
+    {
+      "speaker": "Agent",
+      "language": "Punjabi",
+      "lang": "pa",
+      "text": "ਜੀ ਬਿਲਕੁਲ! ਤੁਹਾਨੂੰ ਸਵੇਰੇ ਠੀਕ ਰਹੇਗਾ ਜਾਂ ਸ਼ਾਮ ਨੂੰ?",
+      "translation": "Yes, of course! Would morning or evening work for you?",
+      "start": 50.11999999999999,
+      "end": 54.75999999999999
+    },
+    {
+      "speaker": "Customer",
+      "language": "Odia",
+      "lang": "or",
+      "text": "ନମସ୍କାର, କାଲି ପାଇଁ ସମୟ ମିଳିପାରିବ କି?",
+      "translation": "Hello, could I get a slot for tomorrow?",
+      "start": 54.75999999999999,
+      "end": 58.39999999999999
+    },
+    {
+      "speaker": "Agent",
+      "language": "Odia",
+      "lang": "or",
+      "text": "ନିଶ୍ଚୟ! ଆପଣଙ୍କୁ ସକାଳେ ସୁବିଧା ହେବ ନା ସନ୍ଧ୍ୟାରେ?",
+      "translation": "Certainly! Would morning or evening be convenient?",
+      "start": 58.39999999999999,
+      "end": 62.67999999999999
+    },
+    {
+      "speaker": "Customer",
+      "language": "Urdu",
+      "lang": "ur",
+      "text": "السلام علیکم، کیا کل کے لیے وقت مل سکتا ہے؟",
+      "translation": "Hello, could I get an appointment for tomorrow?",
+      "start": 62.67999999999999,
+      "end": 67.11999999999999
+    },
+    {
+      "speaker": "Agent",
+      "language": "Urdu",
+      "lang": "ur",
+      "text": "وعلیکم السلام! آپ کو صبح مناسب رہے گی یا شام؟",
+      "translation": "Hello! Would morning or evening suit you?",
+      "start": 67.11999999999999,
+      "end": 72.16
+    }
+  ],
+  "duration": 72.16
+}
