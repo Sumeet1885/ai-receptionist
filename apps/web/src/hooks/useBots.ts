@@ -64,7 +64,10 @@ export function useBots() {
     widget_config?: WidgetConfig;
     phone_number?: string;
   }) => {
-    const insertPayload: any = { ...payload };
+    const insertPayload: any = {
+      ...payload,
+      is_active: true,
+    };
     if (insertPayload.phone_number) {
       insertPayload.dograh_phone_number = insertPayload.phone_number;
       delete insertPayload.phone_number;

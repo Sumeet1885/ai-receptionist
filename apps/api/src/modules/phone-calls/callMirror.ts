@@ -388,22 +388,29 @@ async function ingestRun(
     const isConfirmed = existingLead?.appointment_status === 'Confirmed';
 
     if (isConfirmed && existingLead) {
-      await supabase
-        .from('leads')
-        .upsert({
-          bot_id: bot.id,
-          session_id: sessionId,
-          name: contactName?.trim() || existingLead.name || 'Anonymous',
-          phone: counterpartyNumber || 'Not Provided',
-          email: callerEmail || null,
-          requirement: isOutbound ? 'Outbound Call' : 'General Inquiry',
-          budget: 'N/A',
-          sentiment: 'Positive',
-          lead_score: 'HOT',
-          summary: existingLead.summary,
-          appointment_status: 'Confirmed',
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'session_id' });
+      const mirrorLeadPayload: Record<string, any> = {
+        bot_id: bot.id,
+        session_id: sessionId,
+        name: contactName?.trim() || existingLead.name || 'Anonymous',
+        phone: counterpartyNumber || 'Not Provided',
+        email: callerEmail || null,
+        requirement: isOutbound ? 'Outbound Call' : 'General Inquiry',
+        budget: 'N/A',
+        sentiment: 'Positive',
+        lead_score: 'HOT',
+        summary: existingLead.summary,
+        appointment_status: 'Confirmed',
+        updated_at: new Date().toISOString()
+      };
+      if (bot.owner_id) {
+        mirrorLeadPayload.customer_id = bot.owner_id;
+      }
+
+      let { error: upsertErr } = await supabase.from('leads').upsert(mirrorLeadPayload, { onConflict: 'session_id' });
+      if (upsertErr && /customer_id/i.test(upsertErr.message)) {
+        delete mirrorLeadPayload.customer_id;
+        await supabase.from('leads').upsert(mirrorLeadPayload, { onConflict: 'session_id' });
+      }
     } else {
       console.log(`[phone-calls] Call had no conversation / customer silent on session ${sessionId}. Stored in phone_calls history, skipping leads queue.`);
     }

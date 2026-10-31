@@ -267,7 +267,7 @@ export async function analyzeLead(
     return;
   }
 
-  await supabase.from('leads').upsert({
+  const leadPayload: Record<string, any> = {
     bot_id:             botId,
     session_id:         sessionId,
     name:               name,
@@ -280,7 +280,22 @@ export async function analyzeLead(
     summary:            lead.summary || '',
     appointment_status: finalAppointmentStatus,
     updated_at:         new Date().toISOString()
-  }, { onConflict: 'session_id' });
+  };
+
+  try {
+    const { data: botOwner } = await supabase.from('bots').select('owner_id').eq('id', botId).maybeSingle();
+    if (botOwner?.owner_id) {
+      leadPayload.customer_id = botOwner.owner_id;
+    }
+  } catch {
+    // Non-blocking
+  }
+
+  let { error: upsertErr } = await supabase.from('leads').upsert(leadPayload, { onConflict: 'session_id' });
+  if (upsertErr && /customer_id/i.test(upsertErr.message)) {
+    delete leadPayload.customer_id;
+    await supabase.from('leads').upsert(leadPayload, { onConflict: 'session_id' });
+  }
 
   // Auto-create confirmed appointment record if caller agreed to site visit
   if (
