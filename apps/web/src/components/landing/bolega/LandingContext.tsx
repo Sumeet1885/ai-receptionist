@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 
-export type LandingMedia = 'hero-audio' | 'workflow-video';
+export type LandingMedia = 'hero-audio' | 'workflow-video' | 'context-video' | 'context-audio' | 'conversation-reel' | 'language-greeting';
 
 interface HeroEnergy {
   speaking: boolean;

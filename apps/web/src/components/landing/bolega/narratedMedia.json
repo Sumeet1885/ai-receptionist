@@ -1,0 +1,118 @@
+[
+  {
+    "id": "how-it-works",
+    "title": "How BolegaIndia.ai works",
+    "agentVoice": "en-in-advisor-3",
+    "customerVoice": "en-in-advisor-3",
+    "lines": [
+      {
+        "speaker": "Agent",
+        "chapter": "Your persona",
+        "heading": "Your business. Your AI persona.",
+        "text": "Welcome to Bolega India dot A I. Start by creating a business persona. Add your offering, language, tone, and the questions your assistant should ask.",
+        "start": 0,
+        "end": 10.28
+      },
+      {
+        "speaker": "Agent",
+        "chapter": "Your contacts",
+        "heading": "Give every conversation a starting point.",
+        "text": "Next, upload your C S V or Excel contact list to a campaign. Your contacts and your business context come together in one place.",
+        "start": 10.28,
+        "end": 19.439999999999998
+      },
+      {
+        "speaker": "Agent",
+        "chapter": "Start calling",
+        "heading": "Ready when your team is.",
+        "text": "Connect a phone line to your agent. When you are ready, start the campaign. Calls are paced within hourly limits.",
+        "start": 19.439999999999998,
+        "end": 26.24
+      },
+      {
+        "speaker": "Agent",
+        "chapter": "The conversation",
+        "heading": "Ask. Listen. Understand.",
+        "text": "Your A I assistant speaks with customers, asks your business questions, and gathers their requirements and priorities in the conversation.",
+        "start": 26.24,
+        "end": 34.16
+      },
+      {
+        "speaker": "Agent",
+        "chapter": "Your follow-up",
+        "heading": "Bring the context to your next hello.",
+        "text": "After the conversation, review the lead record and transcript. Your team can understand what matters and follow up with the right questions. That is Bolega India dot A I.",
+        "start": 34.16,
+        "end": 43.559999999999995
+      }
+    ],
+    "duration": 43.559999999999995,
+    "assetName": "how-it-works-natural",
+    "voiceLocale": "en-IN",
+    "voiceAccent": "Indian English",
+    "voiceProvider": "Gemini expressive speech"
+  },
+  {
+    "id": "retail-conversation",
+    "title": "A workspace that works for you",
+    "agentVoice": "Kore",
+    "customerVoice": "Puck",
+    "lines": [
+      {
+        "speaker": "Agent",
+        "chapter": "The enquiry",
+        "heading": "Start with the customer’s need.",
+        "text": "नमस्ते! वर्कस्पेस स्टोर से बोल रही हूँ। आपने स्टैंडिंग डेस्क के बारे में पूछा था। किस तरह का डेस्क चाहिए?",
+        "translation": "The assistant asks what kind of standing desk the customer needs.",
+        "start": 0,
+        "end": 7.22
+      },
+      {
+        "speaker": "Customer",
+        "chapter": "The requirement",
+        "heading": "A small room. A clear requirement.",
+        "text": "घर से काम करता हूँ। कमरा छोटा है, तो डेस्क कॉम्पैक्ट हो और ऊँचाई एडजस्ट हो सके।",
+        "translation": "The customer works from home and needs a compact, height-adjustable desk.",
+        "start": 7.22,
+        "end": 13.76
+      },
+      {
+        "speaker": "Agent",
+        "chapter": "The priorities",
+        "heading": "Find the details that matter.",
+        "text": "ज़रूर। कोई बजट या साइज़ ध्यान में है? और डिलीवरी किस शहर में चाहिए?",
+        "translation": "The assistant asks about budget, size, and delivery location.",
+        "start": 13.76,
+        "end": 19.82
+      },
+      {
+        "speaker": "Customer",
+        "chapter": "The context",
+        "heading": "Useful context for the sales team.",
+        "text": "लगभग बीस हज़ार तक। चार फ़ीट का डेस्क ठीक रहेगा। डिलीवरी पुणे में चाहिए।",
+        "translation": "The customer wants a four-foot desk, around ₹20,000, delivered in Pune.",
+        "start": 19.82,
+        "end": 25.210975
+      },
+      {
+        "speaker": "Agent",
+        "chapter": "The next step",
+        "heading": "A helpful follow-up starts here.",
+        "text": "ठीक है। मैं आपकी ज़रूरतें टीम को देती हूँ। वे मैचिंग मॉडल, कीमत और डिलीवरी की जानकारी साझा कर देंगे।",
+        "translation": "The assistant will pass these requirements to the team for relevant options.",
+        "start": 25.210975,
+        "end": 32.36195
+      },
+      {
+        "speaker": "Customer",
+        "chapter": "The handoff",
+        "heading": "Your team picks up with context.",
+        "text": "हाँ, बढ़िया। पहले मॉडल की तस्वीरें और डिटेल्स भेज दीजिए। फिर बात कर लेते हैं।",
+        "translation": "The customer requests product photos and details before the next conversation.",
+        "start": 32.36195,
+        "end": 37.912925
+      }
+    ],
+    "duration": 37.912925
+  }
+]

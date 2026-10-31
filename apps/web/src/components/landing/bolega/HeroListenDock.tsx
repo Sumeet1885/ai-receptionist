@@ -16,7 +16,7 @@ interface HeroListenDockProps {
   onSpeakingChange: (speaking: boolean) => void;
 }
 
-/** Central player for the recorded conversation (two takes, one continuous file). */
+/** Central player for the recorded conversation (eleven clips, one continuous file). */
 export function HeroListenDock({ stageRef, onSpeakingChange }: HeroListenDockProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { claimPlayback, registerMedia, playWorkflowVideo, heroEnergy } = useLanding();
@@ -163,7 +163,7 @@ export function HeroListenDock({ stageRef, onSpeakingChange }: HeroListenDockPro
     <div className={`hero-action hero-cta-bottom hero-listen-dock${playing ? ' is-playing' : ''}`}>
       <div className="listen-top">
         <div>
-          <span className="listen-eyebrow">TWO RECORDINGS. ONE CONTINUOUS LISTEN.</span>
+          <span className="listen-eyebrow">ONE CONVERSATION. THREE LANGUAGES.</span>
           <strong>Hear a conversation.</strong>
         </div>
       </div>

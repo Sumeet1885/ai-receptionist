@@ -1,0 +1,262 @@
+{
+  "id": "wedding",
+  "title": "Paras & Punam. One wedding, three languages.",
+  "topic": "Wedding hall",
+  "agentGender": "Female",
+  "customerGender": "Male + female",
+  "languages": "Marathi · Hindi · English",
+  "outcome": "Date, guests, menu, décor, accessibility, budget and a venue-visit request.",
+  "duration": 247.56,
+  "chapters": [
+    {
+      "id": "first-hello",
+      "label": "Paras · Marathi",
+      "start": 0
+    },
+    {
+      "id": "punam-joins",
+      "label": "Punam joins · Hindi",
+      "start": 62.32
+    },
+    {
+      "id": "paras-english",
+      "label": "Paras switches · English",
+      "start": 126.63999999999999
+    },
+    {
+      "id": "shared-plan",
+      "label": "A shared plan · Hindi",
+      "start": 203.92
+    }
+  ],
+  "lines": [
+    {
+      "speaker": "Agent",
+      "lang": "mr",
+      "language": "Marathi",
+      "text": "नमस्कार! सान्वी सेलिब्रेशन्सची एआय इव्हेंट असिस्टंट बोलतेय. तुमच्या लग्नाच्या हॉलसाठी चौकशी केली होती ना?",
+      "translation": "Hello! I'm the AI event assistant at Saanvi Celebrations. You enquired about a wedding hall?",
+      "start": 0,
+      "end": 7.68
+    },
+    {
+      "speaker": "Paras",
+      "lang": "mr",
+      "language": "Marathi",
+      "text": "हो, मी पारस बोलतोय. माझं आणि पूनमचं लग्न आहे. पुण्यात एकवीस फेब्रुवारीला हॉल पाहतोय. साधारण साडेतीनशे पाहुणे असतील.",
+      "translation": "Yes, I'm Paras. Punam and I are getting married. We're looking for a hall in Pune on 21 February, for about 350 guests.",
+      "start": 7.68,
+      "end": 16.89
+    },
+    {
+      "speaker": "Agent",
+      "lang": "mr",
+      "language": "Marathi",
+      "text": "अभिनंदन पारस! एकवीस फेब्रुवारी, साडेतीनशे पाहुणे. लग्नाचा मुहूर्त आणि रिसेप्शन एकाच ठिकाणी हवंय का?",
+      "translation": "Congratulations, Paras! 21 February, 350 guests. Would you like the ceremony and reception at the same venue?",
+      "start": 16.89,
+      "end": 24.98
+    },
+    {
+      "speaker": "Paras",
+      "lang": "mr",
+      "language": "Marathi",
+      "text": "हो. मुहूर्त साडेबाराचा आहे, आणि संध्याकाळी सहापासून रिसेप्शन. आमचं बजेट साधारण साडेपाच लाखांपर्यंत आहे. त्यात जेवण आणि सजावट हवी.",
+      "translation": "Yes. The ceremony is at 12:30, with a reception from six. Our budget is around five and a half lakh, including food and décor.",
+      "start": 24.98,
+      "end": 35.68
+    },
+    {
+      "speaker": "Agent",
+      "lang": "mr",
+      "language": "Marathi",
+      "text": "समजलं. अंतिम उपलब्धता आणि दर आमची टीम तपासेल. जेवण पूर्ण शाकाहारी ठेवायचं का? दोन्ही कुटुंबांच्या काही खास आवडी आहेत?",
+      "translation": "Understood. Our team will check availability and final pricing. Would you like an entirely vegetarian menu? Any family preferences?",
+      "start": 35.68,
+      "end": 44.68
+    },
+    {
+      "speaker": "Paras",
+      "lang": "mr",
+      "language": "Marathi",
+      "text": "पूर्ण शाकाहारी. आमच्याकडे पुरणपोळी हवीच! पूनमचं कुटुंब उत्तर भारतातलं आहे, त्यामुळे दोन्हीकडचे पदार्थ हवेत. थांबा, तीही इथेच आहे.",
+      "translation": "Entirely vegetarian. Puran poli is a must for my family! Punam's family is from North India, so we'd like dishes from both regions. She's here too.",
+      "start": 44.68,
+      "end": 54
+    },
+    {
+      "speaker": "Agent",
+      "lang": "mr",
+      "language": "Marathi",
+      "text": "छान! महाराष्ट्रीयन आणि उत्तर भारतीय मेनूची नोंद करते. आणि सजावटीबद्दल सांगायचं तर, आपल्या स्टेजसाठी आपण—",
+      "translation": "Lovely! I'll note a Maharashtrian and North Indian menu. And for the décor, for your stage we could—",
+      "start": 54,
+      "end": 62.32
+    },
+    {
+      "speaker": "Punam",
+      "lang": "hi",
+      "language": "Hindi",
+      "text": "सॉरी, एक सेकंड! मैं पूनम बोल रही हूँ। डेकोरेशन से पहले खाने की एक बात पूछनी थी। कुछ मेहमान जैन खाना खाते हैं। उनके लिए अलग व्यवस्था हो सकती है?",
+      "translation": "Sorry, one second! I'm Punam. Before décor, a question about the food: some guests need Jain meals. Could those be arranged separately?",
+      "moment": "Punam interrupts · AI stops and listens",
+      "start": 62.32,
+      "end": 74.32
+    },
+    {
+      "speaker": "Agent",
+      "lang": "hi",
+      "language": "Hindi",
+      "text": "जी पूनम, बताइए। मैं सुन रही हूँ। जैन मेन्यू और अलग सर्विंग की ज़रूरत नोट कर लेती हूँ। बिना प्याज़ और लहसुन वाला खाना चाहिए, सही समझी?",
+      "translation": "Of course, Punam. I'm listening. I'll note a Jain menu and separate serving. Food without onion and garlic—is that right?",
+      "start": 74.32,
+      "end": 84.32
+    },
+    {
+      "speaker": "Punam",
+      "lang": "hi",
+      "language": "Hindi",
+      "text": "हाँ, करीब पच्चीस लोगों के लिए। और मेरी मम्मी को मूँगफली से एलर्जी है। हमें सजावट भी हल्की चाहिए, क्रीम और गेंदे के फूलों वाली, बहुत चमकीली नहीं।",
+      "translation": "Yes, for around 25 people. My mother is allergic to peanuts. We'd also like understated cream and marigold décor, nothing too flashy.",
+      "start": 84.32,
+      "end": 95.82
+    },
+    {
+      "speaker": "Agent",
+      "lang": "hi",
+      "language": "Hindi",
+      "text": "बिल्कुल। पच्चीस जैन मील, मूँगफली की एलर्जी, और क्रीम के साथ गेंदे के फूल। एलर्जी और किचन में अलग तैयारी की बात शेफ से पक्की करवाएँगे; अभी उसकी गारंटी नहीं दूँगी।",
+      "translation": "Noted: 25 Jain meals, a peanut allergy, and cream with marigolds. We'll have the chef confirm preparation and allergy precautions; I won't guarantee that before checking.",
+      "start": 95.82,
+      "end": 107.32
+    },
+    {
+      "speaker": "Punam",
+      "lang": "hi",
+      "language": "Hindi",
+      "text": "ठीक है। मेरे नाना व्हीलचेयर इस्तेमाल करते हैं। हॉल में रैंप और पास में वॉशरूम होगा? बाहर से आने वालों के लिए छह कमरे भी चाहिए।",
+      "translation": "Thank you. My grandfather uses a wheelchair. Is there a ramp and a nearby washroom? We also need six rooms for outstation guests.",
+      "start": 107.32,
+      "end": 117.32
+    },
+    {
+      "speaker": "Agent",
+      "lang": "hi",
+      "language": "Hindi",
+      "text": "ये दोनों बातें ज़रूरी हैं। रैंप, व्हीलचेयर के लिए रास्ता, सुलभ वॉशरूम और छह कमरों की जानकारी लिखित में मँगवाती हूँ। आपकी विज़िट में ये सब पहले देखेंगे।",
+      "translation": "Both are important. I'll request written details of the ramp, wheelchair access, accessible washroom and six rooms. Those should be checked first during your visit.",
+      "start": 117.32,
+      "end": 126.63999999999999
+    },
+    {
+      "speaker": "Paras",
+      "lang": "en-IN",
+      "language": "English",
+      "text": "Can I jump in for a second? What exactly is included in the package? We will need microphones, a sound system, and backup power. Is photography included too?",
+      "translation": "Paras switches to English to clarify the package and technical setup.",
+      "moment": "Paras switches to English · AI follows",
+      "start": 126.63999999999999,
+      "end": 137.73
+    },
+    {
+      "speaker": "Agent",
+      "lang": "en-IN",
+      "language": "English",
+      "text": "Of course, Paras. I'll ask for an itemised quote covering the hall, food, décor, microphones, sound and backup power. Photography should be quoted separately unless the venue confirms it is included.",
+      "translation": "The AI answers Paras in English and requests an itemised quote, including a separate photography check.",
+      "start": 137.73,
+      "end": 150.32999999999998
+    },
+    {
+      "speaker": "Paras",
+      "lang": "en-IN",
+      "language": "English",
+      "text": "Perfect. Please show taxes and extra charges clearly. And can you check parking for about eighty cars? A few guests will arrive by bus.",
+      "translation": "Paras asks for transparent taxes and charges, parking for 80 cars, and bus access.",
+      "start": 150.32999999999998,
+      "end": 159.54
+    },
+    {
+      "speaker": "Agent",
+      "lang": "en-IN",
+      "language": "English",
+      "text": "Absolutely. Taxes, overtime and any vendor charges should be clear in the written quote. I'll also flag eighty cars and bus access for the venue team to verify.",
+      "translation": "The AI confirms the quote and parking requirements need written verification.",
+      "start": 159.54,
+      "end": 168.94
+    },
+    {
+      "speaker": "Paras",
+      "lang": "mr",
+      "language": "Marathi",
+      "text": "छान. आणि डीजे किती वाजेपर्यंत ठेवता येईल? बुकिंगसाठी किती पैसे आधी द्यावे लागतील, आणि तारीख बदलली तर काय?",
+      "translation": "Great. How late can the DJ play? What advance is required, and what happens if the date changes?",
+      "moment": "Back to Marathi · Same conversation",
+      "start": 168.94,
+      "end": 177.13
+    },
+    {
+      "speaker": "Agent",
+      "lang": "mr",
+      "language": "Marathi",
+      "text": "डीजेची वेळ, अॅडव्हान्स, तारीख बदलणं आणि रद्द करण्याच्या अटी हॉलनुसार बदलतात. त्यांची लेखी माहिती आधी घेऊ. तुम्ही मान्य केल्याशिवाय बुकिंग निश्चित झालं असं समजणार नाही.",
+      "translation": "DJ timings, advance payments, date changes and cancellation terms vary by venue. We'll get them in writing first. An enquiry is not a confirmed booking.",
+      "start": 177.13,
+      "end": 188.23
+    },
+    {
+      "speaker": "Paras",
+      "lang": "mr",
+      "language": "Marathi",
+      "text": "बरोबर. मग रविवारी दुपारी चार वाजता हॉल पाहायला यायचं आहे. ह्याच नंबरवर सगळी माहिती पाठवण्याची विनंती करा. पूनम, अजून काही?",
+      "translation": "Right. We'd like to visit on Sunday at four. Please ask the team to send the information to this number. Punam, anything else?",
+      "start": 188.23,
+      "end": 197.13
+    },
+    {
+      "speaker": "Agent",
+      "lang": "mr",
+      "language": "Marathi",
+      "text": "रविवारी चारच्या पाहणीची विनंती नोंदवते; टीम वेळ पक्की करेल. पूनमजी, आपकी कोई और प्राथमिकता है?",
+      "translation": "I'll record the Sunday four o'clock visit request; the team will confirm it. Punam, do you have any other priorities?",
+      "start": 197.13,
+      "end": 203.92
+    },
+    {
+      "speaker": "Punam",
+      "lang": "hi",
+      "language": "Hindi",
+      "text": "बस, दुल्हन के लिए एक अलग तैयार होने का कमरा चाहिए। और जो भी आपने नोट किया है, एक बार बता दीजिए, ताकि कुछ छूट न जाए।",
+      "translation": "Just a separate bridal dressing room. Could you quickly recap what you've noted, so we don't miss anything?",
+      "start": 203.92,
+      "end": 212.42
+    },
+    {
+      "speaker": "Agent",
+      "lang": "hi",
+      "language": "Hindi",
+      "text": "ज़रूर। इक्कीस फ़रवरी, साढ़े तीन सौ मेहमान, दोपहर की शादी और शाम का रिसेप्शन। बजट करीब साढ़े पाँच लाख। दोनों परिवारों का शाकाहारी मेन्यू, पच्चीस जैन मील और एलर्जी की जाँच।",
+      "translation": "Certainly: 21 February, 350 guests, an afternoon ceremony and evening reception. Around five and a half lakh, vegetarian dishes for both families, 25 Jain meals, and an allergy check.",
+      "start": 212.42,
+      "end": 226.42
+    },
+    {
+      "speaker": "Agent",
+      "lang": "hi",
+      "language": "Hindi",
+      "text": "क्रीम और गेंदे की सजावट, दुल्हन का कमरा, छह अतिथि कमरे, व्हीलचेयर की सुविधा, पार्किंग और साउंड की जानकारी। अब टीम उपलब्धता, पूरी कीमत और शर्तें जाँचकर आपसे संपर्क करेगी।",
+      "translation": "Cream and marigold décor, a bridal room, six guest rooms, wheelchair access, parking and sound details. The team will check availability, pricing and terms, then contact you.",
+      "start": 226.42,
+      "end": 240.42
+    },
+    {
+      "speaker": "Punam",
+      "lang": "hi",
+      "language": "Hindi",
+      "text": "बहुत अच्छा। आपने दोनों की बातें अपनी-अपनी भाषा में समझ लीं। धन्यवाद, अब विज़िट की पुष्टि का इंतज़ार रहेगा!",
+      "translation": "Wonderful. You understood both of us in our own languages. Thank you—we'll wait for the visit confirmation!",
+      "start": 240.42,
+      "end": 247.56
+    }
+  ]
+}

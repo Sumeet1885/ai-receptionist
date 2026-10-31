@@ -1,6 +1,9 @@
 import { Fragment } from 'react';
 import { Reveal } from './Reveal';
 import { sectionTexture } from './sectionTextures';
+import { ReceptionistPortrait } from './ProductVisuals';
+import { IndustryExplorer } from './IndustryExplorer';
+import { ConversationReels } from './ConversationReels';
 
 /** Decorative floating stickers. `aria-hidden` and `pointer-events: none` (in landing.css) keep them out of the way. */
 export function AmbientStickers() {
@@ -27,7 +30,7 @@ export function AmbientStickers() {
   );
 }
 
-const tickerItems = ['Your business persona.', 'Your contact list.', 'Calls on your schedule.', 'Leads. With transcripts.'];
+const tickerItems = ['Your business persona.', 'Your contact list.', 'Start your campaign.', 'Leads. With transcripts.'];
 
 export function Ticker() {
   return (
@@ -44,15 +47,32 @@ export function Ticker() {
   );
 }
 
+const brandValues = [
+  {
+    name: 'Familiarity', image: 'familiarity', title: 'A voice with your identity.',
+    text: 'Your language and tone give the conversation a consistent sense of who you are.',
+    alt: 'Indian boutique owner smiling during a phone conversation in her shop',
+  },
+  {
+    name: 'Relevance', image: 'relevance', title: 'Questions with a reason.',
+    text: 'Keep the conversation focused on what the customer needs and what your business can offer.',
+    alt: 'Business consultant listening to a customer on the phone while taking notes',
+  },
+  {
+    name: 'Purpose', image: 'purpose', title: 'More than a polite hello.',
+    text: 'Give your team a meaningful reason to continue the conversation.',
+    alt: 'Two business colleagues reviewing customer follow-up notes together on a laptop',
+  },
+];
+
 export function BrandValueSection() {
   return (
     <section style={sectionTexture('brand')} className="meaning-section brand-value-section" id="product-persona">
       <Reveal className="meaning-heading">
         <div>
-          <span className="eyebrow">04 / MORE THAN A CALL</span>
+          <span className="eyebrow">02 / MORE THAN A CALL</span>
           <h2>
-            A familiar voice.
-            <br />
+            A familiar voice.{' '}
             <em>A stronger first impression.</em>
           </h2>
         </div>
@@ -62,46 +82,48 @@ export function BrandValueSection() {
           in the way a conversation feels.
         </p>
       </Reveal>
-      <div className="brand-value-grid">
-        <Reveal as="article" className="brand-value-card">
-          <div className="brand-value-art voice-signature" aria-hidden="true">
-            {Array.from({ length: 7 }, (_, i) => (
-              <span key={i} className="voice-line" />
-            ))}
-            <i>Your business, speaking.</i>
-          </div>
-          <span className="eyebrow">FAMILIARITY</span>
-          <h3>A voice with your identity.</h3>
-          <p>Your language and tone give the conversation a consistent sense of who you are.</p>
-        </Reveal>
-        <Reveal as="article" className="brand-value-card">
-          <div className="brand-value-art attention-art" aria-hidden="true">
-            <div className="attention-circle">
-              <span>?</span>
+      <p className="brand-gallery-hint">Swipe to explore the three stories →</p>
+      <div className="brand-photo-gallery" role="region" aria-label="Familiarity, relevance and purpose stories" tabIndex={0}>
+        {brandValues.map(({ name, image, title, text, alt }, index) => (
+          <Reveal as="figure" className="brand-photo-story" key={name}>
+            <div className="brand-photo-media">
+              <img src={`/bolegaindia/images/brand-${image}.webp`}
+                srcSet={`/bolegaindia/images/brand-${image}-480.webp 480w, /bolegaindia/images/brand-${image}.webp 960w`}
+                sizes="(max-width: 700px) 88vw, (max-width: 1400px) 29vw, 390px"
+                width="960" height="1200" loading="lazy" decoding="async" alt={alt} />
+              <span className="brand-photo-number" aria-hidden="true">0{index + 1}</span>
             </div>
-            <i>A little understanding.</i>
-          </div>
-          <span className="eyebrow">RELEVANCE</span>
-          <h3>Questions with a reason.</h3>
-          <p>Keep the conversation focused on what the customer needs and what your business can offer.</p>
-        </Reveal>
-        <Reveal as="article" className="brand-value-card">
-          <div className="brand-value-art clarity-art" aria-hidden="true">
-            <span className="clarity-line faded" />
-            <span className="clarity-line faded" />
-            <span className="clarity-focus">
-              A clear next step <b>↗</b>
-            </span>
-            <i>A useful place to begin.</i>
-          </div>
-          <span className="eyebrow">PURPOSE</span>
-          <h3>More than a polite hello.</h3>
-          <p>Give your team a meaningful reason to continue the conversation.</p>
-        </Reveal>
+            <figcaption>
+              <span className="eyebrow">{name}</span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </figcaption>
+          </Reveal>
+        ))}
       </div>
       <div className="meaning-bottom">
         <span>Familiarity. Relevance. Purpose.</span>
         <a href="#use-cases">Find your kind of conversation ↗</a>
+      </div>
+    </section>
+  );
+}
+
+export function BusinessPersonaSection() {
+  return (
+    <section style={sectionTexture('contrast')} className="value-contrast-section" id="business-persona">
+      <div className="context-cinema">
+        <div className="context-cinema-copy">
+          <span className="eyebrow">03 / BUILT AROUND YOUR BUSINESS</span>
+          <h2>A human touch.<br /><em>A head start for your team.</em></h2>
+          <p>Your offering. Your language. Your questions. An AI persona that brings them together in every conversation.</p>
+          <a className="btn" href="#workflow">See how your persona works <span aria-hidden="true">↗</span></a>
+          <div className="cinema-tags"><span>Business context</span><span>Familiar language</span><span>Clear next steps</span></div>
+        </div>
+        <div className="context-cinema-image">
+          <ReceptionistPortrait variant="business" />
+          <span className="cinema-image-label">A familiar voice. A meaningful hello.</span>
+        </div>
       </div>
     </section>
   );
@@ -125,104 +147,11 @@ export function ContrastSection() {
             <br />A conversation helps you understand why.
           </p>
         </Reveal>
-        <Reveal className="contrast-stage">
-          <article className="before-context">
-            <span className="eyebrow">A CONTACT ON ITS OWN</span>
-            <div className="before-avatar" aria-hidden="true">
-              ?
-            </div>
-            <strong>A name. A number.</strong>
-            <div className="unclear-lines">
-              <span>What do they need?</span>
-              <span>What matters to them?</span>
-              <span>Where should we start?</span>
-            </div>
-            <small>Questions your team still needs to answer.</small>
-          </article>
-          <div className="contrast-bridge" aria-hidden="true">
-            <span>✦</span>
-            <i />
-            <i />
-            <i />
-          </div>
-          <article className="after-context">
-            <div className="context-head">
-              <span className="eyebrow">A CUSTOMER WITH CONTEXT</span>
-              <span className="context-signal">A useful starting point</span>
-            </div>
-            <div className="context-insight">
-              <span>NEED</span>
-              <strong>What the customer is looking for.</strong>
-            </div>
-            <div className="context-insight">
-              <span>PRIORITY</span>
-              <strong>What will help them decide.</strong>
-            </div>
-            <div className="context-insight">
-              <span>INTENT</span>
-              <strong>How they want to move forward.</strong>
-            </div>
-            <div className="context-foot">Your team follows up with something to say.</div>
-          </article>
-        </Reveal>
+        <ConversationReels />
       </div>
     </section>
   );
 }
-
-const industries = [
-  {
-    eyebrow: 'EDUCATION',
-    title: 'Find the next learner.',
-    text: 'Understand course interest, goals, and preferred enrolment timelines.',
-    outcome: 'Interest → Counselling follow-up',
-    artClass: 'education-art',
-    art: (
-      <div className="book-sheet">
-        ✦<i />
-        <i />
-        <i />
-      </div>
-    ),
-    float: 'Course interest ↗',
-  },
-  {
-    eyebrow: 'BUSINESS SERVICES',
-    title: 'Understand the brief.',
-    text: 'Ask about the business need, scope, priorities, and budget.',
-    outcome: 'Requirement → Team discussion',
-    artClass: 'services-art',
-    art: <div className="service-cog">✳</div>,
-    float: 'A need understood ✓',
-  },
-  {
-    eyebrow: 'RETAIL & COMMERCE',
-    title: 'Know what they’re looking for.',
-    text: 'Discover product interest, preferences, and purchase intent.',
-    outcome: 'Preference → Sales follow-up',
-    artClass: 'retail-art',
-    art: (
-      <div className="shopping-bag">
-        <span />✦
-      </div>
-    ),
-    float: 'Product enquiry ↗',
-  },
-  {
-    eyebrow: 'REAL ESTATE',
-    title: 'Find the right fit.',
-    text: 'Understand location, budget, configuration, and interest in a visit.',
-    outcome: 'Buyer need → Property discussion',
-    artClass: 'property-art',
-    art: (
-      <div className="house-shape">
-        <i />
-        <i />
-      </div>
-    ),
-    float: 'Visit interest ✓',
-  },
-];
 
 export function UseCasesSection() {
   return (
@@ -232,8 +161,7 @@ export function UseCasesSection() {
           <div>
             <span className="eyebrow">07 / DIFFERENT BUSINESSES. FAMILIAR NEEDS.</span>
             <h2>
-              Your industry.
-              <br />
+              Your industry.{' '}
               <em>Your kind of conversation.</em>
             </h2>
           </div>
@@ -243,20 +171,7 @@ export function UseCasesSection() {
             These are examples of how a persona can be shaped.
           </p>
         </Reveal>
-        <div className="industry-grid">
-          {industries.map((industry) => (
-            <Reveal as="article" key={industry.eyebrow} className="industry-card">
-              <div className={`industry-art ${industry.artClass}`} aria-hidden="true">
-                {industry.art}
-                <span className="industry-float">{industry.float}</span>
-              </div>
-              <span className="eyebrow">{industry.eyebrow}</span>
-              <h3>{industry.title}</h3>
-              <p>{industry.text}</p>
-              <div className="industry-outcome">{industry.outcome}</div>
-            </Reveal>
-          ))}
-        </div>
+        <IndustryExplorer />
       </div>
     </section>
   );

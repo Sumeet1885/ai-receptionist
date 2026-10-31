@@ -2642,6 +2642,10 @@ html.bi-landing-root {
   left: 12px;
   right: 12px;
   top: 78px;
+  max-height: calc(100vh - 94px);
+  max-height: calc(100dvh - 94px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 15px 24px;
   border: 1px solid var(--line);
   background: color-mix(in srgb, var(--color-surface) 96%, transparent);
