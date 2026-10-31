@@ -35,18 +35,6 @@ export function useLeads() {
 
     if (botId && botId !== 'all') {
       query = query.eq('bot_id', botId);
-    } else {
-      // Query caller's currently active bots so unassigned/deactivated bot leads are excluded
-      const { data: activeBots } = await supabase
-        .from('bots')
-        .select('id')
-        .eq('is_active', true);
-
-      if (!activeBots || activeBots.length === 0) {
-        setLeads([]);
-        return;
-      }
-      query = query.in('bot_id', activeBots.map((b: any) => b.id));
     }
 
     const { data: rawLeads } = await query;

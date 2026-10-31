@@ -20,7 +20,6 @@ import { isDograhConfigured, listTelephonyConfigs, listPhoneNumbers, listWorkflo
 const router = Router();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PAGE_SIZE = 25;
-const SYSTEM_POOL_USER_ID = 'f4d00b6f-df16-45e9-b790-13eea552cd29';
 const STAGES = ['verify_email', 'set_password', 'onboarding', 'active', 'suspended', 'payment_required', 'scheduled'] as const;
 type StageFilter = (typeof STAGES)[number];
 const handle = (fn: (req: AdminRequest, res: Response) => Promise<unknown>) => asyncRoute<AdminRequest>('CustomersAdmin', fn);
@@ -63,14 +62,18 @@ router.post('/sync-dograh', requireAdminRole('support'), handle(async (req, res)
 
   // 2. Fetch telephony configurations and all phone numbers from Dograh
   const telephonyConfigs = await listTelephonyConfigs();
-  const phoneWorkflowMap = new Map<string, string>(); // workflowId -> phoneNumber
+  const phoneWorkflowMap = new Map<string, string[]>(); // workflowId -> phoneNumbers[]
 
   for (const tc of telephonyConfigs) {
     try {
       const numbers = await listPhoneNumbers(tc.id);
       for (const num of numbers) {
         if (num.inbound_workflow_id && num.address) {
-          phoneWorkflowMap.set(String(num.inbound_workflow_id), num.address.trim());
+          const key = String(num.inbound_workflow_id);
+          const list = phoneWorkflowMap.get(key) || [];
+          const cleanAddr = num.address.trim();
+          if (!list.includes(cleanAddr)) list.push(cleanAddr);
+          phoneWorkflowMap.set(key, list);
         }
       }
     } catch {
@@ -81,7 +84,7 @@ router.post('/sync-dograh', requireAdminRole('support'), handle(async (req, res)
   // 3. Fetch existing bots from Supabase
   const { data: existingBots, error: botFetchErr } = await supabase
     .from('bots')
-    .select('id, business_name, dograh_workflow_id, dograh_phone_number');
+    .select('id, business_name, dograh_workflow_id, dograh_phone_number, widget_config');
 
   if (botFetchErr) return res.status(500).json({ error: botFetchErr.message });
 
@@ -99,18 +102,22 @@ router.post('/sync-dograh', requireAdminRole('support'), handle(async (req, res)
   // 4. Process workflows created directly on Dograh
   for (const wf of workflows) {
     const wfIdStr = String(wf.id);
-    const matchedPhone = phoneWorkflowMap.get(wfIdStr);
+    const matchedPhones = phoneWorkflowMap.get(wfIdStr) || [];
+    const matchedPhone = matchedPhones[0];
 
     if (existingWfIds.has(wfIdStr)) {
-      // If bot exists in platform but was missing the phone line from Dograh, link it
+      // If bot exists in platform but was missing the phone line from Dograh, link it safely
       if (matchedPhone && !existingPhones.has(matchedPhone)) {
         const matchingBot = existingBots?.find((b: any) => String(b.dograh_workflow_id) === wfIdStr);
         if (matchingBot && !matchingBot.dograh_phone_number) {
+          const existingWidget = (matchingBot.widget_config && typeof matchingBot.widget_config === 'object')
+            ? matchingBot.widget_config
+            : {};
           await supabase
             .from('bots')
             .update({
               dograh_phone_number: matchedPhone,
-              widget_config: { phoneNumber: matchedPhone },
+              widget_config: { ...existingWidget, phoneNumber: matchedPhone },
             })
             .eq('id', matchingBot.id);
           updatedBots.push(matchingBot.id);
@@ -124,7 +131,7 @@ router.post('/sync-dograh', requireAdminRole('support'), handle(async (req, res)
     const cleanName = (wf.name && wf.name.trim()) ? wf.name.trim() : `Dograh Persona ${wf.id}`;
     const slug = `${cleanName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Date.now().toString(36)}-${Math.floor(Math.random() * 1000)}`;
 
-    let { data: newBot, error: insertErr } = await supabase
+    const { data: newBot, error: insertErr } = await supabase
       .from('bots')
       .insert([{
         owner_id: null, // Genuinely unassigned pool persona available to any customer!
@@ -144,30 +151,6 @@ router.post('/sync-dograh', requireAdminRole('support'), handle(async (req, res)
       .select('id, business_name, industry, dograh_phone_number, dograh_workflow_id, is_active, created_at, owner_id')
       .single();
 
-    if (insertErr && /null value in column "owner_id"/i.test(insertErr.message)) {
-      const fallbackInsert = await supabase
-        .from('bots')
-        .insert([{
-          owner_id: SYSTEM_POOL_USER_ID,
-          business_name: cleanName,
-          industry: 'General',
-          greeting: `Hello, thank you for calling ${cleanName}. How can I assist you today?`,
-          knowledge_base: `Knowledge base for ${cleanName}.`,
-          subdomain: slug,
-          dograh_workflow_id: wfIdStr,
-          dograh_phone_number: matchedPhone || null,
-          is_active: true,
-          widget_config: {
-            agentDirection: 'inbound',
-            ...(matchedPhone ? { phoneNumber: matchedPhone } : {}),
-          },
-        }])
-        .select('id, business_name, industry, dograh_phone_number, dograh_workflow_id, is_active, created_at, owner_id')
-        .single();
-      newBot = fallbackInsert.data;
-      insertErr = fallbackInsert.error;
-    }
-
     if (!insertErr && newBot) {
       createdBots.push(newBot);
       existingWfIds.add(wfIdStr);
@@ -176,35 +159,15 @@ router.post('/sync-dograh', requireAdminRole('support'), handle(async (req, res)
   }
 
   // 5. Also check standalone configured lines from Dograh
-  for (const [wfId, phone] of phoneWorkflowMap.entries()) {
-    if (!existingWfIds.has(wfId) && !existingPhones.has(phone)) {
-      const cleanName = `Dograh Voice Line (${phone})`;
-      const slug = `dograh-${phone.replace(/[^0-9]/g, '')}-${Date.now().toString(36)}`;
-      let { data: newBot, error: insertErr } = await supabase
-        .from('bots')
-        .insert([{
-          owner_id: null,
-          business_name: cleanName,
-          industry: 'Telephony',
-          greeting: `Hello, thank you for calling. How can I assist you today?`,
-          knowledge_base: `Knowledge base for ${cleanName}.`,
-          subdomain: slug,
-          dograh_workflow_id: wfId,
-          dograh_phone_number: phone,
-          is_active: true,
-          widget_config: {
-            agentDirection: 'inbound',
-            phoneNumber: phone,
-          },
-        }])
-        .select('id, business_name, industry, dograh_phone_number, dograh_workflow_id, is_active, created_at, owner_id')
-        .single();
-
-      if (insertErr && /null value in column "owner_id"/i.test(insertErr.message)) {
-        const fallbackInsert = await supabase
+  for (const [wfId, phones] of phoneWorkflowMap.entries()) {
+    for (const phone of phones) {
+      if (!existingWfIds.has(wfId) && !existingPhones.has(phone)) {
+        const cleanName = `Dograh Voice Line (${phone})`;
+        const slug = `dograh-${phone.replace(/[^0-9]/g, '')}-${Date.now().toString(36)}`;
+        const { data: newBot, error: insertErr } = await supabase
           .from('bots')
           .insert([{
-            owner_id: SYSTEM_POOL_USER_ID,
+            owner_id: null,
             business_name: cleanName,
             industry: 'Telephony',
             greeting: `Hello, thank you for calling. How can I assist you today?`,
@@ -220,14 +183,12 @@ router.post('/sync-dograh', requireAdminRole('support'), handle(async (req, res)
           }])
           .select('id, business_name, industry, dograh_phone_number, dograh_workflow_id, is_active, created_at, owner_id')
           .single();
-        newBot = fallbackInsert.data;
-        insertErr = fallbackInsert.error;
-      }
 
-      if (!insertErr && newBot) {
-        createdBots.push(newBot);
-        existingWfIds.add(wfId);
-        existingPhones.add(phone);
+        if (!insertErr && newBot) {
+          createdBots.push(newBot);
+          existingWfIds.add(wfId);
+          existingPhones.add(phone);
+        }
       }
     }
   }
@@ -496,22 +457,13 @@ router.post('/:id/unassign-agent', requireAdminRole('support'), handle(async (re
 
   // 2. Genuinely unassign: detach owner_id and mark is_active = false
   // This ensures the former customer no longer sees the bot or its leads in their active workspace.
-  let { error: updateErr } = await supabase
+  const { error: updateErr } = await supabase
     .from('bots')
     .update({
       owner_id: null,
       is_active: false,
     })
     .eq('id', botId);
-
-  if (updateErr && /null value in column "owner_id"/i.test(updateErr.message)) {
-    // Fallback if migration hasn't dropped NOT NULL yet
-    const fallback = await supabase
-      .from('bots')
-      .update({ owner_id: SYSTEM_POOL_USER_ID, is_active: false })
-      .eq('id', botId);
-    updateErr = fallback.error;
-  }
 
   if (updateErr) return res.status(500).json({ error: updateErr.message });
 
