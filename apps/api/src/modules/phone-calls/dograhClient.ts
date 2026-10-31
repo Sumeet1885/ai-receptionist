@@ -91,6 +91,19 @@ export async function publishWorkflow(workflowId: string | number): Promise<unkn
   }
 }
 
+export async function listWorkflows(): Promise<DograhWorkflow[]> {
+  try {
+    const data = await request<any>('/api/v1/workflow/fetch');
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.workflows)) return data.workflows;
+    if (data && Array.isArray(data.items)) return data.items;
+    return [];
+  } catch (err: any) {
+    console.warn('[dograhClient] listWorkflows error:', err?.message);
+    return [];
+  }
+}
+
 export interface HttpToolParam {
   name: string;
   type: 'string' | 'number' | 'boolean' | 'object' | 'array';

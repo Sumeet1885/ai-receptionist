@@ -469,4 +469,6 @@ export const customersApi = {
     request<{ ok: true; bot: BotSummary }>(`/customers/${encodeURIComponent(userId)}/assign-number`, { method: 'POST', body: data }),
   unassignNumber: (userId: string, data: { botId: string }) =>
     request<{ ok: true; bot: BotSummary }>(`/customers/${encodeURIComponent(userId)}/unassign-number`, { method: 'POST', body: data }),
+  syncDograh: () =>
+    request<{ ok: true; createdCount: number; updatedCount: number; createdBots: any[] }>('/customers/sync-dograh', { method: 'POST' }),
 };

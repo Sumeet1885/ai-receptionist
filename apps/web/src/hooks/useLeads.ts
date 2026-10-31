@@ -32,7 +32,23 @@ export function useLeads() {
       .select(LEAD_SELECT_FIELDS)
       .neq('appointment_status', 'ARCHIVED')
       .order('updated_at', { ascending: false });
-    if (botId) query = query.eq('bot_id', botId);
+
+    if (botId && botId !== 'all') {
+      query = query.eq('bot_id', botId);
+    } else {
+      // Query caller's currently active bots so unassigned/deactivated bot leads are excluded
+      const { data: activeBots } = await supabase
+        .from('bots')
+        .select('id')
+        .eq('is_active', true);
+
+      if (!activeBots || activeBots.length === 0) {
+        setLeads([]);
+        return;
+      }
+      query = query.in('bot_id', activeBots.map((b: any) => b.id));
+    }
+
     const { data: rawLeads } = await query;
     if (!rawLeads || rawLeads.length === 0) {
       setLeads([]);

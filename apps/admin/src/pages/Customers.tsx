@@ -28,6 +28,9 @@ const SOURCE: Record<Customer['source'], string> = {
 type Counts = Record<'all' | CustomerStage, number>;
 
 export function Customers({ roles }: { roles: string[] }) {
+  const toast = useToast();
+  const canSupport = roles.includes('super_admin') || roles.includes('support');
+  const [syncingDograh, setSyncingDograh] = useState(false);
   const [stage, setStage] = useState<CustomerStage | undefined>(undefined);
   const [search, setSearch] = useState('');
   const [applied, setApplied] = useState('');
@@ -36,6 +39,24 @@ export function Customers({ roles }: { roles: string[] }) {
   const [error, setError] = useState('');
   const [reload, setReload] = useState(0);
   const [selected, setSelected] = useState<Customer | null>(null);
+
+  const handleSyncDograh = async () => {
+    setSyncingDograh(true);
+    try {
+      const res = await customersApi.syncDograh();
+      toast({
+        tone: 'success',
+        title: res.createdCount > 0
+          ? `Synced from Dograh: ${res.createdCount} new persona(s) imported!`
+          : (res.updatedCount > 0 ? `Synced from Dograh: ${res.updatedCount} persona(s) updated with phone lines.` : 'Synced from Dograh: All workflows are up to date.'),
+      });
+      setReload((n) => n + 1);
+    } catch (err: any) {
+      toast({ tone: 'error', title: 'Dograh sync failed: ' + (err.message || 'Unknown error') });
+    } finally {
+      setSyncingDograh(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -70,21 +91,35 @@ export function Customers({ roles }: { roles: string[] }) {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <FilterTabs tabs={tabs} value={stage} onChange={(value) => { setStage(value); setPage(1); }} />
-        <form onSubmit={submitSearch} className="flex w-full gap-2 sm:w-auto">
-          <label className="relative flex-1 sm:w-72">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" />
-            <input
-              type="search"
-              className="h-10 w-full rounded-xl border border-line bg-white pl-9 pr-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              placeholder="Search name, email or business"
-              maxLength={LIMITS.search.max}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              aria-label="Search customers"
-            />
-          </label>
-          <Button type="submit" variant="secondary">Search</Button>
-        </form>
+        <div className="flex flex-wrap items-center gap-2">
+          {canSupport && (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={syncingDograh}
+              onClick={handleSyncDograh}
+              title="Pull new agents and phone lines created directly inside Dograh"
+            >
+              <RotateCcw className={cx("h-4 w-4 mr-1.5", syncingDograh && "animate-spin")} />
+              {syncingDograh ? 'Syncing Dograh...' : 'Sync from Dograh'}
+            </Button>
+          )}
+          <form onSubmit={submitSearch} className="flex w-full gap-2 sm:w-auto">
+            <label className="relative flex-1 sm:w-72">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" />
+              <input
+                type="search"
+                className="h-10 w-full rounded-xl border border-line bg-white pl-9 pr-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                placeholder="Search name, email or business"
+                maxLength={LIMITS.search.max}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                aria-label="Search customers"
+              />
+            </label>
+            <Button type="submit" variant="secondary">Search</Button>
+          </form>
+        </div>
       </div>
 
       {error && <PageError message={error} onRetry={() => { setError(''); setReload((n) => n + 1); }} />}
@@ -143,7 +178,7 @@ export function Customers({ roles }: { roles: string[] }) {
           customer={selected}
           roles={roles}
           onClose={() => setSelected(null)}
-          onChanged={() => { setSelected(null); setReload((n) => n + 1); }}
+          onChanged={() => setReload((n) => n + 1)}
         />
       )}
     </div>
@@ -180,6 +215,26 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
   const [selectedPoolNumber, setSelectedPoolNumber] = useState('');
   const [customPhoneInput, setCustomPhoneInput] = useState('');
   const [targetBotIdForNumber, setTargetBotIdForNumber] = useState('');
+  const [syncingDograh, setSyncingDograh] = useState(false);
+
+  const handleSyncDograh = async () => {
+    setSyncingDograh(true);
+    try {
+      const res = await customersApi.syncDograh();
+      toast({
+        tone: 'success',
+        title: res.createdCount > 0
+          ? `Synced from Dograh: ${res.createdCount} new persona(s) imported!`
+          : (res.updatedCount > 0 ? `Synced from Dograh: ${res.updatedCount} persona(s) updated with phone lines.` : 'Synced from Dograh: All workflows are up to date.'),
+      });
+      const refreshed = await customersApi.getAgents(customer.userId);
+      setBotData(refreshed);
+    } catch (err: any) {
+      toast({ tone: 'error', title: 'Dograh sync failed: ' + (err.message || 'Unknown error') });
+    } finally {
+      setSyncingDograh(false);
+    }
+  };
 
   // Agent limit restriction
   const [showLimitEditor, setShowLimitEditor] = useState(false);
@@ -934,39 +989,55 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
           </div>
         )}
 
-        {canSupport && botData && botData.all.length > 0 && !showNewAgentForm && !(botData.agentLimit?.effectiveLimit !== null && botData.agentLimit?.effectiveLimit !== undefined && botData.assigned.length >= botData.agentLimit.effectiveLimit) && (
+        {canSupport && botData && !showNewAgentForm && !(botData.agentLimit?.effectiveLimit !== null && botData.agentLimit?.effectiveLimit !== undefined && botData.assigned.length >= botData.agentLimit.effectiveLimit) && (
           <div className="rounded-xl border border-line bg-background/50 p-3 space-y-2.5 text-xs">
-            <span className="font-semibold text-ink block">Assign Existing Persona</span>
-            <div className="flex gap-2">
-              <select
-                className="flex-1 rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs text-ink focus:border-primary focus:outline-none"
-                value={selectedBotId}
-                onChange={(e) => setSelectedBotId(e.target.value)}
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-ink block">Assign Existing Persona ({botData.all.length})</span>
+              <button
+                type="button"
+                disabled={syncingDograh || busy}
+                onClick={handleSyncDograh}
+                className="text-[11px] text-primary hover:underline flex items-center gap-1 font-medium"
+                title="Pull new agents and phone lines created directly inside Dograh"
               >
-                <option value="">Select an agent persona...</option>
-                {botData.all.map((b) => (
-                  <option key={b.id} value={b.id} disabled={b.owner_id === customer.userId}>
-                    {b.business_name} {b.dograh_phone_number ? `(${b.dograh_phone_number})` : ''} {b.owner_id === customer.userId ? '(Assigned to this user)' : ''}
-                  </option>
-                ))}
-              </select>
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={!selectedBotId || busy}
-                onClick={async () => {
-                  if (!selectedBotId) return;
-                  await act(async () => {
-                    await customersApi.assignAgent(customer.userId, { botId: selectedBotId, direction: assignDirection });
-                    const refreshed = await customersApi.getAgents(customer.userId);
-                    setBotData(refreshed);
-                    setSelectedBotId('');
-                  }, 'Agent persona assigned');
-                }}
-              >
-                Assign
-              </Button>
+                <RotateCcw className={cx("h-3 w-3", syncingDograh && "animate-spin")} />
+                {syncingDograh ? 'Syncing...' : 'Sync from Dograh'}
+              </button>
             </div>
+            {botData.all.length === 0 ? (
+              <p className="text-xs text-subtle italic">No existing personas found. Click "Sync from Dograh" above to import workflows from Dograh.</p>
+            ) : (
+              <div className="flex gap-2">
+                <select
+                  className="flex-1 rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs text-ink focus:border-primary focus:outline-none"
+                  value={selectedBotId}
+                  onChange={(e) => setSelectedBotId(e.target.value)}
+                >
+                  <option value="">Select an agent persona...</option>
+                  {botData.all.map((b) => (
+                    <option key={b.id} value={b.id} disabled={b.owner_id === customer.userId}>
+                      {b.business_name} {b.dograh_phone_number ? `(${b.dograh_phone_number})` : ''} {b.owner_id === customer.userId ? '(Assigned to this user)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={!selectedBotId || busy}
+                  onClick={async () => {
+                    if (!selectedBotId) return;
+                    await act(async () => {
+                      await customersApi.assignAgent(customer.userId, { botId: selectedBotId, direction: assignDirection });
+                      const refreshed = await customersApi.getAgents(customer.userId);
+                      setBotData(refreshed);
+                      setSelectedBotId('');
+                    }, 'Agent persona assigned');
+                  }}
+                >
+                  Assign
+                </Button>
+              </div>
+            )}
             <div className="flex items-center justify-between pt-1 border-t border-line/60">
               <span className="text-[11px] text-subtle font-medium">Dedicated Direction:</span>
               <div className="flex rounded-md border border-line bg-white p-0.5 text-[10px]">
@@ -1007,6 +1078,8 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
                 const refreshed = await customersApi.getAgents(customer.userId);
                 setBotData(refreshed);
                 setShowNewAgentForm(false);
+                setNewAgentName('');
+                setNewAgentIndustry('');
                 setNewAgentPhone('');
                 setNewAgentDirection('inbound');
               }, 'New agent provisioned and assigned');
