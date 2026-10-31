@@ -81,7 +81,7 @@ export function LandingNav({ navigate, signedIn, userMenu }: LandingNavProps) {
 
   const primary = signedIn
     ? { to: '/dashboard', label: 'Open dashboard ↗' }
-    : { to: '/request-access', label: '14-day free trial' };
+    : { to: '/request-access', label: '7-day free trial' };
   const secondary = signedIn ? { to: '/dashboard', label: 'Dashboard' } : { to: '/auth?mode=signin', label: 'Sign in' };
 
   return (

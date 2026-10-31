@@ -326,7 +326,7 @@ router.post('/:id/assign-plan', requireAdminRole('support'), handle(async (req, 
       return res.status(400).json({ error: 'Invalid expiry date format' });
     }
   } else if (plan.is_trial) {
-    periodEnd = new Date(startsAt.getTime() + (plan.trial_days || 14) * 24 * 60 * 60 * 1000);
+    periodEnd = new Date(startsAt.getTime() + (plan.trial_days || 7) * 24 * 60 * 60 * 1000);
   } else {
     // 1 calendar month ahead
     periodEnd = new Date(startsAt);
@@ -345,7 +345,7 @@ router.post('/:id/assign-plan', requireAdminRole('support'), handle(async (req, 
     access_expires_at: periodEnd.toISOString(),
     access_end_date: expiryDate || null,
     access_months: plan.is_trial ? null : 1,
-    trial_days: plan.is_trial ? (plan.trial_days || 14) : null,
+    trial_days: plan.is_trial ? (plan.trial_days || 7) : null,
     trial_started_at: plan.is_trial ? startsAt.toISOString() : null,
     trial_ends_at: plan.is_trial ? periodEnd.toISOString() : null,
     status: 'active',

@@ -420,7 +420,7 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
                   <option value="">Choose a plan...</option>
                   {availablePlans.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name} {p.is_trial ? `(${p.trial_days || 14}-day trial)` : p.price_inr ? `(₹${(p.price_inr / 100).toLocaleString('en-IN')}/mo)` : ''} {p.monthly_minutes ? `• ${p.monthly_minutes} mins` : ''}
+                      {p.name} {p.is_trial ? `(${p.trial_days || 7}-day trial)` : p.price_inr ? `(₹${(p.price_inr / 100).toLocaleString('en-IN')}/mo)` : ''} {p.monthly_minutes ? `• ${p.monthly_minutes} mins` : ''}
                     </option>
                   ))}
                 </select>
