@@ -102,38 +102,16 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
             </div>
           </div>
 
-          {/* Bottom Row: Title, Subtitle & Action Launchers */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-            <div className="max-w-xl text-white">
-              <h2 className="font-display font-extrabold text-xl sm:text-2xl lg:text-3xl tracking-tight drop-shadow-sm">
-                {currentBot?.businessName || 'All Voice Receptionists'}
-              </h2>
-              <p className="text-xs sm:text-sm text-stone-200/90 mt-1 line-clamp-2 font-sans font-medium drop-shadow-sm">
-                {currentBot
-                  ? 'Answering incoming inquiries 24/7, qualifying high-intent buyers, and booking site visits directly to your calendar.'
-                  : `Consolidated voice leads, inquiries, and booked appointments across all ${bots.length} active receptionists.`}
-              </p>
-            </div>
-
-            {/* Quick-Fire Launchpad Buttons */}
-            <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-              <button
-                type="button"
-                onClick={() => navigate('/inbound-calls')}
-                className="h-9 px-4 rounded-xl bg-white/90 hover:bg-white text-stone-900 font-bold text-xs transition backdrop-blur-md flex items-center gap-1.5 shadow-md hover:shadow-lg cursor-pointer"
-              >
-                <span>📞</span>
-                <span>Test Inbound</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate('/outbound-calls')}
-                className="h-9 px-4 rounded-xl bg-brand-accent hover:bg-brand-accent-hover text-primary-foreground font-bold text-xs transition flex items-center gap-1.5 shadow-md hover:shadow-lg cursor-pointer"
-              >
-                <span>🚀</span>
-                <span>Launch Telecaller</span>
-              </button>
-            </div>
+          {/* Bottom Row: Title and Subtitle */}
+          <div className="max-w-2xl text-white">
+            <h2 className="font-display font-extrabold text-xl sm:text-2xl lg:text-3xl tracking-tight drop-shadow-sm">
+              {currentBot?.businessName || 'All Voice Receptionists'}
+            </h2>
+            <p className="text-xs sm:text-sm text-stone-200/90 mt-1 line-clamp-2 font-sans font-medium drop-shadow-sm">
+              {currentBot
+                ? 'Answering incoming inquiries 24/7, qualifying high-intent buyers, and booking site visits directly to your calendar.'
+                : `Consolidated voice leads, inquiries, and booked appointments across all ${bots.length} active receptionists.`}
+            </p>
           </div>
         </div>
       </div>
@@ -206,7 +184,25 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
         {/* Metric 4: Total Voice Agents in Workspace */}
         <button
           type="button"
-          onClick={() => navigate('/agents')}
+          onClick={() => {
+            const target = currentBot || (bots.length === 1 ? bots[0] : activeBot);
+            if (target?.id) {
+              onSelectBotId?.(target.id);
+            }
+            if (target?.agentDirection === 'outbound') {
+              navigate('/outbound-calls');
+            } else if (target?.agentDirection === 'inbound') {
+              navigate('/inbound-calls');
+            } else {
+              const hasOutbound = bots.some(b => b.agentDirection === 'outbound');
+              const hasInbound = bots.some(b => b.agentDirection === 'inbound');
+              if (hasOutbound && !hasInbound) {
+                navigate('/outbound-calls');
+              } else {
+                navigate('/inbound-calls');
+              }
+            }
+          }}
           className="text-left bg-brand-card hover:bg-brand-bg/50 border border-brand-border hover:border-brand-accent rounded-xl p-4 shadow-sm transition group"
         >
           <div className="flex items-center justify-between text-brand-muted mb-2">
@@ -221,7 +217,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
           </div>
           <p className="text-[11px] text-brand-muted mt-1 font-body truncate">
             {currentBot
-              ? (currentBot.phoneNumber ? `Line: ${currentBot.phoneNumber}` : `${bots.length} in workspace`)
+              ? `${currentBot.agentDirection === 'outbound' ? '🚀 Outbound' : '📞 Inbound'}${currentBot.phoneNumber ? ` · ${currentBot.phoneNumber}` : ''}`
               : `${bots.length} voice receptionists`}
           </p>
         </button>

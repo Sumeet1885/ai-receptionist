@@ -57,7 +57,7 @@ export const Header: React.FC<HeaderProps> = ({
     return routeName === key;
   };
   const actions = publicActions(routeName);
-  const navClass = (active: boolean) => `rounded-pill min-h-11 px-4 py-2 text-base transition-colors duration-[var(--duration-fast)] ${
+  const navClass = (active: boolean) => `rounded-pill min-h-9 xl:min-h-11 px-2.5 xl:px-4 py-1.5 xl:py-2 text-xs xl:text-sm 2xl:text-base transition-colors duration-[var(--duration-fast)] whitespace-nowrap ${
     active ? 'bg-accent-lime font-semibold text-text' : 'font-medium text-text-subtle hover:bg-surface-sunken hover:text-text'
   }`;
   const mobileClass = (active: boolean) => `w-full rounded-small px-4 py-3 text-left text-base font-medium transition ${
@@ -89,7 +89,7 @@ export const Header: React.FC<HeaderProps> = ({
   }
 
   return (
-    <header style={user ? undefined : publicTexture('leaf')} className="sticky top-0 z-40 flex items-center justify-between border-b border-border bg-background px-[5%] py-3 backdrop-blur-xl">
+    <header style={user ? undefined : publicTexture('leaf')} className="sticky top-0 z-40 flex items-center justify-between border-b border-border bg-background px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3 backdrop-blur-xl">
       {!user && <FolkNavBorder />}
       <a
         href={user ? '/dashboard' : '/'}
@@ -103,7 +103,7 @@ export const Header: React.FC<HeaderProps> = ({
         <BrandLogo className="h-7 sm:h-9" />
       </a>
 
-      <nav aria-label="Main" className="hidden 2xl:flex items-center gap-1 rounded-pill border border-border bg-surface p-1 text-base shadow-card">
+      <nav aria-label="Main" className="hidden lg:flex items-center gap-0.5 xl:gap-1 rounded-pill border border-border bg-surface p-1 shadow-card">
         {(user ? authedNav : publicNav).map(item => (
           <a
             key={item.key}
@@ -119,7 +119,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       <div className="flex items-center gap-2 sm:gap-4">
         {!user && actions.signIn && !actions.getStarted && (
-          <Button variant="secondary" size="sm" className="2xl:hidden" onClick={() => navigate('/auth?mode=signin')}>
+          <Button variant="secondary" size="sm" className="lg:hidden" onClick={() => navigate('/auth?mode=signin')}>
             Sign in
           </Button>
         )}
@@ -127,7 +127,7 @@ export const Header: React.FC<HeaderProps> = ({
         {user ? (
           <UserMenu email={user.email} navigate={navigate} signOut={() => void handleSignOut()} />
         ) : (
-          <div className="hidden 2xl:flex items-center gap-2">
+          <div className="hidden lg:flex items-center gap-2">
             {actions.signIn && (
               <Button variant={actions.getStarted ? 'ghost' : 'secondary'} size="md" className="text-base" onClick={() => navigate('/auth?mode=signin')}>
                 Sign in
@@ -144,7 +144,7 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           type="button"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="rounded-pill border border-border bg-surface p-2 text-text transition hover:bg-surface-sunken 2xl:hidden"
+          className="rounded-pill border border-border bg-surface p-2 text-text transition hover:bg-surface-sunken lg:hidden"
           aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
           aria-expanded={mobileMenuOpen}
           aria-controls="app-mobile-menu"
@@ -163,7 +163,7 @@ export const Header: React.FC<HeaderProps> = ({
         <nav
           id="app-mobile-menu"
           aria-label="Mobile"
-          className="absolute left-0 right-0 top-full z-50 space-y-1 border-b border-border bg-background/95 px-4 py-4 shadow-floating backdrop-blur-md 2xl:hidden"
+          className="absolute left-0 right-0 top-full z-50 space-y-1 border-b border-border bg-background/95 px-4 py-4 shadow-floating backdrop-blur-md lg:hidden"
         >
           {user ? (
             <>
