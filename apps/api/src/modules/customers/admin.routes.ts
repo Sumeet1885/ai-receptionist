@@ -58,7 +58,14 @@ router.post('/sync-dograh', requireAdminRole('support'), handle(async (req, res)
   }
 
   // 1. Fetch workflows from Dograh
-  const workflows = await listWorkflows();
+  let workflows: any[] = [];
+  try {
+    workflows = await listWorkflows();
+  } catch (err: any) {
+    return res.status(502).json({
+      error: `Failed to fetch workflows from Dograh: ${err?.message || 'Unknown error'}. Check DOGRAH_API_KEY and DOGRAH_API_URL.`
+    });
+  }
 
   // 2. Fetch telephony configurations and all phone numbers from Dograh
   const telephonyConfigs = await listTelephonyConfigs();
@@ -151,7 +158,14 @@ router.post('/sync-dograh', requireAdminRole('support'), handle(async (req, res)
       .select('id, business_name, industry, dograh_phone_number, dograh_workflow_id, is_active, created_at, owner_id')
       .single();
 
-    if (!insertErr && newBot) {
+    if (insertErr) {
+      console.error(`[sync-dograh] Insert error for workflow ${wfIdStr}:`, insertErr.message);
+      if (/owner_id/i.test(insertErr.message)) {
+        return res.status(500).json({
+          error: `Database schema mismatch: ${insertErr.message}. Ensure migration 20261031140000_isolate_customer_leads.sql has been applied to this database.`
+        });
+      }
+    } else if (newBot) {
       createdBots.push(newBot);
       existingWfIds.add(wfIdStr);
       if (matchedPhone) existingPhones.add(matchedPhone);
@@ -184,7 +198,14 @@ router.post('/sync-dograh', requireAdminRole('support'), handle(async (req, res)
           .select('id, business_name, industry, dograh_phone_number, dograh_workflow_id, is_active, created_at, owner_id')
           .single();
 
-        if (!insertErr && newBot) {
+        if (insertErr) {
+          console.error(`[sync-dograh] Insert error for phone line ${phone}:`, insertErr.message);
+          if (/owner_id/i.test(insertErr.message)) {
+            return res.status(500).json({
+              error: `Database schema mismatch: ${insertErr.message}. Ensure migration 20261031140000_isolate_customer_leads.sql has been applied to this database.`
+            });
+          }
+        } else if (newBot) {
           createdBots.push(newBot);
           existingWfIds.add(wfId);
           existingPhones.add(phone);
@@ -203,7 +224,13 @@ router.post('/sync-dograh', requireAdminRole('support'), handle(async (req, res)
     ok: true,
     createdCount: createdBots.length,
     updatedCount: updatedBots.length,
+    totalWorkflowsFound: workflows.length,
     createdBots,
+    message: createdBots.length === 0 && updatedBots.length === 0
+      ? (workflows.length === 0
+          ? 'No workflows found in Dograh organization.'
+          : `All ${workflows.length} Dograh workflows are already synchronized with this database.`)
+      : `Successfully synced ${createdBots.length} new and ${updatedBots.length} updated persona(s).`
   });
 }));
 
