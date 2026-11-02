@@ -1,11 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import './landing.css';
+import './product-visuals.css';
+import './section-sizing.css';
 import { HeroSection } from './HeroSection';
-import { ContactCta, LandingFooter, LanguageWall, LeadStorySection, QuestionsSection } from './InteractiveSections';
+import { ContactCta, LandingFooter, LeadStorySection, QuestionsSection } from './InteractiveSections';
 import { LandingNav } from './LandingNav';
 import { LandingProvider } from './LandingContext';
-import { AmbientStickers, BrandValueSection, ContrastSection, Ticker, UseCasesSection } from './StaticSections';
-import { WorkflowSection } from './WorkflowSection';
+import { AmbientStickers, BrandValueSection, BusinessPersonaSection, ContrastSection, Ticker, UseCasesSection } from './StaticSections';
+import { NarratedWorkflow } from './NarratedWorkflow';
 
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
 
@@ -64,9 +66,9 @@ export function BolegaLanding({ navigate, signedIn, userMenu }: BolegaLandingPro
         <main>
           <HeroSection onSpeakingChange={setRecordingActive} />
           <Ticker />
-          <WorkflowSection />
-          <LanguageWall />
           <BrandValueSection />
+          <BusinessPersonaSection />
+          <NarratedWorkflow />
           <ContrastSection />
           <LeadStorySection />
           <UseCasesSection />

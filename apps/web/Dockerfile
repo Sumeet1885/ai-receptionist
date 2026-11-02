@@ -9,11 +9,10 @@
 # server. Override any of them at build time with --build-arg if needed.
 
 # ── Stage 1: Build ───────────────────────────────────────────────────────────
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 WORKDIR /repo
 
-# Same pnpm as package.json "packageManager" (installed with npm: the corepack bundled with
-# node:20 cannot verify current pnpm releases).
+# Install the pnpm version declared in package.json directly, independent of bundled Corepack.
 RUN npm install -g pnpm@10.34.7
 
 # Build context: repository root (pnpm workspace). Every workspace manifest is copied so the

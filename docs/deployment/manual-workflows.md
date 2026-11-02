@@ -21,6 +21,10 @@ already been built for that environment and commit.
 | staging | staging-<sha7> | apps/web/Dockerfile.staging | docker-compose-staging.yml | STAGING_SITE_URL |
 | production | prod-<sha7> | apps/web/Dockerfile.prod | docker-compose-prod.yml | PRODUCTION_SITE_URL |
 
+Both build workflows default the site URL to `https://test.ai-receptionist.agilewaters.com`
+for staging and `https://ai-receptionist.agilewaters.com` for production. Set the
+matching GitHub Actions variable from the table to override that environment's URL.
+
 The unified image workflow retains the filename `docker-image-staging.yml`; it now
 supports both environments. Separate production workflows have been removed.
 

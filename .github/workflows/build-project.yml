@@ -55,7 +55,7 @@ jobs:
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
           VITE_EXPRESS_SERVER_URL: ${{ vars.VITE_EXPRESS_SERVER_URL }}
           VITE_WIDGET_BASE_URL: ${{ vars.VITE_WIDGET_BASE_URL }}
-          VITE_SITE_URL: ${{ vars[format('{0}_SITE_URL', inputs.environment == 'production' && 'PRODUCTION' || 'STAGING')] }}
+          VITE_SITE_URL: ${{ vars[format('{0}_SITE_URL', inputs.environment == 'production' && 'PRODUCTION' || 'STAGING')] || (inputs.environment == 'production' && 'https://ai-receptionist.agilewaters.com' || 'https://test.ai-receptionist.agilewaters.com') }}
           VITE_INDEXABLE: ${{ inputs.environment == 'production' && 'true' || 'false' }}
       - name: Check browser/server import boundaries
         run: pnpm run check:boundaries

@@ -1,0 +1,152 @@
+[
+  {
+    "id": "education",
+    "title": "The next learning opportunity",
+    "topic": "Course enquiry",
+    "agentGender": "Male",
+    "customerGender": "Female",
+    "agentVoice": "Charon",
+    "customerVoice": "Aoede",
+    "languages": "Hindi · Marathi",
+    "outcome": "Weekend batch, analytics interest, counselling follow-up",
+    "lines": [
+      {
+        "speaker": "Agent",
+        "text": "नमस्ते! विद्या स्किल्स से बोल रहा हूँ। आपने डेटा एनालिटिक्स कोर्स के बारे में जानकारी माँगी थी?",
+        "start": 0,
+        "end": 6.110975
+      },
+      {
+        "speaker": "Customer",
+        "text": "हो, पण मी नोकरी करते. वीकेंडला बॅच असेल तर मला जॉइन करायचं आहे.",
+        "start": 6.110975,
+        "end": 11.18195
+      },
+      {
+        "speaker": "Agent",
+        "text": "बिल्कुल। वीकेंड बैच उपलब्ध है। आप शुरुआत से सीखना चाहती हैं, या पहले से कुछ अनुभव है?",
+        "start": 11.18195,
+        "end": 17.332925
+      },
+      {
+        "speaker": "Customer",
+        "text": "थोड़ा एक्सेल आता है। मुझे करियर बदलना है, तो प्रैक्टिकल प्रोजेक्ट्स ज़रूरी हैं।",
+        "start": 17.332925,
+        "end": 23.6839
+      },
+      {
+        "speaker": "Agent",
+        "text": "समझ गया। मैं हमारी काउंसलर को आपकी रुचि और वीकेंड की प्राथमिकता बता देता हूँ। क्या कल शाम बात करना ठीक रहेगा?",
+        "start": 23.6839,
+        "end": 31.5839
+      },
+      {
+        "speaker": "Customer",
+        "text": "हाँ, छह बजे के बाद ठीक रहेगा। धन्यवाद!",
+        "start": 31.5839,
+        "end": 35.0039
+      }
+    ],
+    "duration": 35.0039
+  },
+  {
+    "id": "property",
+    "title": "A home that feels right",
+    "topic": "Property enquiry",
+    "agentGender": "Female",
+    "customerGender": "Male",
+    "agentVoice": "Kore",
+    "customerVoice": "Puck",
+    "languages": "Hindi · English",
+    "outcome": "Two bedrooms, metro access, weekend visit interest",
+    "lines": [
+      {
+        "speaker": "Agent",
+        "text": "नमस्ते, अर्बन नेस्ट से बोल रही हूँ। आपने घर देखने के लिए इंक्वायरी की थी। कैसी प्रॉपर्टी ढूँढ रहे हैं?",
+        "start": 0,
+        "end": 6.62
+      },
+      {
+        "speaker": "Customer",
+        "text": "टू बेडरूम अपार्टमेंट चाहिए। ऑफिस आना जाना आसान हो, इसलिए मेट्रो के पास देख रहे हैं।",
+        "start": 6.62,
+        "end": 12.440000000000001
+      },
+      {
+        "speaker": "Agent",
+        "text": "ज़रूर। कोई पसंदीदा इलाका या बजट है जो आप ध्यान में रखना चाहेंगे?",
+        "start": 12.440000000000001,
+        "end": 17.62
+      },
+      {
+        "speaker": "Customer",
+        "text": "हिंजवडी के आसपास, करीब अस्सी लाख तक। और पार्किंग भी चाहिए।",
+        "start": 17.62,
+        "end": 23.007415
+      },
+      {
+        "speaker": "Agent",
+        "text": "ठीक है। मैं आपकी ज़रूरतें हमारी टीम को भेजती हूँ। मैचिंग विकल्प देखकर, क्या इस वीकेंड विज़िट पर बात कर सकते हैं?",
+        "start": 23.007415,
+        "end": 30.907415
+      },
+      {
+        "speaker": "Customer",
+        "text": "हाँ, रविवार अच्छा रहेगा। पहले डिटेल्स व्हाट्सऐप कर दीजिए।",
+        "start": 30.907415,
+        "end": 34.687415
+      }
+    ],
+    "duration": 34.687415
+  },
+  {
+    "id": "services",
+    "title": "Understand the business brief",
+    "topic": "Website enquiry",
+    "agentGender": "Male",
+    "customerGender": "Female",
+    "agentVoice": "Charon",
+    "customerVoice": "Aoede",
+    "languages": "Hindi · English",
+    "outcome": "Online catalogue, six-week timeline, proposal discussion",
+    "lines": [
+      {
+        "speaker": "Agent",
+        "text": "हैलो! स्टूडियो कनेक्ट से बोल रहा हूँ। आपने अपनी बिज़नेस वेबसाइट के बारे में पूछा था। क्या बनवाना चाहती हैं?",
+        "start": 0,
+        "end": 6.66
+      },
+      {
+        "speaker": "Customer",
+        "text": "हमारा होम डेकोर ब्रांड है। प्रोडक्ट्स ऑनलाइन दिखाने हैं, लेकिन अभी ऑनलाइन पेमेंट नहीं चाहिए।",
+        "start": 6.66,
+        "end": 12.879999999999999
+      },
+      {
+        "speaker": "Agent",
+        "text": "तो एक अच्छा प्रोडक्ट कैटलॉग और इंक्वायरी का विकल्प चाहिए। कब तक लॉन्च करना चाहेंगी?",
+        "start": 12.879999999999999,
+        "end": 18.02
+      },
+      {
+        "speaker": "Customer",
+        "text": "लगभग छह हफ़्ते में। मोबाइल पर अच्छा दिखना बहुत ज़रूरी है।",
+        "start": 18.02,
+        "end": 22.647415
+      },
+      {
+        "speaker": "Agent",
+        "text": "समझ गया। मैं टीम को कैटलॉग, मोबाइल अनुभव और टाइमलाइन की जानकारी देता हूँ। क्या एक छोटी डिस्कवरी कॉल रख सकते हैं?",
+        "start": 22.647415,
+        "end": 30.227415
+      },
+      {
+        "speaker": "Customer",
+        "text": "बिल्कुल। कल दोपहर बात कर लेते हैं। बजट के विकल्प भी समझा दीजिएगा।",
+        "start": 30.227415,
+        "end": 36.17483
+      }
+    ],
+    "duration": 36.17483
+  }
+]

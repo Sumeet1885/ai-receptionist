@@ -20,7 +20,7 @@ export function WorkflowSection() {
   const sectionRef = useRef<HTMLElement | null>(null);
   const manualPause = useRef(false);
   const visibleRef = useRef(false);
-  const { claimPlayback, registerMedia, setWorkflowPlayer } = useLanding();
+  const { claimPlayback, registerMedia, setWorkflowPlayer, motionPaused } = useLanding();
   const [portrait, setPortrait] = useState(() => typeof window !== 'undefined' && window.matchMedia(PORTRAIT_QUERY).matches);
   const [paused, setPaused] = useState(true);
   const [activeChapter, setActiveChapter] = useState(0);
@@ -34,6 +34,7 @@ export function WorkflowSection() {
   const pause = useCallback(() => videoRef.current?.pause(), []);
   useEffect(() => registerMedia('workflow-video', pause), [registerMedia, pause]);
   usePauseWhenHidden(pause);
+  useEffect(() => { if (motionPaused) pause(); }, [motionPaused, pause]);
 
   useEffect(() => {
     setWorkflowPlayer(() => {
@@ -60,12 +61,12 @@ export function WorkflowSection() {
     const wasPlaying = !video.paused;
     const onMeta = () => {
       video.currentTime = Math.min(at || 0, 19);
-      if ((visibleRef.current || wasPlaying) && !manualPause.current) tryPlay();
+      if ((wasPlaying || (visibleRef.current && !motionPaused)) && !manualPause.current) tryPlay();
     };
     video.addEventListener('loadedmetadata', onMeta, { once: true });
     video.load();
     return () => video.removeEventListener('loadedmetadata', onMeta);
-  }, [src, tryPlay]);
+  }, [src, tryPlay, motionPaused]);
 
   // Play only while visible, unless the visitor paused it.
   useEffect(() => {
@@ -74,14 +75,14 @@ export function WorkflowSection() {
     const observer = new IntersectionObserver(
       (entries) => {
         visibleRef.current = entries[0]?.isIntersecting ?? false;
-        if (visibleRef.current && !manualPause.current && !document.hidden) tryPlay();
+        if (visibleRef.current && !manualPause.current && !motionPaused && !document.hidden) tryPlay();
         else video.pause();
       },
       { threshold: 0.12 },
     );
     observer.observe(video);
     return () => observer.disconnect();
-  }, [tryPlay]);
+  }, [tryPlay, motionPaused]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -144,7 +145,6 @@ export function WorkflowSection() {
         <video
           ref={videoRef}
           id="workflow-video"
-          autoPlay
           muted
           loop
           playsInline

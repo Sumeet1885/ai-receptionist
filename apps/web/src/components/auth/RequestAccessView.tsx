@@ -131,9 +131,9 @@ export const RequestAccessView: React.FC<RequestAccessViewProps> = ({ navigate }
   return (
     <AuthSplitLayout art="request">
       <div className="mb-4 [@media(max-height:800px)]:mb-2.5">
-        <h1 className="mb-1 font-display text-3xl font-semibold tracking-[-0.04em] text-text">Request your 14-day free trial</h1>
+        <h1 className="mb-1 font-display text-3xl font-semibold tracking-[-0.04em] text-text">Request your 7-day free trial</h1>
         <p className="text-sm text-text-subtle">
-          Our team reviews your request and sets up your workspace. Your 14-day trial starts after email verification.
+          Our team reviews your request and sets up your workspace. Your 7-day trial starts after email verification.
         </p>
       </div>
 
@@ -258,7 +258,7 @@ export const RequestAccessView: React.FC<RequestAccessViewProps> = ({ navigate }
         <div className="flex flex-wrap items-center gap-3">
           <Turnstile {...guard.turnstileProps} />
           <Button type="submit" size="lg" className="min-w-48 flex-1" disabled={submitting}>
-            {submitting ? 'Sending request…' : 'Request 14-day free trial'}
+            {submitting ? 'Sending request…' : 'Request 7-day free trial'}
           </Button>
         </div>
       </form>

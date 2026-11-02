@@ -18,7 +18,7 @@ type PlanForm = Omit<PlanInput, 'priceInr' | 'priceUsd' | 'setupFeeInr' | 'setup
 };
 
 const EMPTY_FORM: PlanForm = {
-  isTrial: false, trialDays: '14',
+  isTrial: false, trialDays: '7',
   slug: '', name: '', tagline: '', sortOrder: '100', isActive: true, isFeatured: false, contactSales: false,
   monthlyMinutes: '', priceInr: '', priceUsd: '', setupFeeInr: '', setupFeeUsd: '', maxAgents: '', maxConcurrentCalls: '', featureValues: {},
 };
@@ -26,7 +26,7 @@ const EMPTY_FORM: PlanForm = {
 function toForm(plan: Plan): PlanForm {
   return {
     isTrial: !!plan.is_trial,
-    trialDays: String(plan.trial_days ?? 14),
+    trialDays: String(plan.trial_days ?? 7),
     slug: plan.slug,
     name: plan.name,
     tagline: plan.tagline ?? '',

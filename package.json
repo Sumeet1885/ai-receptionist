@@ -3,7 +3,7 @@
   "private": true,
   "packageManager": "pnpm@10.34.7",
   "engines": {
-    "node": ">=20.11 <23"
+    "node": ">=22 <23"
   },
   "scripts": {
     "dev": "turbo run dev --env-mode=loose --ui=stream --log-order=stream --log-prefix=task --output-logs=full --filter=@ai-receptionist/web --filter=@ai-receptionist/api",

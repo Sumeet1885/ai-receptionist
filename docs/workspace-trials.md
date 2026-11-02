@@ -2,7 +2,7 @@
 
 Apply `supabase/migrations/20261028160000_workspace_trials.sql` after the earlier billing migrations, then deploy the API, web and admin apps together. If Supabase Edge Functions are deployed, redeploy `chat-reply` and `analyze-lead` too. No new environment variables are required; payments use the existing Razorpay configuration and captured-payment webhook.
 
-In the admin console, Plans & pricing has a **Trial plan (admin only)** switch and a required duration of 1-365 whole days. The migration creates **Trial Period** with 14 days. Trial plans are excluded from public pricing and checkout.
+In the admin console, Plans & pricing has a **Trial plan (admin only)** switch and a required duration of 1-365 whole days. The migration creates **Trial Period** with 7 days. Trial plans are excluded from public pricing and checkout.
 
 Approving an access request defaults to Trial Period; the administrator can select another active trial plan. The selected plan is saved on the request. The duration is copied to the workspace, so editing the plan later does not change an assigned trial. Creation and trial assignment happen in one database transaction; an activation resend can recover an interrupted assignment without restarting the clock.
 
