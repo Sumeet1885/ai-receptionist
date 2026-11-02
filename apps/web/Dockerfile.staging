@@ -39,8 +39,8 @@ COPY apps/admin apps/admin
 # They must match the staging deployment URLs.
 ENV VITE_SUPABASE_URL=https://lckiehhthevtykulfbvw.supabase.co
 ENV VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_OvMrb8UfqZdi3XmztPdniQ_1nwecsPy
-ENV VITE_EXPRESS_SERVER_URL=https://test.ai-receptionist.agilewaters.com
-ENV VITE_WIDGET_BASE_URL=https://test.ai-receptionist.agilewaters.com
+ENV VITE_EXPRESS_SERVER_URL=https://test.bolegaindia.ai
+ENV VITE_WIDGET_BASE_URL=https://test.bolegaindia.ai
 ENV VITE_TURNSTILE_SITE_KEY=0x4AAAAAAFexsT-MRL3xo7sW
 
 
