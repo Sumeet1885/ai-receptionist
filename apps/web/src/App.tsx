@@ -224,7 +224,7 @@ export default function App() {
       'auth-signup': '/request-access',
       'request-access': '/request-access',
       onboarding: '/outbound-calls',
-      agents: '/inbound-calls',
+      agents: activeBot?.agentDirection === 'outbound' ? '/outbound-calls' : '/inbound-calls',
       dashboard: '/dashboard',
       'public-chat': '/dashboard'
     };
@@ -743,7 +743,7 @@ export default function App() {
                 subtitle="Manage this receptionist's behavior, install script, and preview link."
                 actions={
                   <button
-                    onClick={() => navigate('/agents')}
+                    onClick={() => navigate(routeBot?.agentDirection === 'outbound' ? '/outbound-calls' : '/inbound-calls')}
                     className="px-4 py-2.5 bg-brand-card hover:bg-brand-border border border-brand-border text-brand-text rounded-lg text-sm font-semibold transition"
                   >
                     All Agents

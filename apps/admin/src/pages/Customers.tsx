@@ -203,11 +203,6 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
   const [loadingUsage, setLoadingUsage] = useState(true);
   const [selectedBotId, setSelectedBotId] = useState('');
   const [assignDirection, setAssignDirection] = useState<'inbound' | 'outbound'>('inbound');
-  const [showNewAgentForm, setShowNewAgentForm] = useState(false);
-  const [newAgentName, setNewAgentName] = useState(customer.businessName || '');
-  const [newAgentIndustry, setNewAgentIndustry] = useState('');
-  const [newAgentPhone, setNewAgentPhone] = useState('');
-  const [newAgentDirection, setNewAgentDirection] = useState<'inbound' | 'outbound'>('inbound');
 
   // Phone number assignment
   const [showAssignNumberForm, setShowAssignNumberForm] = useState(false);
@@ -621,16 +616,6 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
             <Bot className="h-4 w-4 text-primary" />
             Assigned Voice Agents ({botData?.assigned.length ?? 0})
           </h3>
-          {canSupport && (
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={!showNewAgentForm && Boolean(botData?.agentLimit?.effectiveLimit !== null && botData?.agentLimit?.effectiveLimit !== undefined && (botData?.assigned.length ?? 0) >= botData.agentLimit.effectiveLimit)}
-              onClick={() => setShowNewAgentForm((v) => !v)}
-            >
-              {showNewAgentForm ? 'Cancel' : '+ Provision Agent'}
-            </Button>
-          )}
         </div>
 
         {/* Parallel / Concurrent Calls Rate Limit Card */}
@@ -989,7 +974,7 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
           </div>
         )}
 
-        {canSupport && botData && !showNewAgentForm && !(botData.agentLimit?.effectiveLimit !== null && botData.agentLimit?.effectiveLimit !== undefined && botData.assigned.length >= botData.agentLimit.effectiveLimit) && (
+        {canSupport && botData && !(botData.agentLimit?.effectiveLimit !== null && botData.agentLimit?.effectiveLimit !== undefined && botData.assigned.length >= botData.agentLimit.effectiveLimit) && (
           <div className="rounded-xl border border-line bg-background/50 p-3 space-y-2.5 text-xs">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-ink block">Assign Existing Persona ({botData.all.length})</span>
@@ -1061,84 +1046,6 @@ function CustomerDrawer({ customer, roles, onClose, onChanged }: { customer: Cus
               </div>
             </div>
           </div>
-        )}
-
-        {canSupport && showNewAgentForm && (
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              if (!newAgentName.trim()) return;
-              await act(async () => {
-                await customersApi.createAgent(customer.userId, {
-                  businessName: newAgentName,
-                  industry: newAgentIndustry,
-                  phoneNumber: newAgentPhone,
-                  direction: newAgentDirection,
-                });
-                const refreshed = await customersApi.getAgents(customer.userId);
-                setBotData(refreshed);
-                setShowNewAgentForm(false);
-                setNewAgentName('');
-                setNewAgentIndustry('');
-                setNewAgentPhone('');
-                setNewAgentDirection('inbound');
-              }, 'New agent provisioned and assigned');
-            }}
-            className="rounded-xl border border-primary/20 bg-primary-soft/10 p-3 space-y-2 text-xs"
-          >
-            <span className="font-semibold text-ink block">Provision & Assign New Persona</span>
-            <input
-              type="text"
-              placeholder="Persona / Business Name"
-              maxLength={120}
-              className="w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs text-ink focus:border-primary focus:outline-none"
-              value={newAgentName}
-              onChange={(e) => setNewAgentName(e.target.value)}
-              required
-            />
-            <input
-              type="text"
-              placeholder="Industry (e.g. Healthcare, Real Estate, Retail)"
-              maxLength={60}
-              className="w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs text-ink focus:border-primary focus:outline-none"
-              value={newAgentIndustry}
-              onChange={(e) => setNewAgentIndustry(e.target.value)}
-            />
-            <input
-              type="text"
-              placeholder="Assigned Phone Number (e.g. +91 98765 43210)"
-              maxLength={30}
-              className="w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs text-ink focus:border-primary focus:outline-none"
-              value={newAgentPhone}
-              onChange={(e) => setNewAgentPhone(e.target.value)}
-            />
-            <div className="flex items-center justify-between pt-1 border-t border-primary/20">
-              <span className="text-[11px] text-subtle font-medium">Dedicated Direction:</span>
-              <div className="flex rounded-md border border-line bg-white p-0.5 text-[10px]">
-                {(['inbound', 'outbound'] as const).map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    className={cx(
-                      'px-2.5 py-0.5 rounded font-medium capitalize transition-all',
-                      newAgentDirection === d
-                        ? d === 'inbound'
-                          ? 'bg-emerald-500 text-white shadow-sm'
-                          : 'bg-cyan-500 text-white shadow-sm'
-                        : 'text-subtle hover:text-ink'
-                    )}
-                    onClick={() => setNewAgentDirection(d)}
-                  >
-                    {`${d} only`}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 pt-1">
-              <Button size="sm" variant="ghost" onClick={() => setShowNewAgentForm(false)}>Cancel</Button>
-              <Button size="sm" type="submit" disabled={busy || !newAgentName.trim()}>Provision & Assign</Button>
-            </div>
-          </form>
         )}
       </div>
 
